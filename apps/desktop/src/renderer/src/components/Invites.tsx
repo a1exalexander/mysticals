@@ -3,7 +3,7 @@ import { addDays } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
-import { formatWhen, pendingInvites } from './EventDetails.logic'
+import { formatWhen, ownerLine, pendingInvites } from './EventDetails.logic'
 import { errorText } from './EventEditor.logic'
 import './ui/ui.css'
 import './Invites.css'
@@ -73,6 +73,7 @@ export function InvitesPanel(): React.JSX.Element {
           <ul>
             {invites.map((e) => {
               const a = accounts.find((x) => x.id === e.accountId)
+              const o = ownerLine(undefined, a?.label ?? e.accountId, a?.email)
               return (
                 <li key={keyOf(e)} style={{ '--accent': a?.color ?? 'var(--accent)' } as React.CSSProperties}>
                   <button
@@ -82,7 +83,7 @@ export function InvitesPanel(): React.JSX.Element {
                   >
                     <span className="invites-name">{e.title || 'Untitled'}</span>
                     <span className="mc-muted">{formatWhen(e)}</span>
-                    <span className="invites-acc"><span className="mc-dot" /> {a?.label ?? e.accountId} · {a?.email}</span>
+                    <span className="invites-acc"><span className="mc-dot" /> {o.label}{o.email && <> · {o.email}</>}</span>
                   </button>
                   <div className="invites-actions">
                     <button type="button" className="mc-btn primary" disabled={sending.has(keyOf(e))} onClick={() => reply(e, 'accepted')}>Accept</button>

@@ -1,7 +1,12 @@
 import { addDays, format, isSameDay, parseISO } from 'date-fns'
 import type { Account, Calendar, CalEvent, PartStat } from '@shared/types'
 
-const same = (a?: string, b?: string): boolean => !!a && !!b && a.toLowerCase() === b.toLowerCase()
+const same = (a?: string, b?: string): boolean => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase()
+
+/** "<calendar> in <label> · <email>" minus parts repeating an earlier one (Google: label = primary calendar = email). */
+export function ownerLine(calendar: string | undefined, label: string, email?: string): { calendar?: string; label: string; email?: string } {
+  return { calendar: same(calendar, label) || same(calendar, email) ? undefined : calendar, label, email: same(email, label) ? undefined : email }
+}
 
 /** Edit/Delete only for events this account organizes (or plain events) in writable calendars. */
 export function canEdit(e: CalEvent, account?: Account, calendar?: Calendar): boolean {
