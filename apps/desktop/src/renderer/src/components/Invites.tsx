@@ -3,6 +3,7 @@ import { addDays } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
+import { visibleEvents } from '../hooks/useCalendarData'
 import { formatWhen, ownerLine, pendingInvites } from './EventDetails.logic'
 import { errorText } from './EventEditor.logic'
 import './ui/ui.css'
@@ -10,8 +11,10 @@ import './Invites.css'
 
 // Status-bar inbox of unanswered invites (next 60 days). Each reply goes through the invite's own account.
 export function InvitesPanel(): React.JSX.Element {
-  const { accounts } = useDirectory()
-  const [invites, setInvites] = useState<CalEvent[]>([])
+  const { accounts, calendars, loaded } = useDirectory()
+  const [all, setInvites] = useState<CalEvent[]>([])
+  // Hidden calendars are only known once calendars load; show nothing until then.
+  const invites = loaded ? visibleEvents(all, calendars) : []
   const [open, setOpen] = useState(false)
   const [error, setError] = useState('')
   const [sending, setSending] = useState<Set<string>>(new Set())

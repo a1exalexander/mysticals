@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { bus } from '../bus'
-import { useCalendarData } from '../hooks/useCalendarData'
+import { setCalendarVisible, useCalendarData } from '../hooks/useCalendarData'
 import { MiniMonth } from './MiniMonth'
 
 const COLLAPSED_KEY = 'multicals-collapsed-accounts'
@@ -27,17 +27,6 @@ export function Sidebar(): React.JSX.Element {
     } catch {
       // per-device preference only; ignore
     }
-  }
-  // Optimistic toggles, dropped once fresh calendars arrive (or reverted on error).
-  const [pending, setPending] = useState<Record<string, boolean>>({})
-  useEffect(() => setPending({}), [calendars])
-  const toggle = (accountId: string, calendarId: string, visible: boolean): void => {
-    const k = `${accountId}/${calendarId}`
-    setPending((p) => ({ ...p, [k]: visible }))
-    window.api.calendars.setVisible(accountId, calendarId, visible).catch((e) => {
-      console.error(e)
-      setPending(({ [k]: _, ...rest }) => rest)
-    })
   }
   return (
     <aside className="sidebar">
@@ -72,9 +61,9 @@ export function Sidebar(): React.JSX.Element {
                   <input
                     type="checkbox"
                     data-testid={`sidebar-calendar-${a.id}-${c.id}`}
-                    checked={pending[`${a.id}/${c.id}`] ?? c.visible !== false}
+                    checked={c.visible !== false}
                     style={{ accentColor: c.color }}
-                    onChange={(e) => toggle(a.id, c.id, e.target.checked)}
+                    onChange={(e) => setCalendarVisible(a.id, c.id, e.target.checked)}
                   />
                   <span className="sb-cal-name">{c.name}</span>
                   {c.readOnly && <span className="sb-ro" title="Read-only">read-only</span>}

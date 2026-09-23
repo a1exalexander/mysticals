@@ -14,4 +14,13 @@ describe('mock api isolation', () => {
     expect(ev.accountId).toBe('work')
     expect(ev.organizer?.email).toBe('me@work.example')
   })
+
+  it('events.list keeps hidden calendars; calendars.list reports visibility', async () => {
+    const api = createMockApi(() => {})
+    const range = { start: new Date(Date.now() - 864e5).toISOString(), end: new Date(Date.now() + 864e5).toISOString() }
+    const gym = async (): Promise<number> => (await api.events.list(range)).filter((e) => e.title === 'Gym').length
+    await api.calendars.setVisible('personal', 'p-main', false)
+    expect(await gym()).toBe(1)
+    expect((await api.calendars.list()).find((c) => c.id === 'p-main')?.visible).toBe(false)
+  })
 })

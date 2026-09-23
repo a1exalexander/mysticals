@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { format, getISOWeek } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import type { MenuCommand } from '@shared/ipc'
-import { useCalendarData } from '../hooks/useCalendarData'
+import { useCalendarData, visibleEvents } from '../hooks/useCalendarData'
 import { bus } from '../bus'
 import { nav, useNav } from './nav'
 import { rangeLabel, shiftDate, viewDays, viewRange, type View } from './layout'
@@ -31,7 +31,8 @@ export function CalendarView(): React.JSX.Element {
   const { date, view } = useNav()
   const range = useMemo(() => viewRange(view, date), [view, date])
   const days = useMemo(() => viewDays(view, date), [view, date])
-  const { accounts, calendars, events } = useCalendarData(range)
+  const { accounts, calendars, events: all } = useCalendarData(range)
+  const events = useMemo(() => visibleEvents(all, calendars), [all, calendars])
 
   const colorOf = useMemo<ColorOf>(() => {
     const cal = new Map(calendars.map((c) => [`${c.accountId}/${c.id}`, c.color]))

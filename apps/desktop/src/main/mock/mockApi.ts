@@ -93,8 +93,7 @@ export function createMockApi(onChanged: (accountId: string) => void): Omit<Api,
       list: async (range) => {
         const out: CalEvent[] = []
         for (const p of providers.values())
-          for (const c of p.calendars)
-            if (!hidden.has(`${p.accountId}/${c.id}`)) out.push(...(await p.listEvents(c.id, range)))
+          for (const c of p.calendars) out.push(...(await p.listEvents(c.id, range)))
         return out
       },
       create: async (input) => {

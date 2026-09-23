@@ -101,13 +101,14 @@ describe('createApi isolation', () => {
     await expect(api.events.delete(holiday)).rejects.toThrow(/read-only/)
   })
 
-  it('events.list filters by range and skips hidden calendars', async () => {
+  it('events.list filters by range and keeps hidden calendars (renderer filters them)', async () => {
     const { api, hidden } = setup()
     const range = { start: '2026-09-23T00:00:00Z', end: '2026-09-24T00:00:00Z' }
     expect((await api.events.list(range)).map((e) => e.id)).toEqual(['inv-1'])
     expect(await api.events.list({ start: '2026-09-25T00:00:00Z', end: '2026-09-26T00:00:00Z' })).toEqual([])
     hidden.work = ['work-main']
-    expect(await api.events.list(range)).toEqual([])
+    expect((await api.events.list(range)).map((e) => e.id)).toEqual(['inv-1'])
+    expect((await api.calendars.list()).find((c) => c.id === 'work-main')?.visible).toBe(false)
   })
 })
 
