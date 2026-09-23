@@ -1,5 +1,6 @@
 import { join } from 'path'
-import { readFileSync, writeFileSync } from 'fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
 import { app, BrowserWindow, Menu, nativeTheme, Notification, shell } from 'electron'
 import { IPC } from '@shared/ipc'
 import { registerApi } from './ipc/register'
@@ -13,6 +14,8 @@ import { createCaldavProvider, verifyCaldav } from './providers/caldav'
 import { createGoogleProvider, googleSignIn } from './providers/google'
 
 const MOCK = process.env.MULTICALS_MOCK === '1'
+// Mock runs (e2e) get a throwaway profile so localStorage (collapsed accounts, theme) never leaks between runs.
+if (MOCK) app.setPath('userData', mkdtempSync(join(tmpdir(), 'multicals-mock-')))
 
 function broadcast(accountId: string): void {
   for (const w of BrowserWindow.getAllWindows()) w.webContents.send(IPC.changed, accountId)
