@@ -118,3 +118,17 @@
 .theme-swatch i { flex: 1; border-radius: 2px; }
 .theme-name { display: flex; justify-content: space-between; align-items: center; font: 500 11.5px/1 var(--mono); }
 .theme-name .on { color: var(--accent); }
+.set-panel .theme-swatch { height: 44px; }
+
+/* Settings tabs: toolbar .seg bracket look ([ Accounts ]), squared. */
+.acc-sheet .set-tabs { margin: 4px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line-strong); }
+.acc-sheet .set-tabs button {
+  height: 26px; padding: 0 8px; border: 0; border-radius: 0; background: none; color: var(--muted); font: 12px/26px var(--mono);
+}
+.acc-sheet .set-tabs button:hover { background: none; color: var(--fg); }
+.acc-sheet .set-tabs button.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.set-panel { min-height: 340px; }
+.set-sync-label { font-weight: 600; line-height: 24px; }
+.set-status { font: 11px/1 var(--mono); color: var(--green); white-space: nowrap; }
+.set-status::before { content: '● '; }
+.set-status.err { color: var(--red); }

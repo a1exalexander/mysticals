@@ -73,6 +73,7 @@ test('calendar views: week/month/day, visibility toggle, screenshots', async () 
 
   // Theme picker in Settings switches the palette and survives a reload.
   await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByTestId('settings-tab-themes').click()
   await page.waitForTimeout(300)
   await page.screenshot({ path: 'e2e/screens/theme-settings.png' })
   await page.getByTestId('theme-tokyo').click()
