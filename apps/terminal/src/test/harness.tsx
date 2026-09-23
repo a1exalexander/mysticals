@@ -5,6 +5,7 @@
  *   const t = renderApp()                 // or renderWith(<EventDetails event={e} onClose={vi.fn()} onEdit={vi.fn()} />)
  *   await t.waitFor('Agenda')
  *   await t.press('w')                    // or t.press(KEY.down, KEY.enter)
+ *   await t.click('Month')                // mouse: click / t.wheel('Gym', 1) on the first cell showing the text
  *   expect(t.lastFrame()).toContain('Week view')
  *   expect(t.client.events.respond).toHaveBeenCalledWith(expect.objectContaining({ id: 'work-11' }), 'accepted')
  */
@@ -63,8 +64,20 @@ export type Rendered = ReturnType<typeof render> & {
   client: TestClient
   /** Writes each key to stdin with a tick before each and after the last, so Ink re-renders in between. */
   press(...keys: string[]): Promise<void>
+  /** Left-clicks the first cell showing `text` (SGR mouse press + release, as the terminal sends them). */
+  click(text: string): Promise<void>
+  /** Wheel over the first cell showing `text`: 1 = down, -1 = up. */
+  wheel(text: string, dir: 1 | -1): Promise<void>
   /** Polls lastFrame() until it contains `text` (or the predicate passes); throws with the frame on timeout. */
   waitFor(match: string | ((frame: string) => boolean), timeoutMs?: number): Promise<string>
+}
+
+/** 1-based [column, row] of the first occurrence of `text` in a frame. */
+function cellOf(frame: string, text: string): [number, number] {
+  const lines = frame.split('\n')
+  const y = lines.findIndex((l) => l.includes(text))
+  if (y < 0) throw new Error(`click: "${text}" not on screen:\n${frame}`)
+  return [lines[y].indexOf(text) + 1, y + 1]
 }
 
 /** Renders any element inside ApiContext with a mock client. */
@@ -78,6 +91,14 @@ export function renderWith(node: ReactElement, client: TestClient = createTestCl
         r.stdin.write(k)
       }
       await tick()
+    },
+    async click(text: string) {
+      const [x, y] = cellOf(r.lastFrame() ?? '', text)
+      await this.press(`\u001B[<0;${x};${y}M`, `\u001B[<0;${x};${y}m`)
+    },
+    async wheel(text: string, dir: 1 | -1) {
+      const [x, y] = cellOf(r.lastFrame() ?? '', text)
+      await this.press(`\u001B[<${dir > 0 ? 65 : 64};${x};${y}M`)
     },
     async waitFor(match: string | ((frame: string) => boolean), timeoutMs = 2000) {
       const ok = typeof match === 'string' ? (f: string) => f.includes(match) : match

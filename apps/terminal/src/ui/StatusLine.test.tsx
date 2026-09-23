@@ -33,9 +33,11 @@ describe('StatusLine', () => {
     expect(f).toContain('? help')
   })
 
-  it('stays on one row when narrow', async () => {
+  it('stays on two rows (info, actions) when narrow', async () => {
     t = renderWith(<StatusLine nav={nav} events={[]} now={now} message={'x'.repeat(100)} width={30} />)
-    await t.waitFor('x')
-    expect(t.lastFrame()!.split('\n')).toHaveLength(1)
+    const f = await t.waitFor('x')
+    expect(f.split('\n')).toHaveLength(2)
+    expect(f.split('\n')[1]).toMatch(/^n new/)
+    for (const l of f.split('\n')) expect(l.length).toBeLessThanOrEqual(30)
   })
 })

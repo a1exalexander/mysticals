@@ -20,6 +20,8 @@ Environment:
 
 Press ? inside the app for keys.`
 
+let leaveScreen = (): void => {}
+
 async function main(argv: string[]): Promise<void> {
   if (argv.includes('--help') || argv.includes('-h')) return void console.log(HELP)
   if (argv.includes('--version') || argv.includes('-v')) return void console.log(version)
@@ -30,6 +32,14 @@ async function main(argv: string[]): Promise<void> {
   }
 
   const api = await connect()
+  if (process.stdin.isTTY && process.stdout.isTTY) {
+    // Alternate screen (restores the shell on exit; the app is drawn from row 1 so mouse cells map to layout)
+    // + mouse press/wheel reports in SGR encoding. Always undone on exit, or the shell fills with "[<0;…M" junk.
+    process.stdout.write('\x1b[?1049h\x1b[H\x1b[?1000h\x1b[?1006h')
+    leaveScreen = () => void process.stdout.write('\x1b[?1006l\x1b[?1000l\x1b[?1049l')
+    process.on('exit', leaveScreen)
+    for (const s of ['SIGTERM', 'SIGHUP'] as const) process.on(s, () => process.exit(0))
+  }
   const app = render(createElement(ApiContext.Provider, { value: api }, createElement(App)))
   // Piped stdin (e.g. `echo | multicals`): no keys; draw and quit when the input ends.
   if (!process.stdin.isTTY) process.stdin.on('end', () => app.unmount()).resume()
@@ -38,6 +48,7 @@ async function main(argv: string[]): Promise<void> {
 }
 
 main(process.argv.slice(2)).catch((e: unknown) => {
+  leaveScreen() // so the error lands in the shell, not the discarded alternate screen
   console.error(e instanceof Error ? e.message : e)
   process.exit(1)
 })

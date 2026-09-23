@@ -1,7 +1,9 @@
 /**
- * Bottom status line (one row, truncated to `width`): current event(s) and the next one within 24h
- * (core `pickNowNext`, `startsLabel`), pending invite count, accounts whose last sync failed,
- * a transient `message` from the shell, and "? help".
+ * Bottom bar, two rows truncated to `width`:
+ *   1. info: current event(s) and the next one within 24h (core `pickNowNext`, `startsLabel`), pending invite count,
+ *      accounts whose last sync failed, and a transient `message` from the shell;
+ *   2. actions: new, sync, invites, accounts, help, quit as key buttons.
+ * Every part is clickable (opens the event / overlay, or runs the action).
  * Now/next and invites come from a today+60d fetch, so they don't depend on the viewed range.
  */
 import type { ReactNode } from 'react'
@@ -10,7 +12,9 @@ import { pickNowNext, startsLabel } from '@multicals/core/logic/status'
 import { pendingInvites } from '@multicals/core/logic/details'
 import type { CalEvent } from '@multicals/core/shared/types'
 import { useDirectory, type Nav } from './hooks'
+import { Button, Clickable } from './mouse'
 import { useUpcoming } from './screens/Invites'
+import { C } from './theme'
 
 export interface StatusLineProps {
   nav: Nav
@@ -19,35 +23,54 @@ export interface StatusLineProps {
   now: Date
   message?: string
   width: number
+  onOpen?(e: CalEvent): void
+  onInvites?(): void
+  onAccounts?(): void
+  onHelp?(): void
+  onNew?(): void
+  onSync?(): void
+  onQuit?(): void
 }
 
 const DAY_MS = 24 * 3600_000
+const noop = (): void => {}
 
-export function StatusLine({ now, message, width }: StatusLineProps) {
+export function StatusLine({ now, message, width, onOpen, onInvites, onAccounts, onHelp, onNew, onSync, onQuit }: StatusLineProps) {
   const { events } = useUpcoming(now)
   const failed = useDirectory().accounts.filter((a) => a.error)
   const { current, next } = pickNowNext(events, now)
   const soon = next && Date.parse(next.start) - now.getTime() < DAY_MS ? next : undefined
   const invites = pendingInvites(events, now).length
 
-  const parts: ReactNode[] = []
-  if (current.length) parts.push(<><Text color="green">now</Text> {current.map((e) => e.title || 'Untitled').join(', ')}</>)
-  if (soon) parts.push(<><Text color="cyan">next</Text> {soon.title || 'Untitled'} {startsLabel(soon.start, now)}</>)
-  if (invites) parts.push(<Text color="yellow">{invites === 1 ? '1 invite' : `${invites} invites`} (i)</Text>)
-  if (failed.length) parts.push(<Text color="red">⚠ {failed.map((a) => a.label).join(', ')} sync failed (s)</Text>)
-  if (message) parts.push(message)
-  parts.push(<Text dimColor>? help</Text>)
+  const parts: [ReactNode, (() => void)?][] = []
+  for (const e of current) parts.push([<><Text color={C.green} bold>now</Text> {e.title || 'Untitled'}</>, onOpen && (() => onOpen(e))])
+  if (soon) parts.push([<><Text color={C.cyan} bold>next</Text> {soon.title || 'Untitled'} <Text color={C.yellow}>{startsLabel(soon.start, now)}</Text></>, onOpen && (() => onOpen(soon))])
+  if (invites) parts.push([<Text color={C.yellow}>{invites === 1 ? '1 invite' : `${invites} invites`} (i)</Text>, onInvites])
+  if (failed.length) parts.push([<Text color={C.red}>⚠ {failed.map((a) => a.label).join(', ')} sync failed (s)</Text>, onAccounts])
+  if (message) parts.push([message])
+  if (!parts.length) parts.push([<Text color={C.muted}>nothing on in the next 24h</Text>])
 
+  // Parts never shrink; each row clips at `width`, so the tail is what gets cut.
   return (
-    <Box width={width}>
-      <Text wrap="truncate">
-        {parts.map((p, i) => (
-          <Text key={i}>
-            {i > 0 && <Text dimColor> · </Text>}
-            {p}
-          </Text>
+    <Box flexDirection="column" width={width} height={2}>
+      <Box width={width} height={1} overflow="hidden">
+        {parts.map(([p, onClick], i) => (
+          <Clickable key={i} flexShrink={0} onClick={onClick}>
+            <Text>
+              {i > 0 && <Text color={C.muted}> · </Text>}
+              {p}
+            </Text>
+          </Clickable>
         ))}
-      </Text>
+      </Box>
+      <Box width={width} height={1} overflow="hidden">
+        <Button k="n" label="new" onPress={onNew ?? noop} />
+        <Button k="r" label="sync" onPress={onSync ?? noop} />
+        <Button k="i" label="invites" onPress={onInvites ?? noop} />
+        <Button k="s" label="accounts" onPress={onAccounts ?? noop} />
+        <Button k="?" label="help" onPress={onHelp ?? noop} />
+        <Button k="q" label="quit" onPress={onQuit ?? noop} />
+      </Box>
     </Box>
   )
 }
