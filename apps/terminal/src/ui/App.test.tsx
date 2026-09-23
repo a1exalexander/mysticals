@@ -10,7 +10,7 @@ describe('App shell', () => {
     await t.waitFor('Agenda view')
     expect(t.lastFrame()).toContain('23 Sep – 6 Oct 2026')
     await t.press('w')
-    await t.waitFor('Week view')
+    await t.waitFor('Mon 21')
     await t.press('m')
     await t.waitFor('September 2026')
     await t.press('l')
