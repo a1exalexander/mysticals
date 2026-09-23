@@ -23,7 +23,7 @@ MULTICALS_MOCK=1 multicals
 | --- | --- |
 | `a` `d` `2` `w` `m` | Agenda / Day / 2 Days / Week / Month view |
 | `←` `→` (or `h` `l`) | Day, 2 Days, Week, Month: previous / next day, selecting its event closest to the same time. Agenda: previous / next event |
-| `↑` `↓` | Day, 2 Days, Week: previous / next event of the selected day. Month: a week up / down. Agenda: previous / next event |
+| `↑` `↓` | Day, 2 Days, Week: previous / next event of the selected day. Month: previous / next event in time order. Agenda: previous / next event |
 | `j` `k` | Next / previous event in time order |
 | `Shift` `←` `→` (or `H` `L`) | Previous / next page (moving past the edge of a page pages too) |
 | `t` | Today |

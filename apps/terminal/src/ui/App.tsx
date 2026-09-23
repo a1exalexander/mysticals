@@ -32,7 +32,7 @@ const VIEW_LABEL: Record<View, string> = { agenda: 'Agenda', day: 'Day', '2day':
 const HELP: [string, string][] = [
   ['a d 2 w m', 'agenda / day / 2 days / week / month'],
   ['← →', 'previous / next day (agenda: event); also h l'],
-  ['↑ ↓', 'previous / next event of the day (month: week)'],
+  ['↑ ↓', 'previous / next event of the day (month: any day)'],
   ['j k', 'next / previous event'],
   ['⇧← ⇧→', 'previous / next page (also H L)'],
   ['t', 'today'],
@@ -239,7 +239,7 @@ function Shell({ initialNav }: { initialNav?: Nav }) {
     shift(dir)
   }
 
-  /** Grid ←/→ (±1) and month ↑/↓ (±7): moves the cursor, selecting the event there closest to the followed time. */
+  /** Grid ←/→: moves the cursor a day, selecting the event there closest to the followed time. */
   const stepDay = (n: number): void => {
     const { cursor: from, view, date, key } = live.current
     const sel = ordered.find((e) => eventKey(e) === key)
@@ -299,7 +299,7 @@ function Shell({ initialNav }: { initialNav?: Nav }) {
       const view = live.current.view
       if (view === 'agenda' && (dir || vdir)) return move((dir || vdir) as 1 | -1)
       if (dir) return stepDay(dir)
-      if (vdir) return view === 'month' ? stepDay(7 * vdir) : stepInDay(vdir as 1 | -1)
+      if (vdir) return view === 'month' ? move(vdir as 1 | -1) : stepInDay(vdir as 1 | -1)
       if (key.return && selected) return setOverlay({ kind: 'details', event: selected })
       if (input === 'n') return setOverlay({ kind: 'editor', initialStart: newStart() })
       if (input === 'i') return setOverlay({ kind: 'invites' })

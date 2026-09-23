@@ -23,7 +23,7 @@ describe('App shell', () => {
     expect(t.lastFrame()).toMatch(/│ Wed 23.*│ Thu 24/)
   })
 
-  it('grid arrows: ←/→ move days (nearest time, paging), ↑/↓ stay in the day, month ↓ moves a week', async () => {
+  it('grid arrows: ←/→ move days (nearest time, paging), ↑/↓ stay in the day, month ↑/↓ step events', async () => {
     const at = (d: number, h: number): string => new Date(2026, 8, d, h).toISOString()
     const ev = (title: string, d: number, h: number): CalEvent =>
       ({ id: title, title, accountId: 'work', calendarId: 'work-main', start: at(d, h), end: at(d, h + 1), allDay: false, attendees: [] })
@@ -48,10 +48,9 @@ describe('App shell', () => {
     await t.waitFor('28 Sep – 4 Oct 2026')
     await t.waitFor('Echo') // the new page's events are loaded
     expect(await opened()).toContain('Echo')
-    await t.press('m', KEY.up, KEY.down, KEY.down) // month ↑/↓ move a week: Mon 28 → 21 → 28 → Oct 5 (next month)
-    await t.waitFor('October 2026')
-    await t.press(KEY.left, KEY.left, KEY.left, KEY.left, KEY.left) // Oct 5 → Sep 30 (Foxtrot): back to September
+    await t.press('m') // month ↑/↓ step events in time order: Echo → Foxtrot → Echo → Foxtrot
     await t.waitFor('Foxtrot')
+    await t.press(KEY.down, KEY.up, KEY.down)
     expect(await opened()).toContain('Foxtrot')
   })
 
