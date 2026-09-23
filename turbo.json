@@ -2,6 +2,7 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "build": { "inputs": ["$TURBO_DEFAULT$", ".env*"], "outputs": ["out/**"], "env": ["MAIN_VITE_*"] },
+    "multicals#build": { "inputs": ["$TURBO_DEFAULT$", ".env*"], "outputs": ["dist/**"], "env": ["MULTICALS_GOOGLE_*"] },
     "typecheck": {},
     "test": {},
     "e2e": { "dependsOn": ["build"], "cache": false, "passThroughEnv": ["MULTICALS_MOCK"] },

@@ -1,5 +1,6 @@
 {
-  "name": "multicals",
+  "name": "@multicals/desktop",
+  "productName": "multicals",
   "version": "0.1.0",
   "private": true,
   "description": "Isolated multi-account calendar for macOS",
@@ -23,6 +24,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@multicals/core": "workspace:*",
     "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.2",
     "@types/react": "^19.3.0",

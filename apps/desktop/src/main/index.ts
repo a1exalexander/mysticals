@@ -1,17 +1,18 @@
 import { join } from 'path'
 import { mkdtempSync, readFileSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
-import { app, BrowserWindow, Menu, nativeTheme, Notification, shell } from 'electron'
+import { app, BrowserWindow, Menu, nativeTheme, Notification, safeStorage, shell } from 'electron'
 import { IPC } from '@shared/ipc'
+import { createMockApi } from '@multicals/core/mock/mockApi'
+import { createApi } from '@multicals/core/api'
+import { AccountStore, type SecretCrypto } from '@multicals/core/accounts/store'
+import { SyncEngine } from '@multicals/core/sync/engine'
+import { noteText, type Note } from '@multicals/core/sync/notify'
+import { createCaldavProvider, verifyCaldav } from '@multicals/core/providers/caldav'
+import { createGoogleProvider, googleSignIn, setClientConfig } from '@multicals/core/providers/google'
 import { registerApi } from './ipc/register'
-import { createMockApi } from './mock/mockApi'
-import { createApi } from './ipc/api'
 import { buildMenu } from './menu'
-import { AccountStore } from './accounts/store'
-import { SyncEngine } from './sync/engine'
-import { noteText, type Note } from './sync/notify'
-import { createCaldavProvider, verifyCaldav } from './providers/caldav'
-import { createGoogleProvider, googleSignIn } from './providers/google'
+import { electronTriggers } from './sync/electronTriggers'
 
 const MOCK = process.env.MULTICALS_MOCK === '1'
 // Mock runs (e2e) get a throwaway profile so localStorage (collapsed accounts, theme) never leaks between runs.
@@ -49,6 +50,15 @@ function notify(store: AccountStore, accountId: string, notes: Note[]): void {
     })
     n.show()
   }
+}
+
+/** Credentials are encrypted with the macOS Keychain-backed Electron safeStorage. */
+const safeStorageCrypto: SecretCrypto = {
+  encrypt(plain) {
+    if (!safeStorage.isEncryptionAvailable()) throw new Error('Secure storage is unavailable; refusing to store credentials')
+    return safeStorage.encryptString(plain)
+  },
+  decrypt: (data) => safeStorage.decryptString(data)
 }
 
 const stateFile = (): string => join(app.getPath('userData'), 'window-state.json')
@@ -112,10 +122,19 @@ app.whenReady().then(() => {
   if (MOCK) {
     registerApi(createMockApi(broadcast))
   } else {
-    const store = new AccountStore(app.getPath('userData'), { caldav: createCaldavProvider, google: createGoogleProvider })
-    const sync = new SyncEngine(store, broadcast, { onEvents: (id, notes) => notify(store, id, notes) })
+    setClientConfig({
+      clientId: import.meta.env.MAIN_VITE_GOOGLE_CLIENT_ID,
+      clientSecret: import.meta.env.MAIN_VITE_GOOGLE_CLIENT_SECRET
+    })
+    const factories = { caldav: createCaldavProvider, google: createGoogleProvider }
+    const store = new AccountStore(app.getPath('userData'), factories, safeStorageCrypto)
+    const sync = new SyncEngine(store, broadcast, {
+      triggers: electronTriggers,
+      onEvents: (id, notes) => notify(store, id, notes)
+    })
     try {
-      registerApi(createApi(store, sync, { verifyCaldav, googleSignIn, onChanged: broadcast }))
+      const signIn = (): ReturnType<typeof googleSignIn> => googleSignIn((url) => shell.openExternal(url))
+      registerApi(createApi(store, sync, { verifyCaldav, googleSignIn: signIn, onChanged: broadcast }))
       sync.start()
     } catch (e) {
       console.error('backend not ready', e)

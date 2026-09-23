@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { DayPicker } from 'react-day-picker'
 import { format } from 'date-fns'
-import { WEEK_STARTS_ON } from '../../views/layout'
+import { WEEK_STARTS_ON } from '@multicals/core/logic/layout'
 import 'react-day-picker/style.css'
 import './DateTimeField.css'
 

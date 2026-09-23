@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { addMonths, format, isSameDay, isSameMonth, isToday, startOfMonth } from 'date-fns'
 import { nav, useNav } from '../views/nav'
-import { monthGrid } from '../views/layout'
+import { monthGrid } from '@multicals/core/logic/layout'
 
 /** Sidebar month picker; clicking a day navigates the main view. */
 export function MiniMonth(): React.JSX.Element {
