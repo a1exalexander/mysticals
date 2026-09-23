@@ -2,6 +2,7 @@
   "name": "multicals",
   "version": "0.1.0",
   "description": "Isolated multi-account calendar for the macOS terminal",
+  "keywords": ["calendar", "cli", "tui", "terminal", "google-calendar", "caldav", "macos"],
   "author": "Oleksandr Ratushnyi",
   "license": "MIT",
   "repository": { "type": "git", "url": "git+https://github.com/a1exalexander/multicals.git", "directory": "apps/terminal" },
@@ -15,7 +16,7 @@
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "prepublishOnly": "tsup"
+    "prepublishOnly": "pnpm build"
   },
   "dependencies": {
     "date-fns": "^4.4.0",

@@ -12,11 +12,7 @@ mac:
   target:
     - target: dmg
       arch: [arm64, x64]
-  # Local unsigned build. To sign + notarize later:
-  #   1. Install a "Developer ID Application" certificate in your keychain.
-  #   2. Remove `identity: null` (or set it to the certificate name).
-  #   3. Set hardenedRuntime: true and add `notarize: true`, then export
-  #      APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID before `pnpm dist`.
+  # Unsigned build, shared as-is.
   identity: null
   hardenedRuntime: false
 dmg:
