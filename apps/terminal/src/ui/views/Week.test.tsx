@@ -17,6 +17,8 @@ describe('fit', () => {
     expect(fit([1, 2], 3, -1)).toEqual({ shown: [1, 2], more: 0 })
     expect(fit([1, 2, 3, 4, 5], 3, -1)).toEqual({ shown: [1, 2], more: 3 })
     expect(fit([1, 2, 3, 4, 5], 3, 4)).toEqual({ shown: [4, 5], more: 3 })
+    expect(fit([1, 2], 1, -1)).toEqual({ shown: [], more: 2 })
+    expect(fit([1, 2], 1, 1)).toEqual({ shown: [2], more: 0 })
   })
 })
 

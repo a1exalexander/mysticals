@@ -16,6 +16,8 @@ import { eventKey, type ViewProps } from '../hooks'
 /** Picks at most `rows` lines of `items` (the last one becoming "+k more" on overflow), scrolled to keep `selected`. */
 export function fit<T>(items: T[], rows: number, selected: number): { shown: T[]; more: number } {
   if (items.length <= rows) return { shown: items, more: 0 }
+  // A single row can't hold both an event and "+k": the selection wins.
+  if (rows === 1 && selected >= 0) return { shown: [items[selected]], more: 0 }
   const n = Math.max(rows - 1, 0)
   const from = Math.max(0, Math.min(selected - n + 1, items.length - n))
   return { shown: items.slice(from, from + n), more: items.length - n }
