@@ -32,8 +32,12 @@ export function App(): React.JSX.Element {
       <SettingsHost />
       <EventTooltipHost />
       <div className="app-loader" data-done={done} aria-hidden={done} role="status" aria-label="Loading">
-        <span className="app-loader-name">multicals</span>
-        <span className="app-loader-bar" />
+        <div className="app-loader-term">
+          <div><span className="app-loader-prompt">~ $</span> multicals --sync</div>
+          <div className="app-loader-spin">
+            loading accounts… <span className="app-loader-cursor" />
+          </div>
+        </div>
       </div>
     </div>
   )
