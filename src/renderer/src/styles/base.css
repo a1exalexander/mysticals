@@ -323,12 +323,16 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
   font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
 }
 .sbar-seg { flex: none; padding: 0 12px; border-right: 1px solid var(--line); overflow: hidden; text-overflow: ellipsis; }
-.sbar-accounts { display: flex; min-width: 0; overflow: hidden; }
-.sbar-acc { display: flex; align-items: center; gap: 6px; }
-.sbar-acc .ok { color: var(--green); }
-.sbar-acc .err { color: var(--red); }
+.sbar-events { display: flex; min-width: 0; overflow: hidden; }
+.sbar-ev, .sbar-err { border: 0; border-right: 1px solid var(--line); background: none; font: inherit; color: var(--fg); cursor: pointer; }
+.sbar-ev { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 320px; }
+.sbar-ev:hover, .sbar-err:hover { background: var(--hover); }
+.sbar-dot { color: var(--c, var(--accent)); }
+.sbar-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sbar-dim { color: var(--muted); }
+.sbar-err { flex: none; color: var(--red); }
 .sbar-grow { flex: 1; min-width: 0; }
 .sbar-keys { flex: none; padding: 0 12px; overflow: hidden; }
 .sbar-keys kbd { font: inherit; color: var(--fg); }
 @media (max-width: 1100px) { .sbar-keys { display: none; } }
-@media (max-width: 860px) { .sbar-accounts { display: none; } }
+@media (max-width: 860px) { .sbar-events { display: none; } }
