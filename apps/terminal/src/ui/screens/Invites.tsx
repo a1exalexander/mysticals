@@ -1,15 +1,18 @@
 /**
  * Invites overlay (key `i`): unanswered invitations of the next 60 days (visible calendars only).
  * Each reply goes through the invite's own account (api.events.respond with the event itself).
- * Keys: j/k ↓/↑ move, y accept, n decline, m maybe, esc/q close.
+ * Keys: j/k ↓/↑ move, y accept, n decline, m maybe, esc/q close. Mouse: click a row to select it, wheel moves,
+ * the buttons reply to the selected invite.
  */
 import { useMemo, useRef, useState } from 'react'
-import { Box, Text, useInput } from 'ink'
+import { Box, Text } from 'ink'
 import { addDays, startOfDay } from 'date-fns'
 import { formatWhen, ownerLine, pendingInvites } from '@multicals/core/logic/details'
 import { errorText } from '@multicals/core/logic/editor'
 import type { CalEvent, PartStat } from '@multicals/core/shared/types'
 import { eventKey, useApi, useDirectory, useEvents } from '../hooks'
+import { Button, Clickable, useKeys } from '../mouse'
+import { ansiOf, C } from '../theme'
 
 export const INVITE_DAYS = 60
 
@@ -56,37 +59,50 @@ export function Invites({ onClose }: InvitesProps) {
     )
   }
 
-  useInput((input, key) => {
+  const move = (dir: 1 | -1): void => setIdx(Math.max(Math.min(sel + dir, invites.length - 1), 0))
+  const replySelected = (status: Reply): void => void (invites[sel] && reply(invites[sel], status))
+
+  useKeys((input, key) => {
     if (key.escape || input === 'q') return onClose()
-    if (input === 'j' || key.downArrow) return setIdx(Math.min(sel + 1, Math.max(invites.length - 1, 0)))
-    if (input === 'k' || key.upArrow) return setIdx(Math.max(sel - 1, 0))
-    if (Object.hasOwn(REPLY, input) && invites[sel]) reply(invites[sel], REPLY[input])
+    if (input === 'j' || key.downArrow) return move(1)
+    if (input === 'k' || key.upArrow) return move(-1)
+    if (Object.hasOwn(REPLY, input)) replySelected(REPLY[input])
   })
 
   return (
-    <Box flexDirection="column" borderStyle="round" paddingX={1}>
+    <Clickable flexDirection="column" borderStyle="round" borderColor={C.muted} paddingX={1} onWheel={move}>
       <Text bold>Invitations</Text>
       {!loaded ? (
-        <Text dimColor>Loading…</Text>
+        <Text color={C.muted}>Loading…</Text>
       ) : invites.length === 0 ? (
-        <Text dimColor>No pending invites</Text>
+        <Text color={C.muted}>No pending invites</Text>
       ) : (
         invites.map((e, i) => {
           const a = accounts.find((x) => x.id === e.accountId)
           const o = ownerLine(undefined, a?.label ?? e.accountId, a?.email)
           return (
-            <Text key={eventKey(e)} wrap="truncate" inverse={i === sel}>
-              {i === sel ? '▸ ' : '  '}
-              <Text bold>{e.title || 'Untitled'}</Text> <Text dimColor>{formatWhen(e)}</Text>{' '}
-              <Text color={a?.color}>●</Text> {o.label}
-              {o.email ? ` · ${o.email}` : ''}
-              {rows[eventKey(e)] ? <Text color="yellow"> {rows[eventKey(e)]}</Text> : null}
-            </Text>
+            <Clickable key={eventKey(e)} height={1} onClick={() => setIdx(i)}>
+              <Text wrap="truncate" inverse={i === sel}>
+                {i === sel ? '▸ ' : '  '}
+                <Text bold>{e.title || 'Untitled'}</Text> <Text color={C.muted}>{formatWhen(e)}</Text>{' '}
+                <Text color={ansiOf(a?.color ?? '')}>●</Text> {o.label}
+                {o.email ? ` · ${o.email}` : ''}
+                {rows[eventKey(e)] ? <Text color={C.yellow}> {rows[eventKey(e)]}</Text> : null}
+              </Text>
+            </Clickable>
           )
         })
       )}
-      {error ? <Text color="red">{error}</Text> : null}
-      <Text dimColor>y accept · n decline · m maybe · j/k move · esc close</Text>
-    </Box>
+      {error ? <Text color={C.red}>{error}</Text> : null}
+      <Box marginTop={1} flexWrap="wrap">
+        {invites.length > 0 && <Button k="y" label="accept" color={C.green} onPress={() => replySelected('accepted')} />}
+        {invites.length > 0 && <Button k="n" label="decline" color={C.red} onPress={() => replySelected('declined')} />}
+        {invites.length > 0 && <Button k="m" label="maybe" color={C.yellow} onPress={() => replySelected('tentative')} />}
+        <Box marginRight={2}>
+          <Text color={C.muted}>j/k move</Text>
+        </Box>
+        <Button k="esc" label="close" onPress={onClose} />
+      </Box>
+    </Clickable>
   )
 }

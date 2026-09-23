@@ -57,19 +57,22 @@ export function useDirectory(): Directory {
   return { accounts: data?.[0] ?? [], calendars: data?.[1] ?? [], loaded: !!data, error, reload }
 }
 
-/** Events in `range` from visible calendars only; reloads on every change push. */
-export function useEvents(range: TimeRange): { events: CalEvent[]; loaded: boolean; error?: string; reload(): void } {
+/**
+ * Events in `range` from visible calendars only; reloads on every change push.
+ * `loadedFor` is the range (`start/end`) the current `events` belong to (they lag behind a range change until it loads).
+ */
+export function useEvents(range: TimeRange): { events: CalEvent[]; loaded: boolean; loadedFor?: string; error?: string; reload(): void } {
   const { data, error, reload } = useLive(
     async (api) => {
       const [events, calendars] = await Promise.all([api.events.list(range), api.calendars.list()])
-      return visibleEvents(events, calendars)
+      return { events: visibleEvents(events, calendars), for: `${range.start}/${range.end}` }
     },
     [range.start, range.end]
   )
-  return { events: data ?? [], loaded: !!data, error, reload }
+  return { events: data?.events ?? [], loaded: !!data, loadedFor: data?.for, error, reload }
 }
 
-export type View = 'agenda' | 'day' | 'week' | 'month'
+export type View = 'agenda' | 'day' | '2day' | 'week' | 'month'
 export interface Nav {
   view: View
   /** Anchor day; views derive their visible days from it. */
@@ -78,17 +81,19 @@ export interface Nav {
 
 export const AGENDA_DAYS = 14
 
-/** Time range a view loads: agenda = AGENDA_DAYS from the anchor day, others per core `viewRange`. */
+/** Time range a view loads: agenda = AGENDA_DAYS and 2day = 2 days from the anchor day, others per core `viewRange`. */
 export function navRange({ view, date }: Nav): TimeRange {
-  if (view !== 'agenda') return viewRange(view, date)
-  const start = startOfDay(date)
-  return { start: start.toISOString(), end: addDays(start, AGENDA_DAYS).toISOString() }
+  if (view === 'agenda' || view === '2day') {
+    const start = startOfDay(date)
+    return { start: start.toISOString(), end: addDays(start, view === 'agenda' ? AGENDA_DAYS : 2).toISOString() }
+  }
+  return viewRange(view, date)
 }
 
-/** Next/previous page: agenda moves a week, other views per core `shiftDate`. */
+/** Next/previous page: agenda moves a week, 2day two days, other views per core `shiftDate`. */
 export const shiftNav = ({ view, date }: Nav, dir: 1 | -1): Nav => ({
   view,
-  date: view === 'agenda' ? addWeeks(date, dir) : shiftDate(view, date, dir)
+  date: view === 'agenda' ? addWeeks(date, dir) : view === '2day' ? addDays(date, 2 * dir) : shiftDate(view, date, dir)
 })
 
 export function useNav(initial: Nav = { view: 'agenda', date: new Date() }): {
@@ -120,7 +125,8 @@ export function useNow(ms = 30_000): Date {
 
 /**
  * Props every calendar view (views/{Agenda,Day,Week,Month}.tsx) receives from the App shell.
- * The shell owns navigation and selection keys; a view only renders and reports clicks-by-key via callbacks.
+ * The shell owns navigation and selection keys; a view only renders and reports clicks via callbacks
+ * (click an event: onSelect, click the selected one again: onOpen; click a day heading: onPickDay).
  */
 export interface ViewProps {
   /** Visible-calendar events of `navRange(nav)`, unsorted (use core `eventsOnDay` to group/sort). */
@@ -128,10 +134,16 @@ export interface ViewProps {
   /** Nav anchor day (`nav.date`). */
   date: Date
   now: Date
+  /** Day cursor of the grid views (←/→ move it); undefined in the agenda. */
+  cursor?: Date
   /** `eventKey()` of the selected event, if any. */
   selectedKey?: string
   onSelect(e: CalEvent): void
   onOpen(e: CalEvent): void
+  /** Show this day in the day view. */
+  onPickDay?(day: Date): void
+  /** New event starting at `start` (e.g. a click on an hour of the day view). */
+  onCreate?(start: Date): void
   /** Columns/rows available to the view (header + status line already subtracted). */
   width: number
   height: number

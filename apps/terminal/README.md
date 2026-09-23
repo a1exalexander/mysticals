@@ -21,10 +21,12 @@ MULTICALS_MOCK=1 multicals
 
 | Key | Action |
 | --- | --- |
-| `a` `d` `w` `m` | Agenda / Day / Week / Month view |
-| `h` `l` or `←` `→` | Previous / next page |
+| `a` `d` `2` `w` `m` | Agenda / Day / 2 Days / Week / Month view |
+| `←` `→` (or `h` `l`) | Day, 2 Days, Week, Month: previous / next day, selecting its event closest to the same time. Agenda: previous / next event |
+| `↑` `↓` | Day, 2 Days, Week: previous / next event of the selected day. Month: previous / next event in time order. Agenda: previous / next event |
+| `j` `k` | Next / previous event in time order |
+| `Shift` `←` `→` (or `H` `L`) | Previous / next page (moving past the edge of a page pages too) |
 | `t` | Today |
-| `j` `k` or `↓` `↑` | Select next / previous event |
 | `enter` | Open the selected event |
 | `n` | New event |
 | `i` | Invitations (`y` accept, `n` decline, `m` maybe) |
@@ -33,7 +35,21 @@ MULTICALS_MOCK=1 multicals
 | `?` | Help |
 | `q` | Quit (`esc` or `q` closes an open panel first) |
 
-The bottom line shows what's on now, the next event within 24 hours, the number of pending invites, and accounts whose last sync failed.
+The bottom bar has two rows. The first shows what's on now, the next event within 24 hours, the number of pending invites, and accounts whose last sync failed. The second has buttons for new, sync, invites, accounts, help and quit.
+
+The agenda shows each day as a heading (relative day, event count, busy time) followed by two-line event cards: start and end time, a bar in the calendar's colour, the title with badges (`● now · ends in 25m`, `in 25m` for the next one today, `RSVP`, `maybe`, `declined`), and a detail line (account · calendar, `↻ repeats`, `⚠ overlaps`, place or `video call`, number of people). Days without events collapse into `free` rows.
+
+Day, 2 Days and Week are time-grid tables: one row per hour, a column per day, all-day events on top. Events are blocks in their calendar's colour. The current time is red: the clock in the hour column, a red line through today's free cells, a red line between past and upcoming events in the agenda, and today's date in the month grid.
+
+Colours come from your terminal theme: the app only uses the 16 ANSI colours and reverse video, and each calendar's colour is snapped to the nearest ANSI hue. `NO_COLOR=1` turns colours off.
+
+### Mouse
+
+Everything with a key also works with a click: view tabs, `‹ today ›`, the buttons in the bottom bar, the key buttons at the bottom of each panel, and the parts of the info row (now/next event, invites, failed sync). Click an event to select it and click it again to open it. Click a day heading to open that day, or a free cell of the time grid to create an event there. The scroll wheel moves the selection.
+
+At 100 columns or wider, the agenda, day and 2 days views show the selected event (or the next one ahead) in a pane on the right.
+
+multicals runs in the terminal's alternate screen with mouse reporting on, so a plain drag no longer selects text. Hold ⌥ Option while dragging (Shift in some terminals) to select and copy. In tmux, turn on `set -g mouse on` to pass clicks through.
 
 ## How it runs
 

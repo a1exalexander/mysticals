@@ -3,6 +3,7 @@ import type { CalEvent } from '@multicals/core/shared/types'
 import { createTestClient, KEY, renderWith, type Rendered } from '../../test/harness'
 import { execFile } from 'node:child_process'
 import { EventDetails } from './EventDetails'
+import { MouseProvider } from '../mouse'
 
 vi.mock('node:child_process', () => ({ execFile: vi.fn() }))
 
@@ -81,5 +82,30 @@ describe('EventDetails', () => {
     expect(client.events.delete).not.toHaveBeenCalled()
     await t.press(KEY.esc)
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('lists the first 5 attendees; "a" or a click on "show more" expands and collapses the list', async () => {
+    const people = Array.from({ length: 8 }, (_, i) => ({ email: `p${i}@x.example`, status: 'accepted' as const }))
+    const event: CalEvent = {
+      id: 'big', accountId: 'work', calendarId: 'work-main', title: 'All hands', allDay: false, attendees: people,
+      start: new Date(2026, 8, 23, 10).toISOString(), end: new Date(2026, 8, 23, 11).toISOString()
+    }
+    t = renderWith(
+      <MouseProvider>
+        <EventDetails event={event} onClose={vi.fn()} onEdit={vi.fn()} />
+      </MouseProvider>
+    )
+    let f = await t.waitFor('show 3 more')
+    expect(f).toContain('Attendees (8)')
+    expect(f).toContain('p4@x.example')
+    expect(f).not.toContain('p5@x.example')
+    await t.press('a')
+    f = await t.waitFor('show less')
+    expect(f).toContain('p7@x.example')
+    await t.click('show less')
+    f = await t.waitFor('show 3 more')
+    expect(f).not.toContain('p7@x.example')
+    await t.click('show 3 more')
+    await t.waitFor('p7@x.example')
   })
 })

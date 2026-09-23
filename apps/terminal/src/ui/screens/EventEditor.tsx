@@ -5,9 +5,10 @@
  *
  * Keys (overlay owns all input): tab/shift-tab or ↓/↑ move between fields, typing edits text fields, ←/→ or space
  * cycle pickers / toggle all-day, enter moves on (saves on the last field), ctrl+s saves, esc cancels.
+ * Mouse: click a field to focus it (a focused picker / all-day again to cycle / toggle it); Save and Cancel buttons.
  */
 import { useEffect, useRef, useState } from 'react'
-import { Box, Text, useInput } from 'ink'
+import { Box, Text } from 'ink'
 import { format, isValid, parse } from 'date-fns'
 import {
   applyForm, emptyForm, errorText, formFromEvent, formToInput, moveStart, setAllDay, soleId, splitEmails,
@@ -15,6 +16,8 @@ import {
 } from '@multicals/core/logic/editor'
 import type { CalEvent } from '@multicals/core/shared/types'
 import { useApi, useDirectory } from '../hooks'
+import { Button, Clickable, useKeys } from '../mouse'
+import { C } from '../theme'
 
 export interface EventEditorProps {
   event?: CalEvent
@@ -167,7 +170,16 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
     update({ texts: next })
   }
 
-  useInput((input, key) => {
+  const clickField = (f: Field): void => {
+    const s = latest.current
+    if (!s || busy.current) return
+    const i = fieldsFor(s.form, !!event).indexOf(f)
+    if (i < 0) return // fixed rows (account/calendar while editing)
+    if (i === s.focus && (f === 'account' || f === 'calendar' || f === 'allDay')) return pick(s, f, 1)
+    update({ focus: i })
+  }
+
+  useKeys((input, key) => {
     if (key.escape) return onClose()
     const s = latest.current
     if (!s || busy.current) return
@@ -192,7 +204,7 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
     if (printable) edit(s, field, s.texts[field] + printable)
   })
 
-  if (!state) return <Text dimColor>Loading…</Text>
+  if (!state) return <Text color={C.muted}>Loading…</Text>
   const { form, texts } = state
   const fields = fieldsFor(form, !!event)
   const current = fields[Math.min(state.focus, fields.length - 1)]
@@ -221,31 +233,39 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
   const rows: Field[] = event ? ['title', 'account', 'calendar', ...fields.slice(1)] : fields
 
   return (
-    <Box flexDirection="column" borderStyle="round" paddingX={1}>
+    <Box flexDirection="column" borderStyle="round" borderColor={C.muted} paddingX={1}>
       <Text bold>{event ? 'Edit event' : 'New event'}</Text>
       {rows.map((f) => {
         const on = f === current
         const v = value(f)
         const picker = !event && (f === 'account' || f === 'calendar')
         return (
-          <Box key={f}>
-            <Text color={on ? 'cyan' : undefined}>{on ? '› ' : '  '}{LABELS[f].padEnd(11)}</Text>
-            <Text dimColor={v.dim} inverse={on && !v.dim && !picker}>
+          <Clickable key={f} onClick={() => clickField(f)}>
+            <Text color={on ? C.cyan : undefined}>{on ? '› ' : '  '}{LABELS[f].padEnd(11)}</Text>
+            <Text color={v.dim ? C.muted : undefined} inverse={on && !v.dim && !picker}>
               {v.text}
             </Text>
-            {on && picker && <Text dimColor>  ←/→</Text>}
-          </Box>
+            {on && picker && <Text color={C.muted}>  ←/→ or click</Text>}
+          </Clickable>
         )
       })}
       <Box marginTop={1}>
-        <Text dimColor>
+        <Text color={C.muted}>
           {account ? `Organizer: ${account.email}` : 'Choose which account this event belongs to.'}
         </Text>
       </Box>
-      {error && <Text color="red">{error}</Text>}
-      <Text dimColor>
-        {saving ? 'Saving…' : 'tab/↑↓ move · ←/→/space pick · ctrl+s save · esc cancel'}
-      </Text>
+      {error && <Text color={C.red}>{error}</Text>}
+      {saving ? (
+        <Text color={C.yellow}>Saving…</Text>
+      ) : (
+        <Box flexWrap="wrap">
+          <Box marginRight={2}>
+            <Text color={C.muted}>tab/↑↓ move · ←/→/space pick</Text>
+          </Box>
+          <Button k="ctrl+s" label="save" color={C.green} onPress={() => void save()} />
+          <Button k="esc" label="cancel" onPress={onClose} />
+        </Box>
+      )}
     </Box>
   )
 }

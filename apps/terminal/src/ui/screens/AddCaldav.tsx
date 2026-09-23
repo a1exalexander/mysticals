@@ -1,8 +1,10 @@
-/** Add-CalDAV form inside the Accounts overlay. Mirrors desktop components/Accounts.tsx CaldavForm. */
+/** Add-CalDAV form inside the Accounts overlay. Mirrors desktop components/Accounts.tsx CaldavForm. Fields and buttons are clickable. */
 import { useRef, useState, type ReactNode } from 'react'
-import { Box, Text, useInput, type Key } from 'ink'
+import { Box, Text, type Key } from 'ink'
 import { errorText } from '@multicals/core/logic/editor'
 import { useApi } from '../hooks'
+import { Button, Clickable, useKeys } from '../mouse'
+import { ansiOf, C } from '../theme'
 
 /** Same palette core api uses for new accounts. */
 export const PALETTE = ['#bd93f9', '#50fa7b', '#8be9fd', '#ff79c6', '#ffb86c', '#f1fa8c']
@@ -94,7 +96,18 @@ export function AddCaldav({ onBack, onDone }: { onBack(): void; onDone(): void }
     api.accounts.addCaldav(input).then(onDone, (e: unknown) => patch({ error: errorText(e), busy: false }))
   }
 
-  useInput((input, key) => {
+  const clickField = (f: Field): void => {
+    const v = get()
+    if (v.busy) return
+    if (f !== v.field) return patch({ field: f })
+    if (f === 'color') patch({ color: cycle(PALETTE, v.color, 1) })
+    if (f === 'provider') {
+      const p = cycle(PRESETS, PRESETS.find((x) => x.id === v.preset)!, 1)
+      patch({ preset: p.id, serverUrl: p.url })
+    }
+  }
+
+  useKeys((input, key) => {
     const v = get()
     // ponytail: no cancel while verifying; the request can't be aborted anyway.
     if (v.busy) return
@@ -123,26 +136,34 @@ export function AddCaldav({ onBack, onDone }: { onBack(): void; onDone(): void }
   const v = get()
   const shown = (f: Field): ReactNode => {
     if (f === 'provider') return `‹ ${PRESETS.find((p) => p.id === v.preset)!.name} ›`
-    if (f === 'color') return <Text color={v.color}>‹ ● {v.color} ›</Text>
+    if (f === 'color') return <Text color={ansiOf(v.color)}>‹ ● {v.color} ›</Text>
     if (f === 'password') return '•'.repeat(v.password.length)
-    return v[f] || <Text dimColor>{f === 'serverUrl' ? 'https://caldav.example.com/' : f === 'username' ? 'you@company.com' : 'Work'}</Text>
+    return v[f] || <Text color={C.muted}>{f === 'serverUrl' ? 'https://caldav.example.com/' : f === 'username' ? 'you@company.com' : 'Work'}</Text>
   }
 
   return (
     <Box flexDirection="column">
       <Text bold>Add CalDAV account</Text>
-      <Text dimColor>Each account is isolated: events and invitations are only sent from the account they belong to.</Text>
+      <Text color={C.muted}>Each account is isolated: events and invitations are only sent from the account they belong to.</Text>
       {FIELDS.map((f) => (
-        <Text key={f}>
-          <Text color={f === v.field ? 'cyan' : undefined}>{`${f === v.field ? '›' : ' '} ${NAMES[f].padEnd(13)}`}</Text>
-          {shown(f)}
-          {f === v.field && f !== 'provider' && f !== 'color' ? <Text color="cyan">▏</Text> : null}
-        </Text>
+        <Clickable key={f} onClick={() => clickField(f)}>
+          <Text>
+            <Text color={f === v.field ? C.cyan : undefined}>{`${f === v.field ? '›' : ' '} ${NAMES[f].padEnd(13)}`}</Text>
+            {shown(f)}
+            {f === v.field && f !== 'provider' && f !== 'color' ? <Text color={C.cyan}>▏</Text> : null}
+          </Text>
+        </Clickable>
       ))}
-      <Text dimColor>Check your provider's docs if connection fails.</Text>
-      {v.busy && <Text color="yellow">Verifying…</Text>}
-      {v.error && <Text color="red">{v.error}</Text>}
-      <Text dimColor>tab/↑↓ field  ←→ change provider/colour  enter add account  esc back</Text>
+      <Text color={C.muted}>Check your provider's docs if connection fails.</Text>
+      {v.busy && <Text color={C.yellow}>Verifying…</Text>}
+      {v.error && <Text color={C.red}>{v.error}</Text>}
+      <Box flexWrap="wrap">
+        <Box marginRight={2}>
+          <Text color={C.muted}>tab/↑↓ field  ←→ change provider/colour</Text>
+        </Box>
+        <Button k="enter" label="add account" color={C.green} onPress={() => !get().busy && submit()} />
+        <Button k="esc" label="back" onPress={() => !get().busy && onBack()} />
+      </Box>
     </Box>
   )
 }
