@@ -24,6 +24,9 @@ export function eventBounds(e: CalEvent): { start: Date; end: Date } {
   return { start, end }
 }
 
+/** Ended at or before `now`; all-day events end at local midnight after their last day. */
+export const isPast = (e: CalEvent, now: Date | number): boolean => eventBounds(e).end.getTime() <= +now
+
 export function overlapsDay(e: CalEvent, day: Date): boolean {
   const d0 = startOfDay(day)
   const { start, end } = eventBounds(e)
