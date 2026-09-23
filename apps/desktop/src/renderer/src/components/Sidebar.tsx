@@ -3,9 +3,31 @@ import { bus } from '../bus'
 import { useCalendarData } from '../hooks/useCalendarData'
 import { MiniMonth } from './MiniMonth'
 
+const COLLAPSED_KEY = 'multicals-collapsed-accounts'
+
+function readCollapsed(): string[] {
+  try {
+    const v: unknown = JSON.parse(localStorage.getItem(COLLAPSED_KEY) ?? '[]')
+    if (Array.isArray(v)) return v.filter((x): x is string => typeof x === 'string')
+  } catch {
+    // storage unavailable or corrupt: everything expanded
+  }
+  return []
+}
+
 /** Mini-month + one section per account listing ONLY that account's calendars. */
 export function Sidebar(): React.JSX.Element {
   const { accounts, calendars } = useCalendarData()
+  const [collapsed, setCollapsed] = useState(readCollapsed)
+  const toggleAccount = (id: string): void => {
+    const next = collapsed.includes(id) ? collapsed.filter((x) => x !== id) : [...collapsed, id]
+    setCollapsed(next)
+    try {
+      localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next))
+    } catch {
+      // per-device preference only; ignore
+    }
+  }
   // Optimistic toggles, dropped once fresh calendars arrive (or reverted on error).
   const [pending, setPending] = useState<Record<string, boolean>>({})
   useEffect(() => setPending({}), [calendars])
@@ -23,7 +45,13 @@ export function Sidebar(): React.JSX.Element {
       <div className="sb-accounts">
         {accounts.map((a) => (
           <section key={a.id} className="sb-account" data-testid={`sidebar-account-${a.id}`}>
-            <header className="sb-account-head">
+            <button
+              type="button"
+              className="sb-account-head"
+              aria-expanded={!collapsed.includes(a.id)}
+              data-testid={`sidebar-account-toggle-${a.id}`}
+              onClick={() => toggleAccount(a.id)}
+            >
               <span className="sb-dot" style={{ background: a.color }} />
               <span className="sb-label">{a.label}</span>
               {a.error && (
@@ -31,9 +59,13 @@ export function Sidebar(): React.JSX.Element {
                   !
                 </span>
               )}
+              <span className="sb-arrow" aria-hidden>
+                {collapsed.includes(a.id) ? '▸' : '▾'}
+              </span>
               <span className="sb-email">{a.email}</span>
-            </header>
-            {calendars
+            </button>
+            {!collapsed.includes(a.id) &&
+              calendars
               .filter((c) => c.accountId === a.id)
               .map((c) => (
                 <label key={c.id} className="sb-cal">

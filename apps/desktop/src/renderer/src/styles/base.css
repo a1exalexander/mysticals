@@ -142,16 +142,20 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
   display: flex; flex-direction: column; gap: 16px;
 }
 .sb-account-head {
-  display: grid; grid-template-columns: 7px 1fr auto; column-gap: 8px; align-items: center;
-  padding: 0 6px 4px;
+  display: grid; grid-template-columns: 7px 1fr auto auto; column-gap: 8px; align-items: center;
+  width: 100%; margin: 0; padding: 0 6px 4px; border: 0; border-radius: 4px; background: none;
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
 }
+.sb-account-head:hover .sb-arrow { color: var(--fg); }
+.sb-account-head:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sb-arrow { font: 10.5px/1 var(--mono); color: var(--muted); }
 .sb-dot { width: 7px; height: 7px; border-radius: 2px; }
 .sb-label {
   font: 600 10.5px/1.4 var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .sb-email {
-  grid-column: 2 / 4; font: 10.5px/1.5 var(--mono); color: color-mix(in srgb, var(--muted) 70%, var(--fg));
+  grid-column: 2 / -1; font: 10.5px/1.5 var(--mono); color: color-mix(in srgb, var(--muted) 70%, var(--fg));
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .sb-error {
