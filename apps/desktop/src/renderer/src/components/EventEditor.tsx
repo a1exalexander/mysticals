@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import type { CalEvent } from '@shared/types'
 import { bus, type BusEvents } from '../bus'
 import { useDirectory } from './ui/useDirectory'
+import { DateTimeField } from './ui/DateTimeField'
 import {
-  applyForm, emptyForm, setAllDay, errorText, formFromEvent, formToInput, isEmail, soleId, splitEmails, withDate,
+  applyForm, emptyForm, setAllDay, errorText, formFromEvent, formToInput, isEmail, moveStart, soleId, splitEmails,
   writableAccounts, writableCalendars, type EventForm
 } from './EventEditor.logic'
 import './ui/ui.css'
@@ -160,18 +161,10 @@ export function EventEditorHost(): React.JSX.Element | null {
           </label>
 
           <label>Starts</label>
-          {form.allDay ? (
-            <input type="date" value={form.start.slice(0, 10)} onChange={(e) => e.target.value && set({ start: withDate(form.start, e.target.value) })} />
-          ) : (
-            <input type="datetime-local" value={form.start} onChange={(e) => e.target.value && set({ start: e.target.value })} />
-          )}
+          <DateTimeField label="Starts" value={form.start} dateOnly={form.allDay} onChange={(start) => setForm(moveStart(form, start))} />
 
           <label>Ends</label>
-          {form.allDay ? (
-            <input type="date" value={form.end.slice(0, 10)} onChange={(e) => e.target.value && set({ end: withDate(form.end, e.target.value) })} />
-          ) : (
-            <input type="datetime-local" value={form.end} onChange={(e) => e.target.value && set({ end: e.target.value })} />
-          )}
+          <DateTimeField label="Ends" value={form.end} dateOnly={form.allDay} onChange={(end) => set({ end })} />
 
           <label>Location</label>
           <input placeholder="Add location" value={form.location} onChange={(e) => set({ location: e.target.value })} />

@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import type { Calendar, CalEvent, NewEventInput, PartStat, TimeRange } from '@shared/types'
+import type { Calendar, CalEvent, DeleteScope, NewEventInput, PartStat, TimeRange } from '@shared/types'
 import type { CalendarProvider } from '../providers/types'
 
 /** In-memory provider for tests and MULTICALS_MOCK=1. One instance per fake account. */
@@ -50,8 +50,13 @@ export class MockProvider implements CalendarProvider {
     return structuredClone(this.events[i])
   }
 
-  async deleteEvent(event: CalEvent): Promise<void> {
-    this.events = this.events.filter((e) => e.id !== event.id)
+  async deleteEvent(event: CalEvent, scope: DeleteScope = 'one'): Promise<void> {
+    const series = event.recurringEventId
+    const hit = (e: CalEvent): boolean =>
+      !series || scope === 'one'
+        ? e.id === event.id
+        : e.recurringEventId === series && (scope === 'all' || e.start >= event.start)
+    this.events = this.events.filter((e) => !hit(e))
   }
 
   async respond(event: CalEvent, status: Exclude<PartStat, 'needsAction'>): Promise<CalEvent> {

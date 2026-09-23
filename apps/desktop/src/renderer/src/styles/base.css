@@ -218,6 +218,11 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .icon-btn:last-child { border-radius: 0 4px 4px 0; }
 .today-btn { padding: 0 10px; border-left: 0; border-right: 0; }
 .icon-btn:hover, .today-btn:hover { background: var(--hover); color: var(--fg); }
+.new-btn {
+  height: 26px; padding: 0 10px; border: 1px solid var(--accent); border-radius: 4px;
+  background: var(--accent); color: var(--on-accent); font: 700 12px/1 var(--mono);
+}
+.new-btn:hover { filter: brightness(1.1); }
 
 /* Events: calendar colour in --c; soft tint + strong left border. */
 .ev {

@@ -89,8 +89,11 @@ export function setAllDay(f: EventForm, allDay: boolean): EventForm {
   return { ...f, allDay, end: format(addHours(new Date(f.start), 1), LOCAL) }
 }
 
-/** Replace the date part of a datetime-local value, keeping its time. */
-export const withDate = (local: string, date: string): string => date + local.slice(10)
+/** Move the start; the end follows so the duration is kept. */
+export function moveStart(f: EventForm, start: string): EventForm {
+  const end = new Date(new Date(f.end).getTime() + new Date(start).getTime() - new Date(f.start).getTime())
+  return { ...f, start, end: format(end, LOCAL) }
+}
 
 type Times = Pick<NewEventInput, 'start' | 'end' | 'allDay'>
 

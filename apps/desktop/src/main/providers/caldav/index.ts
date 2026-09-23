@@ -12,7 +12,16 @@ import {
 } from 'tsdav'
 import type { Calendar, CaldavAccountInput, CalEvent, TimeRange } from '@shared/types'
 import type { CalendarProvider, ProviderFactory } from '../types'
-import { applyDeleteInstance, applyRespond, applyUpdate, buildIcs, cleanEmail, parseEvents, type CaldavRaw } from './ics'
+import {
+  applyDeleteFollowing,
+  applyDeleteInstance,
+  applyRespond,
+  applyUpdate,
+  buildIcs,
+  cleanEmail,
+  parseEvents,
+  type CaldavRaw
+} from './ics'
 
 const FALLBACK_COLOR = '#8e8e93'
 const DAY = 864e5
@@ -143,9 +152,9 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
       return reload(event.calendarId, (event.raw as CaldavRaw).href, event.id, event)
     },
 
-    async deleteEvent(event) {
+    async deleteEvent(event, scope = 'one') {
       const raw = event.raw as CaldavRaw
-      const rest = raw.recurrenceId ? applyDeleteInstance(raw) : null
+      const rest = !raw.recurrenceId || scope === 'all' ? null : scope === 'following' ? applyDeleteFollowing(raw) : applyDeleteInstance(raw)
       if (rest) return put(event, rest, 'Delete event')
       const { headers } = await getConn()
       check(await deleteCalendarObject({ calendarObject: { url: raw.href, etag: event.etag }, headers }), 'Delete event')

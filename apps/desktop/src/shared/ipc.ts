@@ -3,6 +3,7 @@ import type {
   Calendar,
   CalEvent,
   CaldavAccountInput,
+  DeleteScope,
   NewEventInput,
   PartStat,
   TimeRange
@@ -27,7 +28,7 @@ export interface Api {
     list(range: TimeRange): Promise<CalEvent[]>
     create(input: NewEventInput): Promise<CalEvent>
     update(event: CalEvent): Promise<CalEvent>
-    delete(event: CalEvent): Promise<void>
+    delete(event: CalEvent, scope?: DeleteScope): Promise<void>
     respond(event: CalEvent, status: Exclude<PartStat, 'needsAction'>): Promise<CalEvent>
   }
   sync: {

@@ -284,6 +284,41 @@ export function applyDeleteInstance(raw: CaldavRaw): string | null {
 }
 
 /**
+ * End a recurring series right before this instance: RRULE UNTIL one tick earlier (COUNT dropped),
+ * overrides at or after the instance removed. Returns null when nothing would remain (cut at or before
+ * the first instance, or no master): delete the whole object instead.
+ */
+export function applyDeleteFollowing(raw: CaldavRaw): string | null {
+  if (!raw.recurrenceId) throw new Error('Not a recurring instance')
+  const root = parse(raw.ics)
+  const master = findMaster(root)
+  if (!master) return null
+  const { time } = ridTime(master, raw.recurrenceId)
+  const cut = time.toJSDate().getTime()
+  if (cut <= (master.getFirstPropertyValue('dtstart') as ICAL.Time).toJSDate().getTime()) return null
+  for (const v of root.getAllSubcomponents('vevent')) {
+    const t = v.getFirstPropertyValue('recurrence-id') as ICAL.Time | null
+    if (t && t.toJSDate().getTime() >= cut) root.removeSubcomponent(v)
+  }
+  // RFC 5545: UNTIL is a DATE for all-day series, UTC for zoned ones, local for floating ones.
+  let until = time.clone()
+  if (until.isDate) until.adjust(-1, 0, 0, 0)
+  else {
+    until.adjust(0, 0, 0, -1)
+    if (until.zone !== ICAL.Timezone.localTimezone) until = until.convertToZone(ICAL.Timezone.utcTimezone)
+  }
+  for (const p of master.getAllProperties('rrule')) {
+    const r = (p.getFirstValue() as ICAL.Recur).clone()
+    r.count = null
+    r.until = until
+    p.setValue(r)
+  }
+  master.updatePropertyWithValue('sequence', Number(master.getFirstPropertyValue('sequence') ?? 0) + 1)
+  touch(master)
+  return root.toString()
+}
+
+/**
  * Set ONLY the own ATTENDEE's PARTSTAT (matched by `email`) on every VEVENT of the object.
  * Never touches ORGANIZER or other attendees. Throws if the account is not invited.
  * ponytail: responds to the whole series; per-instance RSVP needs an override like applyUpdate.

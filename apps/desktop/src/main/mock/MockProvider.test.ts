@@ -23,4 +23,17 @@ describe('mock api isolation', () => {
     expect(await gym()).toBe(1)
     expect((await api.calendars.list()).find((c) => c.id === 'p-main')?.visible).toBe(false)
   })
+
+  it('deletes recurring instances by scope', async () => {
+    const api = createMockApi(() => {})
+    const range = { start: new Date(Date.now() - 7 * 864e5).toISOString(), end: new Date(Date.now() + 7 * 864e5).toISOString() }
+    const runs = async () => (await api.events.list(range)).filter((e) => e.title === 'Morning run')
+    expect(await runs()).toHaveLength(7)
+    await api.events.delete((await runs())[6], 'one')
+    expect(await runs()).toHaveLength(6)
+    await api.events.delete((await runs())[3], 'following')
+    expect(await runs()).toHaveLength(3)
+    await api.events.delete((await runs())[1], 'all')
+    expect(await runs()).toHaveLength(0)
+  })
 })

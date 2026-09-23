@@ -1,4 +1,4 @@
-import type { Attendee, Calendar, CalEvent, PartStat } from '@shared/types'
+import type { Attendee, Calendar, CalEvent, DeleteScope, PartStat } from '@shared/types'
 import type { CalendarProvider, ProviderContext } from '../types'
 import { getClientConfig, postToken, type GoogleCredentials } from './oauth'
 
@@ -18,6 +18,10 @@ export interface GEvent {
   organizer?: { email?: string; displayName?: string; self?: boolean }
   attendees?: GAttendee[]
   recurringEventId?: string
+  /** Instance only: its slot in the series. */
+  originalStartTime?: GTime
+  /** Series master only: RRULE/EXDATE/RDATE lines. */
+  recurrence?: string[]
 }
 
 const STATUSES: PartStat[] = ['accepted', 'declined', 'tentative', 'needsAction']
@@ -51,6 +55,22 @@ export function mapEvent(g: GEvent, accountId: string, calendarId: string): CalE
     raw: g,
     recurringEventId: g.recurringEventId
   }
+}
+
+/**
+ * End a series right before `cutoff` (an instance's originalStartTime): every RRULE gets UNTIL
+ * one second (timed) or one day (all-day) earlier, replacing COUNT/UNTIL. Other lines kept.
+ * ponytail: RDATEs past the cutoff survive; Google series rarely have them.
+ */
+export function truncateRecurrence(recurrence: string[], cutoff: GTime): string[] {
+  const until = cutoff.date
+    ? new Date(Date.parse(cutoff.date) - 86_400_000).toISOString().slice(0, 10).replace(/-/g, '')
+    : new Date(Date.parse(cutoff.dateTime!) - 1000).toISOString().replace(/[-:]|\.\d{3}/g, '')
+  return recurrence.map((line) => {
+    if (!line.startsWith('RRULE:')) return line
+    const parts = line.slice(6).split(';').filter((p) => !/^(COUNT|UNTIL)=/i.test(p))
+    return `RRULE:${[...parts, `UNTIL=${until}`].join(';')}`
+  })
 }
 
 /** PATCH merges nested objects, so the unused field is nulled to allow timed <-> all-day switches. */
@@ -181,8 +201,22 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
       return map(g, event.calendarId)
     },
 
-    async deleteEvent(event) {
-      await api('DELETE', eventPath(event.calendarId, event.id), { sendUpdates: isOrganizer(event) ? 'all' : 'none' })
+    async deleteEvent(event, scope: DeleteScope = 'one') {
+      const q = { sendUpdates: isOrganizer(event) ? 'all' : 'none' }
+      const series = event.recurringEventId
+      if (!series || scope === 'one') return void (await api('DELETE', eventPath(event.calendarId, event.id), q))
+      const cutoff = rawOf(event)?.originalStartTime
+      if (scope === 'following' && cutoff) {
+        const master = await api<GEvent>('GET', eventPath(event.calendarId, series))
+        const first = master.start.dateTime ?? master.start.date!
+        const at = cutoff.dateTime ?? cutoff.date!
+        // Cutting at the first instance leaves nothing: fall through to deleting the series.
+        if (Date.parse(at) > Date.parse(first)) {
+          const recurrence = truncateRecurrence(master.recurrence ?? [], cutoff)
+          return void (await api('PATCH', eventPath(event.calendarId, series), q, { recurrence }))
+        }
+      }
+      await api('DELETE', eventPath(event.calendarId, series), q)
     },
 
     async respond(event, status) {
