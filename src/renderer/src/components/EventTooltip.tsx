@@ -18,6 +18,11 @@ const hide = (): void => {
   clearTimeout(hideTimer)
   setTip(null)
 }
+// Scroll moves the anchor: drop a shown tip, but keep a pending one (it measures the pill when it fires).
+const hideShown = (): void => {
+  clearTimeout(hideTimer)
+  setTip(null)
+}
 const hideSoon = (): void => {
   clearTimeout(showTimer)
   clearTimeout(hideTimer)
@@ -33,7 +38,7 @@ export function tooltipHover(event: CalEvent): Pick<React.HTMLAttributes<HTMLEle
       const el = e.currentTarget
       clearTimeout(showTimer)
       clearTimeout(hideTimer)
-      showTimer = setTimeout(() => setTip({ url, anchor: el.getBoundingClientRect() }), SHOW_MS)
+      showTimer = setTimeout(() => el.isConnected && setTip({ url, anchor: el.getBoundingClientRect() }), SHOW_MS)
     },
     onMouseLeave: hideSoon
   }
@@ -54,14 +59,14 @@ export function EventTooltipHost(): React.JSX.Element | null {
       if (e.key === 'Escape') hide()
     }
     window.addEventListener('mousedown', onDown, true)
-    window.addEventListener('scroll', hide, true)
+    window.addEventListener('scroll', hideShown, true)
     window.addEventListener('keydown', onKey)
     const off = bus.on('event:open', hide)
     return () => {
       hide()
       setTip = () => {}
       window.removeEventListener('mousedown', onDown, true)
-      window.removeEventListener('scroll', hide, true)
+      window.removeEventListener('scroll', hideShown, true)
       window.removeEventListener('keydown', onKey)
       off()
     }

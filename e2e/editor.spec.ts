@@ -28,9 +28,11 @@ test('editor requires an explicit account; RSVP goes through the invite account'
   await page.getByTestId('editor-save').click()
   await expect(editor).toBeHidden()
 
-  const after = await page.evaluate((r) => window.api.events.list(r), range)
+  const list = (): Promise<Awaited<ReturnType<typeof window.api.events.list>>> =>
+    page.evaluate((r) => window.api.events.list(r), range)
+  await expect.poll(async () => (await list()).filter((e) => e.title === 'Unit7 review').length).toBe(1)
+  const after = await list()
   const created = after.filter((e) => e.title === 'Unit7 review')
-  expect(created).toHaveLength(1)
   expect(created[0]).toMatchObject({ accountId: 'work', calendarId: 'work-main', attendees: [] })
   const count = (list: typeof after, id: string): number => list.filter((e) => e.accountId === id).length
   expect(count(after, 'personal')).toBe(count(before, 'personal'))
