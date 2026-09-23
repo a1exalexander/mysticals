@@ -12,6 +12,8 @@ export interface BusEvents {
   'settings:open': Record<string, never>
   /** Toggle the invitations panel in the status bar. */
   'invites:open': Record<string, never>
+  /** Optimistic calendar show/hide, applied locally before the IPC write settles. */
+  'calendars:visible': { accountId: string; calendarId: string; visible: boolean }
 }
 
 type Handler<K extends keyof BusEvents> = (payload: BusEvents[K]) => void

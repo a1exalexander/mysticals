@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import { useCalendarData } from '../hooks/useCalendarData'
+import { useCalendarData, visibleEvents } from '../hooks/useCalendarData'
 import { useNav } from '../views/nav'
 import { rangeLabel, viewDays } from '../views/layout'
 import { InvitesPanel } from './Invites'
@@ -12,7 +12,7 @@ import { pickNowNext, startsLabel } from './StatusBar.logic'
 
 /** Events happening now (max 2, then +N) and the next one within 24h; click opens details. */
 function NowNext(): React.JSX.Element {
-  const { accounts, calendars } = useDirectory()
+  const { accounts, calendars, loaded } = useDirectory()
   const [events, setEvents] = useState<CalEvent[]>([])
   const [now, setNow] = useState(() => new Date())
 
@@ -41,7 +41,7 @@ function NowNext(): React.JSX.Element {
   const colorOf = (e: CalEvent): string | undefined =>
     calendars.find((c) => c.accountId === e.accountId && c.id === e.calendarId)?.color ??
     accounts.find((a) => a.id === e.accountId)?.color
-  const { current, next } = pickNowNext(events, now)
+  const { current, next } = pickNowNext(loaded ? visibleEvents(events, calendars) : [], now)
   const item = (e: CalEvent, label: React.ReactNode): React.JSX.Element => (
     <button
       key={`${e.accountId}/${e.id}`}

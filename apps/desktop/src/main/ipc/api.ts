@@ -148,7 +148,7 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
       }
     },
     events: {
-      list: async (raw) => queryEvents(store, Range.parse(raw)),
+      list: async (raw) => queryEvents(store, Range.parse(raw), false),
       create: async (raw) => {
         const input = NewEvent.parse(raw)
         const a = account(input.accountId)

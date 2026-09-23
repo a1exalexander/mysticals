@@ -44,13 +44,14 @@ test('calendar views: week/month/day, visibility toggle, screenshots', async () 
   await expect(page.getByTestId('view-switch-3day')).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByTestId('statusbar')).toContainText('3day')
 
-  // Hiding the personal calendar removes only its events.
+  // Hiding the personal calendar removes only its events, instantly (optimistic, no refetch).
   await page.getByTestId('view-switch-week').click()
   await page.getByTestId('sidebar-calendar-personal-p-main').uncheck()
-  await expect(blocks.filter({ hasText: 'Gym' })).toHaveCount(0)
+  await expect(blocks.filter({ hasText: 'Gym' })).toHaveCount(0, { timeout: 300 })
   await expect(blocks.filter({ hasText: 'Daily standup' }).first()).toBeVisible()
   await page.getByTestId('sidebar-calendar-personal-p-main').check()
-  await expect(blocks.filter({ hasText: 'Gym' })).toHaveCount(1)
+  await expect(blocks.filter({ hasText: 'Gym' })).toHaveCount(1, { timeout: 300 })
+  await expect(page.getByTestId('sidebar-calendar-personal-p-main')).toBeChecked()
 
   // vim keys: d/w/m switch views, h/l move, n opens the editor, i toggles invites.
   await page.keyboard.press('m')

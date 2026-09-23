@@ -23,7 +23,7 @@ export interface Api {
     setVisible(accountId: string, calendarId: string, visible: boolean): Promise<void>
   }
   events: {
-    /** Cached events of all visible calendars in range. Each event keeps its accountId. */
+    /** Cached events of all calendars in range, hidden ones included (the renderer filters by `visible`). Each event keeps its accountId. */
     list(range: TimeRange): Promise<CalEvent[]>
     create(input: NewEventInput): Promise<CalEvent>
     update(event: CalEvent): Promise<CalEvent>
