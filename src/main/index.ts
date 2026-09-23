@@ -48,10 +48,10 @@ function createWindow(): void {
   })
   win.once('ready-to-show', () => win.show())
 
-  // The renderer never navigates or opens windows; external https links go to the system browser.
+  // The renderer never navigates or opens windows; external http(s) links go to the system browser.
   win.webContents.on('will-navigate', (e) => e.preventDefault())
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('https://')) void shell.openExternal(url)
+    if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
     return { action: 'deny' }
   })
 
