@@ -1,6 +1,6 @@
 import { join } from 'path'
 import { readFileSync, writeFileSync } from 'fs'
-import { app, BrowserWindow, Menu, nativeTheme, shell } from 'electron'
+import { app, BrowserWindow, Menu, nativeTheme, Notification, shell } from 'electron'
 import { IPC } from '@shared/ipc'
 import { registerApi } from './ipc/register'
 import { createMockApi } from './mock/mockApi'
@@ -8,6 +8,7 @@ import { createApi } from './ipc/api'
 import { buildMenu } from './menu'
 import { AccountStore } from './accounts/store'
 import { SyncEngine } from './sync/engine'
+import { noteText, type Note } from './sync/notify'
 import { createCaldavProvider, verifyCaldav } from './providers/caldav'
 import { createGoogleProvider, googleSignIn } from './providers/google'
 
@@ -15,6 +16,36 @@ const MOCK = process.env.MULTICALS_MOCK === '1'
 
 function broadcast(accountId: string): void {
   for (const w of BrowserWindow.getAllWindows()) w.webContents.send(IPC.changed, accountId)
+}
+
+// Held until closed/clicked: a GC'd Notification drops its click handler.
+const banners = new Set<Notification>()
+
+/** macOS banners for invites/changes; events in hidden calendars stay silent. */
+function notify(store: AccountStore, accountId: string, notes: Note[]): void {
+  const account = store.list().find((a) => a.id === accountId)
+  if (!account || !Notification.isSupported()) return
+  const hidden = new Set(store.hiddenCalendars(accountId))
+  const shown = notes.filter((n) => !hidden.has(n.event.calendarId))
+  for (const { title, body } of noteText(shown, account.label)) {
+    const n = new Notification({ title, body })
+    banners.add(n)
+    n.on('close', () => banners.delete(n))
+    // e.g. "UNErrorDomain error 1": notifications not allowed for this app in System Settings.
+    n.on('failed', (_, error) => {
+      banners.delete(n)
+      console.error('notification failed', error)
+    })
+    n.on('click', () => {
+      banners.delete(n)
+      const win = BrowserWindow.getAllWindows()[0]
+      if (!win) return createWindow()
+      if (win.isMinimized()) win.restore()
+      win.show()
+      win.focus()
+    })
+    n.show()
+  }
 }
 
 const stateFile = (): string => join(app.getPath('userData'), 'window-state.json')
@@ -79,7 +110,7 @@ app.whenReady().then(() => {
     registerApi(createMockApi(broadcast))
   } else {
     const store = new AccountStore(app.getPath('userData'), { caldav: createCaldavProvider, google: createGoogleProvider })
-    const sync = new SyncEngine(store, broadcast)
+    const sync = new SyncEngine(store, broadcast, { onEvents: (id, notes) => notify(store, id, notes) })
     try {
       registerApi(createApi(store, sync, { verifyCaldav, googleSignIn, onChanged: broadcast }))
       sync.start()

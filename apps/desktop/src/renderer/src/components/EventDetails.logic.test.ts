@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Account, Calendar, CalEvent } from '@shared/types'
-import { canEdit, formatWhen, linkify, ownerLine, pendingInvites } from './EventDetails.logic'
+import { canEdit, cleanNotes, formatWhen, linkify, ownerLine, pendingInvites } from './EventDetails.logic'
 
 const account: Account = { id: 'work', kind: 'caldav', label: 'Work', email: 'me@work.example', color: '#000' }
 const cal: Calendar = { id: 'w', accountId: 'work', name: 'Work', color: '#000', readOnly: false }
@@ -87,5 +87,14 @@ describe('ownerLine', () => {
   })
   it('handles a missing email', () => {
     expect(ownerLine('Home', 'Work')).toEqual({ calendar: 'Home', label: 'Work', email: undefined })
+  })
+})
+
+describe('cleanNotes', () => {
+  it('drops color metadata lines, keeps real notes', () => {
+    expect(cleanNotes('@color:5\n@colorHex:#FFDB17')).toBe('')
+    expect(cleanNotes('Agenda\n@color:5\n@colorHex:#FFDB17\nBring laptop')).toBe('Agenda\nBring laptop')
+    expect(cleanNotes('mail me @color: not at line start')).toBe('mail me @color: not at line start')
+    expect(cleanNotes(undefined)).toBe('')
   })
 })

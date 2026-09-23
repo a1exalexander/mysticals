@@ -95,6 +95,22 @@ describe('SyncEngine', () => {
     expect(changed).toHaveBeenCalledTimes(2)
   })
 
+  it('reports event notes only after the first sync and never for quiet syncs', async () => {
+    const work = store.add('work')
+    const onEvents = vi.fn()
+    const engine = new SyncEngine(store, () => {}, { triggers: noTriggers, onEvents })
+    const invite = (id: string): CalEvent => ({ ...ev(id, 'work-cal', '2026-09-24T09:00:00Z', '2026-09-24T10:00:00Z'), myStatus: 'needsAction' })
+    work.events.push(invite('i0'))
+    await engine.syncNow('work') // first sync: everything is "new", stay silent
+    expect(onEvents).not.toHaveBeenCalled()
+    work.events.push(invite('i1'))
+    await engine.syncNow('work', { quiet: true })
+    expect(onEvents).not.toHaveBeenCalled()
+    work.events.push(invite('i2'))
+    await engine.syncNow('work')
+    expect(onEvents).toHaveBeenCalledExactlyOnceWith('work', [expect.objectContaining({ kind: 'invite', event: expect.objectContaining({ id: 'i2' }) })])
+  })
+
   it('does not run concurrent syncs for the same account', async () => {
     const work = store.add('work')
     const spy = vi.spyOn(work, 'listCalendars')

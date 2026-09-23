@@ -80,9 +80,9 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
     return a
   }
 
-  /** Fire-and-forget sync of exactly one account. */
+  /** Fire-and-forget quiet sync of exactly one account after this app changed it (no notifications). */
   const syncOne = (accountId: string): void => {
-    sync.syncNow(accountId).catch((e) => console.error(`sync ${accountId} failed`, e))
+    sync.syncNow(accountId, { quiet: true }).catch((e) => console.error(`sync ${accountId} failed`, e))
   }
 
   const nextColor = (): string => PALETTE[store.list().length % PALETTE.length]

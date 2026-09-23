@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CalEvent, PartStat } from '@shared/types'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
-import { canEdit, formatWhen, linkify, ownerLine, STATUS_ICON } from './EventDetails.logic'
+import { canEdit, cleanNotes, formatWhen, linkify, ownerLine, STATUS_ICON } from './EventDetails.logic'
 import { errorText } from './EventEditor.logic'
 import './ui/ui.css'
 import './EventDetails.css'
@@ -74,6 +74,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
   const account = accounts.find((a) => a.id === event.accountId)
   const calendar = calendars.find((c) => c.accountId === event.accountId && c.id === event.calendarId)
   const editable = canEdit(event, account, calendar)
+  const notes = cleanNotes(event.description)
   const owner = ownerLine(calendar?.name ?? 'Calendar', account?.label ?? event.accountId, account?.email)
 
   const key = `${event.accountId}/${event.id}`
@@ -147,7 +148,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
             </ul>}
           </div>
         )}
-        {event.description && <p className="details-notes"><Linkified text={event.description} /></p>}
+        {notes && <p className="details-notes"><Linkified text={notes} /></p>}
 
         {event.myStatus && (
           <div className="details-rsvp">

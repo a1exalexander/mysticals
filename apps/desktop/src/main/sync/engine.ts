@@ -1,6 +1,7 @@
 import { addMonths, parseISO, subMonths } from 'date-fns'
 import type { CalEvent, TimeRange } from '@shared/types'
 import type { AccountCache, AccountStore } from '../accounts/store'
+import { diffEvents, type Note } from './notify'
 
 /** The slice of AccountStore the engine needs. Keeps tests free of disk + Electron. */
 export type SyncStore = Pick<AccountStore, 'list' | 'getProvider' | 'readCache' | 'writeCache' | 'update'>
@@ -15,6 +16,8 @@ export interface SyncOptions {
   maxBackoffMs?: number
   /** Wake-up sources. Default: Electron powerMonitor 'resume' + app 'browser-window-focus'. */
   triggers?: Triggers
+  /** Noteworthy event changes found by a (non-quiet) sync after the account's first one. */
+  onEvents?: (accountId: string, notes: Note[]) => void
 }
 
 const MIN = 60_000
@@ -61,14 +64,15 @@ export class SyncEngine {
    * Sync one account, or all accounts independently when id omitted.
    * A single-account call rejects with that account's error; the all-accounts call never rejects.
    */
-  async syncNow(accountId?: string): Promise<void> {
+  /** `quiet`: the change came from this app (own edit/RSVP), so don't notify about it. */
+  async syncNow(accountId?: string, opts: { quiet?: boolean } = {}): Promise<void> {
     if (accountId === undefined) {
       await Promise.allSettled(this.store.list().map((a) => this.syncNow(a.id)))
       return
     }
     const existing = this.inflight.get(accountId)
     if (existing) return existing
-    const p = this.syncAccount(accountId).finally(() => {
+    const p = this.syncAccount(accountId, !!opts.quiet).finally(() => {
       this.inflight.delete(accountId)
       this.schedule(accountId)
     })
@@ -92,7 +96,8 @@ export class SyncEngine {
     )
   }
 
-  private async syncAccount(id: string): Promise<void> {
+  // ponytail: quiet silences the whole sync, so an external change landing in the same pass is not announced.
+  private async syncAccount(id: string, quiet: boolean): Promise<void> {
     const hadError = !!this.store.list().find((a) => a.id === id)?.error
     try {
       const provider = this.store.getProvider(id)
@@ -119,6 +124,10 @@ export class SyncEngine {
       this.failures.delete(id)
       if (hadError) await this.store.update(id, { error: undefined })
       if (changed || hadError) this.onChanged(id)
+      if (changed && !quiet && prev?.syncedAt && this.opts.onEvents) {
+        const notes = diffEvents(prev.events, next.events, now)
+        if (notes.length) this.opts.onEvents(id, notes)
+      }
     } catch (e) {
       // Cache is left untouched; only this account backs off.
       this.failures.set(id, (this.failures.get(id) ?? 0) + 1)
