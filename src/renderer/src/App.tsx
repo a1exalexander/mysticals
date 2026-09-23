@@ -5,6 +5,7 @@ import { EventDetailsHost } from './components/EventDetails'
 import { AccountsHost } from './components/Accounts'
 import { SettingsHost } from './components/Settings'
 import { StatusBar } from './components/StatusBar'
+import { EventTooltipHost } from './components/EventTooltip'
 
 // Layout shell. Each child is owned by a different unit; communicate via ./bus.
 export function App(): React.JSX.Element {
@@ -19,6 +20,7 @@ export function App(): React.JSX.Element {
       <EventDetailsHost />
       <AccountsHost />
       <SettingsHost />
+      <EventTooltipHost />
     </div>
   )
 }

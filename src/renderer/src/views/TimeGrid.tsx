@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { addDays, format, isSameDay, isToday } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
+import { tooltipHover } from '../components/EventTooltip'
+import { meetingUrl } from '../components/EventTooltip.logic'
 import { nav } from './nav'
 import { dragRange, eventBounds, eventsOnDay, layoutDay, slotAt, statusClass, ymd } from './layout'
 import type { ColorOf } from './CalendarView'
@@ -117,6 +119,7 @@ export function TimeGrid({ days, events, colorOf }: Props): React.JSX.Element {
                     style={{ '--c': colorOf(e) } as React.CSSProperties}
                     onClick={open(e)}
                     onDoubleClick={stop}
+                    {...tooltipHover(e)}
                   >
                     <span className="ev-title">{e.title}</span>
                   </div>
@@ -160,10 +163,11 @@ export function TimeGrid({ days, events, colorOf }: Props): React.JSX.Element {
                       width: `calc(${100 / cols}% - 3px)`
                     } as React.CSSProperties
                   }
-                  title={`${e.title}\n${hhmm(b.start)} – ${hhmm(b.end)}`}
+                  title={meetingUrl(e.location) ? undefined : `${e.title}\n${hhmm(b.start)} – ${hhmm(b.end)}`}
                   onMouseDown={stop}
                   onDoubleClick={stop}
                   onClick={open(e)}
+                  {...tooltipHover(e)}
                 >
                   <span className="ev-title">{e.title}</span>
                   <span className="ev-meta">

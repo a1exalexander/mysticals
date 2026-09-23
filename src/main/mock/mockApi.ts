@@ -33,7 +33,7 @@ export function createMockApi(onChanged: (accountId: string) => void): Omit<Api,
   }
   for (let d = -3; d <= 7; d++) {
     seed(work, 'work-main', {
-      title: 'Daily standup', start: iso(d, 10), end: iso(d, 10, 15),
+      title: 'Daily standup', start: iso(d, 10), end: iso(d, 10, 15), location: 'https://meet.google.com/abc-defg-hij',
       organizer: { email: 'lead@work.example' }, myStatus: 'accepted',
       attendees: [{ email: 'lead@work.example', status: 'accepted', organizer: true }, { email: 'me@work.example', status: 'accepted', self: true }]
     })

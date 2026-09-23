@@ -1,6 +1,7 @@
 import { addDays, format, isSameMonth, isToday } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
+import { tooltipHover } from '../components/EventTooltip'
 import { nav } from './nav'
 import { eventBounds, eventsOnDay, monthGrid, statusClass, ymd } from './layout'
 import type { ColorOf } from './CalendarView'
@@ -45,6 +46,7 @@ export function MonthGrid({ date, events, colorOf }: Props): React.JSX.Element {
                   style={{ '--c': colorOf(e) } as React.CSSProperties}
                   onDoubleClick={(ev) => ev.stopPropagation()}
                   onClick={(ev) => bus.emit('event:open', { event: e, anchor: ev.currentTarget.getBoundingClientRect() })}
+                  {...tooltipHover(e)}
                 >
                   {!e.allDay && <span className="mg-dot" />}
                   <span className="ev-title">{e.title}</span>

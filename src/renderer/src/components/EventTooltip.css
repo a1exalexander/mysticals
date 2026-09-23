@@ -1,0 +1,7 @@
+.ett {
+  position: fixed; z-index: 60; max-width: min(420px, calc(100vw - 8px)); padding: 4px 8px;
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: 0;
+  font: 11.5px/1.4 var(--mono); box-shadow: 0 4px 14px rgb(0 0 0 / 0.35);
+}
+.ett a { color: var(--cyan); text-decoration: none; overflow-wrap: anywhere; cursor: pointer; }
+.ett a:hover { text-decoration: underline; }
