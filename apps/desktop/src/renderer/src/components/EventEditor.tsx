@@ -6,7 +6,7 @@ import { DateTimeField } from './ui/DateTimeField'
 import {
   applyForm, emptyForm, setAllDay, errorText, formFromEvent, formToInput, isEmail, moveStart, soleId, splitEmails,
   writableAccounts, writableCalendars, type EventForm
-} from './EventEditor.logic'
+} from '@multicals/core/logic/editor'
 import './ui/ui.css'
 import './EventEditor.css'
 

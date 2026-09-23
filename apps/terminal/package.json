@@ -1,0 +1,38 @@
+{
+  "name": "multicals",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Isolated multi-account calendar for the macOS terminal",
+  "author": "Oleksandr Ratushnyi",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/a1exalexander/multicals.git", "directory": "apps/terminal" },
+  "type": "module",
+  "bin": { "multicals": "dist/cli.js" },
+  "files": ["dist"],
+  "engines": { "node": ">=20" },
+  "os": ["darwin"],
+  "scripts": {
+    "dev": "tsup --watch",
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "tsup"
+  },
+  "dependencies": {
+    "date-fns": "^4.4.0",
+    "ical.js": "^2.2.1",
+    "ink": "^6.8.0",
+    "react": "^19.3.0",
+    "tsdav": "^2.3.4",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@multicals/core": "workspace:*",
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.3.0",
+    "ink-testing-library": "^4.0.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  }
+}

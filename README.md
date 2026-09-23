@@ -4,9 +4,11 @@ A simple macOS calendar for Google and CalDAV accounts (Namecheap Private Email,
 
 ## Repo layout
 
-Turborepo + pnpm workspace. Apps live in `apps/*`, shared code will go to `packages/*`.
+Turborepo + pnpm workspace. Apps live in `apps/*`, shared code in `packages/*`.
 
-- `apps/desktop` — the Electron app (package name `multicals`; don't rename it, Electron derives the user-data folder with accounts from it).
+- `packages/core` (`@multicals/core`) — platform-free core shared by both apps: account store, providers (Google, CalDAV), sync engine, the validated API (`createApi`), mock backend and pure view logic. TypeScript source, bundled by each app.
+- `apps/desktop` (`@multicals/desktop`) — the Electron app. Its `productName` is `multicals`; don't change it, Electron derives the user-data folder with accounts (and the Keychain item) from it.
+- `apps/terminal` (npm package `multicals`) — the terminal app (Ink). Every open `multicals` shares one background daemon that stops after the last one closes. Its data lives in `~/Library/Application Support/multicals-terminal`, separate from the desktop app, so both can run with different accounts and settings.
 
 ## Why isolation matters
 

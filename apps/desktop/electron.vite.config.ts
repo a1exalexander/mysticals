@@ -2,7 +2,8 @@ import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 
-const shared = { '@shared': resolve('src/shared') }
+// @multicals/core is a devDependency, so it gets bundled; its runtime deps are in `dependencies` and stay external.
+const shared = { '@shared': resolve('../../packages/core/src/shared') }
 
 export default defineConfig({
   main: { plugins: [externalizeDepsPlugin()], resolve: { alias: shared } },
