@@ -52,6 +52,16 @@ test('calendar views: week/month/day, visibility toggle, screenshots', async () 
   await page.getByTestId('sidebar-calendar-personal-p-main').check()
   await expect(blocks.filter({ hasText: 'Gym' })).toHaveCount(1)
 
+  // Account sections collapse/expand from their header.
+  const personalToggle = page.getByTestId('sidebar-account-toggle-personal')
+  await personalToggle.click()
+  await expect(personalToggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByTestId('sidebar-calendar-personal-p-main')).toBeHidden()
+  await expect(page.getByTestId('sidebar-account-work').locator('input[type=checkbox]').first()).toBeVisible()
+  await personalToggle.click()
+  await expect(personalToggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.getByTestId('sidebar-calendar-personal-p-main')).toBeVisible()
+
   // vim keys: d/w/m switch views, h/l move, n opens the editor, i toggles invites.
   await page.keyboard.press('m')
   await expect(page.getByTestId('view-switch-month')).toHaveAttribute('aria-selected', 'true')
