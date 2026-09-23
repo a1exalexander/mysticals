@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import type { CalEvent } from '@shared/types'
-import { dragRange, eventsOnDay, layoutDay, monthGrid, packColumns, slotAt, viewRange } from './layout'
+import {
+  dragRange,
+  eventsOnDay,
+  layoutDay,
+  monthGrid,
+  packColumns,
+  rangeLabel,
+  shiftDate,
+  slotAt,
+  viewDays,
+  viewRange
+} from './layout'
 
 const ev = (id: string, start: string, end: string, allDay = false): CalEvent => ({
   id, accountId: 'a', calendarId: 'c', title: id, start, end, allDay, attendees: []
@@ -57,6 +68,24 @@ describe('monthGrid', () => {
     expect(g).toHaveLength(42)
     expect(g[0]).toEqual(new Date(2026, 7, 31)) // Mon Aug 31
     expect(viewRange('month', day).start).toBe(g[0].toISOString())
+  })
+})
+
+describe('3day view', () => {
+  it('covers 3 days from the selected date and pages by 3', () => {
+    const days = viewDays('3day', new Date(2026, 8, 30, 15))
+    expect(days).toEqual([new Date(2026, 8, 30), new Date(2026, 9, 1), new Date(2026, 9, 2)])
+    expect(viewRange('3day', days[0])).toEqual({
+      start: days[0].toISOString(),
+      end: new Date(2026, 9, 3).toISOString()
+    })
+    expect(shiftDate('3day', day, 1)).toEqual(new Date(2026, 8, 26))
+    expect(shiftDate('3day', day, -1)).toEqual(new Date(2026, 8, 20))
+  })
+  it('labels ranges across month and year', () => {
+    expect(rangeLabel(new Date(2026, 8, 23), new Date(2026, 8, 25))).toBe('23 – 25 Sep 2026')
+    expect(rangeLabel(new Date(2026, 8, 30), new Date(2026, 9, 2))).toBe('30 Sep – 2 Oct 2026')
+    expect(rangeLabel(new Date(2026, 11, 31), new Date(2027, 0, 2))).toBe('31 Dec 2026 – 2 Jan 2027')
   })
 })
 

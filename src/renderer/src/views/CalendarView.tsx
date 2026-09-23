@@ -5,13 +5,19 @@ import type { MenuCommand } from '@shared/ipc'
 import { useCalendarData } from '../hooks/useCalendarData'
 import { bus } from '../bus'
 import { nav, useNav } from './nav'
-import { shiftDate, viewDays, viewRange, type View } from './layout'
+import { rangeLabel, shiftDate, viewDays, viewRange, type View } from './layout'
 import { TimeGrid } from './TimeGrid'
 import { MonthGrid } from './MonthGrid'
 
-const VIEWS: View[] = ['day', 'week', 'month']
-const KEY_VIEW: Record<'d' | 'w' | 'm', View> = { d: 'day', w: 'week', m: 'month' }
-const MENU_VIEW: Partial<Record<MenuCommand, View>> = { 'view-day': 'day', 'view-week': 'week', 'view-month': 'month' }
+const VIEWS: View[] = ['day', '3day', 'week', 'month']
+const LABEL: Record<View, string> = { day: 'Day', '3day': '3 Days', week: 'Week', month: 'Month' }
+const KEY_VIEW: Record<string, View> = { d: 'day', '3': '3day', w: 'week', m: 'month' }
+const MENU_VIEW: Partial<Record<MenuCommand, View>> = {
+  'view-day': 'day',
+  'view-3day': '3day',
+  'view-week': 'week',
+  'view-month': 'month'
+}
 
 export type ColorOf = (e: CalEvent) => string
 
@@ -24,6 +30,7 @@ const today = (): void => nav.set({ date: new Date() })
 export function CalendarView(): React.JSX.Element {
   const { date, view } = useNav()
   const range = useMemo(() => viewRange(view, date), [view, date])
+  const days = useMemo(() => viewDays(view, date), [view, date])
   const { accounts, calendars, events } = useCalendarData(range)
 
   const colorOf = useMemo<ColorOf>(() => {
@@ -45,7 +52,7 @@ export function CalendarView(): React.JSX.Element {
       if (k === 'ArrowLeft' || k === 'h') go(-1)
       else if (k === 'ArrowRight' || k === 'l') go(1)
       else if (k === 't' || k === 'T') today()
-      else if (k === 'd' || k === 'w' || k === 'm') nav.set({ view: KEY_VIEW[k] })
+      else if (KEY_VIEW[k]) nav.set({ view: KEY_VIEW[k] })
       else if (k === 'j' || k === 'k') document.querySelector('.tg')?.scrollBy({ top: k === 'j' ? 48 : -48 })
       else if (k === 'n') bus.emit('event:create', {})
       else if (k === 'i') bus.emit('invites:open', {})
@@ -68,11 +75,13 @@ export function CalendarView(): React.JSX.Element {
     <div className="calendar-view" data-testid="calendar-view">
       <header className="toolbar">
         <h1 className="toolbar-title">
-          {view === 'day' ? format(date, 'd MMMM') : format(date, 'MMMM')}
+          {view === 'day' ? format(date, 'd MMMM') : view === '3day' ? rangeLabel(days[0], days[2]) : format(date, 'MMMM')}
           <span className="toolbar-sub">
-            {format(date, 'yyyy')}
+            {view !== '3day' && format(date, 'yyyy')}
             {view === 'day' && ` · ${format(date, 'EEE')}`}
-            {view !== 'month' && ` · W${getISOWeek(date)}`}
+            {view === '3day' &&
+              [...new Set(days.map((d) => `W${getISOWeek(d)}`))].join('–')}
+            {(view === 'day' || view === 'week') && ` · W${getISOWeek(date)}`}
           </span>
         </h1>
         <div className="seg" role="tablist">
@@ -85,7 +94,7 @@ export function CalendarView(): React.JSX.Element {
               data-testid={`view-switch-${v}`}
               onClick={() => nav.set({ view: v })}
             >
-              {v[0].toUpperCase() + v.slice(1)}
+              {LABEL[v]}
             </button>
           ))}
         </div>
@@ -104,7 +113,7 @@ export function CalendarView(): React.JSX.Element {
       {view === 'month' ? (
         <MonthGrid date={date} events={events} colorOf={colorOf} />
       ) : (
-        <TimeGrid days={viewDays(view, date)} events={events} colorOf={colorOf} />
+        <TimeGrid days={days} events={events} colorOf={colorOf} />
       )}
     </div>
   )

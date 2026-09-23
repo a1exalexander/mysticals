@@ -14,7 +14,7 @@ import type { CalEvent, TimeRange } from '@shared/types'
 // ponytail: Monday week start is hardcoded; move to settings when someone needs Sunday.
 export const WEEK_STARTS_ON = 1 as const
 export const SLOT_MIN = 15
-export type View = 'day' | 'week' | 'month'
+export type View = 'day' | '3day' | 'week' | 'month'
 
 /** Parsed bounds; all-day end is exclusive, zero/negative lengths are widened so the event still shows. */
 export function eventBounds(e: CalEvent): { start: Date; end: Date } {
@@ -106,6 +106,7 @@ export function monthGrid(date: Date): Date[] {
 export function viewDays(view: View, date: Date): Date[] {
   if (view === 'month') return monthGrid(date)
   if (view === 'day') return [startOfDay(date)]
+  if (view === '3day') return [0, 1, 2].map((i) => addDays(startOfDay(date), i))
   const first = startOfWeek(date, { weekStartsOn: WEEK_STARTS_ON })
   return Array.from({ length: 7 }, (_, i) => addDays(first, i))
 }
@@ -117,8 +118,15 @@ export function viewRange(view: View, date: Date): TimeRange {
 
 export function shiftDate(view: View, date: Date, dir: 1 | -1): Date {
   if (view === 'day') return addDays(date, dir)
+  if (view === '3day') return addDays(date, 3 * dir)
   if (view === 'week') return addWeeks(date, dir)
   return addMonths(date, dir)
+}
+
+/** "23 – 25 Sep 2026", "30 Sep – 2 Oct 2026", "30 Dec 2026 – 1 Jan 2027". */
+export function rangeLabel(a: Date, b: Date): string {
+  const head = a.getFullYear() !== b.getFullYear() ? 'd MMM yyyy' : a.getMonth() !== b.getMonth() ? 'd MMM' : 'd'
+  return `${format(a, head)} – ${format(b, 'd MMM yyyy')}`
 }
 
 /** Floor a minute offset to its slot, clamped to the day. */

@@ -30,6 +30,20 @@ test('calendar views: week/month/day, visibility toggle, screenshots', async () 
   await page.keyboard.press('t')
   await expect(blocks.filter({ hasText: 'Gym' })).toHaveCount(1)
 
+  // 3-day view: 3 columns from the selected date, h/l page by 3 days.
+  await page.getByTestId('view-switch-3day').click()
+  await expect(page.locator('.tg-col')).toHaveCount(3)
+  await expect(blocks.filter({ hasText: 'Gym' })).toHaveCount(1)
+  await page.screenshot({ path: 'e2e/screens/3day.png' })
+  await page.keyboard.press('l')
+  await expect(blocks.filter({ hasText: 'Gym' })).toHaveCount(0)
+  await page.keyboard.press('h')
+  await expect(blocks.filter({ hasText: 'Gym' })).toHaveCount(1)
+  await page.keyboard.press('d')
+  await page.keyboard.press('3')
+  await expect(page.getByTestId('view-switch-3day')).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByTestId('statusbar')).toContainText('3day')
+
   // Hiding the personal calendar removes only its events.
   await page.getByTestId('view-switch-week').click()
   await page.getByTestId('sidebar-calendar-personal-p-main').uncheck()
