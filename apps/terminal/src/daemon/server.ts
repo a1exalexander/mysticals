@@ -1,16 +1,17 @@
 import { chmodSync, mkdirSync, rmSync } from 'fs'
 import { createConnection, createServer, type Server, type Socket } from 'net'
-import { execFile } from 'child_process'
 import { createApi } from '@multicals/core/api'
 import { AccountStore } from '@multicals/core/accounts/store'
 import { createMockApi } from '@multicals/core/mock/mockApi'
 import { createCaldavProvider, verifyCaldav } from '@multicals/core/providers/caldav'
-import { createGoogleProvider, googleSignIn } from '@multicals/core/providers/google'
+import { createGoogleProvider, googleSignIn, setClientConfig } from '@multicals/core/providers/google'
 import { SyncEngine } from '@multicals/core/sync/engine'
 import { homeDir, isMock, socketPath } from '../paths'
 import { dispatch, encode, isMethod, lineReader, type ApiImpl, type Push, type Response } from '../protocol'
 import { createCrypto } from './crypto'
+import { googleConfig, openUrl } from './google'
 import { notify } from './notify'
+import { wakeTriggers } from './triggers'
 
 export interface Daemon {
   server: Server
@@ -24,6 +25,8 @@ export interface ServeOptions {
   /** Idle time after the last client leaves (or none ever came) before onIdle. Default 3 s. */
   graceMs?: number
   onIdle(): void
+  /** A TUI connected (e.g. sync so it opens on fresh data). */
+  onConnect?(): void
 }
 
 /** True when a live daemon answers on `path`. */
@@ -59,6 +62,7 @@ export async function serve(api: ApiImpl, path: string, opts: ServeOptions): Pro
   const server = createServer((sock) => {
     clients.add(sock)
     clearTimeout(idle)
+    opts.onConnect?.()
     const send = (msg: Response | Push): void => {
       if (!sock.destroyed) sock.write(encode(msg))
     }
@@ -120,13 +124,13 @@ export async function runDaemon(): Promise<void> {
   if (isMock()) {
     api = createMockApi((id) => broadcast(id))
   } else {
-    // Unit 6: setClientConfig({ clientId, clientSecret }) from build-time MULTICALS_GOOGLE_* here.
+    setClientConfig(googleConfig()) // also needed for token refresh, not just sign-in
     const factories = { caldav: createCaldavProvider, google: createGoogleProvider }
     const store = new AccountStore(home, factories, createCrypto())
-    // Unit 6: pass `triggers` (wake from sleep) here.
-    sync = new SyncEngine(store, (id) => broadcast(id), { onEvents: (id, notes) => notify(store, id, notes) })
-    const openUrl = (url: string): Promise<void> =>
-      new Promise((resolve, reject) => execFile('open', [url], (e) => (e ? reject(e) : resolve())))
+    sync = new SyncEngine(store, (id) => broadcast(id), {
+      triggers: wakeTriggers(),
+      onEvents: (id, notes) => notify(store, id, notes)
+    })
     api = createApi(store, sync, { verifyCaldav, googleSignIn: () => googleSignIn(openUrl), onChanged: (id) => broadcast(id) })
   }
 
@@ -137,7 +141,7 @@ export async function runDaemon(): Promise<void> {
     process.exit(0)
   }
   try {
-    daemon = await serve(api, socketPath(home), { onIdle: () => void shutdown() })
+    daemon = await serve(api, socketPath(home), { onIdle: () => void shutdown(), onConnect: () => void sync?.syncNow() })
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === 'EADDRINUSE') process.exit(0) // another daemon won the race
     throw e
