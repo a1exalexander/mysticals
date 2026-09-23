@@ -72,6 +72,7 @@ const CaldavInput = z.object({
 
 const AccountPatch = z.object({ label: text(200).min(1).optional(), color: color.optional() }).strict()
 const RsvpStatus = z.enum(['accepted', 'declined', 'tentative'])
+const Scope = z.enum(['one', 'following', 'all']).default('one')
 
 export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps): Omit<Api, 'onChanged' | 'onMenu'> {
   const account = (accountId: unknown) => {
@@ -169,9 +170,9 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
         syncOne(cached.accountId)
         return ev
       },
-      delete: async (raw) => {
+      delete: async (raw, scope) => {
         const cached = writable(cachedEvent(EventRef.parse(raw)))
-        await store.getProvider(cached.accountId).deleteEvent(cached)
+        await store.getProvider(cached.accountId).deleteEvent(cached, Scope.parse(scope))
         syncOne(cached.accountId)
       },
       respond: async (raw, status) => {

@@ -1,0 +1,52 @@
+.dtf { display: flex; gap: 6px; }
+.dtf-trigger {
+  font: 12px/1 var(--mono); color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 8px; height: 28px; text-align: left;
+}
+.dtf-trigger:first-child { flex: 1; }
+.dtf-time { width: 64px; text-align: center; }
+.dtf-trigger:hover { background: var(--hover); }
+.dtf-trigger:focus-visible, .dtf-trigger[aria-expanded='true'] {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.dtf-pop {
+  position: fixed; z-index: 60; padding: 8px;
+  background: var(--surface-2); color: var(--fg);
+  border: 1px solid var(--line-strong); border-radius: 6px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  animation: mc-fade 100ms ease-out;
+}
+
+/* react-day-picker, themed */
+.dtf-pop .rdp-root {
+  --rdp-accent-color: var(--accent);
+  --rdp-accent-background-color: color-mix(in srgb, var(--accent) 16%, transparent);
+  --rdp-day-height: 30px; --rdp-day-width: 32px;
+  --rdp-day_button-height: 28px; --rdp-day_button-width: 30px; --rdp-day_button-border-radius: 4px;
+  --rdp-nav_button-height: 26px; --rdp-nav_button-width: 26px; --rdp-nav-height: 30px;
+  --rdp-outside-opacity: 0.35;
+  font: 12px/1 var(--mono);
+}
+.dtf-pop .rdp-month_caption { font: 700 12.5px/30px var(--mono); padding-left: 6px; }
+.dtf-pop .rdp-weekday { font-size: 10.5px; color: var(--muted); text-transform: uppercase; }
+.dtf-pop .rdp-chevron { fill: var(--muted); width: 14px; height: 14px; }
+.dtf-pop .rdp-button_previous:hover .rdp-chevron, .dtf-pop .rdp-button_next:hover .rdp-chevron { fill: var(--fg); }
+.dtf-pop .rdp-day_button:hover { background: var(--hover); }
+.dtf-pop .rdp-selected { font-size: inherit; font-weight: 700; }
+.dtf-pop .rdp-selected .rdp-day_button { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.dtf-pop .rdp-today:not(.rdp-selected) { color: var(--accent); font-weight: 700; }
+
+.dtf-pop-time { width: 110px; }
+.dtf-typed {
+  width: 100%; margin-bottom: 6px; padding: 4px 6px; height: 26px;
+  font: 12px/1 var(--mono); color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line-strong); border-radius: 4px; outline: none;
+}
+.dtf-typed:focus { border-color: var(--accent); }
+.dtf-slots { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; }
+.dtf-slots button {
+  flex: none; height: 26px; padding: 0 8px; border: 0; border-radius: 3px; text-align: left;
+  font: 12px/26px var(--mono); color: var(--fg); background: none;
+}
+.dtf-slots button:hover { background: var(--hover); }
+.dtf-slots button[aria-selected='true'] { background: var(--accent); color: var(--on-accent); font-weight: 700; }

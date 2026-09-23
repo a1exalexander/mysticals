@@ -33,6 +33,8 @@
 .details-error { margin-top: 10px; color: var(--red); }
 .details-confirm { align-items: center; }
 .details-confirm span { margin-right: auto; }
+.details-confirm.recurring { flex-direction: column; align-items: stretch; gap: 6px; }
+.details-confirm.recurring span { margin: 0 0 2px; }
 
 .details-link { color: var(--cyan); text-decoration: none; overflow-wrap: anywhere; }
 .details-link:hover { text-decoration: underline; }

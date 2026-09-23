@@ -1,4 +1,4 @@
-import type { Calendar, CalEvent, Credentials, NewEventInput, PartStat, TimeRange } from '@shared/types'
+import type { Calendar, CalEvent, DeleteScope, Credentials, NewEventInput, PartStat, TimeRange } from '@shared/types'
 
 /**
  * One instance per account. Knows ONLY its own account id, identity and credentials.
@@ -9,7 +9,7 @@ export interface CalendarProvider {
   listEvents(calendarId: string, range: TimeRange): Promise<CalEvent[]>
   createEvent(calendarId: string, input: NewEventInput): Promise<CalEvent>
   updateEvent(event: CalEvent): Promise<CalEvent>
-  deleteEvent(event: CalEvent): Promise<void>
+  deleteEvent(event: CalEvent, scope?: DeleteScope): Promise<void>
   respond(event: CalEvent, status: Exclude<PartStat, 'needsAction'>): Promise<CalEvent>
 }
 

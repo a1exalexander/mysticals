@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Account, Calendar, CalEvent } from '@shared/types'
-import { setAllDay, applyForm, emptyForm, errorText, formFromEvent, formToInput, fromLocalInput, toLocalInput, writableCalendars } from './EventEditor.logic'
+import { setAllDay, applyForm, emptyForm, errorText, formFromEvent, formToInput, fromLocalInput, moveStart, toLocalInput, writableCalendars } from './EventEditor.logic'
 
 const acc = (id: string): Account => ({ id, kind: 'caldav', label: id, email: `me@${id}.example`, color: '#000' })
 const cal = (id: string, accountId: string, readOnly = false): Calendar => ({ id, accountId, name: id, color: '#000', readOnly })
@@ -76,5 +76,10 @@ describe('event form', () => {
 
   it('cleans IPC error prefixes', () => {
     expect(errorText(new Error("Error invoking remote method 'events:create': Error: boom"))).toBe('boom')
+  })
+
+  it('moving the start keeps the duration, across days', () => {
+    const f = { ...emptyForm(accounts, calendars), start: '2026-09-23T16:00', end: '2026-09-23T17:30' }
+    expect(moveStart(f, '2026-09-15T09:30')).toMatchObject({ start: '2026-09-15T09:30', end: '2026-09-15T11:00' })
   })
 })

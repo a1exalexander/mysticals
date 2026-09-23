@@ -44,6 +44,9 @@ export function createMockApi(onChanged: (accountId: string) => void): Omit<Api,
     attendees: [{ email: 'pm@work.example', status: 'accepted', organizer: true }, { email: 'me@work.example', status: 'needsAction', self: true }]
   })
   seed(personal, 'p-main', { title: 'Gym', start: iso(0, 19), end: iso(0, 20) })
+  for (let d = -2; d <= 4; d++) {
+    seed(personal, 'p-main', { title: 'Morning run', start: iso(d, 7), end: iso(d, 7, 45), recurringEventId: 'run-series' })
+  }
   seed(personal, 'p-main', { title: 'Dinner with friends', start: iso(2, 20), end: iso(2, 22), location: 'Kyiv' })
   const today = new Date().toISOString().slice(0, 10)
   seed(personal, 'p-holidays', { title: 'Holiday', start: today, end: today, allDay: true })
@@ -106,8 +109,8 @@ export function createMockApi(onChanged: (accountId: string) => void): Omit<Api,
         onChanged(ev.accountId)
         return r
       },
-      delete: async (ev) => {
-        await own(ev.accountId, ev.calendarId).deleteEvent(ev)
+      delete: async (ev, scope) => {
+        await own(ev.accountId, ev.calendarId).deleteEvent(ev, scope)
         onChanged(ev.accountId)
       },
       respond: async (ev, status) => {

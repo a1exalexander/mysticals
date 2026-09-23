@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyDeleteInstance, applyRespond, applyUpdate, buildIcs, mapPartStat, parseEvents, type CaldavRaw } from './ics'
+import { applyDeleteFollowing, applyDeleteInstance, applyRespond, applyUpdate, buildIcs, mapPartStat, parseEvents, type CaldavRaw } from './ics'
 
 const ctx = { accountId: 'work', calendarId: 'https://dav.example/cal/', email: 'Me@Work.example' }
 const HREF = 'https://dav.example/cal/ev.ics'
@@ -244,5 +244,25 @@ describe('applyDeleteInstance', () => {
       '2026-01-06T09:00:00.000Z',
       '2026-01-09T09:00:00.000Z'
     ])
+  })
+})
+
+describe('applyDeleteFollowing', () => {
+  const evs = parseEvents(DAILY, HREF, undefined, ctx, JAN)
+  it('ends the series before the instance and drops later overrides', () => {
+    const out = applyDeleteFollowing(evs[2].raw as CaldavRaw)!
+    expect(out).toMatch(/RRULE:FREQ=DAILY;UNTIL=20260108T085959Z/)
+    expect(out).not.toMatch(/COUNT|RECURRENCE-ID/)
+    expect(parseEvents(out, HREF, undefined, ctx, JAN).map((e) => e.start)).toEqual(['2026-01-05T09:00:00.000Z', '2026-01-06T09:00:00.000Z'])
+  })
+  it('returns null from the first instance so the whole object is deleted', () => {
+    expect(applyDeleteFollowing(evs[0].raw as CaldavRaw)).toBeNull()
+  })
+  it('uses a DATE UNTIL for all-day series', () => {
+    const allDay = wrap(['BEGIN:VEVENT', 'UID:a', 'DTSTAMP:20251201T000000Z', 'DTSTART;VALUE=DATE:20260105', 'DTEND;VALUE=DATE:20260106', 'RRULE:FREQ=DAILY', 'SUMMARY:A', 'END:VEVENT'].join('\r\n'))
+    const third = parseEvents(allDay, HREF, undefined, ctx, JAN)[2]
+    const out = applyDeleteFollowing(third.raw as CaldavRaw)!
+    expect(out).toMatch(/UNTIL=20260106(?!T)/)
+    expect(parseEvents(out, HREF, undefined, ctx, JAN)).toHaveLength(2)
   })
 })

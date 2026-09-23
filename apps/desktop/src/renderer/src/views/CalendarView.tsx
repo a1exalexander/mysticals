@@ -110,6 +110,9 @@ export function CalendarView(): React.JSX.Element {
             ›
           </button>
         </div>
+        <button className="new-btn" data-testid="new-event" title="New event (N)" onClick={() => bus.emit('event:create', {})}>
+          + new
+        </button>
       </header>
       {view === 'month' ? (
         <MonthGrid date={date} events={events} colorOf={colorOf} />

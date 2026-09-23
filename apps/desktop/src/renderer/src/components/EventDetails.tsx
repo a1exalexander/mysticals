@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { CalEvent, PartStat } from '@shared/types'
+import type { CalEvent, DeleteScope, PartStat } from '@shared/types'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
 import { canEdit, cleanNotes, formatWhen, linkify, ownerLine, STATUS_ICON } from './EventDetails.logic'
@@ -9,6 +9,7 @@ import './EventDetails.css'
 
 type Reply = Exclude<PartStat, 'needsAction'>
 const REPLIES: [Reply, string][] = [['accepted', 'Accept'], ['tentative', 'Maybe'], ['declined', 'Decline']]
+const SCOPES: [DeleteScope, string][] = [['one', 'This event'], ['following', 'This and following'], ['all', 'All events']]
 const W = 320
 const GAP = 8
 
@@ -95,9 +96,9 @@ export function EventDetailsHost(): React.JSX.Element | null {
       const updated = await window.api.events.respond(event, status)
       if (still()) setOpened((o) => o && { ...o, event: updated })
     })
-  const remove = (): Promise<void> =>
+  const remove = (scope: DeleteScope = 'one'): Promise<void> =>
     run(async () => {
-      await window.api.events.delete(event)
+      await window.api.events.delete(event, scope)
       if (still()) setOpened(null)
     })
 
@@ -175,11 +176,21 @@ export function EventDetailsHost(): React.JSX.Element | null {
         {error && <div className="details-error" role="alert">{error}</div>}
 
         {editable &&
-          (confirmDelete ? (
+          (confirmDelete && event.recurringEventId ? (
+            <div className="mc-actions details-confirm recurring">
+              <span>Delete recurring event</span>
+              {SCOPES.map(([scope, label]) => (
+                <button key={scope} type="button" className="mc-btn danger" disabled={busy} onClick={() => remove(scope)}>
+                  {label}
+                </button>
+              ))}
+              <button type="button" className="mc-btn" onClick={() => setConfirmDelete(false)}>Cancel</button>
+            </div>
+          ) : confirmDelete ? (
             <div className="mc-actions details-confirm">
               <span>Delete this event?</span>
               <button type="button" className="mc-btn" onClick={() => setConfirmDelete(false)}>Cancel</button>
-              <button type="button" className="mc-btn danger primary" disabled={busy} onClick={remove}>Delete</button>
+              <button type="button" className="mc-btn danger primary" disabled={busy} onClick={() => remove()}>Delete</button>
             </div>
           ) : (
             <div className="mc-actions">

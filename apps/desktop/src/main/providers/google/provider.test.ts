@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Credentials } from '@shared/types'
-import { createGoogleProviderImpl, mapEvent, type GEvent } from './provider'
+import { createGoogleProviderImpl, mapEvent, truncateRecurrence, type GEvent } from './provider'
 
 type Call = { method: string; url: URL; body?: any }
 let calls: Call[]
@@ -151,6 +151,31 @@ describe('provider', () => {
     expect(calls[1].url.searchParams.get('sendUpdates')).toBe('all')
   })
 
+  it('delete all: deletes the series master', async () => {
+    respond = () => new Response(null, { status: 204 })
+    await provider().deleteEvent(mapEvent(invite, 'acc1', 'primary'), 'all')
+    expect(calls[0].method).toBe('DELETE')
+    expect(calls[0].url.pathname).toBe('/calendar/v3/calendars/primary/events/series1')
+  })
+
+  it('delete following: truncates the master RRULE before the instance', async () => {
+    const master: GEvent = { id: 'series1', start: { dateTime: '2026-09-01T10:00:00Z' }, end: { dateTime: '2026-09-01T11:00:00Z' }, recurrence: ['RRULE:FREQ=DAILY;COUNT=90'] }
+    respond = () => Response.json(master)
+    const inst = mapEvent({ ...invite, originalStartTime: { dateTime: '2026-09-23T10:00:00Z' } }, 'acc1', 'primary')
+    await provider().deleteEvent(inst, 'following')
+    expect(calls.map((c) => c.method)).toEqual(['GET', 'PATCH'])
+    expect(calls[1].url.pathname).toBe('/calendar/v3/calendars/primary/events/series1')
+    expect(calls[1].body).toEqual({ recurrence: ['RRULE:FREQ=DAILY;UNTIL=20260923T095959Z'] })
+  })
+
+  it('delete following from the first instance deletes the series', async () => {
+    const master: GEvent = { id: 'series1', start: { dateTime: '2026-09-23T10:00:00Z' }, end: { dateTime: '2026-09-23T11:00:00Z' }, recurrence: ['RRULE:FREQ=DAILY'] }
+    respond = (c) => (c.method === 'GET' ? Response.json(master) : new Response(null, { status: 204 }))
+    await provider().deleteEvent(mapEvent({ ...invite, originalStartTime: { dateTime: '2026-09-23T10:00:00Z' } }, 'acc1', 'primary'), 'following')
+    expect(calls.map((c) => c.method)).toEqual(['GET', 'DELETE'])
+    expect(calls[1].url.pathname).toBe('/calendar/v3/calendars/primary/events/series1')
+  })
+
   it('respond: changes only the self attendee and notifies organizer', async () => {
     respond = (c) => Response.json({ ...invite, attendees: c.body.attendees })
     const e = await provider().respond(mapEvent(invite, 'acc1', 'primary'), 'accepted')
@@ -189,5 +214,17 @@ describe('provider', () => {
     respond = (c) => (c.url.host === 'oauth2.googleapis.com' ? Response.json({ access_token: 'new', expires_in: 3600 }) : Response.json({ items: [] }))
     await provider({ expiresAt: Date.now() - 1 }).listCalendars()
     expect(calls.map((c) => c.url.host)).toEqual(['oauth2.googleapis.com', 'www.googleapis.com'])
+  })
+})
+
+describe('truncateRecurrence', () => {
+  it('sets UNTIL one second before a timed cutoff, replacing COUNT/UNTIL, keeping other lines', () => {
+    expect(truncateRecurrence(['RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20300101T000000Z', 'EXDATE:20260930T100000Z'], { dateTime: '2026-10-05T12:00:00+02:00' })).toEqual([
+      'RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261005T095959Z',
+      'EXDATE:20260930T100000Z'
+    ])
+  })
+  it('uses the previous date for all-day series', () => {
+    expect(truncateRecurrence(['RRULE:FREQ=DAILY;COUNT=5'], { date: '2026-10-01' })).toEqual(['RRULE:FREQ=DAILY;UNTIL=20260930'])
   })
 })

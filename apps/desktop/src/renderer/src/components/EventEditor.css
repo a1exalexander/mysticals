@@ -15,7 +15,6 @@
   font: inherit; color: var(--fg); background: var(--bg);
   border: 1px solid var(--line-strong); border-radius: 4px; padding: 4px 8px; min-height: 28px; width: 100%;
 }
-.editor-grid input[type='datetime-local'], .editor-grid input[type='date'] { font-family: var(--mono); font-size: 12px; color-scheme: dark; }
 .editor-grid input:focus, .editor-grid select:focus, .editor-grid textarea:focus, .editor-chips:focus-within {
   outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
