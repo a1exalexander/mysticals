@@ -7,7 +7,7 @@ afterEach(() => t?.unmount())
 
 const open = async (): Promise<void> => {
   t = renderApp()
-  await t.waitFor('Agenda view')
+  await t.waitFor('Gym')
   await t.press('s')
   await t.waitFor('Holidays')
 }
@@ -22,7 +22,7 @@ describe('Accounts overlay', () => {
     await t.press('w') // overlay owns input: not a view switch
     expect(t.lastFrame()).toContain('Accounts & calendars')
     await t.press(KEY.esc)
-    await t.waitFor('Agenda view')
+    await t.waitFor('Gym')
   })
 
   it('toggles a calendar with space using its own account', async () => {

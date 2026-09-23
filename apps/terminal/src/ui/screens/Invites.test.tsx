@@ -8,7 +8,7 @@ afterEach(() => t?.unmount())
 describe('Invites', () => {
   it('opens with i and accepts through the invite’s own account', async () => {
     t = renderApp()
-    await t.waitFor('Agenda view')
+    await t.waitFor('Gym')
     await t.press('i')
     await t.waitFor('Sprint planning')
     expect(t.lastFrame()).toContain('Work · me@work.example')
@@ -20,7 +20,7 @@ describe('Invites', () => {
       'accepted'
     )
     await t.press(KEY.esc)
-    await t.waitFor('Agenda view')
+    await t.waitFor('Gym')
   })
 
   it('shows respond errors and closes on q', async () => {

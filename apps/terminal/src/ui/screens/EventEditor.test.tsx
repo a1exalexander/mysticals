@@ -10,7 +10,7 @@ const clear = (n = 10): string[] => Array(n).fill(KEY.backspace)
 describe('EventEditor', () => {
   it('creates via the app: no default account, picks account + calendar, sends create', async () => {
     t = renderApp()
-    await t.waitFor('Agenda view')
+    await t.waitFor('Gym')
     await t.press('n')
     await t.waitFor('New event')
     expect(t.lastFrame()).toContain('choose account')
@@ -19,7 +19,7 @@ describe('EventEditor', () => {
     await t.waitFor('me@gmail.example')
     expect(t.lastFrame()).toContain('Organizer: me@gmail.example')
     await t.press('\u0013') // ctrl+s
-    await t.waitFor('Agenda view')
+    await t.waitFor('Gym')
     expect(t.client.events.create).toHaveBeenCalledWith(
       expect.objectContaining({ accountId: 'personal', calendarId: 'p-main', title: 'Standup', allDay: false })
     )
