@@ -113,6 +113,7 @@ function Preview({ event, selected, now, width, height, onOpen }: {
   const { accounts, calendars } = useDirectory()
   const account = event && accounts.find((a) => a.id === event.accountId)
   const calendar = event && calendars.find((c) => c.accountId === event.accountId && c.id === event.calendarId)
+  const [showAll, setShowAll] = useState(false) // reset per event: the shell keys Preview by event
   return (
     <Clickable
       width={width}
@@ -127,7 +128,7 @@ function Preview({ event, selected, now, width, height, onOpen }: {
       {event ? (
         <>
           <Text color={C.muted}>{selected ? 'Selected · enter or click to open' : 'Up next · ←/→ to select'}</Text>
-          <EventInfo event={event} account={account} calendar={calendar} now={now} />
+          <EventInfo event={event} account={account} calendar={calendar} now={now} showAll={showAll} onToggleAll={() => setShowAll(!showAll)} />
         </>
       ) : (
         <Text color={C.muted}>Nothing ahead in this range</Text>
@@ -347,6 +348,7 @@ function Shell({ initialNav }: { initialNav?: Nav }) {
             />
             {paneWidth > 0 && (
               <Preview
+                key={previewed && eventKey(previewed)}
                 event={previewed}
                 selected={selectedIdx >= 0}
                 now={now}

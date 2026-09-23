@@ -1,5 +1,5 @@
 /**
- * Event details overlay: title, when, owner, location/meeting link, attendees, notes; RSVP, edit, delete (keys or clicks).
+ * Event details overlay: title, when, owner, location/meeting link, attendees (first 5, "a" or click for all), notes; RSVP, edit, delete (keys or clicks).
  * Also exports EventInfo (the read-only body), reused by the shell's preview pane.
  * Owns ALL input while open. RSVPs and deletes always go through the event's own account (the event object itself).
  */
@@ -38,6 +38,8 @@ export function EventDetails({ event: initial, onClose, onEdit }: EventDetailsPr
   const [busy, setBusy] = useState<string>()
   const [error, setError] = useState('')
   const [confirm, setConfirm] = useState(false)
+  const [showAll, setShowAll] = useState(false)
+  const manyAttendees = initial.attendees.length > ATTENDEES_SHOWN
 
   const account = accounts.find((a) => a.id === event.accountId)
   const calendar = calendars.find((c) => c.accountId === event.accountId && c.id === event.calendarId)
@@ -79,11 +81,12 @@ export function EventDetails({ event: initial, onClose, onEdit }: EventDetailsPr
     if (input === 'o' && url) return openUrl(url)
     if (input === 'e' && editable) return onEdit(event)
     if (input === 'x' && editable) return setConfirm(true)
+    if (input === 'a' && manyAttendees) return setShowAll(!showAll)
   })
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor={C.muted} paddingX={1}>
-      <EventInfo event={event} account={account} calendar={calendar} now={now} />
+      <EventInfo event={event} account={account} calendar={calendar} now={now} showAll={showAll} onToggleAll={() => setShowAll(!showAll)} />
       {error && <Text color={C.red}>{error}</Text>}
       <Box marginTop={1} flexWrap="wrap">
         {busy ? (
@@ -110,6 +113,7 @@ export function EventDetails({ event: initial, onClose, onEdit }: EventDetailsPr
             {url && <Button k="o" label="open link" onPress={() => openUrl(url)} />}
             {editable && <Button k="e" label="edit" onPress={() => onEdit(event)} />}
             {editable && <Button k="x" label="delete" onPress={() => setConfirm(true)} />}
+            {manyAttendees && <Button k="a" label={showAll ? 'fewer attendees' : 'all attendees'} onPress={() => setShowAll(!showAll)} />}
             <Button k="esc" label="close" onPress={onClose} />
           </>
         )}
@@ -143,7 +147,18 @@ const tally = (attendees: CalEvent['attendees']): string =>
     .join(', ')
 
 /** Read-only event body shared by the details overlay and the preview pane. */
-export function EventInfo({ event, account, calendar, now }: { event: CalEvent; account?: Account; calendar?: Calendar; now: Date }) {
+/** Attendees listed before "show more". */
+export const ATTENDEES_SHOWN = 5
+
+export function EventInfo({ event, account, calendar, now, showAll, onToggleAll }: {
+  event: CalEvent
+  account?: Account
+  calendar?: Calendar
+  now: Date
+  /** List every attendee instead of the first ATTENDEES_SHOWN; toggled by the "show more/less" row. */
+  showAll?: boolean
+  onToggleAll?(): void
+}) {
   const url = meetingUrl(event.location)
   const notes = cleanNotes(event.description)
   const owner = ownerLine(calendar?.name ?? 'Calendar', account?.label ?? event.accountId, account?.email)
@@ -176,7 +191,7 @@ export function EventInfo({ event, account, calendar, now }: { event: CalEvent; 
           <Text color={C.muted}>
             Attendees ({event.attendees.length}): {tally(event.attendees)}
           </Text>
-          {event.attendees.map((a) => (
+          {(showAll ? event.attendees : event.attendees.slice(0, ATTENDEES_SHOWN)).map((a) => (
             <Text key={a.email} wrap="truncate">
               <Text color={STATUS_COLOR[a.status]}>{STATUS_ICON[a.status]}</Text> {a.name ?? a.email}
               {a.name && <Text color={C.muted}> {a.email}</Text>}
@@ -184,6 +199,13 @@ export function EventInfo({ event, account, calendar, now }: { event: CalEvent; 
               {a.organizer ? ' (organizer)' : ''}
             </Text>
           ))}
+          {event.attendees.length > ATTENDEES_SHOWN && (
+            <Clickable onClick={onToggleAll}>
+              <Text color={C.accent}>
+                {showAll ? '▴ show less' : `▾ show ${event.attendees.length - ATTENDEES_SHOWN} more`}
+              </Text>
+            </Clickable>
+          )}
         </Box>
       )}
       {notes && (
