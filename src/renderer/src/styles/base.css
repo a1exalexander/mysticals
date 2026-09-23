@@ -87,7 +87,10 @@
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body { color: var(--fg); background: var(--bg); user-select: none; cursor: default; }
-button { font: inherit; color: inherit; cursor: default; }
+button { font: inherit; color: inherit; }
+a[href], button, select, summary, input[type=checkbox], label:has(input[type=checkbox]),
+[role=button], [role=tab], [role=radio], .ev, .tg:not(.tg-single) .tg-dayhead { cursor: pointer; }
+:disabled, [aria-disabled=true] { cursor: default; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 ::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 

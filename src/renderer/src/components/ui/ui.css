@@ -21,7 +21,7 @@
 .mc-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .mc-btn {
   font: 500 12px/1 var(--mono); color: var(--fg); background: var(--surface);
-  border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 12px; height: 26px; cursor: default;
+  border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 12px; height: 26px;
 }
 .mc-btn:hover:not(:disabled) { background: var(--hover); }
 .mc-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -34,7 +34,7 @@
 .mc-seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 4px; overflow: hidden; }
 .mc-seg button {
   font: 500 12px/1 var(--mono); color: var(--muted); background: transparent; border: 0; border-radius: 0;
-  height: 26px; padding: 0 12px; min-width: 70px; cursor: default;
+  height: 26px; padding: 0 12px; min-width: 70px;
 }
 .mc-seg button + button { border-left: 1px solid var(--line-strong); }
 .mc-seg button:hover:not(:disabled) { background: var(--hover); color: var(--fg); }
