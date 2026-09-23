@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Account, Calendar, CalEvent } from '@shared/types'
-import { canEdit, formatWhen, pendingInvites } from './EventDetails.logic'
+import { canEdit, formatWhen, linkify, pendingInvites } from './EventDetails.logic'
 
 const account: Account = { id: 'work', kind: 'caldav', label: 'Work', email: 'me@work.example', color: '#000' }
 const cal: Calendar = { id: 'w', accountId: 'work', name: 'Work', color: '#000', readOnly: false }
@@ -47,5 +47,25 @@ describe('formatWhen', () => {
   it('formats all-day ranges inclusively', () => {
     expect(formatWhen(ev({ allDay: true, start: '2026-09-24', end: '2026-09-25' }))).toBe('Thu, 24 Sep · all day')
     expect(formatWhen(ev({ allDay: true, start: '2026-09-24', end: '2026-09-26' }))).toBe('Thu, 24 Sep – Fri, 25 Sep · all day')
+  })
+})
+
+describe('linkify', () => {
+  it('returns plain text untouched', () => {
+    expect(linkify('Room 3')).toEqual([{ text: 'Room 3' }])
+    expect(linkify('')).toEqual([])
+  })
+  it('splits http(s) urls and strips trailing punctuation', () => {
+    expect(linkify('Join https://meet.example.com/a?b=1. Or (http://x.io/y), ok')).toEqual([
+      { text: 'Join ' },
+      { text: 'https://meet.example.com/a?b=1', href: 'https://meet.example.com/a?b=1' },
+      { text: '. Or (' },
+      { text: 'http://x.io/y', href: 'http://x.io/y' },
+      { text: '), ok' }
+    ])
+    expect(linkify('https://a.io')).toEqual([{ text: 'https://a.io', href: 'https://a.io' }])
+  })
+  it('ignores non-http schemes', () => {
+    expect(linkify('javascript:alert(1) ftp://x')).toEqual([{ text: 'javascript:alert(1) ftp://x' }])
   })
 })

@@ -33,3 +33,17 @@
 .details-error { margin-top: 10px; color: var(--red); }
 .details-confirm { align-items: center; }
 .details-confirm span { margin-right: auto; }
+
+.details-link { color: var(--cyan); text-decoration: none; overflow-wrap: anywhere; }
+.details-link:hover { text-decoration: underline; }
+.details-invitees { margin-top: 10px; }
+.details-toggle {
+  display: block; padding: 0; margin: 0 0 4px; border: 0; background: none; color: var(--muted);
+  font: 10.5px/19px var(--mono); letter-spacing: 0.06em; text-transform: uppercase;
+}
+.details-toggle:hover { color: var(--fg); }
+.details-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* RSVP colors follow the reply, not the calendar accent. */
+.details-rsvp [data-status='accepted'] { --accent: var(--green); }
+.details-rsvp [data-status='tentative'] { --accent: var(--orange); }
+.details-rsvp [data-status='declined'] { --accent: var(--red); }

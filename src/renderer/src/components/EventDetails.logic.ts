@@ -36,3 +36,22 @@ export const STATUS_ICON: Record<PartStat, string> = {
   declined: '✕',
   needsAction: '•'
 }
+
+export type TextPart = { text: string; href?: string }
+
+/** Splits text into plain parts and http(s) links; trailing punctuation stays outside the link. */
+export function linkify(text: string): TextPart[] {
+  const out: TextPart[] = []
+  const plain = (t: string): void => {
+    if (t) out.push({ text: t })
+  }
+  let i = 0
+  for (const m of text.matchAll(/https?:\/\/[^\s<>"]+/gi)) {
+    const url = m[0].replace(/[.,;:!?)\]}>'"]+$/, '')
+    plain(text.slice(i, m.index))
+    out.push({ text: url, href: url })
+    i = m.index + url.length
+  }
+  plain(text.slice(i))
+  return out
+}

@@ -39,7 +39,7 @@ export function createMockApi(onChanged: (accountId: string) => void): Omit<Api,
     })
   }
   seed(work, 'work-main', {
-    title: 'Sprint planning', start: iso(1, 14), end: iso(1, 15, 30), location: 'Room 3',
+    title: 'Sprint planning', start: iso(1, 14), end: iso(1, 15, 30), location: 'Room 3 / https://meet.example.com/sprint-planning',
     organizer: { email: 'pm@work.example' }, myStatus: 'needsAction',
     attendees: [{ email: 'pm@work.example', status: 'accepted', organizer: true }, { email: 'me@work.example', status: 'needsAction', self: true }]
   })

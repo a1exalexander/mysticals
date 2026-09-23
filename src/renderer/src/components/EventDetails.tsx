@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CalEvent, PartStat } from '@shared/types'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
-import { canEdit, formatWhen, STATUS_ICON } from './EventDetails.logic'
+import { canEdit, formatWhen, linkify, STATUS_ICON } from './EventDetails.logic'
 import { errorText } from './EventEditor.logic'
 import './ui/ui.css'
 import './EventDetails.css'
@@ -19,6 +19,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showPeople, setShowPeople] = useState(false)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const current = useRef<string | null>(null) // id of the shown event; late replies for another event are dropped
@@ -31,6 +32,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
         setBusy(false)
         setError('')
         setConfirmDelete(false)
+        setShowPeople(false)
         setPos(null)
       }),
     []
@@ -117,13 +119,22 @@ export function EventDetailsHost(): React.JSX.Element | null {
           {account && <> · {account.email}</>}
         </div>
 
-        {event.location && <Row label="Location">{event.location}</Row>}
+        {event.location && <Row label="Location"><Linkified text={event.location} /></Row>}
         {event.organizer && (
           <Row label="Organizer">{event.organizer.name ? `${event.organizer.name} <${event.organizer.email}>` : event.organizer.email}</Row>
         )}
         {event.attendees.length > 0 && (
-          <Row label="Invitees">
-            <ul className="details-people">
+          <div className="details-invitees">
+            <button
+              type="button"
+              className="details-toggle"
+              data-testid="invitees-toggle"
+              aria-expanded={showPeople}
+              onClick={() => setShowPeople((v) => !v)}
+            >
+              {showPeople ? '▾' : '▸'} Invitees ({event.attendees.length})
+            </button>
+            {showPeople && <ul className="details-people">
               {event.attendees.map((a) => (
                 <li key={a.email} title={a.status}>
                   <span className={`status ${a.status}`} aria-label={a.status}>{STATUS_ICON[a.status]}</span>
@@ -132,10 +143,10 @@ export function EventDetailsHost(): React.JSX.Element | null {
                   {a.organizer && <span className="tag">organizer</span>}
                 </li>
               ))}
-            </ul>
-          </Row>
+            </ul>}
+          </div>
         )}
-        {event.description && <p className="details-notes">{event.description}</p>}
+        {event.description && <p className="details-notes"><Linkified text={event.description} /></p>}
 
         {event.myStatus && (
           <div className="details-rsvp">
@@ -146,6 +157,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
                   type="button"
                   data-testid={`rsvp-${s}`}
                   className={event.myStatus === s ? 'on' : ''}
+                  data-status={s}
                   aria-pressed={event.myStatus === s}
                   disabled={busy}
                   onClick={() => respond(s)}
@@ -193,5 +205,21 @@ function Row({ label, children }: { label: string; children: React.ReactNode }):
       <div className="mc-muted">{label}</div>
       <div>{children}</div>
     </div>
+  )
+}
+
+function Linkified({ text }: { text: string }): React.JSX.Element {
+  return (
+    <>
+      {linkify(text).map((p, i) =>
+        p.href ? (
+          <a key={i} className="details-link" href={p.href} target="_blank" rel="noreferrer">
+            {p.text}
+          </a>
+        ) : (
+          p.text
+        )
+      )}
+    </>
   )
 }
