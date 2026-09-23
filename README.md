@@ -2,6 +2,12 @@
 
 A simple macOS calendar for Google and CalDAV accounts (Namecheap Private Email, iCloud, Fastmail, any CalDAV server). Built with Electron, TypeScript and React. You add accounts inside the app. It never reads the macOS Calendar database.
 
+## Repo layout
+
+Turborepo + pnpm workspace. Apps live in `apps/*`, shared code will go to `packages/*`.
+
+- `apps/desktop` — the Electron app (package name `multicals`; don't rename it, Electron derives the user-data folder with accounts from it).
+
 ## Why isolation matters
 
 In a shared calendar app, one broken account can quietly make another account the organizer: coworkers start getting invites to work meetings from your personal Gmail. Multicals doesn't allow that:
@@ -16,9 +22,9 @@ In a shared calendar app, one broken account can quietly make another account th
 
 ```sh
 pnpm i
-# if node_modules/electron/dist is missing afterwards:
-node node_modules/electron/install.js
-cp .env.example .env
+# if apps/desktop/node_modules/electron/dist is missing afterwards:
+node apps/desktop/node_modules/electron/install.js
+cp apps/desktop/.env.example apps/desktop/.env
 ```
 
 ### Google OAuth client (for Google accounts)
@@ -27,7 +33,7 @@ cp .env.example .env
 2. **APIs & Services → Library**: enable **Google Calendar API**.
 3. **APIs & Services → OAuth consent screen**: choose *External*, fill in the app name and your email, and add yourself as a test user.
 4. **APIs & Services → Credentials → Create credentials → OAuth client ID**, application type **Desktop app**.
-5. Put the values in `.env`:
+5. Put the values in `apps/desktop/.env`:
 
    ```
    MAIN_VITE_GOOGLE_CLIENT_ID=...apps.googleusercontent.com
@@ -43,10 +49,10 @@ pnpm dev                  # development with hot reload
 MULTICALS_MOCK=1 pnpm dev # two fake isolated accounts, no network
 pnpm test                 # unit tests
 pnpm e2e                  # Playwright smoke tests (mock mode)
-pnpm dist                 # unsigned .dmg (arm64 + x64) in dist/
+pnpm dist                 # unsigned .dmg (arm64 + x64) in apps/desktop/dist/
 ```
 
-The build is unsigned (`identity: null` in `electron-builder.yml`). On first launch, right-click the app and choose **Open**. That file also explains how to sign and notarize.
+The build is unsigned (`identity: null` in `apps/desktop/electron-builder.yml`). On first launch, right-click the app and choose **Open**. That file also explains how to sign and notarize.
 
 ## Adding Namecheap Private Email (CalDAV)
 

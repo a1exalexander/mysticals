@@ -2,7 +2,9 @@ node_modules
 out
 dist
 .env
-e2e/screens
+**/e2e/screens
 test-results
 playwright-report
 .claude/worktrees
+.turbo
+.vite

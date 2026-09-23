@@ -1,0 +1,11 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": { "inputs": ["$TURBO_DEFAULT$", ".env*"], "outputs": ["out/**"], "env": ["MAIN_VITE_*"] },
+    "typecheck": {},
+    "test": {},
+    "e2e": { "dependsOn": ["build"], "cache": false, "passThroughEnv": ["MULTICALS_MOCK"] },
+    "dist": { "dependsOn": ["build"], "cache": false },
+    "dev": { "cache": false, "persistent": true, "passThroughEnv": ["MULTICALS_MOCK"] }
+  }
+}
