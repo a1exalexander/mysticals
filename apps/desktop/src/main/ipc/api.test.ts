@@ -69,7 +69,7 @@ describe('createApi isolation', () => {
     expect(ev.organizer?.email).toBe('me@work.example')
     expect(providers.work.createEvent).toHaveBeenCalledOnce()
     expect(providers.personal.createEvent).not.toHaveBeenCalled()
-    expect(sync.syncNow).toHaveBeenCalledExactlyOnceWith('work')
+    expect(sync.syncNow).toHaveBeenCalledExactlyOnceWith('work', { quiet: true })
   })
 
   it('respond rejects an event whose accountId was tampered with', async () => {
@@ -139,6 +139,6 @@ describe('createApi validation', () => {
       expect.objectContaining({ kind: 'caldav', email: 'me@pe.example' }),
       { kind: 'caldav', serverUrl: 'https://mail.privateemail.com/caldav', username: 'u', password: 'p' }
     )
-    expect(sync.syncNow).toHaveBeenCalledWith('new')
+    expect(sync.syncNow).toHaveBeenCalledWith('new', { quiet: true })
   })
 })

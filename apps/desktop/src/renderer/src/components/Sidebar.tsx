@@ -41,6 +41,9 @@ export function Sidebar(): React.JSX.Element {
               data-testid={`sidebar-account-toggle-${a.id}`}
               onClick={() => toggleAccount(a.id)}
             >
+              <svg className="sb-arrow" viewBox="0 0 10 10" width="10" height="10" aria-hidden>
+                <path d="M3.5 2l3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
               <span className="sb-dot" style={{ background: a.color }} />
               <span className="sb-label">{a.label}</span>
               {a.error && (
@@ -48,9 +51,6 @@ export function Sidebar(): React.JSX.Element {
                   !
                 </span>
               )}
-              <span className="sb-arrow" aria-hidden>
-                {collapsed.includes(a.id) ? '▸' : '▾'}
-              </span>
               <span className="sb-email">{a.email}</span>
             </button>
             {!collapsed.includes(a.id) &&

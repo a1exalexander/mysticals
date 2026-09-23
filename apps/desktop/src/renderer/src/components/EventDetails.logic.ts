@@ -60,3 +60,6 @@ export function linkify(text: string): TextPart[] {
   plain(text.slice(i))
   return out
 }
+
+/** Description minus `@color:N` / `@colorHex:#RRGGBB` lines other clients store there as metadata. */
+export const cleanNotes = (s = ''): string => s.replace(/^@color(hex)?:.*$\n?/gim, '').trim()
