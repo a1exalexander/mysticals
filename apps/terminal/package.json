@@ -1,7 +1,6 @@
 {
   "name": "multicals",
   "version": "0.1.0",
-  "private": true,
   "description": "Isolated multi-account calendar for the macOS terminal",
   "author": "Oleksandr Ratushnyi",
   "license": "MIT",
