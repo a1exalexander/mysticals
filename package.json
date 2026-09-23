@@ -1,37 +1,16 @@
 {
-  "name": "multicals",
-  "version": "0.1.0",
+  "name": "multicals-monorepo",
   "private": true,
-  "description": "Isolated multi-account calendar for macOS",
-  "main": "./out/main/index.js",
-  "author": "Oleksandr Ratushnyi",
+  "packageManager": "pnpm@10.22.0",
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
-    "test": "vitest run",
-    "e2e": "electron-vite build && playwright test",
-    "dist": "electron-vite build && electron-builder --mac"
-  },
-  "dependencies": {
-    "date-fns": "^4.4.0",
-    "ical.js": "^2.2.1",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "tsdav": "^2.3.4",
-    "zod": "^4.6.5"
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "e2e": "turbo e2e",
+    "dist": "turbo dist"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
-    "@types/node": "^26.6.2",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^5.2.0",
-    "electron": "^44.4.5",
-    "electron-builder": "^26.15.3",
-    "electron-vite": "^5.0.0",
-    "typescript": "^5.9.3",
-    "vite": "^7.3.6",
-    "vitest": "^3.2.7"
+    "turbo": "^2.5.0"
   }
 }
