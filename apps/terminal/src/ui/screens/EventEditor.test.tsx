@@ -81,6 +81,19 @@ describe('EventEditor', () => {
     )
   })
 
+  it('handles a burst of keys with no re-render in between', async () => {
+    t = renderWith(<EventEditor initialStart={new Date(2026, 8, 23, 9)} onClose={vi.fn()} />)
+    await t.waitFor('New event')
+    for (const k of ['A', 'b', 'c', KEY.backspace, KEY.tab, KEY.right, KEY.up, KEY.up, 'x@y.co']) {
+      t.stdin.write(k)
+    }
+    await t.press('\u0013')
+    await t.waitFor(() => t.client.events.create.mock.calls.length > 0)
+    expect(t.client.events.create).toHaveBeenCalledWith(
+      expect.objectContaining({ accountId: 'work', title: 'Ab', attendees: ['x@y.co'], start: new Date(2026, 8, 23, 10).toISOString() })
+    )
+  })
+
   it('shows server errors and stays open', async () => {
     const onClose = vi.fn()
     t = renderWith(<EventEditor initialStart={new Date(2026, 8, 23, 9)} onClose={onClose} />)
