@@ -1,4 +1,4 @@
-.details { border-left: 2px solid var(--accent); line-height: 1.45; }
+.details { border-left: 2px solid var(--accent); border-radius: 0; line-height: 1.45; }
 .details-head { display: flex; align-items: center; gap: 8px; }
 .details-head h2 { margin: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
 .details-dot { width: 9px; height: 9px; }
