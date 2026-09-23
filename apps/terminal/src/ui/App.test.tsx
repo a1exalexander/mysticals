@@ -33,7 +33,7 @@ describe('App shell', () => {
     t = renderApp()
     await t.waitFor('Agenda view')
     await t.press('j', KEY.enter)
-    await t.waitFor('Event details:')
+    await t.waitFor('esc close')
   })
 
   it('r triggers a sync and reports it', async () => {
