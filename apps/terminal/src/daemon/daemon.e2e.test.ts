@@ -54,8 +54,8 @@ const alive = (pid: number): boolean => {
 it('two TUIs share one daemon, see each other’s changes, and the daemon stops after both close', async () => {
   const a = tui()
   const b = tui()
-  await vi.waitFor(() => expect(a.out()).toContain('Agenda view'), { timeout: 10_000, interval: 50 })
-  await vi.waitFor(() => expect(b.out()).toContain('Agenda view'), { timeout: 10_000, interval: 50 })
+  await vi.waitFor(() => expect(a.out()).toContain('Holiday'), { timeout: 10_000, interval: 50 })
+  await vi.waitFor(() => expect(b.out()).toContain('Holiday'), { timeout: 10_000, interval: 50 })
 
   const daemons = daemonsOf([a.proc.pid!, b.proc.pid!])
   expect(daemons).toHaveLength(1)
