@@ -9,7 +9,7 @@
   <path d="M285 100H739A185 185 0 0 1 924 285V739A185 185 0 0 1 739 924H285A185 185 0 0 1 100 739V285A185 185 0 0 1 285 100Z" fill="#0b0b10"/>
   <g clip-path="url(#sq)">
     <rect x="100" y="100" width="392" height="824" fill="#bd93f9"/>
-    <rect x="532" y="100" width="392" height="824" fill="#50fa7b"/>
+    <rect x="532" y="100" width="392" height="824" fill="#ff79c6"/>
     <g fill="#0b0b10" fill-opacity="0.4">
       <circle cx="196" cy="362" r="20"/><circle cx="296" cy="362" r="20"/><circle cx="396" cy="362" r="20"/>
       <circle cx="196" cy="462" r="20"/><circle cx="296" cy="462" r="20"/><circle cx="396" cy="462" r="20"/>
