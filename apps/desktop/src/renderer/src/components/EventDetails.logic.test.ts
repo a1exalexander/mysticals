@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Account, Calendar, CalEvent } from '@shared/types'
-import { canEdit, formatWhen, linkify, pendingInvites } from './EventDetails.logic'
+import { canEdit, formatWhen, linkify, ownerLine, pendingInvites } from './EventDetails.logic'
 
 const account: Account = { id: 'work', kind: 'caldav', label: 'Work', email: 'me@work.example', color: '#000' }
 const cal: Calendar = { id: 'w', accountId: 'work', name: 'Work', color: '#000', readOnly: false }
@@ -67,5 +67,25 @@ describe('linkify', () => {
   })
   it('ignores non-http schemes', () => {
     expect(linkify('javascript:alert(1) ftp://x')).toEqual([{ text: 'javascript:alert(1) ftp://x' }])
+  })
+})
+
+describe('ownerLine', () => {
+  const g = 'me@gmail.com'
+  it('collapses Google primary (calendar = label = email) to one email', () => {
+    expect(ownerLine(g, g, g)).toEqual({ calendar: undefined, label: g, email: undefined })
+  })
+  it('keeps a Google secondary calendar, drops the repeated email', () => {
+    expect(ownerLine('Pets', g, g)).toEqual({ calendar: 'Pets', label: g, email: undefined })
+  })
+  it('keeps all parts when distinct (CalDAV)', () => {
+    expect(ownerLine('Home', 'Work', 'me@work.example')).toEqual({ calendar: 'Home', label: 'Work', email: 'me@work.example' })
+  })
+  it('compares case-insensitively and trimmed', () => {
+    expect(ownerLine(' Me@Gmail.com', 'me@gmail.com', 'ME@GMAIL.COM ')).toEqual({ calendar: undefined, label: 'me@gmail.com', email: undefined })
+    expect(ownerLine('work', 'Work', 'me@work.example')).toEqual({ calendar: undefined, label: 'Work', email: 'me@work.example' })
+  })
+  it('handles a missing email', () => {
+    expect(ownerLine('Home', 'Work')).toEqual({ calendar: 'Home', label: 'Work', email: undefined })
   })
 })

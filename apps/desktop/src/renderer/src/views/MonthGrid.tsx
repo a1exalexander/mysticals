@@ -1,9 +1,10 @@
+import { useEffect, useState } from 'react'
 import { addDays, format, isSameMonth, isToday } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
 import { nav } from './nav'
-import { eventBounds, eventsOnDay, monthGrid, statusClass, ymd } from './layout'
+import { eventBounds, eventsOnDay, isPast, monthGrid, statusClass, ymd } from './layout'
 import type { ColorOf } from './CalendarView'
 
 const MAX_PER_DAY = 3
@@ -16,6 +17,11 @@ interface Props {
 
 export function MonthGrid({ date, events, colorOf }: Props): React.JSX.Element {
   const days = monthGrid(date)
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(t)
+  }, [])
   return (
     <div className="mg">
       <div className="mg-dows">
@@ -42,7 +48,7 @@ export function MonthGrid({ date, events, colorOf }: Props): React.JSX.Element {
                   key={e.id}
                   data-testid="event-block"
                   data-account-id={e.accountId}
-                  className={`ev mg-ev${e.allDay ? ' ev-allday' : ''}${statusClass(e)}`}
+                  className={`ev mg-ev${e.allDay ? ' ev-allday' : ''}${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}`}
                   style={{ '--c': colorOf(e) } as React.CSSProperties}
                   onDoubleClick={(ev) => ev.stopPropagation()}
                   onClick={(ev) => bus.emit('event:open', { event: e, anchor: ev.currentTarget.getBoundingClientRect() })}

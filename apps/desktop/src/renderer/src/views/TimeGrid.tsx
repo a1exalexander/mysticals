@@ -5,7 +5,7 @@ import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
 import { meetingUrl } from '../components/EventTooltip.logic'
 import { nav } from './nav'
-import { dragRange, eventBounds, eventsOnDay, layoutDay, slotAt, statusClass, ymd } from './layout'
+import { dragRange, eventBounds, eventsOnDay, isPast, layoutDay, slotAt, statusClass, ymd } from './layout'
 import type { ColorOf } from './CalendarView'
 
 const HOUR = 48 // px per hour
@@ -115,7 +115,7 @@ export function TimeGrid({ days, events, colorOf }: Props): React.JSX.Element {
                     key={e.id}
                     data-testid="event-block"
                     data-account-id={e.accountId}
-                    className={`ev ev-allday${statusClass(e)}`}
+                    className={`ev ev-allday${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}`}
                     style={{ '--c': colorOf(e) } as React.CSSProperties}
                     onClick={open(e)}
                     onDoubleClick={stop}
@@ -153,7 +153,7 @@ export function TimeGrid({ days, events, colorOf }: Props): React.JSX.Element {
                   key={e.id}
                   data-testid="event-block"
                   data-account-id={e.accountId}
-                  className={`ev ev-timed${statusClass(e)}${h < 34 ? ' is-short' : ''}`}
+                  className={`ev ev-timed${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}${h < 34 ? ' is-short' : ''}`}
                   style={
                     {
                       '--c': colorOf(e),

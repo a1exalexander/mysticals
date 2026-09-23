@@ -3,6 +3,7 @@ import type { CalEvent } from '@shared/types'
 import {
   dragRange,
   eventsOnDay,
+  isPast,
   layoutDay,
   monthGrid,
   packColumns,
@@ -95,5 +96,23 @@ describe('slots', () => {
     expect(slotAt(-5)).toBe(0)
     expect(slotAt(2000)).toBe(1425)
     expect(dragRange(90, 30)).toEqual({ start: 30, end: 105 })
+  })
+})
+
+describe('isPast', () => {
+  const now = new Date(2026, 8, 23, 12)
+  it('timed: ended is past, ongoing and future are not', () => {
+    expect(isPast(ev('a', at(9), at(12)), now)).toBe(true)
+    expect(isPast(ev('b', at(11), at(13)), now)).toBe(false)
+    expect(isPast(ev('c', at(14), at(15)), now)).toBe(false)
+  })
+  it('all-day: yesterday is past, today is not', () => {
+    expect(isPast(ev('y', '2026-09-22', '2026-09-23', true), now)).toBe(true)
+    expect(isPast(ev('t', '2026-09-23', '2026-09-24', true), now)).toBe(false)
+    expect(isPast(ev('t0', '2026-09-23', '2026-09-23', true), now)).toBe(false)
+  })
+  it('multi-day spanning now is not past', () => {
+    expect(isPast(ev('m', new Date(2026, 8, 21, 9).toISOString(), new Date(2026, 8, 25, 9).toISOString()), now)).toBe(false)
+    expect(isPast(ev('ma', '2026-09-21', '2026-09-26', true), now)).toBe(false)
   })
 })
