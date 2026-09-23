@@ -54,7 +54,30 @@ pnpm e2e                  # Playwright smoke tests (mock mode)
 pnpm dist                 # unsigned .dmg (arm64 + x64) in apps/desktop/dist/
 ```
 
-The build is unsigned (`identity: null` in `apps/desktop/electron-builder.yml`). On first launch, right-click the app and choose **Open**. That file also explains how to sign and notarize.
+The app is shared as-is, unsigned (`identity: null` in `apps/desktop/electron-builder.yml`). On first launch, right-click the app and choose **Open**.
+
+## Terminal app
+
+The same calendar for the terminal. It's a separate app with its own accounts and settings, so you can use it next to the desktop app with different accounts. Full docs: [apps/terminal/README.md](apps/terminal/README.md).
+
+```sh
+npm i -g multicals
+multicals                  # press ? for keys
+MULTICALS_MOCK=1 multicals # two fake isolated accounts, no network
+```
+
+- Data lives in `~/Library/Application Support/multicals-terminal`. Credentials are encrypted there with a key kept in the macOS Keychain item `multicals-terminal`. Nothing is shared with the desktop app.
+- All open `multicals` windows share one local background daemon (accounts, sync, notifications). It stops a few seconds after the last window closes.
+- Google accounts need an OAuth client: put `MULTICALS_GOOGLE_CLIENT_ID` and `MULTICALS_GOOGLE_CLIENT_SECRET` in `apps/terminal/.env` (see `.env.example`) before building; they are embedded at build time.
+
+Development:
+
+```sh
+pnpm --filter multicals build                   # apps/terminal/dist/cli.js
+MULTICALS_MOCK=1 node apps/terminal/dist/cli.js
+pnpm --filter multicals dev                     # rebuild on change
+pnpm --filter multicals test
+```
 
 ## Adding Namecheap Private Email (CalDAV)
 
