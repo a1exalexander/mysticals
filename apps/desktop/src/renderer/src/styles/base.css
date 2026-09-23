@@ -229,6 +229,9 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 }
 .ev.is-declined { opacity: 0.45; }
 .ev.is-declined .ev-title { text-decoration: line-through; }
+.ev.is-past { opacity: 0.55; }
+.ev.is-past.is-declined { opacity: 0.4; }
+.ev.is-past:hover { opacity: 0.85; }
 
 /* Week / day time grid */
 .tg { flex: 1; overflow-y: auto; position: relative; border-top: 1px solid var(--line); }
