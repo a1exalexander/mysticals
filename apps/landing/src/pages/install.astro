@@ -18,7 +18,7 @@ const keys: [string[], string][] = [
 const apps = [['desktop', 'Desktop'], ['terminal', 'Terminal']]
 const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
 ---
-<Layout title="Install Mysticals" description="Install the Mysticals desktop or terminal app on macOS and connect Google and CalDAV calendars.">
+<Layout title="Install Mysticals" description="Install the Mysticals desktop or terminal app on macOS, Windows or Linux and connect Google and CalDAV calendars.">
   <section class="wrap page-head">
     <span class="eyebrow">$ man mysticals</span>
     <h1>Install guide</h1>
@@ -38,7 +38,7 @@ const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
 
   <section class="wrap guide">
     <div class="panels">
-      <ol class="steps" data-panel="desktop">
+      <ol class="steps" data-panel="desktop-mac">
         <li><div><h3>Download the .dmg for your chip</h3>
           <p>Apple menu → About This Mac. “Chip: Apple M…” → <code>arm64</code>. “Processor: Intel…” → <code>x64</code>.</p>
           <a class="btn" href="/download">Go to downloads</a></div></li>
@@ -53,18 +53,47 @@ const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
           <p>The app downloads new releases for your architecture and updates itself.</p></div></li>
       </ol>
 
+      <ol class="steps" data-panel="desktop-windows" hidden>
+        <li><div><h3>Download the setup .exe</h3>
+          <p><code>Mysticals-…-x64-setup.exe</code> from the latest release.</p>
+          <a class="btn" href="/download">Go to downloads</a></div></li>
+        <li><div><h3>Run the installer</h3>
+          <p>Mysticals is shared unsigned, so SmartScreen warns about an unknown publisher. Click More info → Run anyway, then follow the installer. It installs for your user only; no admin rights needed.</p></div></li>
+        <li><div><h3>Add your first account</h3>
+          <p>Add calendar → Google (sign in in the browser) or CalDAV (pick a preset below). Give it a label and a colour. Repeat for every account — each one gets its own box. Credentials are sealed with Windows DPAPI for your user.</p></div></li>
+        <li><div><h3>Updates</h3>
+          <p>When a new release is out, the status bar offers it. Click it to open the release page and run the new setup .exe over the old one.</p></div></li>
+      </ol>
+
+      <ol class="steps" data-panel="desktop-linux" hidden>
+        <li><div><h3>Download the AppImage or .deb</h3>
+          <p><code>Mysticals-…-x86_64.AppImage</code> runs on most distros. On Debian or Ubuntu you can take the <code>.deb</code> instead.</p>
+          <a class="btn" href="/download">Go to downloads</a></div></li>
+        <li><div><h3>Install or run it</h3>
+          <div class="code"><div>chmod +x Mysticals-*.AppImage &amp;&amp; ./Mysticals-*.AppImage</div><div class="c"># or</div><div>sudo apt install ./mysticals_*_amd64.deb</div></div></div></li>
+        <li><div><h3>Make sure a keyring is running</h3>
+          <p>Credentials are encrypted with the Secret Service (GNOME Keyring, KWallet). GNOME and KDE desktops have one already. Without one, Mysticals refuses to store credentials rather than keep them in plain text.</p></div></li>
+        <li><div><h3>Add your first account</h3>
+          <p>Add calendar → Google (sign in in the browser) or CalDAV (pick a preset below). Repeat for every account — each one gets its own box. New releases show up in the status bar and open the release page.</p></div></li>
+      </ol>
+
       <div data-panel="terminal" hidden>
         <ol class="steps">
           <li><div><h3>Check Node.js 20+</h3>
-            <p>No Node yet? Install it from nodejs.org, Homebrew (<code>brew install node</code>) or your version manager.</p>
+            <p>No Node yet? Install it from nodejs.org, Homebrew (<code>brew install node</code>), winget (<code>winget install OpenJS.NodeJS.LTS</code>), your distro or your version manager.</p>
             <div class="code"><div>node -v <span class="c"># v20.0.0 or newer</span></div></div></div></li>
           <li><div><h3>Install from npm</h3>
             <div class="code"><div>npm i -g mysticals</div></div></div></li>
           <li><div><h3>Run it</h3>
             <p>Press <code>?</code> for keys. Want a look first? Mock mode gives you two fake isolated accounts and touches nothing real.</p>
             <div class="code"><div>mysticals</div><div>MYSTICALS_MOCK=1 mysticals</div></div></div></li>
-          <li><div><h3>Allow the Keychain item</h3>
+          <li data-only="mac"><div><h3>Allow the Keychain item</h3>
             <p>On first use macOS asks to access the <code>mysticals-terminal</code> Keychain item. Choose Always Allow — it holds the key that encrypts your credentials.</p></div></li>
+          <li data-only="windows" hidden><div><h3>Nothing to allow</h3>
+            <p>The key that encrypts your credentials is sealed with Windows DPAPI for your user, in <code>master.key</code> in the data folder. Use Windows Terminal for the best mouse and colour support.</p></div></li>
+          <li data-only="linux" hidden><div><h3>Have a keyring and secret-tool</h3>
+            <p>The key that encrypts your credentials goes into the Secret Service (GNOME Keyring, KWallet) through <code>secret-tool</code>. Notifications use <code>notify-send</code>.</p>
+            <div class="code"><div>sudo apt install libsecret-tools <span class="c"># Fedora/Arch: libsecret</span></div></div></div></li>
           <li><div><h3>Add accounts with s</h3>
             <p>Press <code>s</code> → add Google or CalDAV. To update later, run <code>npm i -g mysticals</code> again — the status line tells you when.</p></div></li>
         </ol>
@@ -77,28 +106,18 @@ const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
           <p class="muted">Mouse works too: click to select, click again to open, the wheel scrolls.</p>
         </div>
       </div>
-
-      <div class="soon" data-panel="other" hidden>
-        <span class="eyebrow">$ uname → <span class="os">Windows</span></span>
-        <h3>Not on <span class="os">Windows</span> yet</h3>
-        <p class="muted">Both apps are macOS-only for now: they keep credentials safe with the macOS Keychain, and the npm package is marked for macOS, so it won’t install elsewhere. Star or watch the repository to hear when that changes.</p>
-        <div class="row">
-          <a class="btn" href={gh}>Watch on GitHub</a>
-          <a class="ghost" href={`${gh}/issues`}>Ask for <span class="os">Windows</span></a>
-        </div>
-      </div>
     </div>
 
     <aside>
       <div class="side">
         <span class="eyebrow">requirements</span>
-        <div><span class="muted">System</span><span>macOS</span></div>
-        <div><span class="muted">Chips</span><span>Apple Silicon, Intel</span></div>
+        <div><span class="muted">System</span><span>macOS, Windows, Linux</span></div>
+        <div><span class="muted">Chips</span><span>Apple Silicon, Intel · x64 on Windows/Linux</span></div>
         <div><span class="muted">Terminal app</span><span>Node.js 20+</span></div>
       </div>
       <div class="side">
         <span class="eyebrow">where data lives</span>
-        <span class="muted">Terminal: <code class="path">~/Library/Application Support/mysticals-terminal</code></span>
+        <span class="muted">Terminal: <code class="path">mysticals-terminal</code> in <code class="path">~/Library/Application Support</code> (macOS), <code class="path">%APPDATA%</code> (Windows) or <code class="path">~/.local/share</code> (Linux)</span>
         <span class="muted">Credentials are encrypted per account. The desktop and terminal apps never share data.</span>
       </div>
     </aside>
@@ -123,7 +142,8 @@ const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
   <section class="wrap block last">
     <h2>Troubleshooting</h2>
     <div class="grid3">
-      <div class="fact"><b>“Can’t be opened” on launch</b><span>The desktop app is unsigned. Right-click → Open, or use “Open Anyway” in Privacy &amp; Security.</span></div>
+      <div class="fact"><b>“Can’t be opened” on launch</b><span>The desktop app is unsigned. macOS: right-click → Open, or “Open Anyway” in Privacy &amp; Security. Windows: More info → Run anyway.</span></div>
+      <div class="fact"><b>Linux: “Secure storage is unavailable”</b><span>No Secret Service keyring is running. Install and unlock GNOME Keyring or KWallet (and <code>libsecret-tools</code> for the terminal app).</span></div>
       <div class="fact"><b>Terminal daemon won’t start</b><span>Read <code>daemon.log</code> in the data folder. Stuck? Close every window, then <code>pkill -f 'cli.js --daemon'</code>.</span></div>
       <div class="fact"><b>Can’t select text in the TUI</b><span>Hold ⌥ Option while dragging (Shift in some terminals). In tmux, set <code>mouse on</code> to pass clicks through.</span></div>
     </div>
@@ -133,13 +153,12 @@ const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
 <script>
   // Show the steps for the picked app and system. #terminal in the URL preselects the terminal app.
   const s = { app: location.hash === '#terminal' ? 'terminal' : 'desktop', os: 'mac' }
-  const osName: Record<string, string> = { windows: 'Windows', linux: 'Linux' }
   function show() {
     for (const b of document.querySelectorAll<HTMLElement>('[data-app]')) b.setAttribute('aria-pressed', String(b.dataset.app === s.app))
     for (const b of document.querySelectorAll<HTMLElement>('[data-os]')) b.setAttribute('aria-pressed', String(b.dataset.os === s.os))
-    const want = s.os === 'mac' ? s.app : 'other'
+    const want = s.app === 'desktop' ? `desktop-${s.os}` : 'terminal'
     for (const p of document.querySelectorAll<HTMLElement>('[data-panel]')) p.hidden = p.dataset.panel !== want
-    for (const o of document.querySelectorAll('.os')) o.textContent = osName[s.os] ?? ''
+    for (const e of document.querySelectorAll<HTMLElement>('[data-only]')) e.hidden = e.dataset.only !== s.os
   }
   document.querySelectorAll<HTMLElement>('[data-app], [data-os]').forEach((b) =>
     b.addEventListener('click', () => {
@@ -173,16 +192,14 @@ const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
   .side > div { display: flex; justify-content: space-between; gap: 12px; }
   .path { word-break: break-all; }
   .steps code { color: var(--soft); }
+  /* global .steps > li sets display: flex, which would beat the hidden attribute */
+  .steps > li[hidden] { display: none; }
 
   .keys { margin-top: 56px; display: flex; flex-direction: column; gap: 20px; }
   .keys .table > div:not(:first-child) { padding-block: 12px; }
   @media (max-width: 720px) { .keys .table > div { grid-template-columns: auto 1fr; } }
   .keys kbd { margin-right: 4px; }
   .keys > p { font-size: 14px; }
-
-  .soon { border: 1px dashed var(--line-strong); border-radius: 16px; padding: clamp(28px, 4vw, 56px); display: flex; flex-direction: column; gap: 20px; }
-  .soon h3 { font-size: 30px; }
-  .soon p { font-size: 17px; line-height: 1.65; max-width: 620px; }
 
   .block { padding-top: clamp(72px, 8vw, 104px); display: flex; flex-direction: column; gap: 32px; }
   .block h2 { font-size: 36px; letter-spacing: -.035em; }

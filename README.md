@@ -1,6 +1,6 @@
 # Mysticals
 
-A simple macOS calendar for Google and CalDAV accounts (Namecheap Private Email, iCloud, Fastmail, any CalDAV server). Built with Electron, TypeScript and React. You add accounts inside the app. It never reads the macOS Calendar database.
+A simple calendar for Google and CalDAV accounts (Namecheap Private Email, iCloud, Fastmail, any CalDAV server) on macOS, Windows and Linux. Built with Electron, TypeScript and React. You add accounts inside the app. It never reads the system calendar database.
 
 ## Repo layout
 
@@ -8,7 +8,7 @@ Turborepo + pnpm workspace. Apps live in `apps/*`, shared code in `packages/*`.
 
 - `packages/core` (`@mysticals/core`) — platform-free core shared by both apps: account store, providers (Google, CalDAV), sync engine, the validated API (`createApi`), mock backend and pure view logic. TypeScript source, bundled by each app.
 - `apps/desktop` (`@mysticals/desktop`) — the Electron app. Its `productName` is `mysticals`; don't change it lightly, Electron derives the user-data folder with accounts (and the Keychain item) from it.
-- `apps/terminal` (npm package `mysticals`) — the terminal app (Ink). Every open `mysticals` shares one background daemon that stops after the last one closes. Its data lives in `~/Library/Application Support/mysticals-terminal`, separate from the desktop app, so both can run with different accounts and settings.
+- `apps/terminal` (npm package `mysticals`) — the terminal app (Ink). Every open `mysticals` shares one background daemon that stops after the last one closes. Its data lives in a `mysticals-terminal` folder (`~/Library/Application Support` on macOS, `%APPDATA%` on Windows, `~/.local/share` on Linux), separate from the desktop app, so both can run with different accounts and settings.
 
 ## Why isolation matters
 
@@ -17,7 +17,7 @@ In a shared calendar app, one broken account can quietly make another account th
 - There is no default account or calendar. Every new event needs an explicit account and calendar.
 - Events are never copied, moved or re-created across accounts.
 - RSVPs go out only through the account that received the invite.
-- Each account has its own provider, encrypted credentials (Electron `safeStorage`, one file per account), cache and sync loop.
+- Each account has its own provider, encrypted credentials (Electron `safeStorage`: Keychain on macOS, DPAPI on Windows, Secret Service on Linux; one file per account), cache and sync loop.
 - Attendees are never added automatically. The organizer is always the chosen account itself.
 
 ## Setup
@@ -51,10 +51,11 @@ pnpm dev                  # development with hot reload
 MYSTICALS_MOCK=1 pnpm dev # two fake isolated accounts, no network
 pnpm test                 # unit tests
 pnpm e2e                  # Playwright smoke tests (mock mode)
-pnpm dist                 # unsigned .dmg and .zip (arm64 + x64) in apps/desktop/dist/
+pnpm dist                 # unsigned installers for the current OS in apps/desktop/dist/
+                          # (macOS .dmg/.zip, Windows setup .exe, Linux .AppImage/.deb)
 ```
 
-The app is shared as-is, unsigned (`identity: null` in `apps/desktop/electron-builder.yml`). On first launch, right-click the app and choose **Open**.
+The app is shared as-is, unsigned (`identity: null` in `apps/desktop/electron-builder.yml`). On macOS, right-click the app on first launch and choose **Open**. On Windows, SmartScreen warns about an unknown publisher: **More info → Run anyway**. On Linux, credentials need a running Secret Service keyring (GNOME Keyring, KWallet); without one the app refuses to store them.
 
 ## Terminal app
 
@@ -66,7 +67,7 @@ mysticals                  # press ? for keys
 MYSTICALS_MOCK=1 mysticals # two fake isolated accounts, no network
 ```
 
-- Data lives in `~/Library/Application Support/mysticals-terminal`. Credentials are encrypted there with a key kept in the macOS Keychain item `mysticals-terminal`. Nothing is shared with the desktop app.
+- Data lives in a `mysticals-terminal` folder in the OS app-data directory. Credentials are encrypted there with a key kept in the macOS Keychain, the Linux Secret Service (`secret-tool`), or sealed with Windows DPAPI. Nothing is shared with the desktop app.
 - All open `mysticals` windows share one local background daemon (accounts, sync, notifications). It stops a few seconds after the last window closes.
 - Google accounts need an OAuth client: put `MYSTICALS_GOOGLE_CLIENT_ID` and `MYSTICALS_GOOGLE_CLIENT_SECRET` in the repo-root `.env` (see `.env.example`) before building; they are embedded at build time.
 
@@ -81,7 +82,7 @@ pnpm --filter mysticals test
 
 ## Releasing
 
-A `v*` tag runs `.github/workflows/release.yml`: it builds the desktop app on macOS and attaches the `.dmg` and `.zip` files (arm64 + x64) to a GitHub Release, and publishes the terminal app to npm.
+A `v*` tag runs `.github/workflows/release.yml`: it builds the desktop app on macOS, Windows and Linux runners and attaches the `.dmg` and `.zip` (arm64 + x64), the Windows `-setup.exe` and the Linux `.AppImage` and `.deb` to one GitHub Release, and publishes the terminal app to npm.
 
 1. Bump `version` in `apps/desktop/package.json` and `apps/terminal/package.json` (both must match the tag, or the job fails).
 2. Commit, then tag and push:
@@ -93,7 +94,7 @@ A `v*` tag runs `.github/workflows/release.yml`: it builds the desktop app on ma
 
 Required repo secrets: `NPM_TOKEN`, `MYSTICALS_GOOGLE_CLIENT_ID`, `MYSTICALS_GOOGLE_CLIENT_SECRET` (one Desktop-app OAuth client shared by both apps).
 
-Installed apps pick up the release on their own. The desktop app downloads the `.zip` for its architecture and updates itself. The terminal app shows a hint to run `npm i -g mysticals`.
+Installed apps pick up the release on their own. On macOS the desktop app downloads the `.zip` for its architecture and updates itself; on Windows and Linux its update button opens the release page to download the new installer. The terminal app shows a hint to run `npm i -g mysticals`.
 
 ## Adding Namecheap Private Email (CalDAV)
 

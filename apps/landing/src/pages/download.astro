@@ -6,11 +6,11 @@ const gh = 'https://github.com/a1exalexander/mysticals'
 const latest = `${gh}/releases/latest`
 const v = desktop.version
 ---
-<Layout title="Download Mysticals" description="Download the Mysticals desktop app for macOS or install the terminal app from npm.">
+<Layout title="Download Mysticals" description="Download the Mysticals desktop app for macOS, Windows or Linux, or install the terminal app from npm.">
   <section class="wrap page-head">
     <span class="eyebrow">$ mysticals --version → {v}</span>
     <h1>Download Mysticals</h1>
-    <p class="lead">Two apps, one idea. Both are free, both run on macOS, and they keep separate accounts — install one or both.</p>
+    <p class="lead">Two apps, one idea. Both are free, both run on macOS, Windows and Linux, and they keep separate accounts — install one or both.</p>
   </section>
 
   <section class="wrap grid2">
@@ -20,9 +20,9 @@ const v = desktop.version
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2" /><path d="M8 21h8" /><path d="M12 17v4" /></svg>
           <h2>Desktop app</h2>
         </div>
-        <span class="tag">macOS · v{v}</span>
+        <span class="tag">v{v}</span>
       </div>
-      <p class="muted">Pick the build for your chip. Not sure? Apple menu → About This Mac → Chip. “Apple M…” means Apple Silicon.</p>
+      <p class="muted">Pick your system. On a Mac, pick your chip: Apple menu → About This Mac → Chip. “Apple M…” means Apple Silicon.</p>
       <div class="picks">
         <a class="pick btn" href={latest}>
           <span><b>Apple Silicon</b><small class="mono">Mysticals-{v}-arm64.dmg</small></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
@@ -30,10 +30,16 @@ const v = desktop.version
         <a class="pick ghost" href={latest}>
           <span><b>Intel</b><small class="mono muted">Mysticals-{v}-x64.dmg</small></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
         </a>
+        <a class="pick ghost" href={latest}>
+          <span><b>Windows</b><small class="mono muted">Mysticals-{v}-x64-setup.exe</small></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+        </a>
+        <a class="pick ghost" href={latest}>
+          <span><b>Linux</b><small class="mono muted">Mysticals-{v}-x86_64.AppImage · .deb</small></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+        </a>
       </div>
       <div class="notes">
         <span>Also on the release: <code>Mysticals-{v}-arm64-mac.zip</code>, <code>…-x64-mac.zip</code></span>
-        <span>The app is unsigned: on first launch, right-click it and choose Open. <a class="ul" href="/install">Step by step →</a></span>
+        <span>The app is unsigned: on a Mac right-click it and choose Open; on Windows click More info → Run anyway. <a class="ul" href="/install">Step by step →</a></span>
       </div>
     </article>
 
@@ -45,7 +51,7 @@ const v = desktop.version
         </div>
         <span class="tag">npm · v{terminal.version}</span>
       </div>
-      <p class="muted">Installs from npm as a global command. Needs Node.js 20 or newer. Works in any terminal: Terminal.app, iTerm2, Ghostty, WezTerm, tmux.</p>
+      <p class="muted">Installs from npm as a global command. Needs Node.js 20 or newer. Works in any terminal: Terminal.app, iTerm2, Ghostty, WezTerm, Windows Terminal, GNOME Terminal, tmux.</p>
       <div class="shell mono">
         <div class="shell-bar">
           <span>zsh</span>
@@ -72,22 +78,22 @@ const v = desktop.version
       <div><span>system</span><span>desktop</span><span>terminal</span><span>notes</span></div>
       <div><b>macOS · Apple Silicon</b><span class="dot">.dmg arm64</span><span class="dot">npm</span><span class="muted">Recommended</span></div>
       <div><b>macOS · Intel</b><span class="dot">.dmg x64</span><span class="dot">npm</span><span class="muted">Supported</span></div>
-      <div class="muted"><b class="hi">Windows</b><span class="dot off">not yet</span><span class="dot off">not yet</span><span>Credentials rely on the macOS Keychain today</span></div>
-      <div class="muted"><b class="hi">Linux</b><span class="dot off">not yet</span><span class="dot off">not yet</span><span>Watch the repo for news</span></div>
+      <div><b>Windows · x64</b><span class="dot">.exe setup</span><span class="dot">npm</span><span class="muted">Credentials sealed with DPAPI</span></div>
+      <div><b>Linux · x64</b><span class="dot">.AppImage / .deb</span><span class="dot">npm</span><span class="muted">Needs a Secret Service keyring (GNOME Keyring, KWallet)</span></div>
     </div>
   </section>
 
   <section class="wrap grid2 block last">
     <div class="more">
       <h3>Updates</h3>
-      <p class="muted">The desktop app downloads new releases for its architecture and updates itself. The terminal app checks npm once a day and shows a hint in the status line — then run <code>npm i -g mysticals</code> again.</p>
+      <p class="muted">On macOS the desktop app downloads new releases for its architecture and updates itself; on Windows and Linux it tells you and opens the release page. The terminal app checks npm once a day and shows a hint in the status line — then run <code>npm i -g mysticals</code> again.</p>
       <a class="ul" href={`${gh}/releases`}>All releases and changelogs →</a>
     </div>
     <div class="more">
       <h3>Build from source</h3>
       <div class="code">
         <div>git clone {gh}</div>
-        <div>pnpm i &amp;&amp; pnpm dist <span class="c"># .dmg + .zip in apps/desktop/dist</span></div>
+        <div>pnpm i &amp;&amp; pnpm dist <span class="c"># installers in apps/desktop/dist</span></div>
       </div>
       <span class="muted small">Google accounts need your own OAuth client in <code>.env</code> — see the <a class="ul" href={`${gh}#readme`}>README</a>.</span>
     </div>
