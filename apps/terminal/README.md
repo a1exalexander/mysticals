@@ -2,6 +2,8 @@
 
 Mysticals for the terminal on macOS, Linux and Windows: one calendar view over several Google and CalDAV accounts that stay isolated from each other. It's a separate app from the desktop (Electron) Mysticals, with its own accounts, settings and credentials, so you can run both on the same machine.
 
+Website: https://mysticals.sashkoratushnyi.com · Source: https://github.com/a1exalexander/mysticals
+
 ## Install
 
 ```sh
@@ -9,14 +11,20 @@ npm i -g mysticals
 mysticals
 ```
 
-Needs Node.js 20 or newer on macOS, Linux or Windows. On Linux, credentials need `secret-tool` (package `libsecret-tools` on Debian/Ubuntu, `libsecret` on Fedora/Arch) and a running keyring such as GNOME Keyring or KWallet; banners use `notify-send`. `mysticals --help` lists options, `mysticals --version` prints the version.
+Needs Node.js 20 or newer. `mysticals --help` lists options, `mysticals --version` prints the version.
+
+- **macOS**: nothing else. The credential key goes in the Keychain; notifications use `osascript`.
+- **Linux**: `secret-tool` (package `libsecret-tools` on Debian/Ubuntu, `libsecret` on Fedora/Arch) and a running keyring such as GNOME Keyring or KWallet. Optional: `notify-send` for notifications, `xdg-open` to open Google sign-in in the browser.
+- **Windows**: nothing else. The credential key is sealed with DPAPI and notifications are toasts, both through the built-in Windows PowerShell.
 
 It checks npm for a newer version once a day and shows a hint in the status line; update with `npm i -g mysticals`.
 
 Try it without real accounts:
 
 ```sh
-MYSTICALS_MOCK=1 mysticals
+MYSTICALS_MOCK=1 mysticals                  # macOS, Linux
+$env:MYSTICALS_MOCK=1; mysticals            # Windows PowerShell
+set "MYSTICALS_MOCK=1" && mysticals         # Windows cmd
 ```
 
 ## Keys
@@ -37,6 +45,17 @@ MYSTICALS_MOCK=1 mysticals
 | `?` | Help |
 | `q` | Quit (`esc` or `q` closes an open panel first) |
 
+In an open event:
+
+| Key | Action |
+| --- | --- |
+| `y` `n` `m` | Accept / decline / maybe (invitations only) |
+| `o` | Open the video-call link from the event's place |
+| `e` | Edit |
+| `x` | Delete (confirm with `y`; for a repeating event `1` this, `2` this and following, `3` all) |
+| `a` | Show all / fewer attendees (long guest lists) |
+| `esc` `q` | Close |
+
 The bottom bar has two rows. The first shows what's on now, the next event within 24 hours, the number of pending invites, and accounts whose last sync failed. The second has buttons for new, sync, invites, accounts, help and quit.
 
 The agenda shows each day as a heading (relative day, event count, busy time) followed by two-line event cards: start and end time, a bar in the calendar's colour, the title with badges (`● now · ends in 25m`, `in 25m` for the next one today, `RSVP`, `maybe`, `declined`), and a detail line (account · calendar, `↻ repeats`, `⚠ overlaps`, place or `video call`, number of people). Days without events collapse into `free` rows.
@@ -51,7 +70,7 @@ Everything with a key also works with a click: view tabs, `‹ today ›`, the b
 
 At 100 columns or wider, the agenda, day and 2 days views show the selected event (or the next one ahead) in a pane on the right.
 
-mysticals runs in the terminal's alternate screen with mouse reporting on, so a plain drag no longer selects text. Hold ⌥ Option while dragging (Shift in some terminals) to select and copy. In tmux, turn on `set -g mouse on` to pass clicks through.
+mysticals runs in the terminal's alternate screen with mouse reporting on, so a plain drag no longer selects text. To select and copy, hold ⌥ Option while dragging on macOS, or Shift on most Linux and Windows terminals (Shift in some macOS terminals too). In tmux, turn on `set -g mouse on` to pass clicks through.
 
 ## How it runs
 
