@@ -1,6 +1,6 @@
 # mysticals (terminal)
 
-Mysticals for the macOS terminal: one calendar view over several Google and CalDAV accounts that stay isolated from each other. It's a separate app from the desktop (Electron) Mysticals, with its own accounts, settings and credentials, so you can run both on the same Mac.
+Mysticals for the terminal on macOS, Linux and Windows: one calendar view over several Google and CalDAV accounts that stay isolated from each other. It's a separate app from the desktop (Electron) Mysticals, with its own accounts, settings and credentials, so you can run both on the same machine.
 
 ## Install
 
@@ -9,7 +9,7 @@ npm i -g mysticals
 mysticals
 ```
 
-Needs macOS and Node.js 20 or newer. `mysticals --help` lists options, `mysticals --version` prints the version.
+Needs Node.js 20 or newer on macOS, Linux or Windows. On Linux, credentials need `secret-tool` (package `libsecret-tools` on Debian/Ubuntu, `libsecret` on Fedora/Arch) and a running keyring such as GNOME Keyring or KWallet; banners use `notify-send`. `mysticals --help` lists options, `mysticals --version` prints the version.
 
 It checks npm for a newer version once a day and shows a hint in the status line; update with `npm i -g mysticals`.
 
@@ -55,22 +55,23 @@ mysticals runs in the terminal's alternate screen with mouse reporting on, so a 
 
 ## How it runs
 
-The first `mysticals` you open starts a small background daemon. It holds the accounts, syncs them and shows macOS notifications. Every other `mysticals` window connects to the same daemon over a unix socket, so accounts are synced once, however many windows are open. The daemon stops about 3 seconds after the last window closes. Notifications only arrive while at least one window is open.
+The first `mysticals` you open starts a small background daemon. It holds the accounts, syncs them and shows system notifications. Every other `mysticals` window connects to the same daemon over a unix socket (a named pipe on Windows), so accounts are synced once, however many windows are open. The daemon stops about 3 seconds after the last window closes. Notifications only arrive while at least one window is open.
 
 ## Where data lives
 
 | What | Where |
 | --- | --- |
-| Accounts, cache, settings | `~/Library/Application Support/mysticals-terminal` |
-| Daemon socket and log | `daemon.sock` and `daemon.log` in that folder |
-| Credentials | Encrypted in that folder (AES-256-GCM). The key is in the macOS Keychain, item `mysticals-terminal` |
+| Accounts, cache, settings | `mysticals-terminal` in `~/Library/Application Support` (macOS), `%APPDATA%` (Windows), `$XDG_DATA_HOME` or `~/.local/share` (Linux) |
+| Daemon socket and log | `daemon.sock` and `daemon.log` in that folder (Windows: a named pipe `\\.\pipe\mysticals-…` and `daemon.log`) |
+| Credentials | Encrypted in that folder (AES-256-GCM). The key is in the macOS Keychain or the Linux Secret Service (service `mysticals-terminal`), or on Windows in `master.key` in that folder, sealed with DPAPI for your Windows user |
 
-The desktop app uses its own folder and Keychain item; the two never share data. Set `MYSTICALS_HOME` to use another data folder (for example a second, independent profile). `MYSTICALS_MOCK=1` uses a temporary folder with two fake accounts and touches nothing real.
+The desktop app uses its own folder and key; the two never share data. Set `MYSTICALS_HOME` to use another data folder (for example a second, independent profile). `MYSTICALS_MOCK=1` uses a temporary folder with two fake accounts and touches nothing real.
 
 ## Troubleshooting
 
 - **"Could not start the mysticals daemon"**: read `daemon.log` in the data folder. A socket left behind by a crashed daemon is cleaned up automatically on the next start.
-- **Daemon stuck**: close all `mysticals` windows, then `pkill -f 'cli.js --daemon'` and start again.
+- **Daemon stuck**: close all `mysticals` windows, then `pkill -f 'cli.js --daemon'` (Windows: end the background `node` process in Task Manager) and start again.
+- **Linux: "Secret Service … failed"**: install `secret-tool` and make sure a keyring is running and unlocked (on a headless box, `gnome-keyring-daemon --unlock`).
 - **Keychain prompt**: on first use macOS asks to allow access to the `mysticals-terminal` Keychain item. Choose **Always Allow**. If you deny it, saved credentials can't be decrypted and accounts have to be added again.
 - **Google sign-in not available**: the build had no Google OAuth client. See below.
 

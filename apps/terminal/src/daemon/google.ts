@@ -18,6 +18,16 @@ export function googleConfig(env = process.env, defaults = built): { clientId?: 
   return { clientId: src.clientId || undefined, clientSecret: src.clientSecret || undefined }
 }
 
+/** argv for the OS "open in browser" command; rundll32 avoids `cmd /c start`, which would split the URL on `&`. */
+export function openCommand(url: string, platform = process.platform): [string, string[]] {
+  if (platform === 'darwin') return ['open', [url]]
+  if (platform === 'win32') return ['rundll32', ['url.dll,FileProtocolHandler', url]]
+  return ['xdg-open', [url]]
+}
+
 /** Opens `url` in the default browser. */
 export const openUrl = (url: string): Promise<void> =>
-  new Promise((resolve, reject) => execFile('open', [url], (e) => (e ? reject(e) : resolve())))
+  new Promise((resolve, reject) => {
+    const [file, args] = openCommand(url)
+    execFile(file, args, (e) => (e ? reject(e) : resolve()))
+  })

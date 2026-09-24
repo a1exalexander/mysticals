@@ -1,8 +1,8 @@
 {
   "name": "mysticals",
   "version": "0.1.0",
-  "description": "Isolated multi-account calendar for the macOS terminal",
-  "keywords": ["calendar", "cli", "tui", "terminal", "google-calendar", "caldav", "macos"],
+  "description": "Isolated multi-account calendar for the terminal on macOS, Linux and Windows",
+  "keywords": ["calendar", "cli", "tui", "terminal", "google-calendar", "caldav", "macos", "linux", "windows"],
   "author": "Oleksandr Ratushnyi",
   "license": "MIT",
   "repository": { "type": "git", "url": "git+https://github.com/a1exalexander/mysticals.git", "directory": "apps/terminal" },
@@ -10,7 +10,6 @@
   "bin": { "mysticals": "dist/cli.js" },
   "files": ["dist"],
   "engines": { "node": ">=20" },
-  "os": ["darwin"],
   "scripts": {
     "dev": "tsup --watch",
     "build": "tsup",

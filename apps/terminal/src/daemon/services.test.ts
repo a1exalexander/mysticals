@@ -1,9 +1,12 @@
+import { mkdtempSync, readFileSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AccountStore } from '@mysticals/core/accounts/store'
 import type { Note } from '@mysticals/core/sync/notify'
-import { createCrypto, type KeyStore } from './crypto'
-import { googleConfig } from './google'
-import { notify } from './notify'
+import { createCrypto, dpapi, platformKeys, secretTool, type KeyStore, type Run } from './crypto'
+import { googleConfig, openCommand } from './google'
+import { bannerCommand, notify } from './notify'
 import { wakeTriggers } from './triggers'
 
 const memKeys = (): KeyStore & { key?: Buffer } => ({
@@ -44,11 +47,79 @@ describe('crypto', () => {
   })
 })
 
+/** Fake spawnSync that records calls and answers from `reply`. */
+const fakeRun = (reply: (cmd: string, args: string[], input?: string) => Partial<ReturnType<Run>>) => {
+  const calls: { cmd: string; args: string[]; input?: string }[] = []
+  const run: Run = (cmd, args, opts) => {
+    calls.push({ cmd, args, input: opts.input })
+    return { status: 0, stdout: '', stderr: '', ...reply(cmd, args, opts.input) }
+  }
+  return { run, calls }
+}
+
+describe('key stores', () => {
+  const key = Buffer.alloc(32, 7)
+
+  it('secret-tool: missing item is undefined, key goes via stdin, lookup decodes', () => {
+    const { run, calls } = fakeRun((_, args) => (args[0] === 'lookup' ? { status: 1 } : {}))
+    const s = secretTool('svc', run)
+    expect(s.get()).toBeUndefined()
+    s.set(key)
+    expect(calls[1].args).not.toContain(key.toString('base64'))
+    expect(calls[1].input).toBe(key.toString('base64'))
+    const found = fakeRun(() => ({ stdout: `${key.toString('base64')}\n` }))
+    expect(secretTool('svc', found.run).get()?.equals(key)).toBe(true)
+  })
+
+  it('secret-tool: a missing binary fails loudly instead of looking like "no key"', () => {
+    const { run } = fakeRun(() => ({ status: null, error: new Error('spawnSync secret-tool ENOENT') }))
+    expect(() => secretTool('svc', run).get()).toThrow('install libsecret-tools')
+  })
+
+  it('dpapi: stores only the sealed blob and unseals it on read', () => {
+    const file = join(mkdtempSync(join(tmpdir(), 'mysticals-dpapi-')), 'master.key')
+    // Fake "seal": reverse the base64 so the file never holds the raw key.
+    const { run, calls } = fakeRun((_, __, input = '') => ({ stdout: [...input].reverse().join('') }))
+    const s = dpapi(file, run)
+    expect(s.get()).toBeUndefined()
+    s.set(key)
+    expect(readFileSync(file, 'utf8')).not.toBe(key.toString('base64'))
+    expect(s.get()?.equals(key)).toBe(true)
+    expect(calls.map((c) => c.args.at(-1))).toEqual([expect.stringContaining('::Protect('), expect.stringContaining('::Unprotect(')])
+  })
+
+  it('has a store on macOS, Linux and Windows only', () => {
+    expect(platformKeys('darwin')).toBeDefined()
+    expect(platformKeys('linux')).toBeDefined()
+    expect(platformKeys('win32')).toBeDefined()
+    expect(platformKeys('freebsd')).toBeUndefined()
+  })
+})
+
+describe('openCommand', () => {
+  it('keeps the url one argv item on every OS', () => {
+    const url = 'https://accounts.google.com/o?a=1&b=2'
+    expect(openCommand(url, 'darwin')).toEqual(['open', [url]])
+    expect(openCommand(url, 'linux')).toEqual(['xdg-open', [url]])
+    expect(openCommand(url, 'win32')).toEqual(['rundll32', ['url.dll,FileProtocolHandler', url]])
+  })
+})
+
+describe('bannerCommand', () => {
+  it('passes text as data, never as script', () => {
+    const t = 'Say "hi"; $(rm -rf ~)'
+    expect(bannerCommand(t, 'b', 'linux')?.args.slice(-2)).toEqual([t, 'b'])
+    const win = bannerCommand(t, 'b', 'win32')
+    expect(win?.args.join(' ')).not.toContain(t)
+    expect(win?.env).toMatchObject({ MYSTICALS_NOTE_TITLE: t, MYSTICALS_NOTE_BODY: 'b' })
+    expect(bannerCommand(t, 'b', 'freebsd')).toBeUndefined()
+  })
+})
+
 describe('notify', () => {
   afterEach(() => vi.unstubAllEnvs())
 
   it('passes text as osascript argv and skips hidden calendars', () => {
-    if (process.platform !== 'darwin') return
     vi.stubEnv('MYSTICALS_MOCK', '')
     const store = {
       get: () => ({ id: 'a', label: 'Work "HQ" \\' }),
@@ -59,7 +130,7 @@ describe('notify', () => {
       event: { calendarId, id: title, title, start: '2030-01-01T10:00:00Z', end: '2030-01-01T11:00:00Z', allDay: false } as Note['event']
     })
     const run = vi.fn()
-    notify(store, 'a', [ev('hidden', 'Nope'), ev('cal', 'Say "hi"')], run)
+    notify(store, 'a', [ev('hidden', 'Nope'), ev('cal', 'Say "hi"')], run, 'darwin')
     expect(run).toHaveBeenCalledTimes(1)
     const [file, args] = run.mock.calls[0]
     expect(file).toBe('osascript')

@@ -29,7 +29,8 @@ export function spawnDaemon(): void {
   mkdirSync(home, { recursive: true, mode: 0o700 })
   const log = openSync(join(home, 'daemon.log'), 'a', 0o600)
   const cli = fileURLToPath(import.meta.url) // the bundled dist/cli.js
-  spawn(process.execPath, [cli, '--daemon'], { detached: true, stdio: ['ignore', log, log], env: process.env }).unref()
+  // windowsHide: no stray console window for the background daemon on Windows.
+  spawn(process.execPath, [cli, '--daemon'], { detached: true, windowsHide: true, stdio: ['ignore', log, log], env: process.env }).unref()
 }
 
 /** Connects to the daemon on `path`, starting one via `start` if none answers. */

@@ -95,7 +95,8 @@ export async function serve(api: ApiImpl, path: string, opts: ServeOptions): Pro
     await listen(server, path)
   }
   server.on('error', (e) => console.error('daemon socket error', e))
-  chmodSync(path, 0o600)
+  // Named pipes (Windows) are not files; their default ACL already limits them to the current user.
+  if (process.platform !== 'win32') chmodSync(path, 0o600)
   armIdle()
 
   return {

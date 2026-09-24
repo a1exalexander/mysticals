@@ -16,7 +16,8 @@ All open mysticals windows share one background daemon (accounts, sync, notifica
 it stops a few seconds after the last window closes.
 
 Environment:
-  MYSTICALS_HOME   data directory (default: ~/Library/Application Support/mysticals-terminal)
+  MYSTICALS_HOME   data directory (default: mysticals-terminal in ~/Library/Application Support
+                   on macOS, %APPDATA% on Windows, $XDG_DATA_HOME or ~/.local/share on Linux)
   MYSTICALS_MOCK=1 demo mode with fake accounts; nothing real is touched
 
 Press ? inside the app for keys.`
