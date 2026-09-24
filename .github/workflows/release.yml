@@ -8,7 +8,11 @@ permissions:
   contents: write
 
 jobs:
+  check:
+    uses: ./.github/workflows/ci.yml
+
   desktop:
+    needs: check
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
@@ -67,6 +71,7 @@ jobs:
           fi
 
   npm:
+    needs: check
     runs-on: ubuntu-latest
     env:
       # prepublishOnly rebuilds dist/cli.js, so the client must be in the publish step's env.
