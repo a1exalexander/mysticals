@@ -1,5 +1,5 @@
 import { StringDecoder } from 'string_decoder'
-import type { Api } from '@multicals/core/shared/ipc'
+import type { Api } from '@mysticals/core/shared/ipc'
 
 /**
  * Daemon <-> TUI wire format: newline-delimited JSON over a unix socket.

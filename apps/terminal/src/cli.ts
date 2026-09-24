@@ -7,16 +7,16 @@ import { runDaemon } from './daemon/server'
 import { ApiContext } from './ui/hooks'
 import { App } from './ui/App'
 
-const HELP = `multicals ${version} — isolated multi-account calendar for the terminal
+const HELP = `mysticals ${version} — isolated multi-account calendar for the terminal
 
-Usage: multicals [--help | --version]
+Usage: mysticals [--help | --version]
 
-All open multicals windows share one background daemon (accounts, sync, notifications);
+All open mysticals windows share one background daemon (accounts, sync, notifications);
 it stops a few seconds after the last window closes.
 
 Environment:
-  MULTICALS_HOME   data directory (default: ~/Library/Application Support/multicals-terminal)
-  MULTICALS_MOCK=1 demo mode with fake accounts; nothing real is touched
+  MYSTICALS_HOME   data directory (default: ~/Library/Application Support/mysticals-terminal)
+  MYSTICALS_MOCK=1 demo mode with fake accounts; nothing real is touched
 
 Press ? inside the app for keys.`
 
@@ -41,7 +41,7 @@ async function main(argv: string[]): Promise<void> {
     for (const s of ['SIGTERM', 'SIGHUP'] as const) process.on(s, () => process.exit(0))
   }
   const app = render(createElement(ApiContext.Provider, { value: api }, createElement(App)))
-  // Piped stdin (e.g. `echo | multicals`): no keys; draw and quit when the input ends.
+  // Piped stdin (e.g. `echo | mysticals`): no keys; draw and quit when the input ends.
   if (!process.stdin.isTTY) process.stdin.on('end', () => app.unmount()).resume()
   await app.waitUntilExit()
   api.close()

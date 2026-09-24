@@ -1,7 +1,7 @@
 /** Add-CalDAV form inside the Accounts overlay. Mirrors desktop components/Accounts.tsx CaldavForm. Fields and buttons are clickable. */
 import { useRef, useState, type ReactNode } from 'react'
 import { Box, Text, type Key } from 'ink'
-import { errorText } from '@multicals/core/logic/editor'
+import { errorText } from '@mysticals/core/logic/editor'
 import { useApi } from '../hooks'
 import { Button, Clickable, useKeys } from '../mouse'
 import { ansiOf, C } from '../theme'

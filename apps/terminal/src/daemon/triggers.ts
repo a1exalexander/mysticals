@@ -1,4 +1,4 @@
-import type { Triggers } from '@multicals/core/sync/engine'
+import type { Triggers } from '@mysticals/core/sync/engine'
 
 /** Fires after the Mac wakes from sleep: a 30 s tick that arrives > 60 s late means the clock jumped. */
 export const wakeTriggers =

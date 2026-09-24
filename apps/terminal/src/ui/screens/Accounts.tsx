@@ -8,8 +8,8 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Box, Text } from 'ink'
-import { errorText } from '@multicals/core/logic/editor'
-import type { Account, Calendar } from '@multicals/core/shared/types'
+import { errorText } from '@mysticals/core/logic/editor'
+import type { Account, Calendar } from '@mysticals/core/shared/types'
 import { useApi, useDirectory } from '../hooks'
 import { Button, Clickable, useKeys } from '../mouse'
 import { ansiOf, C } from '../theme'

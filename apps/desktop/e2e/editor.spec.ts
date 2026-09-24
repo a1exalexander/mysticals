@@ -1,7 +1,7 @@
 import { test, expect, _electron as electron } from '@playwright/test'
 
 test('editor requires an explicit account; RSVP goes through the invite account', async () => {
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, MULTICALS_MOCK: '1' } })
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()
   await expect(page.getByTestId('calendar-view')).toBeVisible()
   const range = { start: new Date(Date.now() - 864e5 * 30).toISOString(), end: new Date(Date.now() + 864e5 * 90).toISOString() }

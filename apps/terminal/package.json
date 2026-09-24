@@ -1,13 +1,13 @@
 {
-  "name": "multicals",
+  "name": "mysticals",
   "version": "0.1.0",
   "description": "Isolated multi-account calendar for the macOS terminal",
   "keywords": ["calendar", "cli", "tui", "terminal", "google-calendar", "caldav", "macos"],
   "author": "Oleksandr Ratushnyi",
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/a1exalexander/multicals.git", "directory": "apps/terminal" },
+  "repository": { "type": "git", "url": "git+https://github.com/a1exalexander/mysticals.git", "directory": "apps/terminal" },
   "type": "module",
-  "bin": { "multicals": "dist/cli.js" },
+  "bin": { "mysticals": "dist/cli.js" },
   "files": ["dist"],
   "engines": { "node": ">=20" },
   "os": ["darwin"],
@@ -27,7 +27,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@multicals/core": "workspace:*",
+    "@mysticals/core": "workspace:*",
     "@types/node": "^26.6.2",
     "@types/react": "^19.3.0",
     "ink-testing-library": "^4.0.0",

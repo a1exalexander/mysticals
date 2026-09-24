@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { CalEvent } from '@multicals/core/shared/types'
+import type { CalEvent } from '@mysticals/core/shared/types'
 import { createTestClient, KEY, renderWith, type Rendered } from '../../test/harness'
 import { execFile } from 'node:child_process'
 import { EventDetails } from './EventDetails'

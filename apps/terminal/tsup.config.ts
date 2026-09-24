@@ -12,10 +12,10 @@ export default defineConfig({
   format: 'esm',
   platform: 'node',
   target: 'node20',
-  noExternal: ['@multicals/core'],
+  noExternal: ['@mysticals/core'],
   define: {
-    __GOOGLE_CLIENT_ID__: env('MULTICALS_GOOGLE_CLIENT_ID'),
-    __GOOGLE_CLIENT_SECRET__: env('MULTICALS_GOOGLE_CLIENT_SECRET')
+    __GOOGLE_CLIENT_ID__: env('MYSTICALS_GOOGLE_CLIENT_ID'),
+    __GOOGLE_CLIENT_SECRET__: env('MYSTICALS_GOOGLE_CLIENT_SECRET')
   },
   clean: true
 })

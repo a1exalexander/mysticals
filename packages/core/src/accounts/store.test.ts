@@ -36,7 +36,7 @@ async function addBoth() {
 const accDir = (id: string) => join(dir, 'accounts', id)
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'multicals-store-'))
+  dir = mkdtempSync(join(tmpdir(), 'mysticals-store-'))
   contexts = []
   store = new AccountStore(dir, { caldav: factory(), google: factory() }, fakeCrypto)
 })

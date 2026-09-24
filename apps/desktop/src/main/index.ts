@@ -3,20 +3,20 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { app, BrowserWindow, Menu, nativeTheme, Notification, safeStorage, shell } from 'electron'
 import { IPC } from '@shared/ipc'
-import { createMockApi } from '@multicals/core/mock/mockApi'
-import { createApi } from '@multicals/core/api'
-import { AccountStore, type SecretCrypto } from '@multicals/core/accounts/store'
-import { SyncEngine } from '@multicals/core/sync/engine'
-import { noteText, type Note } from '@multicals/core/sync/notify'
-import { createCaldavProvider, verifyCaldav } from '@multicals/core/providers/caldav'
-import { createGoogleProvider, googleSignIn, setClientConfig } from '@multicals/core/providers/google'
+import { createMockApi } from '@mysticals/core/mock/mockApi'
+import { createApi } from '@mysticals/core/api'
+import { AccountStore, type SecretCrypto } from '@mysticals/core/accounts/store'
+import { SyncEngine } from '@mysticals/core/sync/engine'
+import { noteText, type Note } from '@mysticals/core/sync/notify'
+import { createCaldavProvider, verifyCaldav } from '@mysticals/core/providers/caldav'
+import { createGoogleProvider, googleSignIn, setClientConfig } from '@mysticals/core/providers/google'
 import { registerApi } from './ipc/register'
 import { buildMenu } from './menu'
 import { electronTriggers } from './sync/electronTriggers'
 
-const MOCK = process.env.MULTICALS_MOCK === '1'
+const MOCK = process.env.MYSTICALS_MOCK === '1'
 // Mock runs (e2e) get a throwaway profile so localStorage (collapsed accounts, theme) never leaks between runs.
-if (MOCK) app.setPath('userData', mkdtempSync(join(tmpdir(), 'multicals-mock-')))
+if (MOCK) app.setPath('userData', mkdtempSync(join(tmpdir(), 'mysticals-mock-')))
 
 function broadcast(accountId: string): void {
   for (const w of BrowserWindow.getAllWindows()) w.webContents.send(IPC.changed, accountId)

@@ -1,15 +1,15 @@
 import { format } from 'date-fns'
 import { useCalendarData } from '../hooks/useCalendarData'
-import { visibleEvents } from '@multicals/core/logic/visible'
+import { visibleEvents } from '@mysticals/core/logic/visible'
 import { useNav } from '../views/nav'
-import { rangeLabel, viewDays } from '@multicals/core/logic/layout'
+import { rangeLabel, viewDays } from '@mysticals/core/logic/layout'
 import { InvitesPanel } from './Invites'
 import { useEffect, useState } from 'react'
 import { addHours } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
-import { pickNowNext, startsLabel } from '@multicals/core/logic/status'
+import { pickNowNext, startsLabel } from '@mysticals/core/logic/status'
 
 /** Events happening now (max 2, then +N) and the next one within 24h; click opens details. */
 function NowNext(): React.JSX.Element {

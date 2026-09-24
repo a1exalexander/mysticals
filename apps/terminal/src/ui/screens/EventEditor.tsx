@@ -13,8 +13,8 @@ import { format, isValid, parse } from 'date-fns'
 import {
   applyForm, emptyForm, errorText, formFromEvent, formToInput, moveStart, setAllDay, soleId, splitEmails,
   writableAccounts, writableCalendars, type EventForm
-} from '@multicals/core/logic/editor'
-import type { CalEvent } from '@multicals/core/shared/types'
+} from '@mysticals/core/logic/editor'
+import type { CalEvent } from '@mysticals/core/shared/types'
 import { useApi, useDirectory } from '../hooks'
 import { Button, Clickable, useKeys } from '../mouse'
 import { C } from '../theme'

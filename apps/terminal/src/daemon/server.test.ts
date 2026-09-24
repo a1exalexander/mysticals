@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, statSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createMockApi } from '@multicals/core/mock/mockApi'
+import { createMockApi } from '@mysticals/core/mock/mockApi'
 import { connect, type ClientApi } from '../client'
 import { serve, type Daemon } from './server'
 

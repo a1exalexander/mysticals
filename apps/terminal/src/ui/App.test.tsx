@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import type { CalEvent, TimeRange } from '@multicals/core/shared/types'
+import type { CalEvent, TimeRange } from '@mysticals/core/shared/types'
 import { createTestClient, KEY, renderApp, type Rendered } from '../test/harness'
 
 let t: Rendered
@@ -84,7 +84,7 @@ describe('App shell', () => {
     const lines = f.split('\n')
     expect(lines.at(-1)).toMatch(/n new +r sync +i invites +s accounts +\? help +q quit/)
     expect(lines.at(-2)).toContain('invite (i)')
-    expect(lines[0]).not.toContain('multicals')
+    expect(lines[0]).not.toContain('mysticals')
   })
 
   it('help overlay pauses the global keymap and closes on any key', async () => {

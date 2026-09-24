@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import type { View } from '@multicals/core/logic/layout'
+import type { View } from '@mysticals/core/logic/layout'
 
 /** Current date + view, shared by CalendarView and the sidebar mini-month. */
 export interface NavState {

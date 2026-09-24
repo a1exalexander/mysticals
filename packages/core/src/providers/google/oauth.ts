@@ -17,14 +17,14 @@ export interface ClientConfig {
 
 let clientConfig: Partial<ClientConfig> = {}
 
-/** Set once at startup by the app (desktop: MAIN_VITE_GOOGLE_*, terminal: build-time MULTICALS_GOOGLE_*). */
+/** Set once at startup by the app (desktop: MAIN_VITE_GOOGLE_*, terminal: build-time MYSTICALS_GOOGLE_*). */
 export function setClientConfig(cfg: Partial<ClientConfig>): void {
   clientConfig = cfg
 }
 
 export function getClientConfig(): ClientConfig {
   const { clientId, clientSecret } = clientConfig
-  if (!clientId || !clientSecret) throw new Error('Google sign-in is not configured: set the OAuth client id and secret (MAIN_VITE_GOOGLE_CLIENT_* in apps/desktop/.env, MULTICALS_GOOGLE_CLIENT_* when building the terminal app)')
+  if (!clientId || !clientSecret) throw new Error('Google sign-in is not configured: set the OAuth client id and secret (MAIN_VITE_GOOGLE_CLIENT_* in apps/desktop/.env, MYSTICALS_GOOGLE_CLIENT_* when building the terminal app)')
   return { clientId, clientSecret }
 }
 
@@ -91,7 +91,7 @@ export async function postToken(params: Record<string, string>): Promise<TokenRe
 }
 
 const DONE_HTML = (msg: string): string =>
-  `<!doctype html><meta charset="utf-8"><title>Multicals</title><body style="font:15px -apple-system,sans-serif;text-align:center;padding-top:80px"><h2>${msg}</h2><p>You can close this tab and return to Multicals.</p></body>`
+  `<!doctype html><meta charset="utf-8"><title>Mysticals</title><body style="font:15px -apple-system,sans-serif;text-align:center;padding-top:80px"><h2>${msg}</h2><p>You can close this tab and return to Mysticals.</p></body>`
 
 /**
  * OAuth for installed apps: system browser + loopback redirect + PKCE.

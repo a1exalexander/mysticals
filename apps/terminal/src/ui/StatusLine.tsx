@@ -8,9 +8,9 @@
  */
 import type { ReactNode } from 'react'
 import { Box, Text } from 'ink'
-import { pickNowNext, startsLabel } from '@multicals/core/logic/status'
-import { pendingInvites } from '@multicals/core/logic/details'
-import type { CalEvent } from '@multicals/core/shared/types'
+import { pickNowNext, startsLabel } from '@mysticals/core/logic/status'
+import { pendingInvites } from '@mysticals/core/logic/details'
+import type { CalEvent } from '@mysticals/core/shared/types'
 import { useDirectory, type Nav } from './hooks'
 import { Button, Clickable } from './mouse'
 import { useUpcoming } from './screens/Invites'

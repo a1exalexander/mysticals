@@ -2,11 +2,11 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "build": { "inputs": ["$TURBO_DEFAULT$", ".env*"], "outputs": ["out/**"], "env": ["MAIN_VITE_*"] },
-    "multicals#build": { "inputs": ["$TURBO_DEFAULT$", ".env*"], "outputs": ["dist/**"], "env": ["MULTICALS_GOOGLE_*"] },
+    "mysticals#build": { "inputs": ["$TURBO_DEFAULT$", ".env*"], "outputs": ["dist/**"], "env": ["MYSTICALS_GOOGLE_*"] },
     "typecheck": {},
     "test": {},
-    "e2e": { "dependsOn": ["build"], "cache": false, "passThroughEnv": ["MULTICALS_MOCK"] },
+    "e2e": { "dependsOn": ["build"], "cache": false, "passThroughEnv": ["MYSTICALS_MOCK"] },
     "dist": { "dependsOn": ["build"], "cache": false },
-    "dev": { "cache": false, "persistent": true, "passThroughEnv": ["MULTICALS_MOCK"] }
+    "dev": { "cache": false, "persistent": true, "passThroughEnv": ["MYSTICALS_MOCK"] }
   }
 }

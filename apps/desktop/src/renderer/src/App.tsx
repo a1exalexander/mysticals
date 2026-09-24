@@ -33,7 +33,7 @@ export function App(): React.JSX.Element {
       <EventTooltipHost />
       <div className="app-loader" data-done={done} aria-hidden={done} role="status" aria-label="Loading">
         <div className="app-loader-term">
-          <div><span className="app-loader-prompt">~ $</span> multicals --sync</div>
+          <div><span className="app-loader-prompt">~ $</span> mysticals --sync</div>
           <div className="app-loader-spin">
             loading accounts… <span className="app-loader-cursor" />
           </div>

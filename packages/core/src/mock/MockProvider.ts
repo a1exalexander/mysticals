@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto'
 import type { Calendar, CalEvent, DeleteScope, NewEventInput, PartStat, TimeRange } from '../shared/types'
 import type { CalendarProvider } from '../providers/types'
 
-/** In-memory provider for tests and MULTICALS_MOCK=1. One instance per fake account. */
+/** In-memory provider for tests and MYSTICALS_MOCK=1. One instance per fake account. */
 export class MockProvider implements CalendarProvider {
   calendars: Calendar[]
   events: CalEvent[] = []

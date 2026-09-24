@@ -1,20 +1,20 @@
-# multicals (terminal)
+# mysticals (terminal)
 
-Multicals for the macOS terminal: one calendar view over several Google and CalDAV accounts that stay isolated from each other. It's a separate app from the desktop (Electron) Multicals, with its own accounts, settings and credentials, so you can run both on the same Mac.
+Mysticals for the macOS terminal: one calendar view over several Google and CalDAV accounts that stay isolated from each other. It's a separate app from the desktop (Electron) Mysticals, with its own accounts, settings and credentials, so you can run both on the same Mac.
 
 ## Install
 
 ```sh
-npm i -g multicals
-multicals
+npm i -g mysticals
+mysticals
 ```
 
-Needs macOS and Node.js 20 or newer. `multicals --help` lists options, `multicals --version` prints the version.
+Needs macOS and Node.js 20 or newer. `mysticals --help` lists options, `mysticals --version` prints the version.
 
 Try it without real accounts:
 
 ```sh
-MULTICALS_MOCK=1 multicals
+MYSTICALS_MOCK=1 mysticals
 ```
 
 ## Keys
@@ -49,27 +49,27 @@ Everything with a key also works with a click: view tabs, `‹ today ›`, the b
 
 At 100 columns or wider, the agenda, day and 2 days views show the selected event (or the next one ahead) in a pane on the right.
 
-multicals runs in the terminal's alternate screen with mouse reporting on, so a plain drag no longer selects text. Hold ⌥ Option while dragging (Shift in some terminals) to select and copy. In tmux, turn on `set -g mouse on` to pass clicks through.
+mysticals runs in the terminal's alternate screen with mouse reporting on, so a plain drag no longer selects text. Hold ⌥ Option while dragging (Shift in some terminals) to select and copy. In tmux, turn on `set -g mouse on` to pass clicks through.
 
 ## How it runs
 
-The first `multicals` you open starts a small background daemon. It holds the accounts, syncs them and shows macOS notifications. Every other `multicals` window connects to the same daemon over a unix socket, so accounts are synced once, however many windows are open. The daemon stops about 3 seconds after the last window closes. Notifications only arrive while at least one window is open.
+The first `mysticals` you open starts a small background daemon. It holds the accounts, syncs them and shows macOS notifications. Every other `mysticals` window connects to the same daemon over a unix socket, so accounts are synced once, however many windows are open. The daemon stops about 3 seconds after the last window closes. Notifications only arrive while at least one window is open.
 
 ## Where data lives
 
 | What | Where |
 | --- | --- |
-| Accounts, cache, settings | `~/Library/Application Support/multicals-terminal` |
+| Accounts, cache, settings | `~/Library/Application Support/mysticals-terminal` |
 | Daemon socket and log | `daemon.sock` and `daemon.log` in that folder |
-| Credentials | Encrypted in that folder (AES-256-GCM). The key is in the macOS Keychain, item `multicals-terminal` |
+| Credentials | Encrypted in that folder (AES-256-GCM). The key is in the macOS Keychain, item `mysticals-terminal` |
 
-The desktop app uses its own folder and Keychain item; the two never share data. Set `MULTICALS_HOME` to use another data folder (for example a second, independent profile). `MULTICALS_MOCK=1` uses a temporary folder with two fake accounts and touches nothing real.
+The desktop app uses its own folder and Keychain item; the two never share data. Set `MYSTICALS_HOME` to use another data folder (for example a second, independent profile). `MYSTICALS_MOCK=1` uses a temporary folder with two fake accounts and touches nothing real.
 
 ## Troubleshooting
 
-- **"Could not start the multicals daemon"**: read `daemon.log` in the data folder. A socket left behind by a crashed daemon is cleaned up automatically on the next start.
-- **Daemon stuck**: close all `multicals` windows, then `pkill -f 'cli.js --daemon'` and start again.
-- **Keychain prompt**: on first use macOS asks to allow access to the `multicals-terminal` Keychain item. Choose **Always Allow**. If you deny it, saved credentials can't be decrypted and accounts have to be added again.
+- **"Could not start the mysticals daemon"**: read `daemon.log` in the data folder. A socket left behind by a crashed daemon is cleaned up automatically on the next start.
+- **Daemon stuck**: close all `mysticals` windows, then `pkill -f 'cli.js --daemon'` and start again.
+- **Keychain prompt**: on first use macOS asks to allow access to the `mysticals-terminal` Keychain item. Choose **Always Allow**. If you deny it, saved credentials can't be decrypted and accounts have to be added again.
 - **Google sign-in not available**: the build had no Google OAuth client. See below.
 
 ## Development
@@ -79,12 +79,12 @@ From the repo root:
 ```sh
 pnpm i
 cp apps/terminal/.env.example apps/terminal/.env   # optional, for Google accounts
-pnpm --filter multicals build                      # dist/cli.js
+pnpm --filter mysticals build                      # dist/cli.js
 node apps/terminal/dist/cli.js                     # run it
-MULTICALS_MOCK=1 node apps/terminal/dist/cli.js    # with fake accounts
-pnpm --filter multicals dev                        # rebuild on change
-pnpm --filter multicals test                       # unit, UI and daemon tests
-pnpm --filter multicals typecheck
+MYSTICALS_MOCK=1 node apps/terminal/dist/cli.js    # with fake accounts
+pnpm --filter mysticals dev                        # rebuild on change
+pnpm --filter mysticals test                       # unit, UI and daemon tests
+pnpm --filter mysticals typecheck
 ```
 
 After a rebuild, close every window so the old daemon exits before you test the new one.
@@ -94,8 +94,8 @@ After a rebuild, close every window so the old daemon exits before you test the 
 Create a Google Cloud OAuth client of type **Desktop app** (steps in the [root README](../../README.md#google-oauth-client-for-google-accounts)) and put it in `apps/terminal/.env`:
 
 ```
-MULTICALS_GOOGLE_CLIENT_ID=...apps.googleusercontent.com
-MULTICALS_GOOGLE_CLIENT_SECRET=...
+MYSTICALS_GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+MYSTICALS_GOOGLE_CLIENT_SECRET=...
 ```
 
 The values are embedded into `dist/cli.js` at build time. The same variables set in the environment at runtime override them.
@@ -108,4 +108,4 @@ npm version patch
 pnpm publish       # prepublishOnly builds dist/ first
 ```
 
-Use `pnpm publish`, not `npm publish`: it rewrites the `workspace:` version of `@multicals/core`. Only `dist/` is published and core is bundled into it.
+Use `pnpm publish`, not `npm publish`: it rewrites the `workspace:` version of `@mysticals/core`. Only `dist/` is published and core is bundled into it.

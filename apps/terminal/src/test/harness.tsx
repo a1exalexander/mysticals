@@ -12,7 +12,7 @@
 import type { ReactElement } from 'react'
 import { render } from 'ink-testing-library'
 import { vi, type Mock } from 'vitest'
-import { createMockApi } from '@multicals/core/mock/mockApi'
+import { createMockApi } from '@mysticals/core/mock/mockApi'
 import type { ClientApi } from '../client'
 import { ApiContext, type Nav } from '../ui/hooks'
 import { App } from '../ui/App'

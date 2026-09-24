@@ -1,6 +1,6 @@
 import { execFile } from 'child_process'
-import type { AccountStore } from '@multicals/core/accounts/store'
-import { noteText, type Note } from '@multicals/core/sync/notify'
+import type { AccountStore } from '@mysticals/core/accounts/store'
+import { noteText, type Note } from '@mysticals/core/sync/notify'
 import { isMock } from '../paths'
 
 type Run = (file: string, args: string[], done: (e: Error | null) => void) => unknown

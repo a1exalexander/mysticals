@@ -3,7 +3,7 @@ import { mkdirSync, openSync } from 'fs'
 import { createConnection, type Socket } from 'net'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
-import type { Api } from '@multicals/core/shared/ipc'
+import type { Api } from '@mysticals/core/shared/ipc'
 import { homeDir, socketPath } from './paths'
 import { encode, lineReader, METHODS, type Method, type Push, type Response } from './protocol'
 
@@ -44,7 +44,7 @@ export async function dial(path = socketPath(), start = spawnDaemon): Promise<So
     try {
       return await connectOnce(path)
     } catch (e) {
-      if (Date.now() > deadline) throw new Error(`Could not start the multicals daemon (see ${join(homeDir(), 'daemon.log')})`, { cause: e })
+      if (Date.now() > deadline) throw new Error(`Could not start the mysticals daemon (see ${join(homeDir(), 'daemon.log')})`, { cause: e })
       await new Promise((r) => setTimeout(r, 100))
     }
   }
@@ -78,7 +78,7 @@ export function clientFor(open: () => Promise<Socket>): ClientApi {
     sock.on('error', () => {}) // surfaced through 'close'
     sock.on('close', () => {
       current = undefined
-      for (const p of pending.values()) p.reject(new Error('Lost connection to the multicals daemon'))
+      for (const p of pending.values()) p.reject(new Error('Lost connection to the mysticals daemon'))
       pending.clear()
       if (!closed) emit('')
     })
@@ -97,7 +97,7 @@ export function clientFor(open: () => Promise<Socket>): ClientApi {
   const call = async (method: Method, params: unknown[]): Promise<unknown> => {
     const sock = await socket()
     return new Promise((resolve, reject) => {
-      if (sock.destroyed) return reject(new Error('Lost connection to the multicals daemon'))
+      if (sock.destroyed) return reject(new Error('Lost connection to the mysticals daemon'))
       const id = ++seq
       pending.set(id, { resolve, reject })
       sock.write(encode({ id, method, params }))

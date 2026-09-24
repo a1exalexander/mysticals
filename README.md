@@ -1,4 +1,4 @@
-# Multicals
+# Mysticals
 
 A simple macOS calendar for Google and CalDAV accounts (Namecheap Private Email, iCloud, Fastmail, any CalDAV server). Built with Electron, TypeScript and React. You add accounts inside the app. It never reads the macOS Calendar database.
 
@@ -6,13 +6,13 @@ A simple macOS calendar for Google and CalDAV accounts (Namecheap Private Email,
 
 Turborepo + pnpm workspace. Apps live in `apps/*`, shared code in `packages/*`.
 
-- `packages/core` (`@multicals/core`) — platform-free core shared by both apps: account store, providers (Google, CalDAV), sync engine, the validated API (`createApi`), mock backend and pure view logic. TypeScript source, bundled by each app.
-- `apps/desktop` (`@multicals/desktop`) — the Electron app. Its `productName` is `multicals`; don't change it, Electron derives the user-data folder with accounts (and the Keychain item) from it.
-- `apps/terminal` (npm package `multicals`) — the terminal app (Ink). Every open `multicals` shares one background daemon that stops after the last one closes. Its data lives in `~/Library/Application Support/multicals-terminal`, separate from the desktop app, so both can run with different accounts and settings.
+- `packages/core` (`@mysticals/core`) — platform-free core shared by both apps: account store, providers (Google, CalDAV), sync engine, the validated API (`createApi`), mock backend and pure view logic. TypeScript source, bundled by each app.
+- `apps/desktop` (`@mysticals/desktop`) — the Electron app. Its `productName` is `mysticals`; don't change it lightly, Electron derives the user-data folder with accounts (and the Keychain item) from it.
+- `apps/terminal` (npm package `mysticals`) — the terminal app (Ink). Every open `mysticals` shares one background daemon that stops after the last one closes. Its data lives in `~/Library/Application Support/mysticals-terminal`, separate from the desktop app, so both can run with different accounts and settings.
 
 ## Why isolation matters
 
-In a shared calendar app, one broken account can quietly make another account the organizer: coworkers start getting invites to work meetings from your personal Gmail. Multicals doesn't allow that:
+In a shared calendar app, one broken account can quietly make another account the organizer: coworkers start getting invites to work meetings from your personal Gmail. Mysticals doesn't allow that:
 
 - There is no default account or calendar. Every new event needs an explicit account and calendar.
 - Events are never copied, moved or re-created across accounts.
@@ -48,7 +48,7 @@ cp apps/desktop/.env.example apps/desktop/.env
 
 ```sh
 pnpm dev                  # development with hot reload
-MULTICALS_MOCK=1 pnpm dev # two fake isolated accounts, no network
+MYSTICALS_MOCK=1 pnpm dev # two fake isolated accounts, no network
 pnpm test                 # unit tests
 pnpm e2e                  # Playwright smoke tests (mock mode)
 pnpm dist                 # unsigned .dmg (arm64 + x64) in apps/desktop/dist/
@@ -61,28 +61,28 @@ The app is shared as-is, unsigned (`identity: null` in `apps/desktop/electron-bu
 The same calendar for the terminal. It's a separate app with its own accounts and settings, so you can use it next to the desktop app with different accounts. Full docs: [apps/terminal/README.md](apps/terminal/README.md).
 
 ```sh
-npm i -g multicals
-multicals                  # press ? for keys
-MULTICALS_MOCK=1 multicals # two fake isolated accounts, no network
+npm i -g mysticals
+mysticals                  # press ? for keys
+MYSTICALS_MOCK=1 mysticals # two fake isolated accounts, no network
 ```
 
-- Data lives in `~/Library/Application Support/multicals-terminal`. Credentials are encrypted there with a key kept in the macOS Keychain item `multicals-terminal`. Nothing is shared with the desktop app.
-- All open `multicals` windows share one local background daemon (accounts, sync, notifications). It stops a few seconds after the last window closes.
-- Google accounts need an OAuth client: put `MULTICALS_GOOGLE_CLIENT_ID` and `MULTICALS_GOOGLE_CLIENT_SECRET` in `apps/terminal/.env` (see `.env.example`) before building; they are embedded at build time.
+- Data lives in `~/Library/Application Support/mysticals-terminal`. Credentials are encrypted there with a key kept in the macOS Keychain item `mysticals-terminal`. Nothing is shared with the desktop app.
+- All open `mysticals` windows share one local background daemon (accounts, sync, notifications). It stops a few seconds after the last window closes.
+- Google accounts need an OAuth client: put `MYSTICALS_GOOGLE_CLIENT_ID` and `MYSTICALS_GOOGLE_CLIENT_SECRET` in `apps/terminal/.env` (see `.env.example`) before building; they are embedded at build time.
 
 Development:
 
 ```sh
-pnpm --filter multicals build                   # apps/terminal/dist/cli.js
-MULTICALS_MOCK=1 node apps/terminal/dist/cli.js
-pnpm --filter multicals dev                     # rebuild on change
-pnpm --filter multicals test
+pnpm --filter mysticals build                   # apps/terminal/dist/cli.js
+MYSTICALS_MOCK=1 node apps/terminal/dist/cli.js
+pnpm --filter mysticals dev                     # rebuild on change
+pnpm --filter mysticals test
 ```
 
 ## Adding Namecheap Private Email (CalDAV)
 
 1. In Private Email webmail, create an **application password** for the mailbox. You need one if 2FA is on, and it's a good idea anyway.
-2. In Multicals: **Add calendar → CalDAV**, preset **Namecheap Private Email**. The server URL `https://dav.privateemail.com/dav.php/` is filled in for you. It matches the SabreDAV root shown in Private Email → Configuration details → CalDAV ([Namecheap docs](https://www.namecheap.com/support/knowledgebase/subcategory/2260/private-email-contacts-and-calendars-setup/)).
+2. In Mysticals: **Add calendar → CalDAV**, preset **Namecheap Private Email**. The server URL `https://dav.privateemail.com/dav.php/` is filled in for you. It matches the SabreDAV root shown in Private Email → Configuration details → CalDAV ([Namecheap docs](https://www.namecheap.com/support/knowledgebase/subcategory/2260/private-email-contacts-and-calendars-setup/)).
 3. Enter your full email address as the username, paste the app password, and pick a label and colour.
 
 iCloud (`https://caldav.icloud.com/`, app-specific password from appleid.apple.com) and Fastmail (`https://caldav.fastmail.com/`, app password from Settings → Privacy & Security) work the same way. For any other server, choose **Custom**.

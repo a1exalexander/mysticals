@@ -3,9 +3,9 @@ import { addDays, format, isSameDay, isToday } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
-import { meetingUrl } from '@multicals/core/logic/meeting'
+import { meetingUrl } from '@mysticals/core/logic/meeting'
 import { nav } from './nav'
-import { dragRange, eventBounds, eventsOnDay, isPast, layoutDay, slotAt, statusClass, ymd } from '@multicals/core/logic/layout'
+import { dragRange, eventBounds, eventsOnDay, isPast, layoutDay, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { ColorOf } from './CalendarView'
 
 const HOUR = 48 // px per hour

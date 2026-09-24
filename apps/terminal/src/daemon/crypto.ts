@@ -1,6 +1,6 @@
 import { execFileSync, spawnSync } from 'child_process'
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto'
-import type { SecretCrypto } from '@multicals/core/accounts/store'
+import type { SecretCrypto } from '@mysticals/core/accounts/store'
 
 /** Where the 32-byte master key lives. */
 export interface KeyStore {
@@ -8,7 +8,7 @@ export interface KeyStore {
   set(key: Buffer): void
 }
 
-const SERVICE = 'multicals-terminal'
+const SERVICE = 'mysticals-terminal'
 const ACCOUNT = 'master-key'
 const NOT_FOUND = 44 // `security` exit code for a missing item
 // ponytail: sync calls block the daemon (all TUIs) while Keychain asks to unlock; capped, go async if it bites.
@@ -43,7 +43,7 @@ export function createCrypto(store?: KeyStore): SecretCrypto {
   if (!store && process.platform !== 'darwin') {
     // Refuse rather than fall back to plaintext.
     const unavailable = (): never => {
-      throw new Error('Secure storage unavailable: multicals keeps credentials only in the macOS Keychain')
+      throw new Error('Secure storage unavailable: mysticals keeps credentials only in the macOS Keychain')
     }
     return { encrypt: unavailable, decrypt: unavailable }
   }
@@ -54,7 +54,7 @@ export function createCrypto(store?: KeyStore): SecretCrypto {
     if (cached) return cached
     let k = keys.get()
     if (!k) {
-      if (!create) throw new Error('Master key missing from Keychain (service "multicals-terminal"); re-add your accounts')
+      if (!create) throw new Error('Master key missing from Keychain (service "mysticals-terminal"); re-add your accounts')
       k = randomBytes(32)
       keys.set(k)
     }

@@ -3,7 +3,7 @@ import { test, expect, _electron as electron } from '@playwright/test'
 const range = { start: new Date(Date.now() - 864e5 * 30).toISOString(), end: new Date(Date.now() + 864e5 * 30).toISOString() }
 
 test('recurring delete: "This and following" keeps earlier instances only', async () => {
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, MULTICALS_MOCK: '1' } })
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()
   await page.setViewportSize({ width: 1200, height: 800 })
   await page.getByTestId('view-switch-day').click()
@@ -26,7 +26,7 @@ test('recurring delete: "This and following" keeps earlier instances only', asyn
 })
 
 test('toolbar "+ new" opens the editor; custom picker sets date and time', async () => {
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, MULTICALS_MOCK: '1' } })
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()
   await page.setViewportSize({ width: 1200, height: 800 })
   await page.getByTestId('new-event').click()

@@ -1,7 +1,7 @@
 import { test, expect, _electron as electron } from '@playwright/test'
 
 test('ipc rejects cross-account writes and native menu exists', async () => {
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, MULTICALS_MOCK: '1' } })
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()
   await expect(page.getByTestId('calendar-view')).toBeVisible()
 

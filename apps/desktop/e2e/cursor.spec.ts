@@ -1,7 +1,7 @@
 import { test, expect, _electron as electron } from '@playwright/test'
 
 test('clickable controls use pointer cursor, disabled ones do not', async () => {
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, MULTICALS_MOCK: '1' } })
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()
   const cursor = (sel: string) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).cursor)
 

@@ -1,4 +1,4 @@
-import type { Api } from '@multicals/core/shared/ipc'
+import type { Api } from '@mysticals/core/shared/ipc'
 
 declare global {
   interface Window {

@@ -1,11 +1,11 @@
 import { chmodSync, mkdirSync, rmSync } from 'fs'
 import { createConnection, createServer, type Server, type Socket } from 'net'
-import { createApi } from '@multicals/core/api'
-import { AccountStore } from '@multicals/core/accounts/store'
-import { createMockApi } from '@multicals/core/mock/mockApi'
-import { createCaldavProvider, verifyCaldav } from '@multicals/core/providers/caldav'
-import { createGoogleProvider, googleSignIn, setClientConfig } from '@multicals/core/providers/google'
-import { SyncEngine } from '@multicals/core/sync/engine'
+import { createApi } from '@mysticals/core/api'
+import { AccountStore } from '@mysticals/core/accounts/store'
+import { createMockApi } from '@mysticals/core/mock/mockApi'
+import { createCaldavProvider, verifyCaldav } from '@mysticals/core/providers/caldav'
+import { createGoogleProvider, googleSignIn, setClientConfig } from '@mysticals/core/providers/google'
+import { SyncEngine } from '@mysticals/core/sync/engine'
 import { homeDir, isMock, socketPath } from '../paths'
 import { dispatch, encode, isMethod, lineReader, type ApiImpl, type Push, type Response } from '../protocol'
 import { createCrypto } from './crypto'
@@ -114,7 +114,7 @@ export async function serve(api: ApiImpl, path: string, opts: ServeOptions): Pro
   }
 }
 
-/** `multicals --daemon`: owns accounts, sync and notifications for every open TUI; exits when the last one closes. */
+/** `mysticals --daemon`: owns accounts, sync and notifications for every open TUI; exits when the last one closes. */
 export async function runDaemon(): Promise<void> {
   const home = homeDir()
   mkdirSync(home, { recursive: true, mode: 0o700 })

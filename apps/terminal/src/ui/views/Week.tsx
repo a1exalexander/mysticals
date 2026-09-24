@@ -4,7 +4,7 @@
  * Props: ViewProps (ui/hooks.ts). Keys: none of its own; the App shell owns them all.
  */
 import { useMemo } from 'react'
-import { viewDays } from '@multicals/core/logic/layout'
+import { viewDays } from '@mysticals/core/logic/layout'
 import type { ViewProps } from '../hooks'
 import { TimeGrid } from './TimeGrid'
 

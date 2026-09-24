@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { CalEvent } from '@multicals/core/shared/types'
+import type { CalEvent } from '@mysticals/core/shared/types'
 import { renderWith, type Rendered } from '../../test/harness'
 import type { ClientApi } from '../../client'
 import { ApiContext, eventKey } from '../hooks'

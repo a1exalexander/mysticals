@@ -36,7 +36,7 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
     devDependencies:
-      '@multicals/core':
+      '@mysticals/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@playwright/test':
@@ -100,7 +100,7 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
     devDependencies:
-      '@multicals/core':
+      '@mysticals/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@types/node':

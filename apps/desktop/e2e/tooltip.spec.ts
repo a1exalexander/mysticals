@@ -1,7 +1,7 @@
 import { test, expect, _electron as electron } from '@playwright/test'
 
 test('event tooltip shows the meeting link after a 1s hover', async () => {
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, MULTICALS_MOCK: '1' } })
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()
   await page.setViewportSize({ width: 1200, height: 800 })
   const blocks = page.getByTestId('event-block')

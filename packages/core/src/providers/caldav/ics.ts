@@ -157,7 +157,7 @@ export function parseEvents(ics: string, href: string, etag: string | undefined,
 /** Build a new single-VEVENT calendar object. ORGANIZER only when there are attendees. */
 export function buildIcs(uid: string, input: NewEventInput, email: string): string {
   const root = new ICAL.Component(['vcalendar', [], []])
-  root.addPropertyWithValue('prodid', '-//Multicals//EN')
+  root.addPropertyWithValue('prodid', '-//Mysticals//EN')
   root.addPropertyWithValue('version', '2.0')
   const v = new ICAL.Component('vevent')
   v.addPropertyWithValue('uid', uid)

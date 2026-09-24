@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { AccountStore } from '@multicals/core/accounts/store'
-import type { Note } from '@multicals/core/sync/notify'
+import type { AccountStore } from '@mysticals/core/accounts/store'
+import type { Note } from '@mysticals/core/sync/notify'
 import { createCrypto, type KeyStore } from './crypto'
 import { googleConfig } from './google'
 import { notify } from './notify'
@@ -49,7 +49,7 @@ describe('notify', () => {
 
   it('passes text as osascript argv and skips hidden calendars', () => {
     if (process.platform !== 'darwin') return
-    vi.stubEnv('MULTICALS_MOCK', '')
+    vi.stubEnv('MYSTICALS_MOCK', '')
     const store = {
       get: () => ({ id: 'a', label: 'Work "HQ" \\' }),
       hiddenCalendars: () => ['hidden']
@@ -91,11 +91,11 @@ describe('googleConfig', () => {
   const built = { clientId: 'b-id', clientSecret: 'b-secret' }
   it('uses the build-time pair unless runtime env sets a client id', () => {
     expect(googleConfig({}, built)).toEqual(built)
-    expect(googleConfig({ MULTICALS_GOOGLE_CLIENT_ID: 'r-id', MULTICALS_GOOGLE_CLIENT_SECRET: 'r-s' }, built)).toEqual({
+    expect(googleConfig({ MYSTICALS_GOOGLE_CLIENT_ID: 'r-id', MYSTICALS_GOOGLE_CLIENT_SECRET: 'r-s' }, built)).toEqual({
       clientId: 'r-id',
       clientSecret: 'r-s'
     })
-    expect(googleConfig({ MULTICALS_GOOGLE_CLIENT_SECRET: 'r-s' }, built)).toEqual(built)
+    expect(googleConfig({ MYSTICALS_GOOGLE_CLIENT_SECRET: 'r-s' }, built)).toEqual(built)
     expect(googleConfig({}, { clientId: '', clientSecret: '' })).toEqual({ clientId: undefined, clientSecret: undefined })
   })
 })

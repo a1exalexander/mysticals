@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { useStdout } from 'ink'
 import { addDays, addWeeks, startOfDay } from 'date-fns'
-import { shiftDate, viewRange } from '@multicals/core/logic/layout'
-import { visibleEvents } from '@multicals/core/logic/visible'
-import type { Account, Calendar, CalEvent, TimeRange } from '@multicals/core/shared/types'
+import { shiftDate, viewRange } from '@mysticals/core/logic/layout'
+import { visibleEvents } from '@mysticals/core/logic/visible'
+import type { Account, Calendar, CalEvent, TimeRange } from '@mysticals/core/shared/types'
 import type { ClientApi } from '../client'
 
 export const ApiContext = createContext<ClientApi | null>(null)

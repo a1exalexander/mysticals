@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { CalEvent } from '@multicals/core/shared/types'
+import type { CalEvent } from '@mysticals/core/shared/types'
 import { renderApp, renderWith, type Rendered } from '../../test/harness'
 import { eventKey } from '../hooks'
 import { Week } from './Week'

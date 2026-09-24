@@ -4,7 +4,7 @@ import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
 import { nav } from './nav'
-import { eventBounds, eventsOnDay, isPast, monthGrid, statusClass, ymd } from '@multicals/core/logic/layout'
+import { eventBounds, eventsOnDay, isPast, monthGrid, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { ColorOf } from './CalendarView'
 
 const MAX_PER_DAY = 3

@@ -1,5 +1,5 @@
 {
-  "name": "multicals-monorepo",
+  "name": "mysticals-monorepo",
   "private": true,
   "packageManager": "pnpm@10.22.0",
   "scripts": {

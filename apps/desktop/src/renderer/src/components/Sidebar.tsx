@@ -3,7 +3,7 @@ import { bus } from '../bus'
 import { setCalendarVisible, useCalendarData } from '../hooks/useCalendarData'
 import { MiniMonth } from './MiniMonth'
 
-const COLLAPSED_KEY = 'multicals-collapsed-accounts'
+const COLLAPSED_KEY = 'mysticals-collapsed-accounts'
 
 function readCollapsed(): string[] {
   try {

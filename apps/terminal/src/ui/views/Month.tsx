@@ -9,8 +9,8 @@
  */
 import { Box, Text } from 'ink'
 import { format, isSameDay, isSameMonth, startOfDay } from 'date-fns'
-import { eventBounds, eventsOnDay, isPast, monthGrid } from '@multicals/core/logic/layout'
-import type { CalEvent } from '@multicals/core/shared/types'
+import { eventBounds, eventsOnDay, isPast, monthGrid } from '@mysticals/core/logic/layout'
+import type { CalEvent } from '@mysticals/core/shared/types'
 import { eventKey, type ViewProps } from '../hooks'
 import { Clickable } from '../mouse'
 import { C } from '../theme'

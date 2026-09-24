@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
-import { meetingUrl } from '@multicals/core/logic/meeting'
+import { meetingUrl } from '@mysticals/core/logic/meeting'
 import { placeTip } from './EventTooltip.logic'
 import './EventTooltip.css'
 

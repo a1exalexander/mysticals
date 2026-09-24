@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Account, Calendar, CalEvent, TimeRange } from '@shared/types'
-import { key } from '@multicals/core/logic/visible'
+import { key } from '@mysticals/core/logic/visible'
 import { bus } from '../bus'
 
 export interface CalendarData {

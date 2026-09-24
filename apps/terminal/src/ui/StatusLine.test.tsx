@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import type { Account, CalEvent } from '@multicals/core/shared/types'
+import type { Account, CalEvent } from '@mysticals/core/shared/types'
 import { createTestClient, renderWith, type Rendered } from '../test/harness'
 import { StatusLine } from './StatusLine'
 

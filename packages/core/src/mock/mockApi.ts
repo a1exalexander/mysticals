@@ -10,7 +10,7 @@ const iso = (dayOffset: number, h: number, m = 0): string => {
   return d.toISOString()
 }
 
-/** Two isolated fake accounts with seeded events. Used when MULTICALS_MOCK=1. */
+/** Two isolated fake accounts with seeded events. Used when MYSTICALS_MOCK=1. */
 export function createMockApi(onChanged: (accountId: string) => void): Omit<Api, 'onChanged' | 'onMenu'> {
   const accounts: Account[] = [
     { id: 'work', kind: 'caldav', label: 'Work', email: 'me@work.example', color: '#8be9fd' },

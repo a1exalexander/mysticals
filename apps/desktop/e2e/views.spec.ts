@@ -1,7 +1,7 @@
 import { test, expect, _electron as electron } from '@playwright/test'
 
 test('calendar views: week/month/day, visibility toggle, screenshots', async () => {
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, MULTICALS_MOCK: '1' } })
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()
   await page.setViewportSize({ width: 1200, height: 800 })
   const blocks = page.getByTestId('event-block')
@@ -99,6 +99,6 @@ test('calendar views: week/month/day, visibility toggle, screenshots', async () 
   await page.screenshot({ path: 'e2e/screens/theme-tokyo.png' })
   await page.reload()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'tokyo')
-  await page.evaluate(() => localStorage.removeItem('multicals-theme'))
+  await page.evaluate(() => localStorage.removeItem('mysticals-theme'))
   await app.close()
 })

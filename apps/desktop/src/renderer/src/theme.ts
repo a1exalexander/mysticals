@@ -10,7 +10,7 @@ export const THEMES = [
 
 export type ThemeId = (typeof THEMES)[number]['id']
 
-const KEY = 'multicals-theme'
+const KEY = 'mysticals-theme'
 const isTheme = (v: unknown): v is ThemeId => THEMES.some((t) => t.id === v)
 
 function read(): ThemeId {

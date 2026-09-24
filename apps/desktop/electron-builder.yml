@@ -1,5 +1,5 @@
-appId: com.a1exalexander.multicals
-productName: Multicals
+appId: com.a1exalexander.mysticals
+productName: Mysticals
 directories:
   buildResources: build
   output: dist

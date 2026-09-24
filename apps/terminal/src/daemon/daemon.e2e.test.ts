@@ -13,7 +13,7 @@ import { socketPath } from '../paths'
 const root = resolve(__dirname, '../..')
 const cli = join(root, 'dist/cli.js')
 const home = mkdtempSync(join(tmpdir(), 'mc-e2e-'))
-const env = { ...process.env, MULTICALS_MOCK: '1', MULTICALS_HOME: home }
+const env = { ...process.env, MYSTICALS_MOCK: '1', MYSTICALS_HOME: home }
 const procs: ChildProcess[] = []
 
 beforeAll(() => {
