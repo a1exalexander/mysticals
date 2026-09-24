@@ -40,4 +40,10 @@ describe('StatusLine', () => {
     expect(f.split('\n')[1]).toMatch(/^n new/)
     for (const l of f.split('\n')) expect(l.length).toBeLessThanOrEqual(30)
   })
+
+  it('ends the info row with the update hint, after the empty-day fallback', async () => {
+    t = renderWith(<StatusLine nav={nav} events={[]} now={now} update="9.9.9" width={200} />)
+    const f = await t.waitFor('available')
+    expect(f).toContain('nothing on in the next 24h · ↑ 9.9.9 available · npm i -g mysticals')
+  })
 })

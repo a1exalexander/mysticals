@@ -11,6 +11,8 @@ mysticals
 
 Needs macOS and Node.js 20 or newer. `mysticals --help` lists options, `mysticals --version` prints the version.
 
+It checks npm for a newer version once a day and shows a hint in the status line; update with `npm i -g mysticals`.
+
 Try it without real accounts:
 
 ```sh

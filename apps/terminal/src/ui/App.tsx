@@ -148,7 +148,8 @@ function title({ view, date }: Nav): string {
 const chronological = (a: CalEvent, b: CalEvent): number =>
   eventBounds(a).start.getTime() - eventBounds(b).start.getTime() || Number(b.allDay) - Number(a.allDay)
 
-export function App(props: { initialNav?: Nav }) {
+/** `updateCheck`: resolves to a newer npm version, if any (cli passes `checkUpdate()`; tests leave it out). */
+export function App(props: { initialNav?: Nav; updateCheck?: Promise<string | undefined> }) {
   return (
     <MouseProvider>
       <Shell {...props} />
@@ -156,7 +157,7 @@ export function App(props: { initialNav?: Nav }) {
   )
 }
 
-function Shell({ initialNav }: { initialNav?: Nav }) {
+function Shell({ initialNav, updateCheck }: { initialNav?: Nav; updateCheck?: Promise<string | undefined> }) {
   const api = useApi()
   const { exit } = useApp()
   // False when stdin is piped: keys are off (overlays can't open then, so only the shell needs this check).
@@ -169,6 +170,8 @@ function Shell({ initialNav }: { initialNav?: Nav }) {
   const [selectedKey, setSelectedKey] = useState<string>()
   const [overlay, setOverlay] = useState<Overlay>()
   const [message, setMessage] = useState<string>()
+  const [update, setUpdate] = useState<string>()
+  useEffect(() => void updateCheck?.then(setUpdate), [updateCheck])
 
   const ordered = useMemo(() => [...events].sort(chronological), [events])
   const selectedIdx = ordered.findIndex((e) => eventKey(e) === selectedKey)
@@ -379,6 +382,7 @@ function Shell({ initialNav }: { initialNav?: Nav }) {
         events={events}
         now={now}
         message={error ? `Error: ${error}` : message}
+        update={update}
         width={width}
         onOpen={(event) => !overlay && setOverlay({ kind: 'details', event })}
         onInvites={() => !overlay && setOverlay({ kind: 'invites' })}

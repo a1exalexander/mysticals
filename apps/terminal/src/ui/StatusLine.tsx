@@ -1,7 +1,7 @@
 /**
  * Bottom bar, two rows truncated to `width`:
  *   1. info: current event(s) and the next one within 24h (core `pickNowNext`, `startsLabel`), pending invite count,
- *      accounts whose last sync failed, and a transient `message` from the shell;
+ *      accounts whose last sync failed, a transient `message` from the shell, and last a newer-version hint (`update`);
  *   2. actions: new, sync, invites, accounts, help, quit as key buttons.
  * Every part is clickable (opens the event / overlay, or runs the action).
  * Now/next and invites come from a today+60d fetch, so they don't depend on the viewed range.
@@ -22,6 +22,8 @@ export interface StatusLineProps {
   events: CalEvent[]
   now: Date
   message?: string
+  /** Newer published version (see `checkUpdate`); shows an install hint at the end of the info row. */
+  update?: string
   width: number
   onOpen?(e: CalEvent): void
   onInvites?(): void
@@ -35,7 +37,7 @@ export interface StatusLineProps {
 const DAY_MS = 24 * 3600_000
 const noop = (): void => {}
 
-export function StatusLine({ now, message, width, onOpen, onInvites, onAccounts, onHelp, onNew, onSync, onQuit }: StatusLineProps) {
+export function StatusLine({ now, message, update, width, onOpen, onInvites, onAccounts, onHelp, onNew, onSync, onQuit }: StatusLineProps) {
   const { events } = useUpcoming(now)
   const failed = useDirectory().accounts.filter((a) => a.error)
   const { current, next } = pickNowNext(events, now)
@@ -49,6 +51,7 @@ export function StatusLine({ now, message, width, onOpen, onInvites, onAccounts,
   if (failed.length) parts.push([<Text color={C.red}>⚠ {failed.map((a) => a.label).join(', ')} sync failed (s)</Text>, onAccounts])
   if (message) parts.push([message])
   if (!parts.length) parts.push([<Text color={C.muted}>nothing on in the next 24h</Text>])
+  if (update) parts.push([<Text color={C.yellow}>↑ {update} available · npm i -g mysticals</Text>])
 
   // Parts never shrink; each row clips at `width`, so the tail is what gets cut.
   return (

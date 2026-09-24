@@ -6,6 +6,7 @@ import { connect } from './client'
 import { runDaemon } from './daemon/server'
 import { ApiContext } from './ui/hooks'
 import { App } from './ui/App'
+import { checkUpdate } from './update'
 
 const HELP = `mysticals ${version} — isolated multi-account calendar for the terminal
 
@@ -32,6 +33,7 @@ async function main(argv: string[]): Promise<void> {
   }
 
   const api = await connect()
+  const stopUpdate = new AbortController() // a slow registry must not keep the process alive after quit
   if (process.stdin.isTTY && process.stdout.isTTY) {
     // Alternate screen (restores the shell on exit; the app is drawn from row 1 so mouse cells map to layout)
     // + mouse press/wheel reports in SGR encoding. Always undone on exit, or the shell fills with "[<0;…M" junk.
@@ -40,10 +42,11 @@ async function main(argv: string[]): Promise<void> {
     process.on('exit', leaveScreen)
     for (const s of ['SIGTERM', 'SIGHUP'] as const) process.on(s, () => process.exit(0))
   }
-  const app = render(createElement(ApiContext.Provider, { value: api }, createElement(App)))
+  const app = render(createElement(ApiContext.Provider, { value: api }, createElement(App, { updateCheck: checkUpdate(stopUpdate.signal) })))
   // Piped stdin (e.g. `echo | mysticals`): no keys; draw and quit when the input ends.
   if (!process.stdin.isTTY) process.stdin.on('end', () => app.unmount()).resume()
   await app.waitUntilExit()
+  stopUpdate.abort()
   api.close()
 }
 
