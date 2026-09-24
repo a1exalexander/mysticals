@@ -2,6 +2,7 @@
   "name": "@mysticals/core",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Platform-free calendar core shared by the desktop and terminal apps (TS source; consumers bundle it)",
   "exports": {
     "./providers/caldav": "./src/providers/caldav/index.ts",

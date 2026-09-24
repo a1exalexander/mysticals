@@ -1,6 +1,7 @@
 {
   "name": "@mysticals/landing",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": { "dev": "astro dev", "build": "astro build", "preview": "astro preview" },
   "dependencies": { "astro": "7.3.4" }

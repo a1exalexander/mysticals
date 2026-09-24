@@ -102,3 +102,7 @@ Installed apps pick up the release on their own. The desktop app downloads the `
 3. Enter your full email address as the username, paste the app password, and pick a label and colour.
 
 iCloud (`https://caldav.icloud.com/`, app-specific password from appleid.apple.com) and Fastmail (`https://caldav.fastmail.com/`, app password from Settings → Privacy & Security) work the same way. For any other server, choose **Custom**.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

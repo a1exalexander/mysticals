@@ -1,6 +1,7 @@
 {
   "name": "mysticals-monorepo",
   "private": true,
+  "license": "MIT",
   "packageManager": "pnpm@10.22.0",
   "scripts": {
     "dev": "turbo dev",

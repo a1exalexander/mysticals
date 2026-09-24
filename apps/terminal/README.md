@@ -111,3 +111,7 @@ pnpm publish       # prepublishOnly builds dist/ first
 ```
 
 Use `pnpm publish`, not `npm publish`: it rewrites the `workspace:` version of `@mysticals/core`. Only `dist/` is published and core is bundled into it.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
