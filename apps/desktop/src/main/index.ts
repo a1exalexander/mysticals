@@ -1,7 +1,7 @@
 import { join } from 'path'
 import { mkdtempSync, readFileSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
-import { app, BrowserWindow, Menu, nativeTheme, Notification, safeStorage, shell } from 'electron'
+import { app, BrowserWindow, dialog, Menu, nativeTheme, Notification, safeStorage, shell } from 'electron'
 import { IPC } from '@shared/ipc'
 import { createMockApi } from '@mysticals/core/mock/mockApi'
 import { createApi } from '@mysticals/core/api'
@@ -19,6 +19,22 @@ const MOCK = process.env.MYSTICALS_MOCK === '1'
 const MAC = process.platform === 'darwin'
 // Mock runs (e2e) get a throwaway profile so localStorage (collapsed accounts, theme) never leaks between runs.
 if (MOCK) app.setPath('userData', mkdtempSync(join(tmpdir(), 'mysticals-mock-')))
+// One copy per profile (the lock is keyed on userData, so e2e temp profiles never collide):
+// two copies would each rewrite accounts.json from their own in-memory list.
+const primary = app.requestSingleInstanceLock()
+if (!primary) app.quit()
+// Only once the backend is up: during startup (or the load-error box) there is nothing to show yet.
+let started = false
+app.on('second-instance', () => started && showMain())
+
+/** Brings the main window forward, or opens one. */
+function showMain(): void {
+  const win = BrowserWindow.getAllWindows()[0]
+  if (!win) return createWindow()
+  if (win.isMinimized()) win.restore()
+  win.show()
+  win.focus()
+}
 
 function broadcast(accountId: string): void {
   for (const w of BrowserWindow.getAllWindows()) w.webContents.send(IPC.changed, accountId)
@@ -44,11 +60,7 @@ function notify(store: AccountStore, accountId: string, notes: Note[]): void {
     })
     n.on('click', () => {
       banners.delete(n)
-      const win = BrowserWindow.getAllWindows()[0]
-      if (!win) return createWindow()
-      if (win.isMinimized()) win.restore()
-      win.show()
-      win.focus()
+      showMain()
     })
     n.show()
   }
@@ -61,9 +73,15 @@ function notify(store: AccountStore, accountId: string, notes: Note[]): void {
 const secureStorageReady = (): boolean =>
   safeStorage.isEncryptionAvailable() && (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text')
 
+const NO_SECURE_STORAGE =
+  'Secure storage is unavailable; refusing to store credentials' +
+  (process.platform === 'linux'
+    ? '. Install and unlock a Secret Service keyring (GNOME Keyring or KWallet), then restart Mysticals.'
+    : '')
+
 const safeStorageCrypto: SecretCrypto = {
   encrypt(plain) {
-    if (!secureStorageReady()) throw new Error('Secure storage is unavailable; refusing to store credentials')
+    if (!secureStorageReady()) throw new Error(NO_SECURE_STORAGE)
     return safeStorage.encryptString(plain)
   },
   decrypt: (data) => safeStorage.decryptString(data)
@@ -123,6 +141,9 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  if (!primary) return
+  // Must match appId in electron-builder.yml, or Windows toasts show the wrong name/icon.
+  if (process.platform === 'win32') app.setAppUserModelId('com.a1exalexander.mysticals')
   nativeTheme.themeSource = 'dark'
   // Packaged builds get the icon from electron-builder; in dev the dock would show Electron's.
   if (!app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'build/icon.png'))
@@ -135,7 +156,19 @@ app.whenReady().then(() => {
       clientSecret: import.meta.env.MYSTICALS_GOOGLE_CLIENT_SECRET
     })
     const factories = { caldav: createCaldavProvider, google: createGoogleProvider }
-    const store = new AccountStore(app.getPath('userData'), factories, safeStorageCrypto)
+    let store: AccountStore
+    try {
+      store = new AccountStore(app.getPath('userData'), factories, safeStorageCrypto)
+    } catch (e) {
+      // Unreadable accounts.json: say so and quit rather than open a window with no backend. The file is left as is.
+      const file = join(app.getPath('userData'), 'accounts.json')
+      console.error('failed to load accounts', file, e)
+      dialog.showErrorBox(
+        'Mysticals could not load your accounts',
+        `${file} could not be read:\n${e instanceof Error ? e.message : String(e)}\n\nThe file was not changed. Fix it or move it aside (Mysticals then starts with no accounts), and reopen the app.`
+      )
+      return app.quit()
+    }
     const sync = new SyncEngine(store, broadcast, {
       triggers: electronTriggers,
       onEvents: (id, notes) => notify(store, id, notes),
@@ -150,6 +183,7 @@ app.whenReady().then(() => {
     }
   }
   startUpdater()
+  started = true
   createWindow()
   app.on('activate', () => BrowserWindow.getAllWindows().length === 0 && createWindow())
 })
