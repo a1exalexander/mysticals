@@ -1,0 +1,53 @@
+---
+import Layout from '../layouts/Layout.astro'
+---
+<Layout title="Multicals — all your calendars, one app">
+  <section class="hero">
+    <h1 class="grad">All your calendars. One app.</h1>
+    <p class="lead">Connect many Google and CalDAV accounts. See every event in one place. Free, local, no sign-up.</p>
+    <div class="pills">
+      <span class="pill">Google</span><span class="pill">iCloud</span><span class="pill">Fastmail</span><span class="pill">Any CalDAV</span>
+    </div>
+  </section>
+
+  <h2>Why Multicals</h2>
+  <div class="grid features">
+    <div class="card"><h3>Many accounts</h3><p>Add as many Google and CalDAV accounts as you like. Work, personal, side projects. All in one view.</p></div>
+    <div class="card"><h3>Accounts stay isolated</h3><p>No default account. Every event picks its account and calendar. RSVPs go from the account that got the invite.</p></div>
+    <div class="card"><h3>Works locally</h3><p>No Multicals account. No sign-up. Your data stays on your device.</p></div>
+    <div class="card"><h3>Free</h3><p>Both apps are free. No trials, no plans.</p></div>
+  </div>
+
+  <h2>Two apps. Pick yours.</h2>
+  <div class="grid apps">
+    <div class="card">
+      <h3>Desktop</h3>
+      <p>A native-feeling calendar app. macOS · Windows · Linux.</p>
+      <div class="actions">
+        <a class="btn" href="https://github.com/a1exalexander/multicals/releases/latest">Download</a>
+        <a class="btn ghost" href="/desktop">How to install</a>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Terminal</h3>
+      <p>Your calendars in the terminal. Keyboard and mouse. macOS · Windows · Linux, Node 20+.</p>
+      <pre><code>npm i -g multicals</code></pre>
+      <a href="/terminal">Terminal guide →</a>
+    </div>
+  </div>
+
+  <h2>FAQ</h2>
+  <details><summary>Is it free?</summary><p>Yes. Both apps are free.</p></details>
+  <details><summary>Do I need an account?</summary><p>No. There is no Multicals account. You only sign in to your own Google or CalDAV accounts.</p></details>
+  <details><summary>Where is my data?</summary><p>On your device. Events and credentials are stored locally. Nothing goes through our servers.</p></details>
+</Layout>
+
+<style>
+  .features { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .hero { padding-block: 24px 16px; }
+  .hero h1 { margin-top: 32px; }
+  .apps .card { display: flex; flex-direction: column; gap: 12px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; }
+  .apps pre { margin: 0; }
+  details p { margin: 8px 0 0; color: var(--muted); }
+</style>
