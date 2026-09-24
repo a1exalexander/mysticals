@@ -94,7 +94,8 @@ function UpdateItem(): React.JSX.Element | null {
     case 'available':
       return (
         <button type="button" className="sbar-seg sbar-upd" data-testid="sbar-update" onClick={install}>
-          ↑ Update to {s.version}
+          {/* Off macOS install just opens the release page (main/update.ts SWAP). */}
+          {document.documentElement.dataset.platform === 'darwin' ? '↑ Update to' : '↓ Download'} {s.version}
         </button>
       )
     case 'downloading':

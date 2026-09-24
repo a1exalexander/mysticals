@@ -40,7 +40,7 @@ function set(next: UpdateState): void {
 function banner(version: string): void {
   if (notified.has(version) || !Notification.isSupported()) return
   notified.add(version)
-  const n = new Notification({ title: `Mysticals ${version} is available`, body: 'Click to update' })
+  const n = new Notification({ title: `Mysticals ${version} is available`, body: SWAP ? 'Click to update' : 'Click to download' })
   banners.add(n)
   n.on('close', () => banners.delete(n))
   n.on('failed', (_, error) => {

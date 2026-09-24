@@ -44,3 +44,6 @@ linux:
       arch: [x64]
     - target: deb
       arch: [x64]
+deb:
+  # Default is productName ("Mysticals"); Debian package names must be lowercase.
+  packageName: mysticals

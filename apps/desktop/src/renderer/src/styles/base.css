@@ -111,8 +111,10 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 /* ---------- Sidebar ---------- */
 .sidebar {
   display: flex; flex-direction: column; min-height: 0;
-  padding: 44px 0 0; background: var(--surface); -webkit-app-region: drag; overflow: hidden;
+  padding: 44px 0 0; background: var(--surface); overflow: hidden;
 }
+/* Hidden title bar is macOS-only; inside a native frame drag regions swallow clicks. */
+:root[data-platform='darwin'] .sidebar, :root[data-platform='darwin'] .toolbar { -webkit-app-region: drag; }
 .sidebar button, .sidebar label, .sidebar input { -webkit-app-region: no-drag; }
 /* Native title bar off macOS: no traffic lights to clear. */
 :root[data-platform='win32'] .sidebar, :root[data-platform='linux'] .sidebar { padding-top: 12px; }
@@ -189,7 +191,6 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .calendar-view { position: relative; height: 100%; display: flex; flex-direction: column; }
 .toolbar {
   flex: none; height: 52px; display: flex; align-items: center; gap: 14px; padding: 0 14px 0 20px;
-  -webkit-app-region: drag;
 }
 .toolbar button { -webkit-app-region: no-drag; }
 .toolbar-title {
