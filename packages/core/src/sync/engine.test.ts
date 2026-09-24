@@ -82,6 +82,14 @@ describe('SyncEngine', () => {
     expect(cache.events[0]).toMatchObject({ accountId: 'work', calendarId: 'work-cal' })
   })
 
+  it('reports syncing state around a sync', async () => {
+    store.add('work')
+    const seen: boolean[] = []
+    const engine: SyncEngine = new SyncEngine(store, () => {}, { triggers: noTriggers, onSyncing: (id) => seen.push(engine.isSyncing(id)) })
+    await engine.syncNow('work')
+    expect(seen).toEqual([true, false])
+  })
+
   it('calls onChanged only when content differs', async () => {
     const work = store.add('work')
     const changed = vi.fn()

@@ -36,12 +36,14 @@ describe('Agenda view', () => {
     const lines = f.split('\n')
     expect(lines[0]).toMatch(/^ Wed 23 Sep  today ─+ 5 events · 4h busy/)
     expect(lines[1]).toMatch(/^ all day +▌ Holiday/)
-    expect(lines[3]).toMatch(/^  09:00 +▌ Standup +1h$/)
-    expect(lines[4]).toMatch(/^  10:00 +▌ Work  Room 3  2 people/)
-    expect(lines[5]).toMatch(/▌ Lunch  ● now · ends in 1h +1h 30m$/)
-    expect(lines[6]).toContain('⚠ overlaps')
-    expect(lines[7]).toMatch(/^  12:00 ─+/) // now-line after the events that have started
-    expect(lines[8]).toMatch(/▌ Sync  in 30m/)
+    expect(lines[3]).toMatch(/^ {9}─+$/) // divider between two cards
+    expect(lines[4]).toMatch(/^  09:00 +▌ Standup +1h$/)
+    expect(lines[5]).toMatch(/^  10:00 +▌ Work  Room 3  2 people/)
+    expect(lines[6]).toMatch(/^ {9}─+$/)
+    expect(lines[7]).toMatch(/▌ Lunch  ● now · ends in 1h +1h 30m$/)
+    expect(lines[8]).toContain('⚠ overlaps')
+    expect(lines[9]).toMatch(/^  12:00 ─+/) // now-line after the events that have started, no divider around it
+    expect(lines[10]).toMatch(/▌ Sync  in 30m/)
     expect(f).toMatch(/▌ Late +1h/)
     expect(f).toMatch(/ Thu 24 Sep  free/)
     expect(f).toMatch(/Fri 25 Sep  in 2 days ─+ 1 event · 1h 30m busy/)

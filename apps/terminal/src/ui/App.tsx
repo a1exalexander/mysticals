@@ -15,7 +15,7 @@ import { EventDetails, EventInfo } from './screens/EventDetails'
 import { EventEditor } from './screens/EventEditor'
 import { Accounts } from './screens/Accounts'
 import { Invites } from './screens/Invites'
-import { StatusLine } from './StatusLine'
+import { Spinner, StatusLine } from './StatusLine'
 
 /** At most one overlay at a time; while open it owns all keyboard input. */
 export type Overlay =
@@ -44,7 +44,7 @@ const HELP: [string, string][] = [
   ['?', 'this help'],
   ['q', 'quit'],
   ['click', 'tabs, buttons, events (click again to open), day headers'],
-  ['wheel', 'select next / previous event'],
+  ['wheel', 'scroll the list / hours'],
   ['⌥ drag', 'select text (Shift in some terminals)']
 ]
 
@@ -134,6 +134,24 @@ function Preview({ event, selected, now, width, height, onOpen }: {
         <Text color={C.muted}>Nothing ahead in this range</Text>
       )}
     </Clickable>
+  )
+}
+
+/** While `pending` (nothing to show yet) and a new account is on its first sync: a spinner instead of `children`. */
+function FirstSync({ pending, width, height, children }: { pending: boolean; width: number; height: number; children: ReactNode }) {
+  return pending ? <FirstSyncCheck width={width} height={height}>{children}</FirstSyncCheck> : <>{children}</>
+}
+
+// Split out so the accounts load only runs while the view is empty.
+function FirstSyncCheck({ width, height, children }: { width: number; height: number; children: ReactNode }) {
+  const first = useDirectory().accounts.filter((a) => a.syncing && !a.synced)
+  if (!first.length) return <>{children}</>
+  return (
+    <Box width={width} height={height} alignItems="center" justifyContent="center">
+      <Text>
+        <Spinner /> First sync of {first.map((a) => a.label).join(', ')}…
+      </Text>
+    </Box>
   )
 }
 
@@ -269,8 +287,9 @@ function Shell({ initialNav, updateCheck }: { initialNav?: Nav; updateCheck?: Pr
   /** New events start on the cursor day (agenda: the anchor day) at the current time; the editor rounds it up. */
   const newStart = (): Date => (grid ? set(cursor, { hours: now.getHours(), minutes: now.getMinutes() }) : nav.date)
 
+  // the status line shows a spinner while accounts sync
   const syncNow = (): void => {
-    setMessage('Syncing…')
+    setMessage(undefined)
     api.sync.now().then(
       () => setMessage('Synced'),
       (e: unknown) => setMessage(`Sync failed: ${errorText(e)}`)
@@ -335,7 +354,7 @@ function Shell({ initialNav, updateCheck }: { initialNav?: Nav; updateCheck?: Pr
         return <Help onClose={close} />
       default:
         return (
-          <>
+          <FirstSync pending={!events.length} width={width} height={bodyHeight}>
             <ViewComponent
               events={events}
               date={nav.date}
@@ -345,7 +364,6 @@ function Shell({ initialNav, updateCheck }: { initialNav?: Nav; updateCheck?: Pr
               onSelect={select}
               onOpen={(event) => setOverlay({ kind: 'details', event })}
               onPickDay={openDay}
-              onCreate={(start) => setOverlay({ kind: 'editor', initialStart: start })}
               width={width - paneWidth}
               height={bodyHeight}
             />
@@ -360,7 +378,7 @@ function Shell({ initialNav, updateCheck }: { initialNav?: Nav; updateCheck?: Pr
                 onOpen={(event) => setOverlay({ kind: 'details', event })}
               />
             )}
-          </>
+          </FirstSync>
         )
     }
   }
@@ -374,9 +392,9 @@ function Shell({ initialNav, updateCheck }: { initialNav?: Nav; updateCheck?: Pr
         onShift={(dir) => !overlay && shift(dir)}
         onToday={() => !overlay && today()}
       />
-      <Clickable flexDirection={overlay ? 'column' : 'row'} height={bodyHeight} onWheel={overlay ? undefined : move}>
+      <Box flexDirection={overlay ? 'column' : 'row'} height={bodyHeight}>
         {body()}
-      </Clickable>
+      </Box>
       <StatusLine
         nav={nav}
         events={events}

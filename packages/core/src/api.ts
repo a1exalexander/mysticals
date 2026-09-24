@@ -105,7 +105,8 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
 
   return {
     accounts: {
-      list: async () => store.list(),
+      list: async () =>
+        store.list().map((a) => ({ ...a, syncing: sync.isSyncing(a.id), synced: !!store.readCache(a.id).syncedAt })),
       addGoogle: async () => {
         const { email, credentials } = await deps.googleSignIn()
         const a = await store.add({ kind: 'google', label: email, email, color: nextColor() }, credentials)
@@ -149,7 +150,8 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
       }
     },
     events: {
-      list: async (raw) => queryEvents(store, Range.parse(raw), false),
+      // `raw` stays in the daemon/main process: it can be huge (CalDAV series ICS) and writes re-read it from the cache.
+      list: async (raw) => queryEvents(store, Range.parse(raw), false).map(({ raw: _raw, ...e }) => e),
       create: async (raw) => {
         const input = NewEvent.parse(raw)
         const a = account(input.accountId)

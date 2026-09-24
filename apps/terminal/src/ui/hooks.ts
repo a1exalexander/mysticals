@@ -142,8 +142,6 @@ export interface ViewProps {
   onOpen(e: CalEvent): void
   /** Show this day in the day view. */
   onPickDay?(day: Date): void
-  /** New event starting at `start` (e.g. a click on an hour of the day view). */
-  onCreate?(start: Date): void
   /** Columns/rows available to the view (header + status line already subtracted). */
   width: number
   height: number

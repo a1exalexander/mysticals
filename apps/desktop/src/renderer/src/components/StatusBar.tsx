@@ -129,6 +129,11 @@ export function StatusBar(): React.JSX.Element {
       <span className="sbar-mode">{view}</span>
       <span className="sbar-seg">{range}</span>
       <NowNext />
+      {accounts.some((a) => a.syncing) && (
+        <span className="sbar-seg sbar-sync" data-testid="sbar-sync" role="status">
+          syncing {accounts.filter((a) => a.syncing).map((a) => a.label).join(', ')}
+        </span>
+      )}
       {accounts.some((a) => a.error) && (
         <button
           type="button"

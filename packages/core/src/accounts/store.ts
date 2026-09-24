@@ -32,6 +32,8 @@ async function writeAtomic(file: string, data: string | Buffer): Promise<void> {
 export class AccountStore {
   private accounts: Account[]
   private providers = new Map<string, CalendarProvider>()
+  /** Parsed cache.json per account; caches can be tens of MB, so they are read from disk once. */
+  private caches = new Map<string, AccountCache>()
   private queue: Promise<unknown> = Promise.resolve()
 
   constructor(
@@ -126,6 +128,7 @@ export class AccountStore {
     const dir = this.accountDir(id)
     return this.serial(async () => {
       this.providers.delete(id)
+      this.caches.delete(id)
       this.accounts = this.accounts.filter((a) => a.id !== id)
       await this.saveRegistry()
       await rm(dir, { recursive: true, force: true })
@@ -152,7 +155,11 @@ export class AccountStore {
     return provider
   }
   readCache(id: string): AccountCache {
-    return readJson<AccountCache>(join(this.accountDir(id), 'cache.json'), { calendars: [], events: [] })
+    const hit = this.caches.get(id)
+    if (hit) return hit
+    const cache = readJson<AccountCache>(join(this.accountDir(id), 'cache.json'), { calendars: [], events: [] })
+    if (this.get(id)) this.caches.set(id, cache)
+    return cache
   }
   writeCache(id: string, cache: AccountCache): Promise<void> {
     return this.serial(async () => {
@@ -160,6 +167,7 @@ export class AccountStore {
       this.require(id)
       await mkdir(dir, { recursive: true })
       await writeAtomic(join(dir, 'cache.json'), JSON.stringify(cache))
+      this.caches.set(id, cache)
     })
   }
   hiddenCalendars(id: string): string[] {

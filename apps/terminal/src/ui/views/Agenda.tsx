@@ -15,7 +15,7 @@
  *
  * Also exports the row helpers (useOwnerOf, useColorOf, useScroll, clickEvent, rsvpMark, place) the other views reuse.
  */
-import { useMemo, useRef, type ReactNode } from 'react'
+import { useMemo, useReducer, useRef, type ReactNode } from 'react'
 import { Box, Text } from 'ink'
 import { addDays, differenceInCalendarDays, differenceInMinutes, format, isSameDay, startOfDay } from 'date-fns'
 import { eventBounds, eventsOnDay, isPast, ymd } from '@mysticals/core/logic/layout'
@@ -49,18 +49,34 @@ export const clickEvent = (e: CalEvent, selected: boolean, { onSelect, onOpen }:
   () => (selected ? onOpen(e) : onSelect(e))
 
 /**
- * First visible row of a `total`-row list shown `height` rows at a time: moves only as far as needed to keep
- * rows `first..last` in view (so j/k don't jump the page; `first` wins if they don't fit), starting at `first`.
+ * First visible row of a `total`-row list shown `height` rows at a time, plus `scrollBy` for the mouse wheel.
+ * When `first..last` (the selection) changes, moves only as far as needed to keep it in view (so j/k don't jump
+ * the page; `first` wins if they don't fit), starting at `first`. A wheel scroll stays until the selection moves.
  */
-export function useScroll(first: number, last: number, height: number, total: number): number {
+export function useScroll(first: number, last: number, height: number, total: number): [number, (rows: number) => void] {
   const off = useRef<number>(undefined)
+  const followed = useRef('')
+  const [, rerender] = useReducer((n: number) => n + 1, 0)
+  const clamp = (o: number): number => Math.max(0, Math.min(o, total - height))
   let o = off.current ?? first
-  if (last >= o + height) o = last - height + 1
-  if (first < o) o = first
-  o = Math.max(0, Math.min(o, total - height))
+  if (followed.current !== `${first}/${last}`) {
+    followed.current = `${first}/${last}`
+    if (last >= o + height) o = last - height + 1
+    if (first < o) o = first
+  }
+  o = clamp(o)
   off.current = o
-  return o
+  const scrollBy = (rows: number): void => {
+    const next = clamp((off.current ?? 0) + rows)
+    if (next === off.current) return
+    off.current = next
+    rerender()
+  }
+  return [o, scrollBy]
 }
+
+/** Wheel notch in lines. */
+export const WHEEL_STEP = 3
 
 /** RSVP marker for invites not yet accepted; empty otherwise. */
 export const rsvpMark = (e: CalEvent): string =>
@@ -130,11 +146,12 @@ function fitParts(parts: Part[], w: number): Part[] {
   return out
 }
 
+/** A row of parts; `inverse` (the selection) paints it as one accent-colored bar. */
 function Line({ parts, inverse, muted }: { parts: Part[]; inverse?: boolean; muted?: boolean }) {
   return (
-    <Text inverse={inverse}>
+    <Text inverse={inverse} color={inverse ? C.accent : undefined}>
       {parts.map((p, i) => (
-        <Text key={i} color={muted && !inverse ? C.muted : p.color} bold={p.bold || inverse} strikethrough={p.strike}>
+        <Text key={i} color={inverse ? C.accent : muted ? C.muted : p.color} bold={p.bold || inverse} strikethrough={p.strike}>
           {p.text}
         </Text>
       ))}
@@ -144,8 +161,8 @@ function Line({ parts, inverse, muted }: { parts: Part[]; inverse?: boolean; mut
 
 const TIME_W = 9 // "  07:00  " / " all day "
 
-/** Day heading, event card (2 lines), today's red now-line, or a run of free days. */
-type Row = { day: Date } | { day: Date; e: CalEvent } | { day: Date; nowLine: true } | { free: [Date, Date] }
+/** Day heading, event card (2 lines), divider between two cards, today's red now-line, or a run of free days. */
+type Row = { day: Date } | { day: Date; e: CalEvent } | { day: Date; divider: true } | { day: Date; nowLine: true } | { free: [Date, Date] }
 const linesOf = (r: Row): number => ('e' in r ? 2 : 1)
 
 export function Agenda({ events, date, now, selectedKey, width, height, onSelect, onOpen, onPickDay }: ViewProps) {
@@ -167,7 +184,11 @@ export function Agenda({ events, date, now, selectedKey, width, height, onSelect
         const next = list.findIndex((e) => eventBounds(e).start > now)
         items.splice(next < 0 ? items.length : next, 0, { day, nowLine: true })
       }
-      out.push({ day }, ...items)
+      out.push({ day })
+      items.forEach((it, j) => {
+        if (j > 0 && 'e' in it && 'e' in items[j - 1]) out.push({ day, divider: true })
+        out.push(it)
+      })
     }
     return out
   }, [events, date, now])
@@ -181,8 +202,8 @@ export function Agenda({ events, date, now, selectedKey, width, height, onSelect
   }
   const sel = rows.findIndex((r) => 'e' in r && eventKey(r.e) === selectedKey)
   // keep the day heading above the selection visible when it's the day's first event
-  const first = sel > 0 && !('e' in rows[sel - 1]) && !('nowLine' in rows[sel - 1]) ? offsets[sel - 1] : offsets[Math.max(sel, 0)] ?? 0
-  const top = useScroll(first, sel >= 0 ? offsets[sel] + 1 : 0, height, total)
+  const first = sel > 0 && !('e' in rows[sel - 1]) && !('nowLine' in rows[sel - 1]) && !('divider' in rows[sel - 1]) ? offsets[sel - 1] : offsets[Math.max(sel, 0)] ?? 0
+  const [top, scrollBy] = useScroll(first, sel >= 0 ? offsets[sel] + 1 : 0, height, total)
 
   if (!events.length) return <Text color={C.muted}>No events in the next {AGENDA_DAYS} days</Text>
 
@@ -192,13 +213,21 @@ export function Agenda({ events, date, now, selectedKey, width, height, onSelect
 
   const lines: ReactNode[] = []
   rows.forEach((r, i) => {
-    const key = 'free' in r ? `free${ymd(r.free[0])}` : 'e' in r ? `${ymd(r.day)}/${eventKey(r.e)}` : 'nowLine' in r ? `${ymd(r.day)}/now` : ymd(r.day)
+    const key = 'free' in r ? `free${ymd(r.free[0])}` : 'e' in r ? `${ymd(r.day)}/${eventKey(r.e)}` : 'nowLine' in r ? `${ymd(r.day)}/now` : 'divider' in r ? `${ymd(r.day)}/d${i}` : ymd(r.day)
     if ('free' in r) {
       const [a, b] = r.free
       const label = isSameDay(a, b) ? format(a, 'EEE d MMM') : `${format(a, 'EEE d MMM')} – ${format(b, 'EEE d MMM')}`
       lines.push(
         <Box key={key} width={width} height={1} overflow="hidden">
           <Text color={C.muted} wrap="truncate">{` ${label}  free`}</Text>
+        </Box>
+      )
+      return
+    }
+    if ('divider' in r) {
+      lines.push(
+        <Box key={key} width={width} height={1} overflow="hidden">
+          <Text color={C.muted} dimColor>{' '.repeat(TIME_W) + '─'.repeat(Math.max(width - TIME_W - 1, 0))}</Text>
         </Box>
       )
       return
@@ -280,8 +309,8 @@ export function Agenda({ events, date, now, selectedKey, width, height, onSelect
   })
 
   return (
-    <Box flexDirection="column" width={width}>
+    <Clickable flexDirection="column" width={width} onWheel={(dir) => scrollBy(dir * WHEEL_STEP)}>
       {lines.slice(top, top + height)}
-    </Box>
+    </Clickable>
   )
 }

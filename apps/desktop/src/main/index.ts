@@ -131,7 +131,8 @@ app.whenReady().then(() => {
     const store = new AccountStore(app.getPath('userData'), factories, safeStorageCrypto)
     const sync = new SyncEngine(store, broadcast, {
       triggers: electronTriggers,
-      onEvents: (id, notes) => notify(store, id, notes)
+      onEvents: (id, notes) => notify(store, id, notes),
+      onSyncing: broadcast // renderer re-reads accounts.list for the `syncing` flag
     })
     try {
       const signIn = (): ReturnType<typeof googleSignIn> => googleSignIn((url) => shell.openExternal(url))

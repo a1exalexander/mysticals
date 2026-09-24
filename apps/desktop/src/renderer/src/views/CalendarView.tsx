@@ -34,6 +34,7 @@ export function CalendarView(): React.JSX.Element {
   const days = useMemo(() => viewDays(view, date), [view, date])
   const { accounts, calendars, events: all } = useCalendarData(range)
   const events = useMemo(() => visibleEvents(all, calendars), [all, calendars])
+  const firstSync = accounts.filter((a) => a.syncing && !a.synced)
 
   const colorOf = useMemo<ColorOf>(() => {
     const cal = new Map(calendars.map((c) => [`${c.accountId}/${c.id}`, c.color]))
@@ -119,6 +120,14 @@ export function CalendarView(): React.JSX.Element {
         <MonthGrid date={date} events={events} colorOf={colorOf} />
       ) : (
         <TimeGrid days={days} events={events} colorOf={colorOf} />
+      )}
+      {firstSync.length > 0 && !events.length && (
+        <div className="first-sync" role="status" data-testid="first-sync">
+          <div className="app-loader-term">
+            <div><span className="app-loader-prompt">~ $</span> mysticals --sync</div>
+            <div className="app-loader-spin">first sync of {firstSync.map((a) => a.label).join(', ')}…</div>
+          </div>
+        </div>
       )}
     </div>
   )

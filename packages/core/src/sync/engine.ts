@@ -18,6 +18,8 @@ export interface SyncOptions {
   triggers?: Triggers
   /** Noteworthy event changes found by a (non-quiet) sync after the account's first one. */
   onEvents?: (accountId: string, notes: Note[]) => void
+  /** An account started or finished syncing (see `isSyncing`). */
+  onSyncing?: (accountId: string) => void
 }
 
 const MIN = 60_000
@@ -71,9 +73,16 @@ export class SyncEngine {
     const p = this.syncAccount(accountId, !!opts.quiet).finally(() => {
       this.inflight.delete(accountId)
       this.schedule(accountId)
+      this.opts.onSyncing?.(accountId)
     })
     this.inflight.set(accountId, p)
+    this.opts.onSyncing?.(accountId)
     return p
+  }
+
+  /** True while a sync of this account is running. */
+  isSyncing(accountId: string): boolean {
+    return this.inflight.has(accountId)
   }
 
   /** (Re)arms this account's own timer: normal interval, or backoff after failures. */

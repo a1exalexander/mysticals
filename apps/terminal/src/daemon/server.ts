@@ -129,7 +129,8 @@ export async function runDaemon(): Promise<void> {
     const store = new AccountStore(home, factories, createCrypto())
     sync = new SyncEngine(store, (id) => broadcast(id), {
       triggers: wakeTriggers(),
-      onEvents: (id, notes) => notify(store, id, notes)
+      onEvents: (id, notes) => notify(store, id, notes),
+      onSyncing: (id) => broadcast(id) // clients re-read accounts.list for the `syncing` flag
     })
     api = createApi(store, sync, { verifyCaldav, googleSignIn: () => googleSignIn(openUrl), onChanged: (id) => broadcast(id) })
   }

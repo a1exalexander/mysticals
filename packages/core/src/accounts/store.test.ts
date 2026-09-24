@@ -121,6 +121,13 @@ describe('AccountStore isolation', () => {
     expect(store.hiddenCalendars(work.id)).toEqual([])
   })
 
+  it('serves the cache from memory after a write', async () => {
+    const { work } = await addBoth()
+    await store.writeCache(work.id, { calendars: [], events: [], syncedAt: 'now' })
+    rmSync(join(dir, 'accounts', work.id, 'cache.json'))
+    expect(store.readCache(work.id).syncedAt).toBe('now')
+  })
+
   it('rejects path-traversal ids before touching the filesystem', async () => {
     const { personal } = await addBoth()
     writeFileSync(join(dir, 'victim.txt'), 'x')

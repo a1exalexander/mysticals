@@ -43,11 +43,13 @@ export const encode = (msg: Request | Response | Push): string => JSON.stringify
 /** Returns a chunk handler that emits each complete JSON line; malformed lines go to onBad. */
 export function lineReader(onMessage: (msg: unknown) => void, onBad: (line: string) => void = () => {}): (chunk: Buffer | string) => void {
   let buf = ''
+  let scanned = 0 // buf[0..scanned) has no newline: a big message arriving in many chunks is scanned once, not per chunk
   const utf8 = new StringDecoder('utf8') // keeps multi-byte chars split across chunks intact
   return (chunk) => {
     buf += typeof chunk === 'string' ? chunk : utf8.write(chunk)
     let nl: number
-    while ((nl = buf.indexOf('\n')) >= 0) {
+    while ((nl = buf.indexOf('\n', scanned)) >= 0) {
+      scanned = 0
       const line = buf.slice(0, nl)
       buf = buf.slice(nl + 1)
       if (!line.trim()) continue
@@ -60,6 +62,7 @@ export function lineReader(onMessage: (msg: unknown) => void, onBad: (line: stri
       }
       onMessage(msg)
     }
+    scanned = buf.length
   }
 }
 

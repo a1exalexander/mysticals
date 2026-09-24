@@ -9,13 +9,13 @@
  *   23:37  │──────────────│              │   current hour: red clock, red now-line through today's free cells
  *
  * Overlapping events share an hour side by side (core `layoutDay` + `packColumns`, snapped to whole hours).
- * Cursor day (←/→): inverse column heading. Selected block: default-colored block. Past: muted. Declined: struck through. Unanswered invite: italic.
- * Click an event to select it (again to open it); click a free cell (or the hour, in the day view) to create one there.
+ * Cursor day (←/→): inverse column heading. Selected block: accent-colored block. Past: muted. Declined: struck through. Unanswered invite: italic.
+ * Click an event to select it (again to open it); free cells ignore clicks. The wheel scrolls the hours.
  * Keys: none of its own; the App shell owns them all.
  */
 import { useMemo, type ReactNode } from 'react'
 import { Box, Text } from 'ink'
-import { format, isSameDay, setHours, startOfDay } from 'date-fns'
+import { format, isSameDay } from 'date-fns'
 import { eventBounds, eventsOnDay, isPast, layoutDay, packColumns, type Placed } from '@mysticals/core/logic/layout'
 import type { CalEvent } from '@mysticals/core/shared/types'
 import { eventKey, type ViewProps } from '../hooks'
@@ -42,7 +42,7 @@ function slots(events: CalEvent[], day: Date): Slot[] {
   )
 }
 
-export function TimeGrid({ days, events, now, cursor, selectedKey, width, height, onSelect, onOpen, onPickDay, onCreate }: ViewProps & { days: Date[] }) {
+export function TimeGrid({ days, events, now, cursor, selectedKey, width, height, onSelect, onOpen, onPickDay }: ViewProps & { days: Date[] }) {
   const colorOf = useColorOf()
   const cols = useMemo(
     () =>
@@ -60,7 +60,7 @@ export function TimeGrid({ days, events, now, cursor, selectedKey, width, height
   const sel = cols.flatMap((c) => c.placed).find((p) => eventKey(p.item.item) === selectedKey)
   const today = days.some((d) => isSameDay(d, now))
   const focus = sel ? sel.start / 60 : today ? now.getHours() : 8
-  const top = useScroll(sel ? focus : Math.max(focus - 1, 0), focus, gridH, 24)
+  const [top, scrollBy] = useScroll(sel ? focus : Math.max(focus - 1, 0), focus, gridH, 24)
 
   const bar = <Text color={C.muted}>│</Text>
   const row = (key: string, gutter: ReactNode, cells: (c: (typeof cols)[number]) => ReactNode): ReactNode => (
@@ -86,13 +86,12 @@ export function TimeGrid({ days, events, now, cursor, selectedKey, width, height
   const hourCells = (placed: Slot[], day: Date, h: number, nowLine: boolean): ReactNode[] => {
     const out: ReactNode[] = []
     let pos = 0
-    // free cells: click creates an event at this day + hour
     const gap = (to: number): void => {
       if (to <= pos) return
       out.push(
-        <Clickable key={`g${pos}`} width={to - pos} flexShrink={0} onClick={onCreate && (() => onCreate(setHours(startOfDay(day), h)))}>
+        <Box key={`g${pos}`} width={to - pos} flexShrink={0}>
           <Text color={C.now}>{(nowLine ? '─' : ' ').repeat(to - pos)}</Text>
-        </Clickable>
+        </Box>
       )
       pos = to
     }
@@ -124,7 +123,7 @@ export function TimeGrid({ days, events, now, cursor, selectedKey, width, height
         <Clickable key={k} width={w} flexShrink={0} onClick={clickEvent(e, selected, { onSelect, onOpen })}>
           <Text
             inverse // block in the calendar's color, text in the terminal background
-            color={selected ? undefined : past ? C.muted : colorOf(e)}
+            color={selected ? C.accent : past ? C.muted : colorOf(e)}
             bold={selected || h === first}
             italic={e.myStatus === 'needsAction'}
             strikethrough={e.myStatus === 'declined'}
@@ -163,8 +162,8 @@ export function TimeGrid({ days, events, now, cursor, selectedKey, width, height
           const selected = eventKey(e) === selectedKey
           return (
             <Clickable height={1} width={colW} onClick={clickEvent(e, selected, { onSelect, onOpen })}>
-              <Text wrap="truncate" inverse={selected} color={selected ? undefined : C.yellow} bold={selected}>
-                <Text color={selected ? undefined : colorOf(e)}> ●</Text> {rsvpMark(e)}
+              <Text wrap="truncate" inverse={selected} color={selected ? C.accent : C.yellow} bold={selected}>
+                <Text color={selected ? C.accent : colorOf(e)}> ●</Text> {rsvpMark(e)}
                 {e.title || '(no title)'}
               </Text>
             </Clickable>
@@ -174,18 +173,20 @@ export function TimeGrid({ days, events, now, cursor, selectedKey, width, height
       <Box width={width} height={1} overflow="hidden">
         <Text color={C.muted}>{'─'.repeat(GUTTER) + ('┼' + '─'.repeat(colW)).repeat(days.length)}</Text>
       </Box>
+      <Clickable flexDirection="column" width={width} onWheel={(dir) => scrollBy(dir)}>
       {Array.from({ length: Math.min(gridH, 24) }, (_, i) => {
         const h = top + i
         const current = today && h === now.getHours()
         const gutter = (
-          <Clickable width={GUTTER} flexShrink={0} onClick={onCreate && days.length === 1 ? () => onCreate(setHours(startOfDay(days[0]), h)) : undefined}>
+          <Box width={GUTTER} flexShrink={0}>
             <Text color={current ? C.now : C.muted} bold={current}>
               {current ? format(now, 'HH:mm') : `${String(h).padStart(2, '0')}:00`}
             </Text>
-          </Clickable>
+          </Box>
         )
         return row(`h${h}`, gutter, (c) => hourCells(c.placed, c.day, h, current && isSameDay(c.day, now)))
       })}
+      </Clickable>
     </Box>
   )
 }

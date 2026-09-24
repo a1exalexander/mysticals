@@ -31,11 +31,13 @@ describe('mouse', () => {
     await t.waitFor((f) => !f.includes('esc close'))
   })
 
-  it('wheel moves the selection', async () => {
+  it('wheel scrolls without selecting', async () => {
     t = renderApp()
     await t.waitFor('Up next')
     await t.wheel('today ─', 1)
-    await t.waitFor('Selected')
+    await new Promise((r) => setTimeout(r, 50))
+    expect(t.lastFrame()).toContain('Up next')
+    expect(t.lastFrame()).not.toContain('Selected')
   })
 
   it('a day heading opens the day view', async () => {

@@ -8,3 +8,5 @@ playwright-report
 .claude/worktrees
 .turbo
 .vite
+.DS_Store
+.astro

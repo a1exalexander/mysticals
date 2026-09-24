@@ -11,6 +11,10 @@ export interface Account {
   color: string
   /** Set by sync engine when the last sync for this account failed. */
   error?: string
+  /** A sync of this account is running (set by accounts.list). */
+  syncing?: boolean
+  /** The account has synced at least once (set by accounts.list). */
+  synced?: boolean
 }
 
 export interface Calendar {
