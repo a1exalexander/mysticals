@@ -1,0 +1,118 @@
+---
+import Layout from '../layouts/Layout.astro'
+import desktop from '../../../desktop/package.json'
+import terminal from '../../../terminal/package.json'
+const gh = 'https://github.com/a1exalexander/mysticals'
+const latest = `${gh}/releases/latest`
+const v = desktop.version
+---
+<Layout title="Download Mysticals" description="Download the Mysticals desktop app for macOS or install the terminal app from npm.">
+  <section class="wrap page-head">
+    <span class="eyebrow">$ mysticals --version → {v}</span>
+    <h1>Download Mysticals</h1>
+    <p class="lead">Two apps, one idea. Both are free, both run on macOS, and they keep separate accounts — install one or both.</p>
+  </section>
+
+  <section class="wrap grid2">
+    <article class="card">
+      <div class="card-head">
+        <div>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2" /><path d="M8 21h8" /><path d="M12 17v4" /></svg>
+          <h2>Desktop app</h2>
+        </div>
+        <span class="tag">macOS · v{v}</span>
+      </div>
+      <p class="muted">Pick the build for your chip. Not sure? Apple menu → About This Mac → Chip. “Apple M…” means Apple Silicon.</p>
+      <div class="picks">
+        <a class="pick btn" href={latest}>
+          <span><b>Apple Silicon</b><small class="mono">Mysticals-{v}-arm64.dmg</small></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+        </a>
+        <a class="pick ghost" href={latest}>
+          <span><b>Intel</b><small class="mono muted">Mysticals-{v}-x64.dmg</small></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+        </a>
+      </div>
+      <div class="notes">
+        <span>Also on the release: <code>Mysticals-{v}-arm64-mac.zip</code>, <code>…-x64-mac.zip</code></span>
+        <span>The app is unsigned: on first launch, right-click it and choose Open. <a class="ul" href="/install">Step by step →</a></span>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-head">
+        <div>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="18" rx="2" /><path d="m6 9 3 3-3 3" /><path d="M12 15h5" /></svg>
+          <h2>Terminal app</h2>
+        </div>
+        <span class="tag">npm · v{terminal.version}</span>
+      </div>
+      <p class="muted">Installs from npm as a global command. Needs Node.js 20 or newer. Works in any terminal: Terminal.app, iTerm2, Ghostty, WezTerm, tmux.</p>
+      <div class="shell mono">
+        <div class="shell-bar">
+          <span>zsh</span>
+          <button class="copy" type="button" data-copy="npm i -g mysticals" aria-label="Copy install command">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></svg>
+            <span class="lbl">copy</span>
+          </button>
+        </div>
+        <div class="code">
+          <div>npm i -g mysticals</div>
+          <div>mysticals <span class="c"># press ? for keys</span></div>
+        </div>
+      </div>
+      <div class="notes">
+        <span>Try it with two fake accounts first: <code>MYSTICALS_MOCK=1 mysticals</code></span>
+        <span>Package page: <a class="ul" href="https://www.npmjs.com/package/mysticals">npmjs.com/package/mysticals</a></span>
+      </div>
+    </article>
+  </section>
+
+  <section class="wrap block">
+    <h2>Platforms</h2>
+    <div class="table" style="--cols: 4">
+      <div><span>system</span><span>desktop</span><span>terminal</span><span>notes</span></div>
+      <div><b>macOS · Apple Silicon</b><span class="dot">.dmg arm64</span><span class="dot">npm</span><span class="muted">Recommended</span></div>
+      <div><b>macOS · Intel</b><span class="dot">.dmg x64</span><span class="dot">npm</span><span class="muted">Supported</span></div>
+      <div class="muted"><b class="hi">Windows</b><span class="dot off">not yet</span><span class="dot off">not yet</span><span>Credentials rely on the macOS Keychain today</span></div>
+      <div class="muted"><b class="hi">Linux</b><span class="dot off">not yet</span><span class="dot off">not yet</span><span>Watch the repo for news</span></div>
+    </div>
+  </section>
+
+  <section class="wrap grid2 block last">
+    <div class="more">
+      <h3>Updates</h3>
+      <p class="muted">The desktop app downloads new releases for its architecture and updates itself. The terminal app checks npm once a day and shows a hint in the status line — then run <code>npm i -g mysticals</code> again.</p>
+      <a class="ul" href={`${gh}/releases`}>All releases and changelogs →</a>
+    </div>
+    <div class="more">
+      <h3>Build from source</h3>
+      <div class="code">
+        <div>git clone {gh}</div>
+        <div>pnpm i &amp;&amp; pnpm dist <span class="c"># .dmg + .zip in apps/desktop/dist</span></div>
+      </div>
+      <span class="muted small">Google accounts need your own OAuth client in <code>.env</code> — see the <a class="ul" href={`${gh}#readme`}>README</a>.</span>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .card { border-color: var(--line-strong); }
+  .picks { display: flex; flex-direction: column; gap: 12px; }
+  .pick { min-height: 72px; padding: 0 24px; border-radius: 12px; justify-content: space-between; }
+  .pick > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .pick b { font-weight: 600; font-size: 17px; }
+  .pick small { font-size: 13px; font-weight: 400; overflow-wrap: anywhere; }
+  .btn.pick small { color: var(--faint); }
+  .notes { padding-top: 20px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: var(--muted); }
+  .notes a, .more a { color: var(--fg); }
+  .shell { border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg); overflow: hidden; }
+  .shell-bar { height: 40px; padding: 0 8px 0 18px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+  .shell .code { border: 0; border-radius: 0; background: none; padding: 20px 18px; font-size: 16px; gap: 10px; }
+  .block { padding-top: clamp(64px, 7vw, 96px); display: flex; flex-direction: column; gap: 32px; }
+  .block h2 { font-size: 32px; letter-spacing: -.035em; }
+  .last { display: grid; padding-bottom: clamp(72px, 9vw, 120px); }
+  .more { border-top: 1px solid var(--line); padding-top: 28px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .more p { line-height: 1.65; }
+  .more a { font-size: 15px; }
+  .small { font-size: 14px; }
+  .hi { color: var(--fg); }
+</style>

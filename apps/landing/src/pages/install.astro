@@ -1,0 +1,194 @@
+---
+import Layout from '../layouts/Layout.astro'
+const gh = 'https://github.com/a1exalexander/mysticals'
+const keys: [string[], string][] = [
+  [['a', 'd', '2', 'w', 'm'], 'Agenda, Day, 2 Days, Week, Month'],
+  [['←', '→'], 'Previous / next day (or h l)'],
+  [['↑', '↓'], 'Previous / next event'],
+  [['j', 'k'], 'Next / previous event in time order'],
+  [['t'], 'Jump to today'],
+  [['enter'], 'Open event'],
+  [['n'], 'New event'],
+  [['i'], 'Invites: y accept, n decline, m maybe'],
+  [['s'], 'Accounts and calendars'],
+  [['r'], 'Sync now'],
+  [['?'], 'Help'],
+  [['q'], 'Quit'],
+]
+const apps = [['desktop', 'Desktop'], ['terminal', 'Terminal']]
+const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
+---
+<Layout title="Install Mysticals" description="Install the Mysticals desktop or terminal app on macOS and connect Google and CalDAV calendars.">
+  <section class="wrap page-head">
+    <span class="eyebrow">$ man mysticals</span>
+    <h1>Install guide</h1>
+    <p class="lead">Pick an app and your system. Five minutes from download to your first synced calendar.</p>
+  </section>
+
+  <section class="wrap pickers">
+    <div class="picker" role="group" aria-label="App">
+      <span class="eyebrow">app</span>
+      <div class="seg">{apps.map(([id, l], i) => <button type="button" data-app={id} aria-pressed={i === 0 ? 'true' : 'false'}>{l}</button>)}</div>
+    </div>
+    <div class="picker" role="group" aria-label="System">
+      <span class="eyebrow">system</span>
+      <div class="seg">{systems.map(([id, l], i) => <button type="button" data-os={id} aria-pressed={i === 0 ? 'true' : 'false'}>{l}</button>)}</div>
+    </div>
+  </section>
+
+  <section class="wrap guide">
+    <div class="panels">
+      <ol class="steps" data-panel="desktop">
+        <li><div><h3>Download the .dmg for your chip</h3>
+          <p>Apple menu → About This Mac. “Chip: Apple M…” → <code>arm64</code>. “Processor: Intel…” → <code>x64</code>.</p>
+          <a class="btn" href="/download">Go to downloads</a></div></li>
+        <li><div><h3>Drag Mysticals into Applications</h3>
+          <p>Open the .dmg, drag the icon onto the Applications folder, then eject the disk image.</p></div></li>
+        <li><div><h3>Open it the first time</h3>
+          <p>Mysticals is shared unsigned, so macOS asks once. In Applications, right-click Mysticals → Open → Open. If macOS still blocks it, go to System Settings → Privacy &amp; Security and click “Open Anyway”. Or from the terminal:</p>
+          <div class="code"><div>xattr -dr com.apple.quarantine /Applications/Mysticals.app</div></div></div></li>
+        <li><div><h3>Add your first account</h3>
+          <p>Add calendar → Google (sign in in the browser) or CalDAV (pick a preset below). Give it a label and a colour. Repeat for every account — each one gets its own box.</p></div></li>
+        <li><div><h3>That’s it. Updates are automatic</h3>
+          <p>The app downloads new releases for your architecture and updates itself.</p></div></li>
+      </ol>
+
+      <div data-panel="terminal" hidden>
+        <ol class="steps">
+          <li><div><h3>Check Node.js 20+</h3>
+            <p>No Node yet? Install it from nodejs.org, Homebrew (<code>brew install node</code>) or your version manager.</p>
+            <div class="code"><div>node -v <span class="c"># v20.0.0 or newer</span></div></div></div></li>
+          <li><div><h3>Install from npm</h3>
+            <div class="code"><div>npm i -g mysticals</div></div></div></li>
+          <li><div><h3>Run it</h3>
+            <p>Press <code>?</code> for keys. Want a look first? Mock mode gives you two fake isolated accounts and touches nothing real.</p>
+            <div class="code"><div>mysticals</div><div>MYSTICALS_MOCK=1 mysticals</div></div></div></li>
+          <li><div><h3>Allow the Keychain item</h3>
+            <p>On first use macOS asks to access the <code>mysticals-terminal</code> Keychain item. Choose Always Allow — it holds the key that encrypts your credentials.</p></div></li>
+          <li><div><h3>Add accounts with s</h3>
+            <p>Press <code>s</code> → add Google or CalDAV. To update later, run <code>npm i -g mysticals</code> again — the status line tells you when.</p></div></li>
+        </ol>
+        <div class="keys">
+          <h3>Keys</h3>
+          <div class="table" style="--cols: 2">
+            <div><span>key</span><span>action</span></div>
+            {keys.map(([ks, what]) => <div><span>{ks.map((k) => <kbd>{k}</kbd>)}</span><span class="muted">{what}</span></div>)}
+          </div>
+          <p class="muted">Mouse works too: click to select, click again to open, the wheel scrolls.</p>
+        </div>
+      </div>
+
+      <div class="soon" data-panel="other" hidden>
+        <span class="eyebrow">$ uname → <span class="os">Windows</span></span>
+        <h3>Not on <span class="os">Windows</span> yet</h3>
+        <p class="muted">Both apps are macOS-only for now: they keep credentials safe with the macOS Keychain, and the npm package is marked for macOS, so it won’t install elsewhere. Star or watch the repository to hear when that changes.</p>
+        <div class="row">
+          <a class="btn" href={gh}>Watch on GitHub</a>
+          <a class="ghost" href={`${gh}/issues`}>Ask for <span class="os">Windows</span></a>
+        </div>
+      </div>
+    </div>
+
+    <aside>
+      <div class="side">
+        <span class="eyebrow">requirements</span>
+        <div><span class="muted">System</span><span>macOS</span></div>
+        <div><span class="muted">Chips</span><span>Apple Silicon, Intel</span></div>
+        <div><span class="muted">Terminal app</span><span>Node.js 20+</span></div>
+      </div>
+      <div class="side">
+        <span class="eyebrow">where data lives</span>
+        <span class="muted">Terminal: <code class="path">~/Library/Application Support/mysticals-terminal</code></span>
+        <span class="muted">Credentials are encrypted per account. The desktop and terminal apps never share data.</span>
+      </div>
+    </aside>
+  </section>
+
+  <section class="wrap block">
+    <div class="head">
+      <h2>Connect your calendars</h2>
+      <p class="muted">Same steps in both apps. For CalDAV, use an app password — you need one when 2FA is on, and it’s a good idea anyway.</p>
+    </div>
+    <div class="table">
+      <div><span>provider</span><span>server</span><span>password</span></div>
+      <div><b>Google</b><span class="muted">Sign in with Google in the browser</span><span class="muted">None — OAuth</span></div>
+      <div><b>Namecheap Private Email</b><code>dav.privateemail.com/dav.php/</code><span class="muted">App password from Private Email webmail</span></div>
+      <div><b>iCloud</b><code>caldav.icloud.com</code><span class="muted">App-specific password from appleid.apple.com</span></div>
+      <div><b>Fastmail</b><code>caldav.fastmail.com</code><span class="muted">Settings → Privacy &amp; Security → App passwords</span></div>
+      <div><b>Any CalDAV server</b><span class="muted">Choose Custom and paste its URL</span><span class="muted">Whatever your server issues</span></div>
+    </div>
+    <p class="muted small">Username is your full email address. Presets fill in the server URL for you.</p>
+  </section>
+
+  <section class="wrap block last">
+    <h2>Troubleshooting</h2>
+    <div class="grid3">
+      <div class="fact"><b>“Can’t be opened” on launch</b><span>The desktop app is unsigned. Right-click → Open, or use “Open Anyway” in Privacy &amp; Security.</span></div>
+      <div class="fact"><b>Terminal daemon won’t start</b><span>Read <code>daemon.log</code> in the data folder. Stuck? Close every window, then <code>pkill -f 'cli.js --daemon'</code>.</span></div>
+      <div class="fact"><b>Can’t select text in the TUI</b><span>Hold ⌥ Option while dragging (Shift in some terminals). In tmux, set <code>mouse on</code> to pass clicks through.</span></div>
+    </div>
+  </section>
+</Layout>
+
+<script>
+  // Show the steps for the picked app and system. #terminal in the URL preselects the terminal app.
+  const s = { app: location.hash === '#terminal' ? 'terminal' : 'desktop', os: 'mac' }
+  const osName: Record<string, string> = { windows: 'Windows', linux: 'Linux' }
+  function show() {
+    for (const b of document.querySelectorAll<HTMLElement>('[data-app]')) b.setAttribute('aria-pressed', String(b.dataset.app === s.app))
+    for (const b of document.querySelectorAll<HTMLElement>('[data-os]')) b.setAttribute('aria-pressed', String(b.dataset.os === s.os))
+    const want = s.os === 'mac' ? s.app : 'other'
+    for (const p of document.querySelectorAll<HTMLElement>('[data-panel]')) p.hidden = p.dataset.panel !== want
+    for (const o of document.querySelectorAll('.os')) o.textContent = osName[s.os] ?? ''
+  }
+  document.querySelectorAll<HTMLElement>('[data-app], [data-os]').forEach((b) =>
+    b.addEventListener('click', () => {
+      if (b.dataset.app) s.app = b.dataset.app
+      if (b.dataset.os) s.os = b.dataset.os
+      show()
+    }),
+  )
+  show()
+</script>
+
+<style>
+  .pickers { padding-bottom: 56px; display: flex; flex-wrap: wrap; gap: 24px 48px; }
+  .picker { display: flex; align-items: center; gap: 16px; }
+  .picker .eyebrow { font-size: 13px; }
+  .seg { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--line-strong); border-radius: 10px; }
+  .seg button { min-height: 44px; padding: 0 clamp(12px, 1.6vw, 20px); border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: 15px var(--mono); cursor: pointer; }
+  .seg button:hover { color: var(--fg); }
+  .seg button[aria-pressed='true'] { background: var(--fg); color: var(--bg); font-weight: 600; }
+
+  .guide { display: grid; gap: 40px 24px; }
+  @media (min-width: 1000px) {
+    .guide { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+    .panels { grid-column: span 8; }
+    aside { grid-column: 10 / span 3; }
+  }
+  .panels, aside { min-width: 0; }
+  aside { display: flex; flex-direction: column; gap: 20px; }
+  .side { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 24px; display: flex; flex-direction: column; gap: 14px; font-size: 14px; line-height: 1.55; }
+  .side .eyebrow { font-size: 13px; }
+  .side > div { display: flex; justify-content: space-between; gap: 12px; }
+  .path { word-break: break-all; }
+  .steps code { color: var(--soft); }
+
+  .keys { margin-top: 56px; display: flex; flex-direction: column; gap: 20px; }
+  .keys .table > div:not(:first-child) { padding-block: 12px; }
+  @media (max-width: 720px) { .keys .table > div { grid-template-columns: auto 1fr; } }
+  .keys kbd { margin-right: 4px; }
+  .keys > p { font-size: 14px; }
+
+  .soon { border: 1px dashed var(--line-strong); border-radius: 16px; padding: clamp(28px, 4vw, 56px); display: flex; flex-direction: column; gap: 20px; }
+  .soon h3 { font-size: 30px; }
+  .soon p { font-size: 17px; line-height: 1.65; max-width: 620px; }
+
+  .block { padding-top: clamp(72px, 8vw, 104px); display: flex; flex-direction: column; gap: 32px; }
+  .block h2 { font-size: 36px; letter-spacing: -.035em; }
+  .head { display: flex; flex-direction: column; gap: 12px; }
+  .head p { font-size: 17px; }
+  .table code { font-size: 14px; overflow-wrap: anywhere; }
+  .small { font-size: 14px; }
+  .last { padding-bottom: clamp(72px, 9vw, 120px); }
+</style>
