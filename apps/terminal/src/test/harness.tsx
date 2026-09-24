@@ -11,7 +11,7 @@
  */
 import type { ReactElement } from 'react'
 import { render } from 'ink-testing-library'
-import { vi, type Mock } from 'vitest'
+import { afterEach, beforeEach, vi, type Mock } from 'vitest'
 import { createMockApi } from '@mysticals/core/mock/mockApi'
 import type { ClientApi } from '../client'
 import { ApiContext, type Nav } from '../ui/hooks'
@@ -27,6 +27,17 @@ export type TestClient = Spied<Omit<ClientApi, 'onChanged' | 'onAuthUrl' | 'clos
   /** Fires a change push to every onChanged listener, as the daemon would. */
   emitChanged(accountId: string): void
 }
+
+/** "Now" in every test that imports the harness: Wed 23 Sep 2026 12:00 local, so seeded events and fixed dates line up. */
+export const NOW = new Date(2026, 8, 23, 12)
+
+// The mock seeds events around the real clock; pin it (Date only, timers stay real) so screens don't shift with
+// the wall clock, the time of day or the runner's timezone.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
+  vi.setSystemTime(NOW)
+})
+afterEach(() => void vi.useRealTimers())
 
 export function createTestClient(): TestClient {
   const listeners = new Set<(accountId: string) => void>()

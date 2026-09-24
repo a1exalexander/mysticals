@@ -51,7 +51,7 @@ const v = desktop.version
         </div>
         <span class="tag">npm · v{terminal.version}</span>
       </div>
-      <p class="muted">Installs from npm as a global command. Needs Node.js 20 or newer. Works in any terminal: Terminal.app, iTerm2, Ghostty, WezTerm, Windows Terminal, GNOME Terminal, tmux.</p>
+      <p class="muted">Installs from npm as a global command. Needs Node.js 20.3 or newer. Works in any terminal: Terminal.app, iTerm2, Ghostty, WezTerm, Windows Terminal, GNOME Terminal, tmux.</p>
       <div class="shell mono">
         <div class="shell-bar">
           <span>zsh</span>
@@ -99,7 +99,7 @@ const v = desktop.version
         <div>pnpm dist <span class="c"># desktop installers in apps/desktop/dist</span></div>
         <div>pnpm --filter mysticals build <span class="c"># terminal app in apps/terminal/dist</span></div>
       </div>
-      <span class="muted small">Needs Node.js 20+ and pnpm 10. Without the Google values only CalDAV accounts work — see the <a class="ul" href={`${gh}#readme`}>README</a>. Electron binary missing after install? Run <code>node apps/desktop/node_modules/electron/install.js</code>.</span>
+      <span class="muted small">Needs Node.js 20.3+ and pnpm 10. Without the Google values only CalDAV accounts work — see <a class="ul" href={`${gh}/blob/main/CONTRIBUTING.md#google-oauth-client-for-google-accounts`}>CONTRIBUTING</a>. Electron binary missing after install? Run <code>node apps/desktop/node_modules/electron/install.js</code>.</span>
     </div>
   </section>
 </Layout>

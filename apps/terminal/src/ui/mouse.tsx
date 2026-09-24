@@ -7,7 +7,7 @@
  *   A click or wheel goes to the smallest region under the pointer that handles it.
  *   useKeys = Ink's useInput minus mouse reports; use it instead of useInput so reports never reach key handlers.
  */
-import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { C } from './theme'
 import { Box, Text, useInput, useStdin, type BoxProps, type DOMElement, type Key } from 'ink'
 
@@ -17,9 +17,14 @@ export const isMouse = (input: string): boolean => REPORT.test(input)
 
 /** Ink's useInput, skipping mouse reports. */
 export function useKeys(handler: (input: string, key: Key) => void, options?: { isActive?: boolean }): void {
-  useInput((input, key) => {
-    if (!isMouse(input)) handler(input, key)
-  }, options)
+  // Ink re-subscribes a new handler in a passive effect, after the render; a key right behind the one that changed
+  // state (fast typing, paste, a slow machine) would hit the old closure. Call the latest committed handler instead.
+  const latest = useRef(handler)
+  useLayoutEffect(() => void (latest.current = handler))
+  const stable = useCallback((input: string, key: Key) => {
+    if (!isMouse(input)) latest.current(input, key)
+  }, [])
+  useInput(stable, options)
 }
 
 type Handlers = { onClick?(): void; onWheel?(dir: 1 | -1): void }

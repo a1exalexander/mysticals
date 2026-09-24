@@ -46,7 +46,7 @@ Download the latest build from [GitHub Releases](https://github.com/a1exalexande
 
 ### Terminal
 
-Needs Node.js 20 or newer.
+Needs Node.js 20.3 or newer.
 
 ```sh
 npm i -g mysticals

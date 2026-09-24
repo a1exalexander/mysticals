@@ -11,7 +11,7 @@ npm i -g mysticals
 mysticals
 ```
 
-Needs Node.js 20 or newer. `mysticals --help` lists options, `mysticals --version` prints the version.
+Needs Node.js 20.3 or newer. `mysticals --help` lists options, `mysticals --version` prints the version.
 
 - **macOS**: nothing else. The credential key goes in the Keychain; notifications use `osascript`.
 - **Linux**: `secret-tool` (package `libsecret-tools` on Debian/Ubuntu, `libsecret` on Fedora/Arch) and a running keyring such as GNOME Keyring or KWallet. Optional: `notify-send` for notifications, `xdg-open` to open Google sign-in in the browser.

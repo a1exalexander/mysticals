@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto'
+import { parseISO } from 'date-fns'
 import type { Calendar, CalEvent, DeleteScope, NewEventInput, PartStat, TimeRange } from '../shared/types'
 import type { CalendarProvider } from '../providers/types'
 
@@ -20,8 +21,10 @@ export class MockProvider implements CalendarProvider {
   }
 
   async listEvents(calendarId: string, range: TimeRange): Promise<CalEvent[]> {
+    // Compare instants, not strings: parseISO reads date-only (all-day) values as local midnight, like queryEvents.
+    const t = (iso: string): number => parseISO(iso).getTime()
     return structuredClone(
-      this.events.filter((e) => e.calendarId === calendarId && e.end > range.start && e.start < range.end)
+      this.events.filter((e) => e.calendarId === calendarId && t(e.end) > t(range.start) && t(e.start) < t(range.end))
     )
   }
 

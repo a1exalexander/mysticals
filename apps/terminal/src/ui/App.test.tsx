@@ -75,7 +75,7 @@ describe('App shell', () => {
     const today = t.lastFrame()!.split('\n')[0]
     await t.press(...Array(6).fill('j')) // past today's 4 events
     await t.waitFor((f) => f.split('\n')[0] !== today) // header moved to tomorrow
-    expect(t.lastFrame()).toContain('Selected')
+    await t.waitFor('Selected') // once tomorrow's events load
   })
 
   it('has a 2-row bottom bar with action buttons', async () => {

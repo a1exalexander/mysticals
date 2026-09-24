@@ -29,6 +29,7 @@ describe('Accounts overlay', () => {
     await open()
     // rows: Work, work-main, Personal, p-main, Holidays
     await t.press('j', KEY.space)
+    await t.waitFor(() => t.client.calendars.setVisible.mock.calls.length === 1)
     expect(t.client.calendars.setVisible).toHaveBeenCalledWith('work', 'work-main', false)
     await t.waitFor('[ ]')
     // A burst with no re-render in between (paste / fast typing) must still see each key's effect.

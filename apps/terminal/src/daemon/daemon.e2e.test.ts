@@ -13,7 +13,8 @@ import { socketPath } from '../paths'
 const root = resolve(__dirname, '../..')
 const cli = join(root, 'dist/cli.js')
 const home = mkdtempSync(join(tmpdir(), 'mc-e2e-'))
-const env = { ...process.env, MYSTICALS_MOCK: '1', MYSTICALS_HOME: home }
+// CI=false: under CI Ink only writes the last frame, at exit, and the TUIs are read while running.
+const env = { ...process.env, MYSTICALS_MOCK: '1', MYSTICALS_HOME: home, CI: 'false' }
 const procs: ChildProcess[] = []
 
 beforeAll(() => {

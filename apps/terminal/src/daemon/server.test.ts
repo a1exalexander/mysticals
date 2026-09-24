@@ -4,6 +4,7 @@ import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockApi } from '@mysticals/core/mock/mockApi'
 import { connect, type ClientApi } from '../client'
+import { socketPath } from '../paths'
 import { serve, type Daemon } from './server'
 
 let dir: string
@@ -11,10 +12,12 @@ let path: string
 const open: { close(): unknown }[] = []
 const track = <T extends { close(): unknown }>(x: T): T => (open.push(x), x)
 const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+// Windows sockets are named pipes, not files: no mode bits and nothing stale left on disk.
+const posixIt = it.skipIf(process.platform === 'win32')
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'mc-srv-'))
-  path = join(dir, 's.sock')
+  path = socketPath(dir) // a named pipe on Windows
 })
 afterEach(async () => {
   for (const x of open.splice(0)) await x.close()
@@ -43,7 +46,7 @@ describe('daemon server', () => {
     expect((await b.accounts.list())[0].label).toBe('Job')
   })
 
-  it('socket is private to the user', async () => {
+  posixIt('socket is private to the user', async () => {
     await start()
     expect(statSync(path).mode & 0o777).toBe(0o600)
   })
@@ -68,7 +71,7 @@ describe('daemon server', () => {
     await vi.waitFor(() => expect(onIdle).toHaveBeenCalled())
   })
 
-  it('reclaims a stale socket file but refuses a live one', async () => {
+  posixIt('reclaims a stale socket file but refuses a live one', async () => {
     writeFileSync(path, '')
     await start()
     await expect(start()).rejects.toMatchObject({ code: 'EADDRINUSE' })

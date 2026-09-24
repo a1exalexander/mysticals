@@ -1,3 +1,4 @@
+import { join } from 'path'
 import { describe, expect, it } from 'vitest'
 import { dataRoot, socketPath } from './paths'
 
@@ -12,6 +13,6 @@ describe('paths', () => {
   it('uses a named pipe per home on Windows', () => {
     expect(socketPath('C:\\a', 'win32')).toMatch(/^\\\\\.\\pipe\\mysticals-[0-9a-f]{16}$/)
     expect(socketPath('C:\\a', 'win32')).not.toBe(socketPath('C:\\b', 'win32'))
-    expect(socketPath('/tmp/h', 'linux')).toBe('/tmp/h/daemon.sock')
+    expect(socketPath('/tmp/h', 'linux')).toBe(join('/tmp/h', 'daemon.sock')) // host separators
   })
 })

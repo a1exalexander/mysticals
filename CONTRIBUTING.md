@@ -17,7 +17,7 @@ Credentials are always encrypted. The desktop app uses Electron `safeStorage` (K
 
 ## Setup
 
-Needs Node.js 20+ and pnpm 10.
+Needs Node.js 20.3+ and pnpm 10.
 
 ```sh
 pnpm i

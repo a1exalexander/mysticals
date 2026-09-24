@@ -4,7 +4,7 @@ import { addDays, differenceInMinutes, format, isSameMonth, max, set, startOfDay
 import { eventBounds, eventsOnDay, rangeLabel, viewDays } from '@mysticals/core/logic/layout'
 import { errorText } from '@mysticals/core/logic/editor'
 import type { CalEvent } from '@mysticals/core/shared/types'
-import { AGENDA_DAYS, eventKey, navRange, useApi, useDirectory, useEvents, useNav, useNow, useTermSize, type Nav, type View, type ViewProps } from './hooks'
+import { AGENDA_DAYS, eventKey, navRange, shiftNav, useApi, useDirectory, useEvents, useNav, useNow, useTermSize, type Nav, type View, type ViewProps } from './hooks'
 import { Clickable, MouseProvider, useKeys } from './mouse'
 import { C } from './theme'
 import { Agenda } from './views/Agenda'
@@ -193,7 +193,6 @@ function Shell({ initialNav, updateCheck }: { initialNav?: Nav; updateCheck?: Pr
 
   const ordered = useMemo(() => [...events].sort(chronological), [events])
   const selectedIdx = ordered.findIndex((e) => eventKey(e) === selectedKey)
-  const selected = selectedIdx >= 0 ? ordered[selectedIdx] : undefined
   const close = (): void => setOverlay(undefined)
 
   // Day cursor of the grid views (day, 2day, week, month); falls back to the anchor day once off the page.
@@ -243,7 +242,9 @@ function Shell({ initialNav, updateCheck }: { initialNav?: Nav; updateCheck?: Pr
   const pending = useRef<Pending>(undefined)
   useEffect(() => {
     const p = pending.current
-    if (!p || loadedFor !== `${range.start}/${range.end}`) return // wait for the new page, not a reload of the old one
+    // Wait for the page the keys are on (live), not a reload of an older one: renders can lag a burst of keys.
+    const want = navRange(live.current)
+    if (!p || loadedFor !== `${want.start}/${want.end}`) return
     pending.current = undefined
     if ('day' in p) return choose(pickOn(ordered, p.day, p.minute))
     const at = (e: CalEvent): number => eventBounds(e).start.getTime()
@@ -257,6 +258,7 @@ function Shell({ initialNav, updateCheck }: { initialNav?: Nav; updateCheck?: Pr
     if (i >= 0 && i + dir >= 0 && i + dir < ordered.length) return select(ordered[i + dir])
     if (i < 0 && ordered.length) return select(ordered[dir > 0 ? 0 : ordered.length - 1])
     pending.current = { dir, from: i >= 0 ? eventBounds(ordered[i]).start.getTime() : dir > 0 ? -Infinity : Infinity }
+    live.current.date = shiftNav(live.current, dir).date
     shift(dir)
   }
 
@@ -272,7 +274,7 @@ function Shell({ initialNav, updateCheck }: { initialNav?: Nav; updateCheck?: Pr
     if (+nextDate !== +date) setDate(nextDate)
     // this page's events are loaded: pick now (a burst may still be ahead of the render, hence both checks)
     if (+nextDate === +nav.date && view === nav.view) return choose(pickOn(events, day, minute))
-    live.current.key = undefined
+    choose() // in state too, or a render before the page loads would sync the old day's selection back into live
     pending.current = { day, minute }
   }
 
@@ -324,7 +326,10 @@ function Shell({ initialNav, updateCheck }: { initialNav?: Nav; updateCheck?: Pr
       if (view === 'agenda' && (dir || vdir)) return move((dir || vdir) as 1 | -1)
       if (dir) return stepDay(dir)
       if (vdir) return view === 'month' ? move(vdir as 1 | -1) : stepInDay(vdir as 1 | -1)
-      if (key.return && selected) return setOverlay({ kind: 'details', event: selected })
+      if (key.return) {
+        const sel = ordered.find((e) => eventKey(e) === live.current.key) // a j just before may not have rendered yet
+        return sel && setOverlay({ kind: 'details', event: sel })
+      }
       if (input === 'n') return setOverlay({ kind: 'editor', initialStart: newStart() })
       if (input === 'i') return setOverlay({ kind: 'invites' })
       if (input === 's') return setOverlay({ kind: 'accounts' })

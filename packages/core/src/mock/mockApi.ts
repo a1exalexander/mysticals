@@ -1,4 +1,4 @@
-import { format } from 'date-fns'
+import { addDays, format } from 'date-fns'
 import type { Api } from '../shared/ipc'
 import type { Account, CalEvent } from '../shared/types'
 import { MockProvider } from './MockProvider'
@@ -49,8 +49,9 @@ export function createMockApi(onChanged: (accountId: string) => void): Omit<Api,
     seed(personal, 'p-main', { title: 'Morning run', start: iso(d, 7), end: iso(d, 7, 45), recurringEventId: 'run-series' })
   }
   seed(personal, 'p-main', { title: 'Dinner with friends', start: iso(2, 20), end: iso(2, 22), location: 'Kyiv' })
-  const today = format(new Date(), 'yyyy-MM-dd') // local date; toISOString() would be yesterday just after midnight east of UTC
-  seed(personal, 'p-holidays', { title: 'Holiday', start: today, end: today, allDay: true })
+  // Local dates (toISOString() would be off by a day near midnight); all-day ends are exclusive, like Google and iCal.
+  const day = (offset: number): string => format(addDays(new Date(), offset), 'yyyy-MM-dd')
+  seed(personal, 'p-holidays', { title: 'Holiday', start: day(0), end: day(1), allDay: true })
 
   const prov = (id: string): MockProvider => {
     const p = providers.get(id)
