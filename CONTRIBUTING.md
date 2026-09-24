@@ -43,6 +43,10 @@ CalDAV and mock mode work without this.
 
    A Desktop-app client secret isn't really confidential, but keep `.env` out of git anyway.
 
+### PostHog key (optional)
+
+`MYSTICALS_POSTHOG_KEY` in `.env` embeds the PostHog project key for the [anonymous usage stats](README.md#telemetry). Unset means no telemetry. Even with a key, dev (unpackaged) desktop runs and `MYSTICALS_MOCK=1` send nothing. `MYSTICALS_TELEMETRY_HOST` points the apps at another capture server; it's for local testing only.
+
 ## Run and test
 
 ```sh
@@ -82,6 +86,6 @@ A `v*` tag runs `.github/workflows/release.yml`. It builds the desktop app on ma
    git push origin v0.2.0
    ```
 
-Required repo secrets: `NPM_TOKEN`, `MYSTICALS_GOOGLE_CLIENT_ID`, `MYSTICALS_GOOGLE_CLIENT_SECRET` (one Desktop-app OAuth client shared by both apps).
+Required repo secrets: `NPM_TOKEN`, `MYSTICALS_GOOGLE_CLIENT_ID`, `MYSTICALS_GOOGLE_CLIENT_SECRET` (one Desktop-app OAuth client shared by both apps). Optional: `MYSTICALS_POSTHOG_KEY` (no telemetry without it).
 
 Installed apps pick up the release on their own. On macOS the desktop app downloads the `.zip` for its architecture and updates itself. On Windows and Linux its update button opens the release page. The terminal app shows a hint to run `npm i -g mysticals`.

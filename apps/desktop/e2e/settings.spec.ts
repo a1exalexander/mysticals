@@ -39,3 +39,21 @@ test('settings tabs: accounts, themes, sync', async () => {
   await expect(page.getByTestId('settings-tab-sync')).toHaveAttribute('aria-selected', 'true')
   await app.close()
 })
+
+test('privacy tab: usage stats toggle is on by default and persists', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByTestId('settings-tab-privacy').click()
+  const toggle = page.getByTestId('telemetry-toggle')
+  await expect(toggle).toBeChecked()
+  await toggle.uncheck()
+  await page.screenshot({ path: 'e2e/screens/settings-privacy.png' })
+
+  // A fresh renderer reads it back from main (prefs.json in userData).
+  await page.reload()
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByTestId('settings-tab-privacy').click()
+  await expect(page.getByTestId('telemetry-toggle')).not.toBeChecked()
+  await app.close()
+})

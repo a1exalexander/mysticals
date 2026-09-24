@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { Api, MenuCommand, UpdateApi, UpdateState } from '@shared/ipc'
+import type { Api, MenuCommand, TelemetryApi, UpdateApi, UpdateState } from '@shared/ipc'
 import { IPC } from '@shared/ipc'
 
 const call =
@@ -44,6 +44,9 @@ const update: UpdateApi = {
 } as UpdateApi
 
 contextBridge.exposeInMainWorld('update', update)
+
+const telemetry: TelemetryApi = { enabled: call(IPC.telemetryGet), setEnabled: call(IPC.telemetrySet) } as TelemetryApi
+contextBridge.exposeInMainWorld('telemetry', telemetry)
 
 // Lets CSS drop the macOS traffic-light inset on Windows/Linux.
 window.addEventListener('DOMContentLoaded', () => {

@@ -7,6 +7,7 @@ import { createCaldavProvider, verifyCaldav } from '@mysticals/core/providers/ca
 import { createGoogleProvider, googleSignIn, setClientConfig } from '@mysticals/core/providers/google'
 import { SyncEngine } from '@mysticals/core/sync/engine'
 import { homeDir, isMock, socketPath } from '../paths'
+import { telemetry } from '../telemetry'
 import { dispatch, encode, isMethod, lineReader, type ApiImpl, type Push, type Response } from '../protocol'
 import { createCrypto } from './crypto'
 import { googleConfig, openUrl } from './google'
@@ -141,7 +142,15 @@ export async function runDaemon(): Promise<void> {
       onEvents: (id, notes) => notify(store, id, notes),
       onSyncing: (id) => broadcast(id) // clients re-read accounts.list for the `syncing` flag
     })
-    api = createApi(store, sync, { verifyCaldav, googleSignIn: () => googleSignIn(signInBrowser), onChanged: (id) => broadcast(id) })
+    // ponytail: env opt-outs are read when the daemon starts, i.e. from the TUI that spawned it; windows opened while it
+    // runs share it. Forward each client's opt-out over the socket if that ever matters (README says so for now).
+    const track = telemetry()?.track
+    api = createApi(store, sync, {
+      verifyCaldav,
+      googleSignIn: () => googleSignIn(signInBrowser),
+      onChanged: (id) => broadcast(id),
+      onAccountAdded: (info) => track?.('account_added', info)
+    })
   }
 
   let daemon: Daemon

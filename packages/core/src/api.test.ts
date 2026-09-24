@@ -141,4 +141,20 @@ describe('createApi validation', () => {
     )
     expect(sync.syncNow).toHaveBeenCalledWith('new', { quiet: true })
   })
+
+  it('reports added accounts by provider and preset only (no PII)', async () => {
+    const { store, sync, deps } = setup()
+    const onAccountAdded = vi.fn()
+    const google = { email: 'me@gmail.example', credentials: { kind: 'google' as const, refreshToken: 'r' } }
+    const api = createApi(store, sync, { ...deps, googleSignIn: vi.fn(async () => google), onAccountAdded } as never)
+    const caldav = { label: 'Home', username: 'me@icloud.example', password: 'p' }
+    await api.accounts.addCaldav({ ...caldav, serverUrl: 'https://caldav.icloud.com/' })
+    await api.accounts.addCaldav({ ...caldav, serverUrl: 'https://dav.secret-host.example/me' })
+    await api.accounts.addGoogle()
+    expect(onAccountAdded.mock.calls).toEqual([
+      [{ provider: 'caldav', preset: 'icloud' }],
+      [{ provider: 'caldav', preset: 'custom' }],
+      [{ provider: 'google' }]
+    ])
+  })
 })

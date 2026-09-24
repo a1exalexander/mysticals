@@ -7,7 +7,8 @@ import { KindIcon, Sheet, Swatches, errorText } from './AccountsShared'
 const TABS = [
   { id: 'accounts', name: 'Accounts' },
   { id: 'themes', name: 'Themes' },
-  { id: 'sync', name: 'Sync' }
+  { id: 'sync', name: 'Sync' },
+  { id: 'privacy', name: 'Privacy' }
 ] as const
 type TabId = (typeof TABS)[number]['id']
 /** Last selected tab; survives closing the sheet while the app runs. */
@@ -96,6 +97,7 @@ export function SettingsHost(): React.JSX.Element | null {
         )}
         {tab === 'themes' && <ThemePicker />}
         {tab === 'sync' && <SyncPanel accounts={accounts} />}
+        {tab === 'privacy' && <PrivacyPanel />}
       </div>
     </Sheet>
   )
@@ -161,6 +163,33 @@ function SyncPanel({ accounts }: { accounts: Account[] }): React.JSX.Element {
           {all ? 'Syncing…' : 'Sync all'}
         </button>
       </div>
+    </>
+  )
+}
+
+function PrivacyPanel(): React.JSX.Element {
+  const [on, setOn] = useState<boolean>()
+  useEffect(() => void window.telemetry.enabled().then(setOn, () => {}), [])
+  const toggle = (next: boolean): void => {
+    setOn(next)
+    void window.telemetry.setEnabled(next).catch(() => {})
+  }
+  return (
+    <>
+      <p className="acc-note">
+        Mysticals sends two anonymous events: when the app is first installed and when an account is added (provider
+        only). Never emails, server addresses, calendars or events.
+      </p>
+      <label className="set-check">
+        <input
+          type="checkbox"
+          data-testid="telemetry-toggle"
+          checked={on ?? false}
+          disabled={on === undefined}
+          onChange={(e) => toggle(e.target.checked)}
+        />
+        Share anonymous usage stats
+      </label>
     </>
   )
 }

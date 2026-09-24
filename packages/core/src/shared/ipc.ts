@@ -59,6 +59,12 @@ export interface UpdateApi {
   onUpdate(cb: (s: UpdateState) => void): () => void
 }
 
+/** Desktop-only Settings > Privacy toggle, exposed as `window.telemetry`. */
+export interface TelemetryApi {
+  enabled(): Promise<boolean>
+  setEnabled(on: boolean): Promise<void>
+}
+
 export type MenuCommand = 'new-event' | 'today' | 'view-day' | 'view-3day' | 'view-week' | 'view-month'
 
 export const IPC = {
@@ -80,5 +86,7 @@ export const IPC = {
   updateState: 'update:state',
   updateCheck: 'update:check',
   updateInstall: 'update:install',
-  update: 'update'
+  update: 'update',
+  telemetryGet: 'telemetry:get',
+  telemetrySet: 'telemetry:set'
 } as const

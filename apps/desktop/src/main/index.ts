@@ -8,11 +8,13 @@ import { createApi } from '@mysticals/core/api'
 import { AccountStore, type SecretCrypto } from '@mysticals/core/accounts/store'
 import { SyncEngine } from '@mysticals/core/sync/engine'
 import { noteText, type Note } from '@mysticals/core/sync/notify'
+import type { AccountAdded } from '@mysticals/core/telemetry'
 import { createCaldavProvider, verifyCaldav } from '@mysticals/core/providers/caldav'
 import { createGoogleProvider, googleSignIn, setClientConfig } from '@mysticals/core/providers/google'
 import { registerApi } from './ipc/register'
 import { buildMenu } from './menu'
 import { startUpdater } from './update'
+import { startDesktopTelemetry } from './telemetry'
 import { electronTriggers } from './sync/electronTriggers'
 
 const MOCK = process.env.MYSTICALS_MOCK === '1'
@@ -148,6 +150,7 @@ app.whenReady().then(() => {
   // Packaged builds get the icon from electron-builder; in dev the dock would show Electron's.
   if (!app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'build/icon.png'))
   Menu.setApplicationMenu(buildMenu())
+  const track = startDesktopTelemetry()
   if (MOCK) {
     registerApi(createMockApi(broadcast))
   } else {
@@ -176,7 +179,8 @@ app.whenReady().then(() => {
     })
     try {
       const signIn = (): ReturnType<typeof googleSignIn> => googleSignIn((url) => shell.openExternal(url))
-      registerApi(createApi(store, sync, { verifyCaldav, googleSignIn: signIn, onChanged: broadcast }))
+      const onAccountAdded = (info: AccountAdded): void => track?.('account_added', info)
+      registerApi(createApi(store, sync, { verifyCaldav, googleSignIn: signIn, onChanged: broadcast, onAccountAdded }))
       sync.start()
     } catch (e) {
       console.error('backend not ready', e)

@@ -166,8 +166,11 @@ function title({ view, date }: Nav): string {
 const chronological = (a: CalEvent, b: CalEvent): number =>
   eventBounds(a).start.getTime() - eventBounds(b).start.getTime() || Number(b.allDay) - Number(a.allDay)
 
-/** `updateCheck`: resolves to a newer npm version, if any (cli passes `checkUpdate()`; tests leave it out). */
-export function App(props: { initialNav?: Nav; updateCheck?: Promise<string | undefined> }) {
+/**
+ * `updateCheck`: resolves to a newer npm version, if any (cli passes `checkUpdate()`; tests leave it out).
+ * `notice`: first status-line message (the one-time telemetry notice).
+ */
+export function App(props: { initialNav?: Nav; updateCheck?: Promise<string | undefined>; notice?: string }) {
   return (
     <MouseProvider>
       <Shell {...props} />
@@ -175,7 +178,7 @@ export function App(props: { initialNav?: Nav; updateCheck?: Promise<string | un
   )
 }
 
-function Shell({ initialNav, updateCheck }: { initialNav?: Nav; updateCheck?: Promise<string | undefined> }) {
+function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCheck?: Promise<string | undefined>; notice?: string }) {
   const api = useApi()
   const { exit } = useApp()
   // False when stdin is piped: keys are off (overlays can't open then, so only the shell needs this check).
@@ -187,7 +190,7 @@ function Shell({ initialNav, updateCheck }: { initialNav?: Nav; updateCheck?: Pr
   const { width, height } = useTermSize()
   const [selectedKey, setSelectedKey] = useState<string>()
   const [overlay, setOverlay] = useState<Overlay>()
-  const [message, setMessage] = useState<string>()
+  const [message, setMessage] = useState(notice)
   const [update, setUpdate] = useState<string>()
   useEffect(() => void updateCheck?.then(setUpdate), [updateCheck])
 

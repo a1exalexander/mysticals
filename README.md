@@ -74,6 +74,17 @@ In PowerShell: `$env:MYSTICALS_MOCK=1; mysticals`
 - **Fastmail**: app password from Settings → Privacy & Security.
 - Any other server: choose **Custom** and enter its URL.
 
+## Telemetry
+
+Mysticals sends two anonymous events to PostHog (EU), and nothing else:
+
+- `app_installed`, once on first launch: app (`desktop` or `terminal`), version, OS, CPU architecture.
+- `account_added`, when you add an account: the same, plus the provider (`google` or `caldav`) and the CalDAV preset (`privateemail`, `icloud`, `fastmail` or `custom`).
+
+The only identifier is a random ID created on first launch and stored in the app's data folder. Emails, usernames, server addresses, calendars, events and account IDs are never sent. GeoIP lookup is disabled and no person profiles are created; the project is also set to discard IP addresses (a PostHog project setting, since the client can't hide its IP).
+
+To opt out, set `MYSTICALS_TELEMETRY=0` or `DO_NOT_TRACK=1` in the environment, or in the desktop app turn off **Settings → Privacy → Share anonymous usage stats**.
+
 ## Contributing
 
 Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, and [apps/terminal/README.md](apps/terminal/README.md) for the terminal app.

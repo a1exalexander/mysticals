@@ -3,12 +3,15 @@ import type { Api } from './shared/ipc'
 import type { CaldavAccountInput, CalEvent, Credentials } from './shared/types'
 import type { AccountStore } from './accounts/store'
 import { queryEvents, type SyncEngine } from './sync/engine'
+import { caldavPreset, type AccountAdded } from './telemetry'
 
 export interface ApiDeps {
   verifyCaldav(input: CaldavAccountInput): Promise<{ email: string }>
   googleSignIn(): Promise<{ email: string; credentials: Extract<Credentials, { kind: 'google' }> }>
   /** Notify renderer that an account's data changed (visibility, label, removal). */
   onChanged?(accountId: string): void
+  /** An account was added (telemetry); gets only the provider kind and CalDAV preset, never account data. */
+  onAccountAdded?(info: AccountAdded): void
 }
 
 const PALETTE = ['#bd93f9', '#50fa7b', '#8be9fd', '#ff79c6', '#ffb86c', '#f1fa8c']
@@ -111,6 +114,7 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
         const { email, credentials } = await deps.googleSignIn()
         const a = await store.add({ kind: 'google', label: email, email, color: nextColor() }, credentials)
         syncOne(a.id)
+        deps.onAccountAdded?.({ provider: 'google' })
         return a
       },
       addCaldav: async (raw) => {
@@ -122,6 +126,7 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
           { kind: 'caldav', serverUrl, username, password }
         )
         syncOne(a.id)
+        deps.onAccountAdded?.({ provider: 'caldav', preset: caldavPreset(serverUrl) })
         return a
       },
       update: async (accountId, patch) => {

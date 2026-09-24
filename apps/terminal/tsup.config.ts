@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'fs'
 import { parseEnv } from 'util'
 import { defineConfig } from 'tsup'
 
-// Google OAuth client baked into dist/cli.js: build env wins over the repo-root .env; both are optional.
+// Google OAuth client and PostHog key baked into dist/cli.js: build env wins over the repo-root .env; both are optional.
 const file = existsSync('../../.env') ? parseEnv(readFileSync('../../.env', 'utf8')) : {}
 const env = (k: string): string => JSON.stringify(process.env[k] || file[k] || '')
 
@@ -15,7 +15,8 @@ export default defineConfig({
   noExternal: ['@mysticals/core'],
   define: {
     __GOOGLE_CLIENT_ID__: env('MYSTICALS_GOOGLE_CLIENT_ID'),
-    __GOOGLE_CLIENT_SECRET__: env('MYSTICALS_GOOGLE_CLIENT_SECRET')
+    __GOOGLE_CLIENT_SECRET__: env('MYSTICALS_GOOGLE_CLIENT_SECRET'),
+    __POSTHOG_KEY__: env('MYSTICALS_POSTHOG_KEY')
   },
   clean: true
 })

@@ -6,6 +6,7 @@ import { connect } from './client'
 import { runDaemon } from './daemon/server'
 import { ApiContext } from './ui/hooks'
 import { App } from './ui/App'
+import { telemetry, TELEMETRY_NOTICE } from './telemetry'
 import { checkUpdate } from './update'
 
 const HELP = `mysticals ${version} — isolated multi-account calendar for the terminal
@@ -20,6 +21,8 @@ Environment:
                    on macOS, %APPDATA% on Windows, $XDG_DATA_HOME or ~/.local/share on Linux)
   MYSTICALS_MOCK=1 demo mode with fake accounts; nothing real is touched
                    (PowerShell: $env:MYSTICALS_MOCK=1; mysticals  cmd: set "MYSTICALS_MOCK=1" && mysticals)
+  MYSTICALS_TELEMETRY=0 (or DO_NOT_TRACK=1) turns off the anonymous usage stats
+                   (app installed, account added; no personal data)
 
 Press ? inside the app for keys.`
 
@@ -34,6 +37,9 @@ async function main(argv: string[]): Promise<void> {
     process.exit(2)
   }
 
+  // Before connect(): a daemon spawned by it would otherwise create the install id first and this run would miss the notice.
+  // ponytail: a quit right after the first launch waits for app_installed (5 s cap, first run only).
+  const notice = telemetry()?.installed ? TELEMETRY_NOTICE : undefined
   const api = await connect()
   const stopUpdate = new AbortController() // a slow registry must not keep the process alive after quit
   if (process.stdin.isTTY && process.stdout.isTTY) {
@@ -44,7 +50,7 @@ async function main(argv: string[]): Promise<void> {
     process.on('exit', leaveScreen)
     for (const s of ['SIGTERM', 'SIGHUP'] as const) process.on(s, () => process.exit(0))
   }
-  const app = render(createElement(ApiContext.Provider, { value: api }, createElement(App, { updateCheck: checkUpdate(stopUpdate.signal) })))
+  const app = render(createElement(ApiContext.Provider, { value: api }, createElement(App, { updateCheck: checkUpdate(stopUpdate.signal), notice })))
   // Piped stdin (e.g. `echo | mysticals`): no keys; draw and quit when the input ends.
   if (!process.stdin.isTTY) process.stdin.on('end', () => app.unmount()).resume()
   await app.waitUntilExit()

@@ -132,3 +132,4 @@
 .set-status { font: 11px/1 var(--mono); color: var(--green); white-space: nowrap; }
 .set-status::before { content: '● '; }
 .set-status.err { color: var(--red); }
+.set-check { display: flex; align-items: center; gap: 8px; }

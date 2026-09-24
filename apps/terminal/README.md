@@ -86,6 +86,10 @@ The first `mysticals` you open starts a small background daemon. It holds the ac
 
 The desktop app uses its own folder and key; the two never share data. Set `MYSTICALS_HOME` to use another data folder (for example a second, independent profile). `MYSTICALS_MOCK=1` uses a temporary folder with two fake accounts and touches nothing real.
 
+## Telemetry
+
+Two anonymous events go to PostHog (EU): `app_installed` on first run and `account_added` when you add an account. They carry the app, version, OS, architecture and, for accounts, the provider and CalDAV preset. The only ID is random and stored in the data folder. Emails, usernames, servers, calendars and events are never sent. The first run says so in the status line. Opt out with `MYSTICALS_TELEMETRY=0` or `DO_NOT_TRACK=1` (set it before the first window opens: windows share the background daemon, which reads it when it starts). More in the [root README](../../README.md#telemetry).
+
 ## Troubleshooting
 
 - **"Could not start the mysticals daemon"**: read `daemon.log` in the data folder. A socket left behind by a crashed daemon is cleaned up automatically on the next start.

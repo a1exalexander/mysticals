@@ -6,12 +6,12 @@ import react from '@vitejs/plugin-react'
 const shared = { '@shared': resolve('../../packages/core/src/shared') }
 
 export default defineConfig({
-  // Google OAuth client from the repo-root .env (shared with apps/terminal), exposed to main via import.meta.env.
+  // Google OAuth client and PostHog key from the repo-root .env (shared with apps/terminal), exposed to main via import.meta.env.
   main: {
     plugins: [externalizeDepsPlugin()],
     resolve: { alias: shared },
     envDir: resolve('../..'),
-    envPrefix: 'MYSTICALS_GOOGLE_'
+    envPrefix: ['MYSTICALS_GOOGLE_', 'MYSTICALS_POSTHOG_']
   },
   preload: { plugins: [externalizeDepsPlugin()], resolve: { alias: shared } },
   renderer: {
