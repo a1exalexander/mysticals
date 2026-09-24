@@ -1,0 +1,274 @@
+---
+/**
+ * Animated illustration of the terminal app: types `mysticals`, then plays a scripted session over fake data
+ * (agenda, j/k selection, invites + accept, week and month views). Layout follows apps/terminal/src/ui
+ * (Agenda.tsx cards, StatusLine.tsx). Dates are computed from the viewer's today so it never looks stale.
+ * Reduced motion: a static agenda frame. Paused while off screen.
+ */
+---
+<figure class="tdemo">
+  <div class="win" aria-hidden="true">
+    <div class="bar"><i></i><i></i><i></i><span>mysticals — zsh</span></div>
+    <pre class="screen"></pre>
+    <span class="key"></span>
+  </div>
+  <figcaption class="sr-only">Animation: the Mysticals terminal app showing an agenda of events from several accounts, answering an invite, then week and month views.</figcaption>
+</figure>
+
+<script>
+  type Part = [string, string?]
+  type Line = Part[]
+  let W = 80 // columns; 46 on narrow screens, set per figure below
+  const BODY = 18
+
+  const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const dayAt = (off: number) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + off)
+  const fmt = (d: Date) => `${WD[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`
+
+  const len = (l: Line) => l.reduce((n, [t]) => n + t.length, 0)
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+  /** Cut to W cells (last part gets "…"), pad with spaces so inverse rows span the width. */
+  function fit(l: Line): Line {
+    const out: Line = []
+    let left = W
+    for (const [t, c] of l) {
+      if (left <= 0) break
+      if (t.length <= left) { out.push([t, c]); left -= t.length }
+      else { out.push([t.slice(0, left - 1) + '…', c]); left = 0 }
+    }
+    if (left > 0) out.push([' '.repeat(left)])
+    return out
+  }
+  /** Left parts, a ─ rule or spaces, right parts flush to the edge. */
+  const spread = (l: Line, r: Line, fill = ' ', cls = 'm'): Line => [...l, [fill.repeat(Math.max(1, W - len(l) - len(r))), cls], ...r]
+  const html = (l: Line, extra = '') => fit(l).map(([t, c]) => (c || extra ? `<span class="${[c, extra].filter(Boolean).join(' ')}">${esc(t)}</span>` : esc(t))).join('')
+
+  interface Ev { id: string; day: number; s?: string; e?: string; t: string; c: string; acc: string; badges?: Line; extra?: string; dur?: string; past?: boolean }
+  const EVENTS: Ev[] = [
+    { id: 'standup', day: 0, s: '09:30', e: '09:45', t: 'Standup', c: 'a', acc: 'Work · Team', badges: [['↻ repeats', 'm']], extra: '6 people', dur: '15m', past: true },
+    { id: 'review', day: 0, s: '10:00', e: '10:45', t: 'Design review', c: 'a', acc: 'Work · Product', badges: [['● now · ends in 25m', 'g']], extra: '⚠ overlaps  Room 3', dur: '45m' },
+    { id: 'dentist', day: 0, s: '10:30', e: '11:00', t: 'Dentist', c: 'g', acc: 'Personal · Health', badges: [['in 10m', 'y']], extra: '⚠ overlaps', dur: '30m' },
+    { id: 'lunch', day: 0, s: '14:00', e: '15:00', t: 'Lunch with Ana', c: 'cy', acc: 'iCloud · Family', extra: 'video call', dur: '1h' },
+    { id: 'bday', day: 1, t: "Mom's birthday", c: 'pk', acc: 'iCloud · Family' },
+    { id: 'plan', day: 1, s: '11:00', e: '12:30', t: 'Sprint planning', c: 'a', acc: 'Work · Team', badges: [['↻ repeats', 'm']], extra: '8 people', dur: '1h 30m' },
+    { id: 'yoga', day: 4, s: '08:00', e: '09:00', t: 'Yoga', c: 'g', acc: 'Personal · Sport', dur: '1h' },
+  ]
+
+  interface State { view: 'prompt' | 'agenda' | 'invites' | 'week' | 'month'; typed: string; sel: string; accepted: boolean; note?: string }
+
+  const tabs = (s: State): Line => {
+    const names: [string, State['view'][]][] = [['Agenda', ['agenda', 'invites']], ['Day', []], ['2 Days', []], ['Week', ['week']], ['Month', ['month']]]
+    const l: Line = []
+    for (const [n, v] of names) l.push([` ${n} `, v.includes(s.view) ? 'inv b' : 'm'])
+    return spread(l, [['● synced · 3 accounts ', 'g']])
+  }
+
+  function agenda(s: State): Line[] {
+    const out: { l: Line; inv?: boolean; muted?: boolean }[] = []
+    const byDay = (d: number) => EVENTS.filter((e) => e.day === d)
+    for (let d = 0; d < 5; d++) {
+      const list = byDay(d)
+      if (!list.length) {
+        if (d === 2) out.push({ l: [[` ${fmt(dayAt(2))} – ${fmt(dayAt(3))}  `, 'm'], ['free', 'g']] })
+        continue
+      }
+      const rel = d === 0 ? 'today' : d === 1 ? 'tomorrow' : `in ${d} days`
+      const busy = d === 0 ? '4 events · 2h 30m busy' : `${list.length} event${list.length > 1 ? 's' : ''}`
+      out.push({ l: spread([[` ${fmt(dayAt(d))}  `, 'b'], [rel + ' ', d === 0 ? 'g' : 'cy']], [[' ' + busy + ' ', 'm']], '─') })
+      for (const e of list) {
+        if (e.id === 'dentist') out.push({ l: [['  10:20  ', 'r'], ['─'.repeat(W - 9), 'r']] })
+        const invite = e.id === 'lunch' && !s.accepted
+        const badges: Line = [...(e.badges ?? []), ...(invite ? [['? needs reply', 'y'] as Part] : [])]
+        const sel = s.sel === e.id
+        const top: Line = [[`  ${e.s ?? 'all day'}  `.padEnd(9), 'b'], ['▌ ', e.c], [e.t, 'b']]
+        for (const b of badges) top.push(['  '], b)
+        out.push({ l: spread(top, [[(e.dur ?? '') + ' ', 'm']]), inv: sel, muted: e.past })
+        out.push({ l: [[`  ${e.e ?? ''}`.padEnd(9), 'm'], ['▌ ', e.c], [e.acc, 'm'], ...(e.extra ? [['  ' + e.extra, 'm'] as Part] : [])], inv: sel, muted: e.past })
+      }
+    }
+    const paint = (l: Line, c: string): Line => [...l.map(([t]) => [t, c] as Part), [' '.repeat(Math.max(0, W - len(l))), c]]
+    return out.map(({ l, inv, muted }) => (inv ? paint(l, 'inv') : muted ? paint(l, 'm') : l))
+  }
+
+  function invites(s: State): Line[] {
+    return [
+      spread([[' Invites  ', 'b'], [s.accepted ? 'all answered ' : '1 waiting for a reply ', 'y']], [], '─'),
+      [],
+      [['  ▌ ', 'cy'], ['Lunch with Ana', 'b'], ...(s.accepted ? [['  ✓ accepted', 'g'] as Part] : [['  ? needs reply', 'y'] as Part])],
+      [['  ▌ ', 'cy'], [`today 14:00–15:00 · iCloud · Family`, 'm']],
+      [['    ', ''], ['from ana@example.com · 3 guests · video call', 'm']],
+      [],
+      s.accepted
+        ? [['    ✓ reply sent from ', 'g'], ['iCloud', 'cy'], [' (the account that got it)', 'g']]
+        : [['    '], [' y ', 'inv'], [' accept   '], [' m ', 'inv'], [' maybe   '], [' n ', 'inv'], [' decline']],
+      [],
+      [['  esc back', 'm']],
+    ]
+  }
+
+  function week(): Line[] {
+    const mon = (today.getDay() + 6) % 7 // days since Monday
+    const COL = Math.floor((W - 6) / 7)
+    const head: Line = [['      ']]
+    for (let i = 0; i < 7; i++) {
+      const d = dayAt(i - mon)
+      head.push([(COL > 7 ? ` ${WD[d.getDay()]} ${d.getDate()}` : ` ${WD[d.getDay()][0]}${d.getDate()}`).padEnd(COL), i === mon ? 'inv b' : 'b'])
+    }
+    // [column, first half-hour slot from 08:00, slots, title, color]
+    const blocks: [number, number, number, string, string][] = [
+      [mon, 3, 1, 'Standup', 'a'], [mon, 4, 2, 'Design', 'a'], [mon, 5, 1, 'Dentist', 'g'], [mon, 12, 2, 'Lunch', 'cy'],
+      [(mon + 1) % 7, 6, 3, 'Sprint', 'a'], [(mon + 2) % 7, 0, 2, 'Yoga', 'g'], [(mon + 3) % 7, 8, 2, '1:1', 'a'],
+      [(mon + 5) % 7, 2, 4, 'Hike', 'pk'], [(mon + 6) % 7, 10, 2, 'Call', 'cy'], [(mon + 4) % 7, 11, 1, 'Gym', 'g'],
+    ]
+    const rows: Line[] = [head]
+    for (let slot = 0; slot < 16; slot++) {
+      const h = 8 + slot / 2
+      const l: Line = [[slot % 2 ? '      ' : `${String(h).padStart(2, '0')}:00 `.padEnd(6), 'm']]
+      for (let c = 0; c < 7; c++) {
+        const b = blocks.find(([bc, bs, bn]) => bc === c && slot >= bs && slot < bs + bn)
+        if (b) l.push([(slot === b[1] ? ' ' + b[3] : ' ').padEnd(COL - 1).slice(0, COL - 1), 'bg-' + b[4]], [' '])
+        else if (c === mon && slot === 4) l.push(['─'.repeat(COL), 'r'])
+        else l.push([slot % 2 ? ' '.repeat(COL) : '·'.padEnd(COL), 'm'])
+      }
+      rows.push(l)
+    }
+    return rows
+  }
+
+  function month(): Line[] {
+    const first = new Date(today.getFullYear(), today.getMonth(), 1)
+    const start = new Date(first)
+    start.setDate(1 - ((first.getDay() + 6) % 7))
+    const COL = Math.floor(W / 7)
+    const rows: Line[] = [
+      spread([[` ${first.toLocaleString('en', { month: 'long' })} ${first.getFullYear()} `, 'b']], [], '─'),
+      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => [` ${d}`.slice(0, COL - 1).padEnd(COL), 'm'] as Part),
+    ]
+    const dots = ['a', 'g', 'cy', 'pk']
+    for (let w = 0; w < 6; w++) {
+      const num: Line = []
+      const ev: Line = []
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(start)
+        d.setDate(start.getDate() + w * 7 + i)
+        const other = d.getMonth() !== first.getMonth()
+        const isToday = +d === +today
+        num.push([` ${d.getDate()}`.padEnd(COL - 1), isToday ? 'inv b' : other ? 'm' : ''], [' '])
+        const n = other ? 0 : (d.getDate() * 7 + 3) % 4
+        for (let k = 0; k < n; k++) ev.push([k ? '•' : ' •', dots[(d.getDate() + k) % 4]])
+        ev.push([' '.repeat(COL - (n ? n + 1 : 0))])
+      }
+      rows.push(num, ev)
+    }
+    return rows
+  }
+
+  function status(s: State): Line[] {
+    const info: Line = [['now', 'g b'], [' Design review'], [' · ', 'm'], ['next', 'cy b'], [' Dentist '], ['in 10m', 'y']]
+    if (!s.accepted) info.push([' · ', 'm'], ['1 invite (i)', 'y'])
+    if (s.note) info.push([' · ', 'm'], [s.note, 'g'])
+    const btn: Line = []
+    for (const [k, l] of [['n', 'new'], ['r', 'sync'], ['i', 'invites'], ['s', 'accounts'], ['?', 'help'], ['q', 'quit']]) btn.push([` ${k} `, 'kb'], [` ${l} `, 'm'])
+    return [info, btn]
+  }
+
+  function render(s: State): string {
+    if (s.view === 'prompt') {
+      const lines = [[['~ ', 'cy'], ['$ ', 'g'], [s.typed], ['█', 'cur']] as Line]
+      while (lines.length < BODY + 3) lines.push([])
+      return lines.map((l) => html(l)).join('\n')
+    }
+    const body = s.view === 'agenda' ? agenda(s) : s.view === 'invites' ? invites(s) : s.view === 'week' ? week() : month()
+    const lines = [tabs(s), [] as Line, ...body].slice(0, BODY + 1)
+    while (lines.length < BODY + 1) lines.push([])
+    return [...lines.map((l) => html(l)), ...status(s).map((l, i) => html(l, i ? '' : 'sl'))].join('\n')
+  }
+
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+  for (const fig of document.querySelectorAll<HTMLElement>('.tdemo')) {
+    const pre = fig.querySelector<HTMLElement>('.screen')!
+    W = fig.clientWidth < 560 ? 46 : 80
+    fig.style.setProperty('--cols', String(W))
+    fig.querySelector('.bar span')!.textContent = `mysticals — zsh — ${W}×22`
+    const key = fig.querySelector<HTMLElement>('.key')!
+    const s: State = { view: 'agenda', typed: '', sel: 'review', accepted: false }
+    const draw = () => (pre.innerHTML = render(s))
+    draw()
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) continue
+
+    let visible = false
+    new IntersectionObserver(([e]) => (visible = e.isIntersecting)).observe(fig)
+    const wait = async (ms: number) => {
+      await sleep(ms)
+      while (!visible) await sleep(250)
+    }
+    const press = async (k: string, change: Partial<State>, hold = 1400) => {
+      key.textContent = k
+      key.classList.remove('on')
+      void key.offsetWidth // restart the fade
+      key.classList.add('on')
+      Object.assign(s, change)
+      draw()
+      await wait(hold)
+    }
+
+    ;(async () => {
+      for (;;) {
+        Object.assign(s, { view: 'prompt', typed: '', sel: 'review', accepted: false, note: undefined })
+        draw()
+        await wait(700)
+        for (const ch of 'mysticals') {
+          s.typed += ch
+          draw()
+          await wait(70 + Math.random() * 90)
+        }
+        await press('⏎', { view: 'agenda' }, 2200)
+        await press('j', { sel: 'dentist' }, 900)
+        await press('j', { sel: 'lunch' }, 1100)
+        await press('i', { view: 'invites' }, 1500)
+        await press('y', { accepted: true, note: 'accepted Lunch with Ana' }, 1800)
+        await press('esc', { view: 'agenda' }, 1800)
+        await press('w', { view: 'week', note: undefined }, 2600)
+        await press('m', { view: 'month' }, 2600)
+        await press('a', { view: 'agenda', sel: 'review' }, 2400)
+      }
+    })()
+  }
+</script>
+
+<style>
+  .tdemo { margin: 0; container-type: inline-size; }
+  .win { position: relative; width: fit-content; max-width: 100%; margin-inline: auto; background: #0d0d14; border: 1px solid var(--line-strong); box-shadow: 0 30px 80px -30px rgb(189 147 249 / .35); overflow: hidden; }
+  .bar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--surface-2); border-bottom: 1px solid var(--line); }
+  .bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--red); }
+  .bar i:nth-child(2) { background: var(--yellow); }
+  .bar i:nth-child(3) { background: var(--green); }
+  .bar span { flex: 1; text-align: center; margin-right: 46px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .screen { margin: 0; padding: 12px 14px; border: 0; background: none; overflow: hidden; font-size: min(15.5px, (100cqw - 30px) / (var(--cols, 80) * .62)); line-height: 1.45; white-space: pre; }
+  .key { position: absolute; bottom: 70px; right: 14px; padding: 2px 10px; background: var(--accent); color: var(--bg); font-weight: 700; font-size: 13px; opacity: 0; }
+  .key.on { animation: key 1.2s ease-out forwards; }
+  @keyframes key { 0% { opacity: 0; transform: translateY(-4px); } 12%, 70% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+  .screen :global(.m) { color: var(--muted); }
+  .screen :global(.b) { font-weight: 700; }
+  .screen :global(.a) { color: var(--accent); }
+  .screen :global(.g) { color: var(--green); }
+  .screen :global(.cy) { color: var(--cyan); }
+  .screen :global(.pk) { color: var(--pink); }
+  .screen :global(.y) { color: var(--yellow); }
+  .screen :global(.r) { color: var(--red); }
+  .screen :global(.inv) { background: var(--fg); color: var(--bg); }
+  .screen :global(.kb) { background: var(--line-strong); color: var(--fg); font-weight: 700; }
+  .screen :global(.sl) { background: var(--surface-2); }
+  .screen :global(.cur) { animation: blink 1s steps(1) infinite; }
+  .screen :global([class^='bg-']) { color: var(--bg); font-weight: 700; }
+  /* fill the whole line box so stacked highlighted rows join up */
+  .screen :global(:is(.inv, .sl, [class^='bg-'])) { display: inline-block; }
+  .screen :global(.bg-a) { background: var(--accent); }
+  .screen :global(.bg-g) { background: var(--green); }
+  .screen :global(.bg-cy) { background: var(--cyan); }
+  .screen :global(.bg-pk) { background: var(--pink); }
+</style>

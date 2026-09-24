@@ -2,6 +2,9 @@
 import '../styles/global.css'
 interface Props { title: string; description?: string }
 const { title, description = 'One calendar for all your Google and CalDAV accounts. Free, local, no sign-up.' } = Astro.props
+const here = Astro.url.pathname.replace(/\/$/, '') || '/'
+const links = [['/desktop', './desktop'], ['/terminal', './terminal']]
+const gh = 'https://github.com/a1exalexander/mysticals'
 ---
 <!doctype html>
 <html lang="en">
@@ -14,10 +17,16 @@ const { title, description = 'One calendar for all your Google and CalDAV accoun
   </head>
   <body>
     <header class="nav wrap">
-      <a class="brand" href="/"><img src="/icon.svg" alt="" width="28" height="28" />Mysticals</a>
-      <nav><a href="/desktop">Desktop</a><a href="/terminal">Terminal</a><a href="https://github.com/a1exalexander/mysticals">GitHub</a></nav>
+      <a class="brand" href="/"><img src="/icon.svg" alt="" width="24" height="24" /><span class="path">~/<b>mysticals</b></span>$</a>
+      <nav>
+        {links.map(([href, label]) => <a href={href} aria-current={here === href ? 'page' : undefined}>{label}</a>)}
+        <a href={gh}>github↗</a>
+      </nav>
     </header>
     <main class="wrap"><slot /></main>
-    <footer class="wrap foot">Free · Local · No account needed · <a href="https://github.com/a1exalexander/mysticals">GitHub</a></footer>
+    <footer class="wrap foot">
+      <div class="row"><span class="mode">NORMAL</span><span>free</span><span class="sep">·</span><span>local</span><span class="sep">·</span><span>no account needed</span></div>
+      <div class="row"><a href="/desktop">desktop</a><span class="sep">·</span><a href="/terminal">terminal</a><span class="sep">·</span><a href={gh}>github</a></div>
+    </footer>
   </body>
 </html>

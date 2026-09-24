@@ -1,9 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro'
+import DesktopDemo from '../components/DesktopDemo.astro'
 const releases = 'https://github.com/a1exalexander/mysticals/releases/latest'
 ---
 <Layout title="Mysticals for desktop — install and use">
-  <h1>Mysticals for <span class="grad">desktop</span></h1>
+  <h1>mysticals <span class="grad">--desktop</span></h1>
   <p class="lead">All your Google and CalDAV calendars in one window. Free. No sign-up. Your data stays on your computer.</p>
   <div class="pills os">
     <a class="pill" href="#macos">macOS</a>
@@ -11,6 +12,7 @@ const releases = 'https://github.com/a1exalexander/mysticals/releases/latest'
     <a class="pill" href="#linux">Linux</a>
   </div>
   <p><a class="btn" href={releases}>Download the latest release</a></p>
+  <div class="shot"><DesktopDemo /></div>
 
   <h2>Install</h2>
   <div class="grid">
@@ -80,15 +82,16 @@ const releases = 'https://github.com/a1exalexander/mysticals/releases/latest'
 
 <style>
   .os { margin: 8px 0 24px; }
-  .os .pill:hover { text-decoration: none; border-color: var(--line-strong); }
+  .shot { margin-top: 32px; }
   section[id] { scroll-margin-top: 16px; }
-  .card .steps { margin: 12px 0 0; }
+  .card .steps { margin: 4px 0 0; }
   .card .steps > li:last-child { margin-bottom: 0; }
   .card pre { margin: 12px 0 0; font-size: 13px; }
+  .card > p + p, .card > table + p { margin-top: 8px; }
   .card table { margin: 12px 0; font-size: 14px; }
   .card th { color: var(--fg); white-space: nowrap; font-weight: 600; }
   .card td { color: var(--muted); }
   .card code { overflow-wrap: anywhere; }
   .card p.servers { font-size: 14px; margin-top: 8px; }
-  .card p.servers code { display: block; width: fit-content; margin-top: 4px; }
+  .card p.servers code { display: block; width: fit-content; }
 </style>

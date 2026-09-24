@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro'
+import TermDemo from '../components/TermDemo.astro'
 
 const keys: [string[], string][] = [
   [['a', 'd', '2', 'w', 'm'], 'Agenda, Day, 2 Days, Week, Month'],
@@ -17,19 +18,13 @@ const keys: [string[], string][] = [
 ]
 ---
 <Layout title="Mysticals for the terminal — install and use">
-  <h1>Mysticals for the <span class="grad">terminal</span></h1>
+  <h1>mysticals <span class="grad">--terminal</span></h1>
   <p class="lead">All your Google and CalDAV calendars in one keyboard-driven view. Free. No sign-up.</p>
   <div class="pills">
     <span class="pill">macOS</span><span class="pill">Windows</span><span class="pill">Linux</span><span class="pill">Node 20+</span>
   </div>
 
-  <div class="term" aria-hidden="true">
-    <div class="bar"><i></i><i></i><i></i></div>
-    <pre><code><span class="p">$</span> npm i -g mysticals
-<span class="p">$</span> mysticals
-<span class="c"># or try the demo first</span>
-<span class="p">$</span> MYSTICALS_MOCK=1 mysticals</code></pre>
-  </div>
+  <div class="shot"><TermDemo /></div>
 
   <h2>Install</h2>
   <ol class="steps">
@@ -37,7 +32,8 @@ const keys: [string[], string][] = [
     <li>Install Mysticals: <code>npm i -g mysticals</code></li>
     <li>Run it: <code>mysticals</code></li>
   </ol>
-  <p>Just looking? <code>MYSTICALS_MOCK=1 mysticals</code> opens a demo with fake accounts. It touches nothing real.</p>
+  <pre><code><span class="c"># just looking? a demo with fake accounts, touches nothing real</span>
+<span class="p">$ </span>MYSTICALS_MOCK=1 mysticals</code></pre>
 
   <h2>Add your accounts</h2>
   <p>Press <kbd>s</kbd>. Add as many as you like.</p>
@@ -47,7 +43,7 @@ const keys: [string[], string][] = [
   </div>
   <p class="note">No Mysticals account. Data and credentials stay on your device, encrypted.</p>
 
-  <h2>Keys</h2>
+  <h2>mysticals --help</h2>
   <div class="keys card">
     <table>
       <tbody>
@@ -68,19 +64,13 @@ const keys: [string[], string][] = [
 
 <style>
   .pills { margin-top: 16px; }
-  .term { margin-top: 32px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-  .term .bar { display: flex; gap: 6px; padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); }
-  .term .bar i { width: 11px; height: 11px; border-radius: 50%; background: var(--pink); }
-  .term .bar i:nth-child(2) { background: var(--accent); }
-  .term .bar i:nth-child(3) { background: var(--green); }
-  .term pre { margin: 0; border: 0; border-radius: 0; }
-  .p { color: var(--green); }
-  .c { color: var(--muted); }
+  .shot { margin-top: 32px; }
   .note { color: var(--muted); }
-  .keys { padding: 4px 12px; }
+  .note::before { content: '# '; }
+  .keys { padding: 20px 8px 8px; }
   .keys tr:last-child td { border-bottom: 0; }
-  .keys td:first-child { white-space: nowrap; width: 1%; padding-right: 16px; }
-  .keys kbd { margin-right: 4px; color: var(--accent); }
+  .keys td:first-child { white-space: nowrap; width: 1%; padding-right: 24px; }
+  .keys kbd { margin-right: 4px; }
   .keys td:last-child { color: var(--muted); }
-  @media (max-width: 480px) { .keys td { padding: 6px 4px; font-size: 14px; } .keys kbd { padding: 1px 4px; margin-right: 2px; } }
+  @media (max-width: 480px) { .keys td { padding: 6px 4px; font-size: 13px; } .keys kbd { margin-right: 2px; } }
 </style>
