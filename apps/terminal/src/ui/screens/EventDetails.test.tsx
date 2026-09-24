@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { CalEvent } from '@mysticals/core/shared/types'
 import { createTestClient, KEY, renderWith, type Rendered } from '../../test/harness'
-import { execFile } from 'node:child_process'
+import { execFile } from 'child_process'
+import { openCommand } from '../../daemon/google'
 import { EventDetails } from './EventDetails'
 import { MouseProvider } from '../mouse'
 
-vi.mock('node:child_process', () => ({ execFile: vi.fn() }))
+vi.mock('child_process', () => ({ execFile: vi.fn() }))
 
 let t: Rendered
 afterEach(() => t?.unmount())
@@ -37,7 +38,7 @@ describe('EventDetails', () => {
     expect(client.events.respond.mock.calls[0][0].accountId).toBe('work')
     await t.waitFor('✓ accepted')
     await t.press('o')
-    expect(execFile).toHaveBeenCalledWith('open', ['https://meet.example.com/sprint-planning'], expect.any(Function))
+    expect(execFile).toHaveBeenCalledWith(...openCommand('https://meet.example.com/sprint-planning'), expect.any(Function))
   })
 
   it('shows reply errors and ignores RSVP keys on non-invites', async () => {

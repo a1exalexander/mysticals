@@ -11,7 +11,7 @@ export interface Request {
   params: unknown[]
 }
 export type Response = { id: number; result?: unknown; error?: string }
-export type Push = { event: 'changed'; accountId: string }
+export type Push = { event: 'changed'; accountId: string } | { event: 'authUrl'; url: string }
 
 /** The backend slice of Api served by the daemon (onChanged is a Push, onMenu is desktop-only). */
 export type ApiImpl = Omit<Api, 'onChanged' | 'onMenu'>

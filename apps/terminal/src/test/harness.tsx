@@ -18,8 +18,11 @@ import { ApiContext, type Nav } from '../ui/hooks'
 import { App } from '../ui/App'
 
 type Spied<T> = { [G in keyof T]: { [F in keyof T[G]]: T[G][F] extends (...a: infer A) => infer R ? Mock<(...a: A) => R> : never } }
-export type TestClient = Spied<Omit<ClientApi, 'onChanged' | 'close'>> & {
+export type TestClient = Spied<Omit<ClientApi, 'onChanged' | 'onAuthUrl' | 'close'>> & {
   onChanged: ClientApi['onChanged']
+  onAuthUrl: ClientApi['onAuthUrl']
+  /** Pushes a Google sign-in URL to every onAuthUrl listener, as the daemon would. */
+  emitAuthUrl(url: string): void
   close: Mock<() => void>
   /** Fires a change push to every onChanged listener, as the daemon would. */
   emitChanged(accountId: string): void
@@ -28,6 +31,7 @@ export type TestClient = Spied<Omit<ClientApi, 'onChanged' | 'close'>> & {
 export function createTestClient(): TestClient {
   const listeners = new Set<(accountId: string) => void>()
   const emitChanged = (id: string): void => listeners.forEach((l) => l(id))
+  const authListeners = new Set<(url: string) => void>()
   const impl = createMockApi(emitChanged) as unknown as Record<string, Record<string, (...a: unknown[]) => unknown>>
   const spied: Record<string, Record<string, Mock>> = {}
   for (const [group, fns] of Object.entries(impl)) {
@@ -39,6 +43,11 @@ export function createTestClient(): TestClient {
       listeners.add(cb)
       return () => void listeners.delete(cb)
     },
+    onAuthUrl: (cb: (url: string) => void) => {
+      authListeners.add(cb)
+      return () => void authListeners.delete(cb)
+    },
+    emitAuthUrl: (url: string) => authListeners.forEach((l) => l(url)),
     close: vi.fn(),
     emitChanged
   })

@@ -7,7 +7,7 @@
  * Mouse: click a row to select it (a selected calendar again to show/hide it), wheel moves, buttons act on the selection.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Box, Text } from 'ink'
+import { Box, Text, useStdout } from 'ink'
 import { errorText } from '@mysticals/core/logic/editor'
 import type { Account, Calendar } from '@mysticals/core/shared/types'
 import { useApi, useDirectory } from '../hooks'
@@ -32,6 +32,15 @@ export function Accounts({ onClose }: AccountsProps) {
   const [getMode, setMode] = useKeyState<Mode>({ kind: 'list' })
   const mode = getMode()
   const [message, setMessage] = useState<{ text: string; error?: boolean }>()
+  const [authUrl, setAuthUrl] = useState<string>()
+  useEffect(() => api.onAuthUrl(setAuthUrl), [api])
+  const { stdout } = useStdout()
+  // OSC 52: the terminal puts it on the (local, even over SSH) clipboard; the wrapped, boxed text copies badly by hand.
+  const copyAuthUrl = (): void => {
+    if (!authUrl) return
+    stdout.write(`\x1b]52;c;${Buffer.from(authUrl).toString('base64')}\x07`)
+    say('Sign-in link sent to the clipboard (needs a terminal with OSC 52 clipboard support)')
+  }
   // Bumped when a Google sign-in is abandoned so its late result is ignored.
   const googleSession = useRef(0)
   const alive = useRef(true)
@@ -62,6 +71,7 @@ export function Accounts({ onClose }: AccountsProps) {
     const s = ++googleSession.current
     setMode({ kind: 'google' })
     setMessage(undefined)
+    setAuthUrl(undefined)
     api.accounts.addGoogle().then(
       (a) => s === googleSession.current && (setMode({ kind: 'list' }), say(`Added ${a.label}`)),
       (e: unknown) => s === googleSession.current && (setMode({ kind: 'list' }), say(errorText(e), true))
@@ -112,6 +122,7 @@ export function Accounts({ onClose }: AccountsProps) {
           googleSession.current++
           setMode({ kind: 'list' })
         }
+        if (input === 'c') copyAuthUrl()
         return
       }
       if (mode.kind === 'confirm') return confirmRemove(input.toLowerCase() === 'y')
@@ -214,7 +225,16 @@ export function Accounts({ onClose }: AccountsProps) {
         </Box>
       )}
       {mode.kind === 'google' && (
-        <Text color={C.yellow}>Opening browser — finish sign-in there… (esc to stop waiting)</Text>
+        <Box flexDirection="column">
+          <Text color={C.yellow}>Opening browser — finish sign-in there… (esc to stop waiting)</Text>
+          {authUrl && (
+            <>
+              <Text color={C.muted}>No browser? Open this link yourself (c copies it):</Text>
+              <Text>{authUrl}</Text>
+              <Text color={C.muted}>{`Over SSH, forward its port first: ssh -L ${loopbackPort(authUrl)}:127.0.0.1:${loopbackPort(authUrl)} <host>`}</Text>
+            </>
+          )}
+        </Box>
       )}
       {mode.kind === 'rename' && <Text color={C.muted}>enter save  esc cancel</Text>}
       {loadError && <Text color={C.red}>{loadError}</Text>}
@@ -237,4 +257,13 @@ export function Accounts({ onClose }: AccountsProps) {
       )}
     </Clickable>
   )
+}
+
+/** Port of the sign-in's loopback redirect (`redirect_uri`), which an SSH user must forward to reach the daemon. */
+const loopbackPort = (authUrl: string): string => {
+  try {
+    return new URL(new URL(authUrl).searchParams.get('redirect_uri') ?? '').port
+  } catch {
+    return '?'
+  }
 }

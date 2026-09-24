@@ -5,10 +5,12 @@ import { join } from 'path'
 import { fileURLToPath } from 'url'
 import type { Api } from '@mysticals/core/shared/ipc'
 import { homeDir, socketPath } from './paths'
-import { encode, lineReader, METHODS, type Method, type Push, type Response } from './protocol'
+import { encode, lineReader, METHODS, type Method, type Response } from './protocol'
 
 /** What the TUI talks to: the daemon's Api plus change pushes. */
 export type ClientApi = Omit<Api, 'onMenu'> & {
+  /** Google sign-in URL, pushed while the daemon waits for the browser (so it can be opened by hand). */
+  onAuthUrl(cb: (url: string) => void): () => void
   /** Disconnects; the daemon exits a few seconds after its last client leaves. */
   close(): void
 }
@@ -62,13 +64,15 @@ export function clientFor(open: () => Promise<Socket>): ClientApi {
   const pending = new Map<number, { resolve(v: unknown): void; reject(e: Error): void }>()
   const listeners = new Set<(accountId: string) => void>()
   const emit = (accountId: string): void => listeners.forEach((l) => l(accountId))
+  const authListeners = new Set<(url: string) => void>()
 
   const attach = (sock: Socket): Socket => {
     sock.on(
       'data',
       lineReader((msg) => {
-        const m = msg as Response & Partial<Push>
+        const m = msg as Response & { event?: string; accountId?: unknown; url?: unknown }
         if (m.event === 'changed' && typeof m.accountId === 'string') return emit(m.accountId)
+        if (m.event === 'authUrl' && typeof m.url === 'string') return authListeners.forEach((l) => l(m.url as string))
         const p = pending.get(m.id)
         if (!p) return
         pending.delete(m.id)
@@ -115,6 +119,10 @@ export function clientFor(open: () => Promise<Socket>): ClientApi {
     onChanged(cb: (accountId: string) => void) {
       listeners.add(cb)
       return () => void listeners.delete(cb)
+    },
+    onAuthUrl(cb: (url: string) => void) {
+      authListeners.add(cb)
+      return () => void authListeners.delete(cb)
     },
     close() {
       closed = true

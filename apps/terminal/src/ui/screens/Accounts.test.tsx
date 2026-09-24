@@ -100,4 +100,19 @@ describe('Accounts overlay', () => {
     await t.waitFor('Not available in mock mode')
     expect(t.client.accounts.addGoogle).toHaveBeenCalled()
   })
+
+  it('shows the Google sign-in URL while waiting, for when no browser opens', async () => {
+    t = renderWith(<Accounts onClose={() => {}} />)
+    t.client.accounts.addGoogle.mockReturnValue(new Promise(() => {}))
+    await t.waitFor('Holidays')
+    await t.press('g')
+    await t.waitFor('Opening browser')
+    const url = 'https://accounts.example/auth?redirect_uri=http%3A%2F%2F127.0.0.1%3A41234&x=1'
+    t.client.emitAuthUrl(url)
+    await t.waitFor('ssh -L 41234:127.0.0.1:41234')
+    expect(t.lastFrame()!.replace(/\s/g, '')).toContain(url)
+    await t.press('c')
+    await t.waitFor('clipboard')
+    expect(t.frames.join('')).toContain(`\x1b]52;c;${Buffer.from(url).toString('base64')}\x07`)
+  })
 })

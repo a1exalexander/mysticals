@@ -1,6 +1,6 @@
 import { execFileSync, spawnSync } from 'child_process'
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
 import type { SecretCrypto } from '@mysticals/core/accounts/store'
 import { homeDir } from '../paths'
@@ -55,9 +55,13 @@ export function secretTool(service = SERVICE, run: Run = spawnSync as Run): KeyS
   return {
     get() {
       const r = exec(run, 'secret-tool', ['lookup', ...attrs])
-      // `lookup` exits 1 with no output when the item does not exist.
-      if (r.status === 1 && !r.error && !r.stdout.trim()) return undefined
-      if (r.status !== 0) return fail('read', r)
+      // `lookup` exits 1 with no output when the item does not exist; anything on stderr (no D-Bus, locked or
+      // missing keyring) is an outage, never "no key", or we would mint a new key over the real one.
+      if (r.status === 1 && !r.error && !r.stdout.trim() && !r.stderr.trim()) return undefined
+      if (r.status !== 0)
+        throw new Error(
+          `Secret Service unavailable (${r.error?.message ?? r.stderr?.trim()}); start or unlock GNOME Keyring or KWallet (and install libsecret-tools)`
+        )
       return Buffer.from(r.stdout.trim(), 'base64')
     },
     set(key) {
@@ -101,6 +105,12 @@ export function platformKeys(platform = process.platform): KeyStore | undefined 
   return undefined
 }
 
+/** True when any account under `home` has an encrypted credentials file. */
+const hasCredentials = (home: string): boolean => {
+  const dir = join(home, 'accounts')
+  return existsSync(dir) && readdirSync(dir).some((id) => existsSync(join(dir, id, 'creds.bin')))
+}
+
 const VERSION = 1
 const IV = 12
 const TAG = 16
@@ -109,7 +119,7 @@ const TAG = 16
  * AES-256-GCM for per-account credentials. Blob: [version:1][iv:12][tag:16][ciphertext].
  * The master key is created on first encrypt; decrypting without it fails loudly.
  */
-export function createCrypto(store = platformKeys()): SecretCrypto {
+export function createCrypto(store = platformKeys(), home?: string): SecretCrypto {
   if (!store) {
     // Refuse rather than fall back to plaintext.
     const unavailable = (): never => {
@@ -125,6 +135,11 @@ export function createCrypto(store = platformKeys()): SecretCrypto {
     let k = keys.get()
     if (!k) {
       if (!create) throw new Error('Master key missing from the OS key store (service "mysticals-terminal"); re-add your accounts')
+      // A fresh key would orphan every saved credential for good; make the user clear them knowingly instead.
+      if (home && hasCredentials(home))
+        throw new Error(
+          `Master key missing from the OS key store but saved credentials exist; unlock the key store, or remove all accounts (or ${join(home, 'accounts')}) to start over`
+        )
       k = randomBytes(32)
       keys.set(k)
     }

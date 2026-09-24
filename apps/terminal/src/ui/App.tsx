@@ -45,7 +45,7 @@ const HELP: [string, string][] = [
   ['q', 'quit'],
   ['click', 'tabs, buttons, events (click again to open), day headers'],
   ['wheel', 'scroll the list / hours'],
-  ['⌥ drag', 'select text (Shift in some terminals)']
+  process.platform === 'darwin' ? ['⌥ drag', 'select text (Shift in some terminals)'] : ['⇧ drag', 'select text']
 ]
 
 function Help({ onClose }: { onClose(): void }) {
@@ -302,6 +302,11 @@ function Shell({ initialNav, updateCheck }: { initialNav?: Nav; updateCheck?: Pr
     setView('day')
   }
 
+  const goToday = (): void => {
+    setCursor(startOfDay(new Date()))
+    today()
+  }
+
   useKeys(
     (input, key) => {
       if (Object.hasOwn(VIEW_KEYS, input)) {
@@ -310,10 +315,7 @@ function Shell({ initialNav, updateCheck }: { initialNav?: Nav; updateCheck?: Pr
       }
       if (input === 'H' || (key.shift && key.leftArrow)) return shift(-1)
       if (input === 'L' || (key.shift && key.rightArrow)) return shift(1)
-      if (input === 't') {
-        setCursor(startOfDay(new Date()))
-        return today()
-      }
+      if (input === 't') return goToday()
       if (input === 'j') return move(1)
       if (input === 'k') return move(-1)
       const dir = input === 'l' || key.rightArrow ? 1 : input === 'h' || key.leftArrow ? -1 : 0
@@ -390,7 +392,7 @@ function Shell({ initialNav, updateCheck }: { initialNav?: Nav; updateCheck?: Pr
         width={width}
         onView={(v) => !overlay && setView(v)}
         onShift={(dir) => !overlay && shift(dir)}
-        onToday={() => !overlay && today()}
+        onToday={() => !overlay && goToday()}
       />
       <Box flexDirection={overlay ? 'column' : 'row'} height={bodyHeight}>
         {body()}

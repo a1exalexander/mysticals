@@ -17,6 +17,8 @@ export interface Daemon {
   server: Server
   /** Pushes `changed` to every connected TUI. */
   broadcast(accountId: string): void
+  /** Pushes `msg` to every connected TUI. */
+  push(msg: Push): void
   clientCount(): number
   close(): Promise<void>
 }
@@ -91,7 +93,7 @@ export async function serve(api: ApiImpl, path: string, opts: ServeOptions): Pro
     if ((e as NodeJS.ErrnoException).code !== 'EADDRINUSE' || (await alive(path))) throw e
     // Stale socket from a crashed daemon.
     // ponytail: two daemons racing on the same stale file can both unlink+bind; a lock file closes that gap if it bites.
-    rmSync(path, { force: true })
+    if (process.platform !== 'win32') rmSync(path, { force: true }) // named pipes vanish with their owner
     await listen(server, path)
   }
   server.on('error', (e) => console.error('daemon socket error', e))
@@ -99,12 +101,14 @@ export async function serve(api: ApiImpl, path: string, opts: ServeOptions): Pro
   if (process.platform !== 'win32') chmodSync(path, 0o600)
   armIdle()
 
+  const push = (msg: Push): void => {
+    const line = encode(msg)
+    for (const c of clients) if (!c.destroyed) c.write(line)
+  }
   return {
     server,
-    broadcast: (accountId) => {
-      const line = encode({ event: 'changed', accountId })
-      for (const c of clients) if (!c.destroyed) c.write(line)
-    },
+    push,
+    broadcast: (accountId) => push({ event: 'changed', accountId }),
     clientCount: () => clients.size,
     close: () =>
       new Promise((resolve) => {
@@ -120,20 +124,24 @@ export async function runDaemon(): Promise<void> {
   const home = homeDir()
   mkdirSync(home, { recursive: true, mode: 0o700 })
   let broadcast = (_accountId: string): void => {}
+  let push = (_msg: Push): void => {}
   let sync: SyncEngine | undefined
   let api: ApiImpl
   if (isMock()) {
     api = createMockApi((id) => broadcast(id))
   } else {
     setClientConfig(googleConfig()) // also needed for token refresh, not just sign-in
+    // TUIs show the URL (and its loopback port, for ssh -L) when no browser opens; a failed launch must not abort sign-in.
+    // ponytail: goes to every TUI, so two concurrent sign-ins may see each other's URL; target the caller if that bites.
+    const signInBrowser = (url: string): Promise<void> => (push({ event: 'authUrl', url }), openUrl(url).catch(() => {}))
     const factories = { caldav: createCaldavProvider, google: createGoogleProvider }
-    const store = new AccountStore(home, factories, createCrypto())
+    const store = new AccountStore(home, factories, createCrypto(undefined, home))
     sync = new SyncEngine(store, (id) => broadcast(id), {
       triggers: wakeTriggers(),
       onEvents: (id, notes) => notify(store, id, notes),
       onSyncing: (id) => broadcast(id) // clients re-read accounts.list for the `syncing` flag
     })
-    api = createApi(store, sync, { verifyCaldav, googleSignIn: () => googleSignIn(openUrl), onChanged: (id) => broadcast(id) })
+    api = createApi(store, sync, { verifyCaldav, googleSignIn: () => googleSignIn(signInBrowser), onChanged: (id) => broadcast(id) })
   }
 
   let daemon: Daemon
@@ -149,6 +157,7 @@ export async function runDaemon(): Promise<void> {
     throw e
   }
   broadcast = daemon.broadcast
+  push = daemon.push
   process.on('SIGTERM', () => void shutdown())
   process.on('SIGINT', () => void shutdown())
   sync?.start()

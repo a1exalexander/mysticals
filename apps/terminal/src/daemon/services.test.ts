@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync } from 'fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -45,6 +45,17 @@ describe('crypto', () => {
     expect(() => createCrypto(empty).decrypt(blob)).toThrow('Master key missing')
     expect(empty.key).toBeUndefined()
   })
+
+  it('never mints a new key over existing credentials', () => {
+    const home = mkdtempSync(join(tmpdir(), 'mysticals-home-'))
+    const keys = memKeys()
+    expect(createCrypto(keys, home).encrypt('x')).toBeDefined() // no accounts yet: first key is fine
+    mkdirSync(join(home, 'accounts', 'a1'), { recursive: true })
+    writeFileSync(join(home, 'accounts', 'a1', 'creds.bin'), 'blob')
+    const lost = memKeys()
+    expect(() => createCrypto(lost, home).encrypt('y')).toThrow('saved credentials exist')
+    expect(lost.key).toBeUndefined()
+  })
 })
 
 /** Fake spawnSync that records calls and answers from `reply`. */
@@ -69,6 +80,13 @@ describe('key stores', () => {
     expect(calls[1].input).toBe(key.toString('base64'))
     const found = fakeRun(() => ({ stdout: `${key.toString('base64')}\n` }))
     expect(secretTool('svc', found.run).get()?.equals(key)).toBe(true)
+  })
+
+  it('secret-tool: exit 1 with stderr (no D-Bus / locked keyring) is an outage, not "no key"', () => {
+    const { run } = fakeRun(() => ({ status: 1, stderr: 'Cannot autolaunch D-Bus without X11 $DISPLAY' }))
+    expect(() => secretTool('svc', run).get()).toThrow('Secret Service unavailable')
+    const keys = secretTool('svc', run)
+    expect(() => createCrypto(keys).encrypt('x')).toThrow('GNOME Keyring or KWallet')
   })
 
   it('secret-tool: a missing binary fails loudly instead of looking like "no key"', () => {

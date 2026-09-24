@@ -4,7 +4,6 @@
  * Owns ALL input while open. RSVPs and deletes always go through the event's own account (the event object itself).
  */
 import { useState } from 'react'
-import { execFile } from 'node:child_process'
 import { Box, Text } from 'ink'
 import { canEdit, cleanNotes, formatWhen, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
@@ -12,6 +11,7 @@ import { meetingUrl } from '@mysticals/core/logic/meeting'
 import { eventBounds } from '@mysticals/core/logic/layout'
 import { startsLabel } from '@mysticals/core/logic/status'
 import type { Account, Calendar, CalEvent, DeleteScope, PartStat } from '@mysticals/core/shared/types'
+import { openUrl as openInBrowser } from '../../daemon/google'
 import { useApi, useDirectory, useNow } from '../hooks'
 import { Button, Clickable, useKeys } from '../mouse'
 import { ansiOf, C } from '../theme'
@@ -28,8 +28,8 @@ const SCOPE_KEYS: Record<string, DeleteScope> = { '1': 'one', '2': 'following', 
 const STATUS_LABEL: Record<PartStat, string> = { accepted: 'accepted', declined: 'declined', tentative: 'maybe', needsAction: 'not answered' }
 const STATUS_COLOR: Record<PartStat, string> = { accepted: C.green, declined: C.red, tentative: C.yellow, needsAction: C.muted }
 
-// Argument vector, no shell: the URL comes from event data and must never be interpreted.
-const openUrl = (url: string): void => void execFile('open', [url], () => {})
+// Argument vector, no shell (see openCommand): the URL comes from event data and must never be interpreted.
+const openUrl = (url: string): void => void openInBrowser(url).catch(() => {})
 
 export function EventDetails({ event: initial, onClose, onEdit }: EventDetailsProps) {
   const api = useApi()
