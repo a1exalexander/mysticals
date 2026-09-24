@@ -107,7 +107,7 @@ const boxes = [
           <li>System notifications, 16 ANSI colours, NO_COLOR respected</li>
         </ul>
         <div class="row push">
-          <a class="btn mono" href="/download">npm i -g mysticals</a>
+          <button class="btn mono" type="button" data-copy="npm i -g mysticals" aria-label="Copy npm i -g mysticals"><span class="lbl">npm i -g mysticals</span></button>
           <a class="ghost" href="/install#terminal">How to install</a>
         </div>
       </article>
@@ -152,23 +152,21 @@ const boxes = [
   .stack { display: flex; flex-direction: column; gap: 20px; }
   .big { min-height: 52px; padding-inline: 24px; border-radius: 10px; font-size: 16px; }
   .ghost.big { font-size: 15px; font-weight: 400; }
+  .mono { font-family: var(--mono); } /* global .btn/.ghost `font: inherit` otherwise wins */
 
-  /* hero: copy left, desktop demo behind with the terminal demo overlapping its lower left */
+  /* hero: copy left, demos stacked right — desktop on top, terminal below and to the right, never overlapping */
   .hero { padding-block: clamp(56px, 7vw, 104px) clamp(64px, 8vw, 112px); display: grid; gap: 64px; align-items: center; overflow-x: clip; }
   .intro { display: flex; flex-direction: column; gap: 32px; }
   .providers { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: 14px; color: var(--muted); }
   .providers i { font-style: normal; color: var(--faint); }
-  .stage { position: relative; min-width: 0; }
-  .term { position: relative; z-index: 2; margin-top: 24px; }
+  .stage { min-width: 0; display: flex; flex-direction: column; gap: 32px; }
   .term :global(.win) { box-shadow: 0 30px 80px -10px rgb(0 0 0 / .95), 0 0 0 8px rgb(11 11 16 / .6); }
   .desk :global(.dwin) { box-shadow: 0 50px 140px -40px rgb(0 0 0 / .95); }
-  @media (min-width: 760px) {
-    .term { width: min(480px, 72%); margin-top: -18%; }
-  }
+  .term { width: min(480px, 100%); }
+  /* terminal steps right, its window flush with the desktop's right edge */
+  @media (min-width: 760px) { .term { align-self: flex-end; } .term :global(.win) { margin-right: 0; } }
   @media (min-width: 1200px) {
     .hero { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .desk { width: 780px; margin-left: 56px; }
-    .term { width: 480px; margin: -200px 0 0 -40px; }
   }
 
   .split { display: grid; gap: 48px 64px; }
