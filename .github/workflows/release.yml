@@ -23,8 +23,8 @@ jobs:
       - name: Build
         run: pnpm --filter @mysticals/desktop build
         env:
-          MAIN_VITE_GOOGLE_CLIENT_ID: ${{ secrets.MAIN_VITE_GOOGLE_CLIENT_ID }}
-          MAIN_VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.MAIN_VITE_GOOGLE_CLIENT_SECRET }}
+          MYSTICALS_GOOGLE_CLIENT_ID: ${{ secrets.MYSTICALS_GOOGLE_CLIENT_ID }}
+          MYSTICALS_GOOGLE_CLIENT_SECRET: ${{ secrets.MYSTICALS_GOOGLE_CLIENT_SECRET }}
       - name: Package (dmg + zip, arm64 + x64)
         run: pnpm --filter @mysticals/desktop dist --publish never
       - name: Upload to GitHub Release

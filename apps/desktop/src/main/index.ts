@@ -124,8 +124,8 @@ app.whenReady().then(() => {
     registerApi(createMockApi(broadcast))
   } else {
     setClientConfig({
-      clientId: import.meta.env.MAIN_VITE_GOOGLE_CLIENT_ID,
-      clientSecret: import.meta.env.MAIN_VITE_GOOGLE_CLIENT_SECRET
+      clientId: import.meta.env.MYSTICALS_GOOGLE_CLIENT_ID,
+      clientSecret: import.meta.env.MYSTICALS_GOOGLE_CLIENT_SECRET
     })
     const factories = { caldav: createCaldavProvider, google: createGoogleProvider }
     const store = new AccountStore(app.getPath('userData'), factories, safeStorageCrypto)

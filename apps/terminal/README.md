@@ -80,7 +80,7 @@ From the repo root:
 
 ```sh
 pnpm i
-cp apps/terminal/.env.example apps/terminal/.env   # optional, for Google accounts
+cp .env.example .env   # optional, for Google accounts
 pnpm --filter mysticals build                      # dist/cli.js
 node apps/terminal/dist/cli.js                     # run it
 MYSTICALS_MOCK=1 node apps/terminal/dist/cli.js    # with fake accounts
@@ -93,7 +93,7 @@ After a rebuild, close every window so the old daemon exits before you test the 
 
 ### Google OAuth client
 
-Create a Google Cloud OAuth client of type **Desktop app** (steps in the [root README](../../README.md#google-oauth-client-for-google-accounts)) and put it in `apps/terminal/.env`:
+Create a Google Cloud OAuth client of type **Desktop app** (steps in the [root README](../../README.md#google-oauth-client-for-google-accounts)) and put it in the repo-root `.env`:
 
 ```
 MYSTICALS_GOOGLE_CLIENT_ID=...apps.googleusercontent.com

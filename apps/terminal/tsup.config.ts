@@ -2,8 +2,8 @@ import { existsSync, readFileSync } from 'fs'
 import { parseEnv } from 'util'
 import { defineConfig } from 'tsup'
 
-// Google OAuth client baked into dist/cli.js: build env wins over apps/terminal/.env; both are optional.
-const file = existsSync('.env') ? parseEnv(readFileSync('.env', 'utf8')) : {}
+// Google OAuth client baked into dist/cli.js: build env wins over the repo-root .env; both are optional.
+const file = existsSync('../../.env') ? parseEnv(readFileSync('../../.env', 'utf8')) : {}
 const env = (k: string): string => JSON.stringify(process.env[k] || file[k] || '')
 
 // Core is TS source and gets bundled; third-party deps stay external (they are `dependencies`).

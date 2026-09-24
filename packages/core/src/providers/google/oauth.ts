@@ -17,14 +17,14 @@ export interface ClientConfig {
 
 let clientConfig: Partial<ClientConfig> = {}
 
-/** Set once at startup by the app (desktop: MAIN_VITE_GOOGLE_*, terminal: build-time MYSTICALS_GOOGLE_*). */
+/** Set once at startup by the app (both from build-time MYSTICALS_GOOGLE_CLIENT_ID/SECRET). */
 export function setClientConfig(cfg: Partial<ClientConfig>): void {
   clientConfig = cfg
 }
 
 export function getClientConfig(): ClientConfig {
   const { clientId, clientSecret } = clientConfig
-  if (!clientId || !clientSecret) throw new Error('Google sign-in is not configured: set the OAuth client id and secret (MAIN_VITE_GOOGLE_CLIENT_* in apps/desktop/.env, MYSTICALS_GOOGLE_CLIENT_* when building the terminal app)')
+  if (!clientId || !clientSecret) throw new Error('Google sign-in is not configured: set the OAuth client id and secret (MYSTICALS_GOOGLE_CLIENT_ID/SECRET in the repo-root .env)')
   return { clientId, clientSecret }
 }
 

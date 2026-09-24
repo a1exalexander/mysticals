@@ -26,7 +26,7 @@ In a shared calendar app, one broken account can quietly make another account th
 pnpm i
 # if apps/desktop/node_modules/electron/dist is missing afterwards:
 node apps/desktop/node_modules/electron/install.js
-cp apps/desktop/.env.example apps/desktop/.env
+cp .env.example .env
 ```
 
 ### Google OAuth client (for Google accounts)
@@ -35,11 +35,11 @@ cp apps/desktop/.env.example apps/desktop/.env
 2. **APIs & Services → Library**: enable **Google Calendar API**.
 3. **APIs & Services → OAuth consent screen**: choose *External*, fill in the app name and your email, and add yourself as a test user.
 4. **APIs & Services → Credentials → Create credentials → OAuth client ID**, application type **Desktop app**.
-5. Put the values in `apps/desktop/.env`:
+5. Put the values in the repo-root `.env` (used by both the desktop and terminal apps):
 
    ```
-   MAIN_VITE_GOOGLE_CLIENT_ID=...apps.googleusercontent.com
-   MAIN_VITE_GOOGLE_CLIENT_SECRET=...
+   MYSTICALS_GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+   MYSTICALS_GOOGLE_CLIENT_SECRET=...
    ```
 
    A Desktop-app client secret isn't really confidential, but keep `.env` out of git anyway.
@@ -68,7 +68,7 @@ MYSTICALS_MOCK=1 mysticals # two fake isolated accounts, no network
 
 - Data lives in `~/Library/Application Support/mysticals-terminal`. Credentials are encrypted there with a key kept in the macOS Keychain item `mysticals-terminal`. Nothing is shared with the desktop app.
 - All open `mysticals` windows share one local background daemon (accounts, sync, notifications). It stops a few seconds after the last window closes.
-- Google accounts need an OAuth client: put `MYSTICALS_GOOGLE_CLIENT_ID` and `MYSTICALS_GOOGLE_CLIENT_SECRET` in `apps/terminal/.env` (see `.env.example`) before building; they are embedded at build time.
+- Google accounts need an OAuth client: put `MYSTICALS_GOOGLE_CLIENT_ID` and `MYSTICALS_GOOGLE_CLIENT_SECRET` in the repo-root `.env` (see `.env.example`) before building; they are embedded at build time.
 
 Development:
 
@@ -91,7 +91,7 @@ A `v*` tag runs `.github/workflows/release.yml`: it builds the desktop app on ma
    git push origin v0.2.0
    ```
 
-Required repo secrets: `NPM_TOKEN`, `MAIN_VITE_GOOGLE_CLIENT_ID`, `MAIN_VITE_GOOGLE_CLIENT_SECRET`, `MYSTICALS_GOOGLE_CLIENT_ID`, `MYSTICALS_GOOGLE_CLIENT_SECRET`.
+Required repo secrets: `NPM_TOKEN`, `MYSTICALS_GOOGLE_CLIENT_ID`, `MYSTICALS_GOOGLE_CLIENT_SECRET` (one Desktop-app OAuth client shared by both apps).
 
 Installed apps pick up the release on their own. The desktop app downloads the `.zip` for its architecture and updates itself. The terminal app shows a hint to run `npm i -g mysticals`.
 
