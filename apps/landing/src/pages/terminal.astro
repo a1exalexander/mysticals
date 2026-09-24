@@ -18,11 +18,9 @@ const keys: [string[], string][] = [
 ]
 ---
 <Layout title="Mysticals for the terminal — install and use">
-  <h1>mysticals <span class="grad">--terminal</span></h1>
+  <h1>Mysticals for the terminal</h1>
   <p class="lead">All your Google and CalDAV calendars in one keyboard-driven view. Free. No sign-up.</p>
-  <div class="pills">
-    <span class="pill">macOS</span><span class="pill">Windows</span><span class="pill">Linux</span><span class="pill">Node 20+</span>
-  </div>
+  <p class="muted">macOS, Windows and Linux. Needs Node 20 or newer.</p>
 
   <div class="shot"><TermDemo /></div>
 
@@ -32,19 +30,19 @@ const keys: [string[], string][] = [
     <li>Install Mysticals: <code>npm i -g mysticals</code></li>
     <li>Run it: <code>mysticals</code></li>
   </ol>
-  <pre><code><span class="c"># just looking? a demo with fake accounts, touches nothing real</span>
+  <pre><code><span class="c"># Just looking? Run a demo with fake accounts. It touches nothing real.</span>
 <span class="p">$ </span>MYSTICALS_MOCK=1 mysticals</code></pre>
 
   <h2>Add your accounts</h2>
   <p>Press <kbd>s</kbd>. Add as many as you like.</p>
-  <div class="grid">
+  <div class="cards">
     <div class="card"><h3>Google</h3><p>Sign in in your browser. That's it.</p></div>
     <div class="card"><h3>CalDAV</h3><p>Server URL, username and an app password. iCloud, Fastmail and others.</p></div>
   </div>
   <p class="note">No Mysticals account. Data and credentials stay on your device, encrypted.</p>
 
-  <h2>mysticals --help</h2>
-  <div class="keys card">
+  <h2>Keyboard shortcuts</h2>
+  <div class="keys">
     <table>
       <tbody>
         {keys.map(([ks, what]) => (
@@ -55,7 +53,7 @@ const keys: [string[], string][] = [
   </div>
 
   <h2>Good to know</h2>
-  <div class="grid">
+  <div class="cards">
     <div class="card"><h3>Mouse works</h3><p>Click to select, click again to open. The wheel scrolls.</p></div>
     <div class="card"><h3>Your theme</h3><p>Colours follow your terminal theme.</p></div>
     <div class="card"><h3>Many windows, one sync</h3><p>All open windows share one background process. It syncs once.</p></div>
@@ -63,11 +61,8 @@ const keys: [string[], string][] = [
 </Layout>
 
 <style>
-  .pills { margin-top: 16px; }
-  .shot { margin-top: 32px; }
+  .shot { margin-top: 48px; }
   .note { color: var(--muted); }
-  .note::before { content: '# '; }
-  .keys { padding: 20px 8px 8px; }
   .keys tr:last-child td { border-bottom: 0; }
   .keys td:first-child { white-space: nowrap; width: 1%; padding-right: 24px; }
   .keys kbd { margin-right: 4px; }

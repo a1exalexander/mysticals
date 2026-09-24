@@ -3,89 +3,65 @@ import Layout from '../layouts/Layout.astro'
 import TermDemo from '../components/TermDemo.astro'
 import DesktopDemo from '../components/DesktopDemo.astro'
 const releases = 'https://github.com/a1exalexander/mysticals/releases/latest'
-const features: [string, string][] = [
-  ['many-accounts', 'Add as many Google and CalDAV accounts as you like. Work, personal, side projects. All in one view.'],
-  ['isolated', 'No default account. Every event picks its account and calendar. RSVPs go from the account that got the invite.'],
-  ['local', 'No Mysticals account. No sign-up. Your data stays on your device.'],
-  ['free', 'Both apps are free. No trials, no plans.'],
+const benefits: [string, string][] = [
+  ['Every account, one view', 'Add as many Google and CalDAV accounts as you like. Work, personal, family. Their events show up side by side in one calendar.'],
+  ['Never the wrong account', 'There is no default account. Each new event asks which account and calendar it belongs to, and invite replies go from the account that got the invite.'],
+  ['Private and free', 'No Mysticals account, no sign-up, no servers of ours. Events and encrypted credentials stay on your device. Both apps are free.'],
 ]
 ---
-<Layout title="Mysticals — all your calendars, one app">
+<Layout title="Mysticals — all your calendars in one place">
   <section class="hero">
-    <h1>All your calendars. <span class="grad">One app.</span></h1>
-    <p class="lead">Connect many Google and CalDAV accounts. See every event in one place. Free, local, no sign-up.</p>
-    <div class="pills">
-      <span class="pill">Google</span><span class="pill">iCloud</span><span class="pill">Fastmail</span><span class="pill">Any CalDAV</span>
+    <h1>All your calendars in one place</h1>
+    <p class="lead">Connect every Google and CalDAV account you have and see them together. Free, no sign-up, and your data stays on your device.</p>
+    <div class="cta">
+      <a class="btn" href={releases}>Download for desktop</a>
+      <code class="npm"><span class="p">$</span>npm i -g mysticals</code>
     </div>
+    <p class="works muted">Works with Google, iCloud, Fastmail and any CalDAV server.</p>
   </section>
 
-  <div class="demo">
-    <input type="radio" name="demo" id="d-term" checked />
-    <input type="radio" name="demo" id="d-desk" />
-    <div class="tabs" role="presentation">
-      <label for="d-term">terminal</label>
-      <label for="d-desk">desktop</label>
-    </div>
-    <div class="pane p-term"><TermDemo /></div>
-    <div class="pane p-desk"><DesktopDemo /></div>
+  <div class="stage">
+    <figure class="app">
+      <DesktopDemo />
+      <figcaption>
+        <div><h3>Desktop app</h3><p class="muted">macOS, Windows and Linux.</p></div>
+        <a href="/desktop">Install guide</a>
+      </figcaption>
+    </figure>
+    <figure class="app">
+      <TermDemo />
+      <figcaption>
+        <div><h3>Terminal app</h3><p class="muted">Keyboard first, mouse works too. Node 20+.</p></div>
+        <a href="/terminal">Terminal guide</a>
+      </figcaption>
+    </figure>
   </div>
 
-  <h2>ls features/</h2>
-  <ul class="ls">
-    {features.map(([name, text]) => (
-      <li><span class="perm">-rw-r--r--</span><b>{name}</b><span>{text}</span></li>
-    ))}
-  </ul>
-
-  <h2>Two apps. Pick yours.</h2>
-  <div class="grid apps">
-    <div class="card">
-      <h3>desktop</h3>
-      <p>A native-feeling calendar app. macOS · Windows · Linux.</p>
-      <div class="actions">
-        <a class="btn" href={releases}>Download</a>
-        <a class="btn ghost" href="/desktop">How to install</a>
-      </div>
-    </div>
-    <div class="card">
-      <h3>terminal</h3>
-      <p>Your calendars in the terminal. Keyboard and mouse. macOS · Windows · Linux, Node 20+.</p>
-      <pre><code><span class="p">$ </span>npm i -g mysticals</code></pre>
-      <div class="actions"><a class="btn ghost" href="/terminal">Terminal guide</a></div>
-    </div>
+  <h2>Why Mysticals</h2>
+  <div class="cards">
+    {benefits.map(([title, text]) => <div class="card"><h3>{title}</h3><p>{text}</p></div>)}
   </div>
 
-  <h2>man mysticals</h2>
-  <details><summary>Is it free?</summary><p>Yes. Both apps are free.</p></details>
+  <h2>Questions</h2>
+  <details><summary>Is it free?</summary><p>Yes. Both apps are free and open source.</p></details>
   <details><summary>Do I need an account?</summary><p>No. There is no Mysticals account. You only sign in to your own Google or CalDAV accounts.</p></details>
-  <details><summary>Where is my data?</summary><p>On your device. Events and credentials are stored locally. Nothing goes through our servers.</p></details>
+  <details><summary>Where is my data?</summary><p>On your device. Events and credentials are stored locally, and credentials are encrypted. Nothing goes through our servers.</p></details>
+  <details><summary>Desktop or terminal?</summary><p>Same calendars, two ways to use them. They keep separate settings, so you can run both, even with different accounts.</p></details>
 </Layout>
 
 <style>
-  .hero h1 { margin-top: 56px; }
-  .pills { margin-top: 16px; }
-  .demo { margin-top: 40px; }
-  .demo input { position: absolute; opacity: 0; pointer-events: none; }
-  .tabs { display: flex; justify-content: center; gap: 2px; }
-  .tabs label { cursor: pointer; padding: 4px 14px; color: var(--muted); border: 1px solid var(--line-strong); border-bottom: 0; }
-  .tabs label::before { content: './'; color: var(--line-strong); }
-  #d-term:checked ~ .tabs [for='d-term'], #d-desk:checked ~ .tabs [for='d-desk'] { background: var(--accent); color: var(--bg); border-color: var(--accent); }
-  #d-term:checked ~ .tabs [for='d-term']::before, #d-desk:checked ~ .tabs [for='d-desk']::before { color: var(--bg); }
-  .demo input:focus-visible ~ .tabs label { outline-offset: 2px; }
-  #d-term:focus-visible ~ .tabs [for='d-term'], #d-desk:focus-visible ~ .tabs [for='d-desk'] { outline: 2px solid var(--cyan); }
-  .pane { display: none; }
-  #d-term:checked ~ .p-term, #d-desk:checked ~ .p-desk { display: block; }
+  .hero { text-align: center; }
+  .hero .lead { margin-inline: auto; }
+  .cta { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px 16px; margin-top: 32px; }
+  .npm { display: inline-flex; align-items: center; gap: 1ch; min-height: 44px; padding: 0 16px; border-radius: 10px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); user-select: all; }
+  .npm .p { user-select: none; }
+  .works { font-size: .95rem; margin-top: 20px; }
 
-  .ls { list-style: none; padding: 0; margin: 0; }
-  .ls li { display: grid; grid-template-columns: auto 14ch 1fr; gap: 0 2ch; padding: 6px 0; border-bottom: 1px dashed var(--line); }
-  .ls .perm { color: var(--muted); }
-  .ls b { color: var(--cyan); font-weight: 400; }
-  .ls li span:last-child { color: var(--muted); }
-  @media (max-width: 640px) {
-    .ls li { grid-template-columns: 1fr; }
-    .ls .perm { display: none; }
-  }
-  .apps .card { display: flex; flex-direction: column; gap: 14px; }
-  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; }
-  .apps pre { margin: 0; }
+  /* wider than the text column so both demos get room */
+  .stage { width: min(1360px, 100vw - 32px); margin: 64px 0 0 50%; transform: translateX(-50%); display: grid; gap: 48px 32px; }
+  @media (min-width: 1100px) { .stage { grid-template-columns: 1.25fr 1fr; } }
+  /* demos differ in height: keep captions on one line */
+  .app { margin: 0; min-width: 0; display: flex; flex-direction: column; }
+  .app > figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; margin-top: auto; padding-top: 20px; }
+  .app > figcaption p { margin: 0; }
 </style>

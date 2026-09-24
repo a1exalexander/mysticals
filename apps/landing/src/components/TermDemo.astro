@@ -242,7 +242,12 @@
 
 <style>
   .tdemo { margin: 0; container-type: inline-size; }
-  .win { position: relative; width: fit-content; max-width: 100%; margin-inline: auto; background: #0d0d14; border: 1px solid var(--line-strong); box-shadow: 0 30px 80px -30px rgb(189 147 249 / .35); overflow: hidden; }
+  .win {
+    --bg: #0b0b10; --surface: #111118; --surface-2: #181822; --line: #1f1f2b; --line-strong: #2d2d3d;
+    --fg: #f8f8f2; --muted: #8a93b8; --accent: #bd93f9; --pink: #ff79c6; --green: #50fa7b; --cyan: #8be9fd;
+    --yellow: #f1fa8c; --red: #ff5555;
+    --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+    position: relative; color: var(--fg); border-radius: 10px; width: fit-content; max-width: 100%; margin-inline: auto; background: #0d0d14; border: 1px solid var(--line-strong); box-shadow: 0 24px 60px -24px rgb(22 23 29 / .45); overflow: hidden; }
   .bar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--surface-2); border-bottom: 1px solid var(--line); }
   .bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--red); }
   .bar i:nth-child(2) { background: var(--yellow); }
@@ -263,6 +268,7 @@
   .screen :global(.inv) { background: var(--fg); color: var(--bg); }
   .screen :global(.kb) { background: var(--line-strong); color: var(--fg); font-weight: 700; }
   .screen :global(.sl) { background: var(--surface-2); }
+  @keyframes blink { 50% { opacity: 0; } }
   .screen :global(.cur) { animation: blink 1s steps(1) infinite; }
   .screen :global([class^='bg-']) { color: var(--bg); font-weight: 700; }
   /* fill the whole line box so stacked highlighted rows join up */

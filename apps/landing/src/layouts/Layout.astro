@@ -3,7 +3,7 @@ import '../styles/global.css'
 interface Props { title: string; description?: string }
 const { title, description = 'One calendar for all your Google and CalDAV accounts. Free, local, no sign-up.' } = Astro.props
 const here = Astro.url.pathname.replace(/\/$/, '') || '/'
-const links = [['/desktop', './desktop'], ['/terminal', './terminal']]
+const links = [['/desktop', 'Desktop'], ['/terminal', 'Terminal']]
 const gh = 'https://github.com/a1exalexander/mysticals'
 ---
 <!doctype html>
@@ -13,20 +13,23 @@ const gh = 'https://github.com/a1exalexander/mysticals'
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" />
     <title>{title}</title>
   </head>
   <body>
     <header class="nav wrap">
-      <a class="brand" href="/"><img src="/icon.svg" alt="" width="24" height="24" /><span class="path">~/<b>mysticals</b></span>$</a>
+      <a class="brand" href="/"><img src="/icon.svg" alt="" width="24" height="24" />Mysticals</a>
       <nav>
         {links.map(([href, label]) => <a href={href} aria-current={here === href ? 'page' : undefined}>{label}</a>)}
-        <a href={gh}>github↗</a>
+        <a href={gh}>GitHub</a>
       </nav>
     </header>
     <main class="wrap"><slot /></main>
     <footer class="wrap foot">
-      <div class="row"><span class="mode">NORMAL</span><span>free</span><span class="sep">·</span><span>local</span><span class="sep">·</span><span>no account needed</span></div>
-      <div class="row"><a href="/desktop">desktop</a><span class="sep">·</span><a href="/terminal">terminal</a><span class="sep">·</span><a href={gh}>github</a></div>
+      <span>Mysticals · free and open source · MIT</span>
+      <nav><a href="/desktop">Desktop</a><a href="/terminal">Terminal</a><a href={gh}>GitHub</a></nav>
     </footer>
   </body>
 </html>
