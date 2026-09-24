@@ -184,3 +184,24 @@ describe('AccountStore isolation', () => {
     expect(fresh.list()).toEqual(store.list())
   })
 })
+
+describe('AccountStore corrupt files', () => {
+  it('falls back to no hidden calendars on a corrupt prefs.json', async () => {
+    const { work } = await addBoth()
+    await store.setCalendarVisible(work.id, 'c1', false)
+    writeFileSync(join(accDir(work.id), 'prefs.json'), '{"hidden": [')
+    expect(store.hiddenCalendars(work.id)).toEqual([])
+    await store.setCalendarVisible(work.id, 'c2', false)
+    expect(store.hiddenCalendars(work.id)).toEqual(['c2'])
+  })
+
+  it('refuses to start on a corrupt accounts.json and leaves it intact', async () => {
+    await addBoth()
+    const file = join(dir, 'accounts.json')
+    writeFileSync(file, '[{"id":')
+    expect(() => new AccountStore(dir, { caldav: factory(), google: factory() }, fakeCrypto)).toThrow(`Could not read ${file}`)
+    writeFileSync(file, '{}')
+    expect(() => new AccountStore(dir, { caldav: factory(), google: factory() }, fakeCrypto)).toThrow(/not a list of accounts/)
+    expect(readFileSync(file, 'utf8')).toBe('{}')
+  })
+})

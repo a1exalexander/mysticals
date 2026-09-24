@@ -22,6 +22,7 @@ import {
   parseEvents,
   type CaldavRaw
 } from './ics'
+import { timedFetch } from '../http'
 
 const FALLBACK_COLOR = '#8e8e93'
 const DAY = 864e5
@@ -40,7 +41,7 @@ async function connect(serverUrl: string, username: string, password: string): P
   const headers = getBasicAuthHeaders({ username, password })
   let unauthorized = false
   const trackingFetch: typeof fetch = async (input, init) => {
-    const res = await fetch(input, init)
+    const res = await timedFetch(input, init)
     if (res.status === 401) unauthorized = true
     return res
   }
@@ -81,7 +82,8 @@ async function listVeventCalendars(conn: Conn) {
     account: conn.account,
     headers: conn.headers,
     props: CALENDAR_PROPS,
-    projectedProps: { currentUserPrivilegeSet: true }
+    projectedProps: { currentUserPrivilegeSet: true },
+    fetch: timedFetch
   })
   return cals.filter((c) => !c.components?.length || c.components.includes('VEVENT'))
 }
@@ -109,7 +111,7 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
   /** Re-read one object after a write to get fresh etag + server-normalized ICS. */
   async function reload(calendarId: string, href: string, id: string | undefined, around: TimeRange): Promise<CalEvent> {
     const { headers } = await getConn()
-    const [obj] = await fetchCalendarObjects({ calendar: { url: calendarId }, objectUrls: [href], headers, urlFilter: () => true })
+    const [obj] = await fetchCalendarObjects({ calendar: { url: calendarId }, objectUrls: [href], headers, urlFilter: () => true, fetch: timedFetch })
     if (!obj?.data) throw new Error('Saved event could not be read back from the server')
     const range = { start: new Date(new Date(around.start).getTime() - DAY).toISOString(), end: new Date(new Date(around.end).getTime() + DAY).toISOString() }
     const events = parseEvents(obj.data, id === undefined ? obj.url : href, obj.etag, mapCtx(calendarId), range)
@@ -122,7 +124,7 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
   const put = async (event: CalEvent, ics: string, what: string): Promise<void> => {
     const { headers } = await getConn()
     const raw = event.raw as CaldavRaw
-    check(await updateCalendarObject({ calendarObject: { url: raw.href, data: ics, etag: event.etag }, headers }), what)
+    check(await updateCalendarObject({ calendarObject: { url: raw.href, data: ics, etag: event.etag }, headers, fetch: timedFetch }), what)
   }
 
   const provider: CalendarProvider = {
@@ -133,7 +135,7 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
 
     async listEvents(calendarId, range) {
       const { headers } = await getConn()
-      const objs = await fetchCalendarObjects({ calendar: { url: calendarId }, timeRange: range, headers, urlFilter: () => true })
+      const objs = await fetchCalendarObjects({ calendar: { url: calendarId }, timeRange: range, headers, urlFilter: () => true, fetch: timedFetch })
       return objs.flatMap((o) => (o.data ? parseEvents(o.data, o.url, o.etag, mapCtx(calendarId), range) : []))
     },
 
@@ -142,7 +144,7 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
       const uid = randomUUID()
       const filename = `${uid}.ics`
       const ics = buildIcs(uid, input, ctx.email)
-      check(await createCalendarObject({ calendar: { url: calendarId }, filename, iCalString: ics, headers }), 'Create event')
+      check(await createCalendarObject({ calendar: { url: calendarId }, filename, iCalString: ics, headers, fetch: timedFetch }), 'Create event')
       const href = new URL(filename, calendarId.endsWith('/') ? calendarId : `${calendarId}/`).href
       return reload(calendarId, href, undefined, input)
     },
@@ -157,7 +159,7 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
       const rest = !raw.recurrenceId || scope === 'all' ? null : scope === 'following' ? applyDeleteFollowing(raw) : applyDeleteInstance(raw)
       if (rest) return put(event, rest, 'Delete event')
       const { headers } = await getConn()
-      check(await deleteCalendarObject({ calendarObject: { url: raw.href, etag: event.etag }, headers }), 'Delete event')
+      check(await deleteCalendarObject({ calendarObject: { url: raw.href, etag: event.etag }, headers, fetch: timedFetch }), 'Delete event')
     },
 
     async respond(event, status) {
@@ -174,7 +176,7 @@ export async function verifyCaldav(input: CaldavAccountInput): Promise<{ email: 
   const c = await connect(input.serverUrl.trim(), input.username, input.password)
   await listVeventCalendars(c)
   // Prefer the server's calendar-user-address (what invites are sent to); the login name may differ.
-  const addresses = await fetchCalendarUserAddresses({ account: c.account, headers: c.headers }).catch(() => [])
+  const addresses = await fetchCalendarUserAddresses({ account: c.account, headers: c.headers, fetch: timedFetch }).catch(() => [])
   const mails = addresses.filter((a) => /^mailto:/i.test(a)).map(cleanEmail)
   const login = cleanEmail(input.username)
   const email = mails.find((m) => m === login) ?? mails[0] ?? (login.includes('@') ? login : undefined)

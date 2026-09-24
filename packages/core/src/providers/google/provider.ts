@@ -1,5 +1,6 @@
 import type { Attendee, Calendar, CalEvent, DeleteScope, PartStat } from '../../shared/types'
 import type { CalendarProvider, ProviderContext } from '../types'
+import { timedFetch } from '../http'
 import { getClientConfig, postToken, type GoogleCredentials } from './oauth'
 
 const API = 'https://www.googleapis.com/calendar/v3'
@@ -98,7 +99,7 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
     const qs = new URLSearchParams(query).toString()
     const url = `${API}${path}${qs ? `?${qs}` : ''}`
     const send = async (accessToken: string): Promise<Response> =>
-      fetch(url, {
+      timedFetch(url, {
         method,
         headers: { Authorization: `Bearer ${accessToken}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
         body: body ? JSON.stringify(body) : undefined

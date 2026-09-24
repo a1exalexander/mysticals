@@ -18,8 +18,14 @@ export interface SecretCrypto {
 
 const ID_RE = /^[a-zA-Z0-9-]{1,64}$/
 
+/** Missing file -> fallback; unparseable file -> throws with the path, so the user knows what to fix. */
 function readJson<T>(file: string, fallback: T): T {
-  return existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')) as T) : fallback
+  if (!existsSync(file)) return fallback
+  try {
+    return JSON.parse(readFileSync(file, 'utf8')) as T
+  } catch (e) {
+    throw new Error(`Could not read ${file}: ${(e as Error).message}`)
+  }
 }
 
 async function writeAtomic(file: string, data: string | Buffer): Promise<void> {
@@ -41,7 +47,9 @@ export class AccountStore {
     readonly factories: Record<AccountKind, ProviderFactory>,
     private readonly crypto: SecretCrypto
   ) {
+    // Never fall back to [] here: the next save would wipe every account.
     this.accounts = readJson<Account[]>(this.registryFile, [])
+    if (!Array.isArray(this.accounts)) throw new Error(`Could not read ${this.registryFile}: not a list of accounts`)
   }
 
   private get registryFile(): string {
@@ -171,7 +179,14 @@ export class AccountStore {
     })
   }
   hiddenCalendars(id: string): string[] {
-    return readJson<{ hidden: string[] }>(join(this.accountDir(id), 'prefs.json'), { hidden: [] }).hidden
+    // Prefs are only calendar visibility: a corrupt file just shows everything again (rewritten on the next toggle).
+    const file = join(this.accountDir(id), 'prefs.json')
+    try {
+      const hidden = readJson<{ hidden?: unknown }>(file, {}).hidden
+      return Array.isArray(hidden) ? hidden.filter((h): h is string => typeof h === 'string') : []
+    } catch {
+      return []
+    }
   }
   setCalendarVisible(id: string, calendarId: string, visible: boolean): Promise<void> {
     return this.serial(async () => {

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Credentials } from '../../shared/types'
 import { createGoogleProviderImpl, mapEvent, truncateRecurrence, type GEvent } from './provider'
 import { setClientConfig } from './oauth'
+import { http } from '../http'
 
 type Call = { method: string; url: URL; body?: any }
 let calls: Call[]
@@ -226,5 +227,16 @@ describe('truncateRecurrence', () => {
   })
   it('uses the previous date for all-day series', () => {
     expect(truncateRecurrence(['RRULE:FREQ=DAILY;COUNT=5'], { date: '2026-10-01' })).toEqual(['RRULE:FREQ=DAILY;UNTIL=20260930'])
+  })
+})
+
+describe('provider timeouts', () => {
+  afterEach(() => void (http.timeoutMs = 30_000))
+
+  it('fails a call instead of hanging when Google never answers', async () => {
+    http.timeoutMs = 20
+    // Settles only by abort, like a stalled socket.
+    vi.stubGlobal('fetch', (_url: string, init: RequestInit) => new Promise((_, reject) => init.signal!.addEventListener('abort', () => reject(init.signal!.reason))))
+    await expect(provider().listCalendars()).rejects.toThrow('Request to www.googleapis.com timed out')
   })
 })

@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'crypto'
 import { createServer } from 'http'
 import type { AddressInfo } from 'net'
 import type { Credentials } from '../../shared/types'
+import { timedFetch } from '../http'
 
 export type GoogleCredentials = Extract<Credentials, { kind: 'google' }>
 
@@ -80,7 +81,7 @@ export function parseTokenResponse(json: unknown, now = Date.now()): TokenResult
 }
 
 export async function postToken(params: Record<string, string>): Promise<TokenResult> {
-  const res = await fetch(TOKEN_URL, {
+  const res = await timedFetch(TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(params).toString()
@@ -160,7 +161,7 @@ export async function runOAuthFlow(openUrl: (url: string) => Promise<void>): Pro
 }
 
 async function fetchUserEmail(accessToken: string): Promise<string> {
-  const res = await fetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: `Bearer ${accessToken}` } })
+  const res = await timedFetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: `Bearer ${accessToken}` } })
   const json = (await res.json().catch(() => ({}))) as { email?: unknown }
   if (!res.ok || typeof json.email !== 'string') throw new Error('Could not read Google account email')
   return json.email
