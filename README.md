@@ -1,109 +1,83 @@
+<div align="center">
+
+<img src="apps/landing/public/icon.svg" width="96" alt="Mysticals logo">
+
 # Mysticals
 
-A simple calendar for Google and CalDAV accounts (Namecheap Private Email, iCloud, Fastmail, any CalDAV server) on macOS, Windows and Linux. Built with Electron, TypeScript and React. You add accounts inside the app. It never reads the system calendar database.
+One calendar for all your accounts, where every account stays in its own box.
 
-## Repo layout
+[Website](https://mysticals.sashkoratushnyi.com) · [Download](https://mysticals.sashkoratushnyi.com/download) · [Install guide](https://mysticals.sashkoratushnyi.com/install)
 
-Turborepo + pnpm workspace. Apps live in `apps/*`, shared code in `packages/*`.
+[![Release](https://img.shields.io/github/v/release/a1exalexander/mysticals)](https://github.com/a1exalexander/mysticals/releases/latest)
+[![npm](https://img.shields.io/npm/v/mysticals)](https://www.npmjs.com/package/mysticals)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-- `packages/core` (`@mysticals/core`) — platform-free core shared by both apps: account store, providers (Google, CalDAV), sync engine, the validated API (`createApi`), mock backend and pure view logic. TypeScript source, bundled by each app.
-- `apps/desktop` (`@mysticals/desktop`) — the Electron app. Its `productName` is `mysticals`; don't change it lightly, Electron derives the user-data folder with accounts (and the Keychain item) from it.
-- `apps/terminal` (npm package `mysticals`) — the terminal app (Ink). Every open `mysticals` shares one background daemon that stops after the last one closes. Its data lives in a `mysticals-terminal` folder (`~/Library/Application Support` on macOS, `%APPDATA%` on Windows, `~/.local/share` on Linux), separate from the desktop app, so both can run with different accounts and settings.
+</div>
 
-## Why isolation matters
+Mysticals is a calendar for Google and CalDAV accounts: Namecheap Private Email, iCloud, Fastmail or any CalDAV server. It comes as a desktop app and a terminal app, both for macOS, Windows and Linux. You add accounts inside the app, and each one is kept isolated from the others.
 
-In a shared calendar app, one broken account can quietly make another account the organizer: coworkers start getting invites to work meetings from your personal Gmail. Mysticals doesn't allow that:
+## Why
 
-- There is no default account or calendar. Every new event needs an explicit account and calendar.
+> I have a few personal calendars and a work one on Namecheap Private Email. That work account only speaks CalDAV, and on a Mac the only practical way to use CalDAV was the built-in Calendar app. I looked for something else and found nothing I enjoyed — Thunderbird can do it, but it was never for me.
+>
+> And Calendar worked fine. Until one day the work account dropped off — something outside the Mac broke, not Apple’s fault. But the app kept going, and started sending invites for work meetings to my colleagues from my personal address.
+>
+> That was the boiling point. So I built my own: one calendar for the desktop, one right in the terminal — where every account stays in its own box, and nothing crosses between them.
+>
+> — Oleksandr Ratushnyi
+
+So Mysticals guarantees:
+
+- No default account or calendar. Every new event needs an explicit account and calendar.
 - Events are never copied, moved or re-created across accounts.
 - RSVPs go out only through the account that received the invite.
-- Each account has its own provider, encrypted credentials (Electron `safeStorage`: Keychain on macOS, DPAPI on Windows, Secret Service on Linux; one file per account), cache and sync loop.
-- Attendees are never added automatically. The organizer is always the chosen account itself.
+- Each account has its own encrypted credentials, cache and sync.
+- Attendees are never added automatically.
 
-## Setup
+## Install
 
-```sh
-pnpm i
-# if apps/desktop/node_modules/electron/dist is missing afterwards:
-node apps/desktop/node_modules/electron/install.js
-cp .env.example .env
-```
+### Desktop
 
-### Google OAuth client (for Google accounts)
+Download the latest build from [GitHub Releases](https://github.com/a1exalexander/mysticals/releases/latest):
 
-1. Open [Google Cloud Console](https://console.cloud.google.com/) and create a project.
-2. **APIs & Services → Library**: enable **Google Calendar API**.
-3. **APIs & Services → OAuth consent screen**: choose *External*, fill in the app name and your email, and add yourself as a test user.
-4. **APIs & Services → Credentials → Create credentials → OAuth client ID**, application type **Desktop app**.
-5. Put the values in the repo-root `.env` (used by both the desktop and terminal apps):
+- **macOS**: `.dmg` (Apple Silicon `arm64` or Intel `x64`). The app is unsigned: on first launch, right-click it and choose **Open**.
+- **Windows**: `-setup.exe`. SmartScreen warns about an unknown publisher: **More info → Run anyway**.
+- **Linux**: `.AppImage` or `.deb`. Storing credentials needs a running keyring (GNOME Keyring, KWallet).
 
-   ```
-   MYSTICALS_GOOGLE_CLIENT_ID=...apps.googleusercontent.com
-   MYSTICALS_GOOGLE_CLIENT_SECRET=...
-   ```
+### Terminal
 
-   A Desktop-app client secret isn't really confidential, but keep `.env` out of git anyway.
-
-## Run
-
-```sh
-pnpm dev                  # development with hot reload
-MYSTICALS_MOCK=1 pnpm dev # two fake isolated accounts, no network
-pnpm test                 # unit tests
-pnpm e2e                  # Playwright smoke tests (mock mode)
-pnpm dist                 # unsigned installers for the current OS in apps/desktop/dist/
-                          # (macOS .dmg/.zip, Windows setup .exe, Linux .AppImage/.deb)
-```
-
-The app is shared as-is, unsigned (`identity: null` in `apps/desktop/electron-builder.yml`). On macOS, right-click the app on first launch and choose **Open**. On Windows, SmartScreen warns about an unknown publisher: **More info → Run anyway**. On Linux, credentials need a running Secret Service keyring (GNOME Keyring, KWallet); without one the app refuses to store them.
-
-## Terminal app
-
-The same calendar for the terminal. It's a separate app with its own accounts and settings, so you can use it next to the desktop app with different accounts. Full docs: [apps/terminal/README.md](apps/terminal/README.md).
+Needs Node.js 20 or newer.
 
 ```sh
 npm i -g mysticals
-mysticals                  # press ? for keys
-MYSTICALS_MOCK=1 mysticals # two fake isolated accounts, no network
+mysticals   # press ? for keys
 ```
 
-- Data lives in a `mysticals-terminal` folder in the OS app-data directory. Credentials are encrypted there with a key kept in the macOS Keychain, the Linux Secret Service (`secret-tool`), or sealed with Windows DPAPI. Nothing is shared with the desktop app.
-- All open `mysticals` windows share one local background daemon (accounts, sync, notifications). It stops a few seconds after the last window closes.
-- Google accounts need an OAuth client: put `MYSTICALS_GOOGLE_CLIENT_ID` and `MYSTICALS_GOOGLE_CLIENT_SECRET` in the repo-root `.env` (see `.env.example`) before building; they are embedded at build time.
+Full docs: [apps/terminal/README.md](apps/terminal/README.md).
 
-Development:
+### Try it without accounts
+
+Two fake, isolated accounts, no network:
 
 ```sh
-pnpm --filter mysticals build                   # apps/terminal/dist/cli.js
-MYSTICALS_MOCK=1 node apps/terminal/dist/cli.js
-pnpm --filter mysticals dev                     # rebuild on change
-pnpm --filter mysticals test
+MYSTICALS_MOCK=1 mysticals
 ```
 
-## Releasing
+In PowerShell: `$env:MYSTICALS_MOCK=1; mysticals`
 
-A `v*` tag runs `.github/workflows/release.yml`: it builds the desktop app on macOS, Windows and Linux runners and attaches the `.dmg` and `.zip` (arm64 + x64), the Windows `-setup.exe` and the Linux `.AppImage` and `.deb` to one GitHub Release, and publishes the terminal app to npm.
+## Adding a CalDAV account
 
-1. Bump `version` in `apps/desktop/package.json` and `apps/terminal/package.json` (both must match the tag, or the job fails).
-2. Commit, then tag and push:
+**Add calendar → CalDAV**, pick a preset, then enter your full email address and an app password (not your main password):
 
-   ```sh
-   git tag v0.2.0
-   git push origin v0.2.0
-   ```
+- **Namecheap Private Email**: create an application password in Private Email webmail. The server `https://dav.privateemail.com/dav.php/` is filled in.
+- **iCloud**: app-specific password from [appleid.apple.com](https://appleid.apple.com).
+- **Fastmail**: app password from Settings → Privacy & Security.
+- Any other server: choose **Custom** and enter its URL.
 
-Required repo secrets: `NPM_TOKEN`, `MYSTICALS_GOOGLE_CLIENT_ID`, `MYSTICALS_GOOGLE_CLIENT_SECRET` (one Desktop-app OAuth client shared by both apps).
+## Contributing
 
-Installed apps pick up the release on their own. On macOS the desktop app downloads the `.zip` for its architecture and updates itself; on Windows and Linux its update button opens the release page to download the new installer. The terminal app shows a hint to run `npm i -g mysticals`.
-
-## Adding Namecheap Private Email (CalDAV)
-
-1. In Private Email webmail, create an **application password** for the mailbox. You need one if 2FA is on, and it's a good idea anyway.
-2. In Mysticals: **Add calendar → CalDAV**, preset **Namecheap Private Email**. The server URL `https://dav.privateemail.com/dav.php/` is filled in for you. It matches the SabreDAV root shown in Private Email → Configuration details → CalDAV ([Namecheap docs](https://www.namecheap.com/support/knowledgebase/subcategory/2260/private-email-contacts-and-calendars-setup/)).
-3. Enter your full email address as the username, paste the app password, and pick a label and colour.
-
-iCloud (`https://caldav.icloud.com/`, app-specific password from appleid.apple.com) and Fastmail (`https://caldav.fastmail.com/`, app password from Settings → Privacy & Security) work the same way. For any other server, choose **Custom**.
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, and [apps/terminal/README.md](apps/terminal/README.md) for the terminal app.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[MIT](LICENSE)
