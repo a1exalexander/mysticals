@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { Api, MenuCommand } from '@shared/ipc'
+import type { Api, MenuCommand, UpdateApi, UpdateState } from '@shared/ipc'
 import { IPC } from '@shared/ipc'
 
 const call =
@@ -35,3 +35,12 @@ const api: Api = {
 } as Api
 
 contextBridge.exposeInMainWorld('api', api)
+
+const update: UpdateApi = {
+  state: call(IPC.updateState),
+  check: call(IPC.updateCheck),
+  install: call(IPC.updateInstall),
+  onUpdate: (cb) => on<UpdateState>(IPC.update, cb)
+} as UpdateApi
+
+contextBridge.exposeInMainWorld('update', update)

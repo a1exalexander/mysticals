@@ -12,6 +12,7 @@ import { createCaldavProvider, verifyCaldav } from '@mysticals/core/providers/ca
 import { createGoogleProvider, googleSignIn, setClientConfig } from '@mysticals/core/providers/google'
 import { registerApi } from './ipc/register'
 import { buildMenu } from './menu'
+import { startUpdater } from './update'
 import { electronTriggers } from './sync/electronTriggers'
 
 const MOCK = process.env.MYSTICALS_MOCK === '1'
@@ -140,6 +141,7 @@ app.whenReady().then(() => {
       console.error('backend not ready', e)
     }
   }
+  startUpdater()
   createWindow()
   app.on('activate', () => BrowserWindow.getAllWindows().length === 0 && createWindow())
 })

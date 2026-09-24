@@ -338,13 +338,14 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 }
 .sbar-seg { flex: none; padding: 0 12px; border-right: 1px solid var(--line); overflow: hidden; text-overflow: ellipsis; }
 .sbar-events { display: flex; min-width: 0; overflow: hidden; }
-.sbar-ev, .sbar-err { border: 0; border-right: 1px solid var(--line); background: none; font: inherit; color: var(--fg); cursor: pointer; }
+.sbar-ev, .sbar-err, .sbar-upd { border: 0; border-right: 1px solid var(--line); background: none; font: inherit; color: var(--fg); cursor: pointer; }
 .sbar-ev { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 320px; }
-.sbar-ev:hover, .sbar-err:hover { background: var(--hover); }
+.sbar-ev:hover, .sbar-err:hover, .sbar-upd:hover { background: var(--hover); }
 .sbar-dot { color: var(--c, var(--accent)); }
 .sbar-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .sbar-dim { color: var(--muted); }
 .sbar-err { flex: none; color: var(--red); }
+.sbar-upd { flex: none; color: var(--accent); }
 .sbar-grow { flex: 1; min-width: 0; }
 .sbar-keys { flex: none; padding: 0 12px; overflow: hidden; }
 .sbar-keys kbd { font: inherit; color: var(--fg); }

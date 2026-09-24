@@ -40,6 +40,25 @@ export interface Api {
   onMenu(cb: (cmd: MenuCommand) => void): () => void
 }
 
+/** Desktop self-update state (see apps/desktop/src/main/update.ts). */
+export interface UpdateState {
+  status: 'idle' | 'available' | 'downloading' | 'ready' | 'error'
+  version?: string
+  /** Download progress, 0..100. */
+  progress?: number
+  error?: string
+}
+
+/** Desktop-only API exposed as `window.update`; kept out of `Api` so the terminal daemon need not implement it. */
+export interface UpdateApi {
+  state(): Promise<UpdateState>
+  check(): Promise<UpdateState>
+  /** Downloads the new version, swaps the app bundle and relaunches. */
+  install(): Promise<void>
+  /** Fires on every state change. Returns unsubscribe. */
+  onUpdate(cb: (s: UpdateState) => void): () => void
+}
+
 export type MenuCommand = 'new-event' | 'today' | 'view-day' | 'view-3day' | 'view-week' | 'view-month'
 
 export const IPC = {
@@ -57,5 +76,9 @@ export const IPC = {
   eventsRespond: 'events:respond',
   syncNow: 'sync:now',
   changed: 'changed',
-  menu: 'menu'
+  menu: 'menu',
+  updateState: 'update:state',
+  updateCheck: 'update:check',
+  updateInstall: 'update:install',
+  update: 'update'
 } as const
