@@ -3,13 +3,15 @@ import Layout from '../layouts/Layout.astro'
 const gh = 'https://github.com/a1exalexander/mysticals'
 const keys: [string[], string][] = [
   [['a', 'd', '2', 'w', 'm'], 'Agenda, Day, 2 Days, Week, Month'],
-  [['←', '→'], 'Previous / next day (or h l)'],
-  [['↑', '↓'], 'Previous / next event'],
+  [['←', '→'], 'Previous / next day (or h l); in Agenda, previous / next event'],
+  [['↑', '↓'], 'Previous / next event within the selected day; in Agenda and Month, across days'],
   [['j', 'k'], 'Next / previous event in time order'],
+  [['Shift ←', 'Shift →'], 'Previous / next page (or H L)'],
   [['t'], 'Jump to today'],
   [['enter'], 'Open event'],
   [['n'], 'New event'],
-  [['i'], 'Invites: y accept, n decline, m maybe'],
+  [['i'], 'Invites: j k move, y accept, n decline, m maybe'],
+  [['o', 'e', 'x', 'a'], 'In an open event: open meeting link, edit, delete (confirm y, or 1 2 3 for a repeating event), show all attendees; y n m reply; esc or q closes'],
   [['s'], 'Accounts and calendars'],
   [['r'], 'Sync now'],
   [['?'], 'Help'],
@@ -58,7 +60,7 @@ const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
           <p><code>Mysticals-…-x64-setup.exe</code> from the latest release.</p>
           <a class="btn" href="/download">Go to downloads</a></div></li>
         <li><div><h3>Run the installer</h3>
-          <p>Mysticals is shared unsigned, so SmartScreen warns about an unknown publisher. Click More info → Run anyway, then follow the installer. It installs for your user only; no admin rights needed.</p></div></li>
+          <p>Mysticals is shared unsigned, so SmartScreen warns about an unknown publisher. Click More info → Run anyway, then follow the installer. It asks whether to install just for you or for everyone on this computer (that one needs admin rights) and lets you pick the folder.</p></div></li>
         <li><div><h3>Add your first account</h3>
           <p>Add calendar → Google (sign in in the browser) or CalDAV (pick a preset below). Give it a label and a colour. Repeat for every account — each one gets its own box. Credentials are sealed with Windows DPAPI for your user.</p></div></li>
         <li><div><h3>Updates</h3>
@@ -70,7 +72,7 @@ const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
           <p><code>Mysticals-…-x86_64.AppImage</code> runs on most distros. On Debian or Ubuntu you can take the <code>.deb</code> instead.</p>
           <a class="btn" href="/download">Go to downloads</a></div></li>
         <li><div><h3>Install or run it</h3>
-          <div class="code"><div>chmod +x Mysticals-*.AppImage &amp;&amp; ./Mysticals-*.AppImage</div><div class="c"># or</div><div>sudo apt install ./mysticals_*_amd64.deb</div></div></div></li>
+          <div class="code"><div>chmod +x Mysticals-*.AppImage &amp;&amp; ./Mysticals-*.AppImage</div><div class="c"># or</div><div>sudo apt install ./Mysticals-*-amd64.deb</div></div></div></li>
         <li><div><h3>Make sure a keyring is running</h3>
           <p>Credentials are encrypted with the Secret Service (GNOME Keyring, KWallet). GNOME and KDE desktops have one already. Without one, Mysticals refuses to store credentials rather than keep them in plain text.</p></div></li>
         <li><div><h3>Add your first account</h3>
@@ -86,7 +88,7 @@ const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
             <div class="code"><div>npm i -g mysticals</div></div></div></li>
           <li><div><h3>Run it</h3>
             <p>Press <code>?</code> for keys. Want a look first? Mock mode gives you two fake isolated accounts and touches nothing real.</p>
-            <div class="code"><div>mysticals</div><div>MYSTICALS_MOCK=1 mysticals</div></div></div></li>
+            <div class="code"><div>mysticals</div><div>MYSTICALS_MOCK=1 mysticals <span class="c"># macOS, Linux</span></div><div>$env:MYSTICALS_MOCK=1; mysticals <span class="c"># Windows PowerShell</span></div><div>set "MYSTICALS_MOCK=1" &amp;&amp; mysticals <span class="c"># Windows cmd</span></div></div></div></li>
           <li data-only="mac"><div><h3>Allow the Keychain item</h3>
             <p>On first use macOS asks to access the <code>mysticals-terminal</code> Keychain item. Choose Always Allow — it holds the key that encrypts your credentials.</p></div></li>
           <li data-only="windows" hidden><div><h3>Nothing to allow</h3>
@@ -144,8 +146,8 @@ const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
     <div class="grid3">
       <div class="fact"><b>“Can’t be opened” on launch</b><span>The desktop app is unsigned. macOS: right-click → Open, or “Open Anyway” in Privacy &amp; Security. Windows: More info → Run anyway.</span></div>
       <div class="fact"><b>Linux: “Secure storage is unavailable”</b><span>No Secret Service keyring is running. Install and unlock GNOME Keyring or KWallet (and <code>libsecret-tools</code> for the terminal app).</span></div>
-      <div class="fact"><b>Terminal daemon won’t start</b><span>Read <code>daemon.log</code> in the data folder. Stuck? Close every window, then <code>pkill -f 'cli.js --daemon'</code>.</span></div>
-      <div class="fact"><b>Can’t select text in the TUI</b><span>Hold ⌥ Option while dragging (Shift in some terminals). In tmux, set <code>mouse on</code> to pass clicks through.</span></div>
+      <div class="fact"><b>Terminal daemon won’t start</b><span>Read <code>daemon.log</code> in the data folder. Stuck? Close every window, then <code>pkill -f 'cli.js --daemon'</code> (Windows: end the Node.js process in Task Manager).</span></div>
+      <div class="fact"><b>Can’t select text in the TUI</b><span>Hold ⌥ Option while dragging on macOS, Shift in most Linux and Windows terminals. In tmux, set <code>mouse on</code> to pass clicks through.</span></div>
     </div>
   </section>
 </Layout>

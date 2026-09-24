@@ -34,7 +34,7 @@ const v = desktop.version
           <span><b>Windows</b><small class="mono muted">Mysticals-{v}-x64-setup.exe</small></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
         </a>
         <a class="pick ghost" href={latest}>
-          <span><b>Linux</b><small class="mono muted">Mysticals-{v}-x86_64.AppImage · .deb</small></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+          <span><b>Linux</b><small class="mono muted">Mysticals-{v}-x86_64.AppImage · Mysticals-{v}-amd64.deb</small></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
         </a>
       </div>
       <div class="notes">
@@ -66,7 +66,7 @@ const v = desktop.version
         </div>
       </div>
       <div class="notes">
-        <span>Try it with two fake accounts first: <code>MYSTICALS_MOCK=1 mysticals</code></span>
+        <span>Try it with two fake accounts first: <code>MYSTICALS_MOCK=1 mysticals</code> · PowerShell: <code>$env:MYSTICALS_MOCK=1; mysticals</code> · cmd: <code>set "MYSTICALS_MOCK=1" &amp;&amp; mysticals</code></span>
         <span>Package page: <a class="ul" href="https://www.npmjs.com/package/mysticals">npmjs.com/package/mysticals</a></span>
       </div>
     </article>
@@ -93,9 +93,13 @@ const v = desktop.version
       <h3>Build from source</h3>
       <div class="code">
         <div>git clone {gh}</div>
-        <div>pnpm i &amp;&amp; pnpm dist <span class="c"># installers in apps/desktop/dist</span></div>
+        <div>cd mysticals</div>
+        <div>cp .env.example .env <span class="c"># Google OAuth values, optional</span></div>
+        <div>pnpm i</div>
+        <div>pnpm dist <span class="c"># desktop installers in apps/desktop/dist</span></div>
+        <div>pnpm --filter mysticals build <span class="c"># terminal app in apps/terminal/dist</span></div>
       </div>
-      <span class="muted small">Google accounts need your own OAuth client in <code>.env</code> — see the <a class="ul" href={`${gh}#readme`}>README</a>.</span>
+      <span class="muted small">Needs Node.js 20+ and pnpm 10. Without the Google values only CalDAV accounts work — see the <a class="ul" href={`${gh}#readme`}>README</a>. Electron binary missing after install? Run <code>node apps/desktop/node_modules/electron/install.js</code>.</span>
     </div>
   </section>
 </Layout>
