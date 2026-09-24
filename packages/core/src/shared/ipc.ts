@@ -53,7 +53,7 @@ export interface UpdateState {
 export interface UpdateApi {
   state(): Promise<UpdateState>
   check(): Promise<UpdateState>
-  /** Downloads the new version, swaps the app bundle and relaunches. */
+  /** macOS: downloads the new version, swaps the app bundle and relaunches. Windows/Linux: opens the release page. */
   install(): Promise<void>
   /** Fires on every state change. Returns unsubscribe. */
   onUpdate(cb: (s: UpdateState) => void): () => void

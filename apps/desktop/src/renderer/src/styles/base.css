@@ -114,6 +114,8 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
   padding: 44px 0 0; background: var(--surface); -webkit-app-region: drag; overflow: hidden;
 }
 .sidebar button, .sidebar label, .sidebar input { -webkit-app-region: no-drag; }
+/* Native title bar off macOS: no traffic lights to clear. */
+:root[data-platform='win32'] .sidebar, :root[data-platform='linux'] .sidebar { padding-top: 12px; }
 
 .mini { padding: 4px 14px 14px; }
 .mini-head { display: flex; align-items: center; gap: 2px; padding: 0 0 8px 4px; }

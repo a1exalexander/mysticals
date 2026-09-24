@@ -44,3 +44,8 @@ const update: UpdateApi = {
 } as UpdateApi
 
 contextBridge.exposeInMainWorld('update', update)
+
+// Lets CSS drop the macOS traffic-light inset on Windows/Linux.
+window.addEventListener('DOMContentLoaded', () => {
+  document.documentElement.dataset.platform = process.platform
+})

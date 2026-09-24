@@ -4,9 +4,18 @@ import { IPC, type MenuCommand } from '@shared/ipc'
 const send = (cmd: MenuCommand) => (): void => BrowserWindow.getFocusedWindow()?.webContents.send(IPC.menu, cmd)
 
 export function buildMenu(): Menu {
+  const mac = process.platform === 'darwin'
   const template: MenuItemConstructorOptions[] = [
-    { role: 'appMenu' },
-    { label: 'File', submenu: [{ label: 'New Event', accelerator: 'CmdOrCtrl+N', click: send('new-event') }, { type: 'separator' }, { role: 'close' }] },
+    // The app menu is a macOS concept; elsewhere Quit lives in File.
+    ...(mac ? [{ role: 'appMenu' } as const] : []),
+    {
+      label: 'File',
+      submenu: [
+        { label: 'New Event', accelerator: 'CmdOrCtrl+N', click: send('new-event') },
+        { type: 'separator' },
+        mac ? { role: 'close' } : { role: 'quit' }
+      ]
+    },
     { role: 'editMenu' },
     {
       label: 'View',

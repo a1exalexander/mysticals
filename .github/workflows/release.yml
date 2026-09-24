@@ -9,7 +9,13 @@ permissions:
 
 jobs:
   desktop:
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -25,13 +31,35 @@ jobs:
         env:
           MYSTICALS_GOOGLE_CLIENT_ID: ${{ secrets.MYSTICALS_GOOGLE_CLIENT_ID }}
           MYSTICALS_GOOGLE_CLIENT_SECRET: ${{ secrets.MYSTICALS_GOOGLE_CLIENT_SECRET }}
-      - name: Package (dmg + zip, arm64 + x64)
+      # macOS: dmg + zip (arm64 + x64); Windows: nsis .exe; Linux: AppImage + deb. Targets live in electron-builder.yml.
+      - name: Package
         run: pnpm --filter @mysticals/desktop dist --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            apps/desktop/dist/*.dmg
+            apps/desktop/dist/*-mac.zip
+            apps/desktop/dist/*-setup.exe
+            apps/desktop/dist/*.AppImage
+            apps/desktop/dist/*.deb
+
+  # One job creates/updates the release so the three builds never race on `gh release create`.
+  publish:
+    needs: desktop
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
       - name: Upload to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          files=$(ls apps/desktop/dist/*.dmg apps/desktop/dist/*-mac.zip)
+          files=$(ls artifacts/*)
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" $files --clobber
           else

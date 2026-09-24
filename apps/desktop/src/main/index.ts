@@ -16,6 +16,7 @@ import { startUpdater } from './update'
 import { electronTriggers } from './sync/electronTriggers'
 
 const MOCK = process.env.MYSTICALS_MOCK === '1'
+const MAC = process.platform === 'darwin'
 // Mock runs (e2e) get a throwaway profile so localStorage (collapsed accounts, theme) never leaks between runs.
 if (MOCK) app.setPath('userData', mkdtempSync(join(tmpdir(), 'mysticals-mock-')))
 
@@ -26,7 +27,7 @@ function broadcast(accountId: string): void {
 // Held until closed/clicked: a GC'd Notification drops its click handler.
 const banners = new Set<Notification>()
 
-/** macOS banners for invites/changes; events in hidden calendars stay silent. */
+/** System banners for invites/changes; events in hidden calendars stay silent. */
 function notify(store: AccountStore, accountId: string, notes: Note[]): void {
   const account = store.list().find((a) => a.id === accountId)
   if (!account || !Notification.isSupported()) return
@@ -53,10 +54,16 @@ function notify(store: AccountStore, accountId: string, notes: Note[]): void {
   }
 }
 
-/** Credentials are encrypted with the macOS Keychain-backed Electron safeStorage. */
+/**
+ * Credentials are encrypted with Electron safeStorage: Keychain on macOS, DPAPI on Windows,
+ * libsecret/kwallet on Linux. Linux without a keyring falls back to a hardcoded key ('basic_text'), so refuse it.
+ */
+const secureStorageReady = (): boolean =>
+  safeStorage.isEncryptionAvailable() && (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text')
+
 const safeStorageCrypto: SecretCrypto = {
   encrypt(plain) {
-    if (!safeStorage.isEncryptionAvailable()) throw new Error('Secure storage is unavailable; refusing to store credentials')
+    if (!secureStorageReady()) throw new Error('Secure storage is unavailable; refusing to store credentials')
     return safeStorage.encryptString(plain)
   },
   decrypt: (data) => safeStorage.decryptString(data)
@@ -80,10 +87,10 @@ function createWindow(): void {
     minWidth: 800,
     minHeight: 500,
     show: false,
-    titleBarStyle: 'hiddenInset',
+    // Inset traffic lights on macOS; Windows/Linux keep the native frame.
+    ...(MAC ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 16, y: 18 } } : {}),
     // Solid dark window (no vibrancy); matches --bg so there is no flash before first paint.
     backgroundColor: '#0b0b10',
-    trafficLightPosition: { x: 16, y: 18 },
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -147,4 +154,4 @@ app.whenReady().then(() => {
   app.on('activate', () => BrowserWindow.getAllWindows().length === 0 && createWindow())
 })
 
-app.on('window-all-closed', () => process.platform !== 'darwin' && app.quit())
+app.on('window-all-closed', () => !MAC && app.quit())

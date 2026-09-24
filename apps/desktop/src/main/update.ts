@@ -6,7 +6,7 @@ import { promisify } from 'util'
 import { Readable } from 'stream'
 import { pipeline } from 'stream/promises'
 import type { ReadableStream as WebReadableStream } from 'stream/web'
-import { app, BrowserWindow, ipcMain, net, Notification } from 'electron'
+import { app, BrowserWindow, ipcMain, net, Notification, shell } from 'electron'
 import { IPC, type UpdateState } from '@shared/ipc'
 
 const run = promisify(execFile)
@@ -14,9 +14,12 @@ const FEED = process.env.MYSTICALS_UPDATE_FEED || 'https://api.github.com/repos/
 // Dev/e2e runs only check against an explicit feed and never swap the bundle.
 const ENABLED = app.isPackaged || !!process.env.MYSTICALS_UPDATE_FEED
 const EVERY = 6 * 60 * 60_000
+// ponytail: in-place swap is macOS-only; Windows/Linux get the release page. electron-updater if that's not enough.
+const SWAP = process.platform === 'darwin'
 
 let state: UpdateState = { status: 'idle' }
 let zipUrl = ''
+let pageUrl = ''
 const notified = new Set<string>()
 // Held until closed/clicked: a GC'd Notification drops its click handler.
 const banners = new Set<Notification>()
@@ -57,11 +60,17 @@ async function check(): Promise<UpdateState> {
   try {
     const res = await net.fetch(FEED, { headers: { Accept: 'application/vnd.github+json' } })
     if (!res.ok) throw new Error(`feed ${res.status}`)
-    const rel = (await res.json()) as { tag_name?: string; assets?: { name: string; browser_download_url: string }[] }
+    const rel = (await res.json()) as {
+      tag_name?: string
+      html_url?: string
+      assets?: { name: string; browser_download_url: string }[]
+    }
     const version = (rel.tag_name ?? '').replace(/^v/, '')
     const asset = rel.assets?.find((a) => a.name.endsWith(`-${process.arch}-mac.zip`))
-    if (!/^\d+\.\d+\.\d+$/.test(version) || !asset || !newer(version, app.getVersion())) return state
-    zipUrl = asset.browser_download_url
+    const page = /^https:\/\/github\.com\//.test(rel.html_url ?? '') ? rel.html_url! : ''
+    if (!/^\d+\.\d+\.\d+$/.test(version) || !(SWAP ? asset : page) || !newer(version, app.getVersion())) return state
+    zipUrl = asset?.browser_download_url ?? ''
+    pageUrl = page
     if (state.version !== version || state.status === 'idle') set({ status: 'available', version })
     banner(version)
   } catch (e) {
@@ -91,6 +100,10 @@ async function download(url: string, file: string): Promise<void> {
 
 /** Downloads + unpacks the release, then swaps the running .app bundle via a detached script and quits. */
 async function install(): Promise<void> {
+  if (!SWAP) {
+    if (pageUrl) await shell.openExternal(pageUrl)
+    return
+  }
   if ((state.status !== 'available' && state.status !== 'error') || !zipUrl) return
   const version = state.version
   set({ status: 'downloading', version, progress: 0 })
