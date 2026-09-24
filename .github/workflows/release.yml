@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  desktop:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check tag matches apps/desktop version
+        run: test "${GITHUB_REF_NAME#v}" = "$(node -p "require('./apps/desktop/package.json').version")"
+      - name: Build
+        run: pnpm --filter @mysticals/desktop build
+        env:
+          MAIN_VITE_GOOGLE_CLIENT_ID: ${{ secrets.MAIN_VITE_GOOGLE_CLIENT_ID }}
+          MAIN_VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.MAIN_VITE_GOOGLE_CLIENT_SECRET }}
+      - name: Package (dmg + zip, arm64 + x64)
+        run: pnpm --filter @mysticals/desktop dist --publish never
+      - name: Upload to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          files=$(ls apps/desktop/dist/*.dmg apps/desktop/dist/*-mac.zip)
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" $files --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" $files --generate-notes
+          fi
+
+  npm:
+    runs-on: ubuntu-latest
+    env:
+      # prepublishOnly rebuilds dist/cli.js, so the client must be in the publish step's env.
+      MYSTICALS_GOOGLE_CLIENT_ID: ${{ secrets.MYSTICALS_GOOGLE_CLIENT_ID }}
+      MYSTICALS_GOOGLE_CLIENT_SECRET: ${{ secrets.MYSTICALS_GOOGLE_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - name: Check tag matches apps/terminal version
+        run: test "${GITHUB_REF_NAME#v}" = "$(node -p "require('./apps/terminal/package.json').version")"
+      - name: Publish (builds via prepublishOnly)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if npm view "mysticals@${GITHUB_REF_NAME#v}" version >/dev/null 2>&1; then
+            echo "mysticals@${GITHUB_REF_NAME#v} is already on npm, skipping"
+          else
+            pnpm --filter mysticals publish --no-git-checks --access public
+          fi

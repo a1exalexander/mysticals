@@ -51,7 +51,7 @@ pnpm dev                  # development with hot reload
 MYSTICALS_MOCK=1 pnpm dev # two fake isolated accounts, no network
 pnpm test                 # unit tests
 pnpm e2e                  # Playwright smoke tests (mock mode)
-pnpm dist                 # unsigned .dmg (arm64 + x64) in apps/desktop/dist/
+pnpm dist                 # unsigned .dmg and .zip (arm64 + x64) in apps/desktop/dist/
 ```
 
 The app is shared as-is, unsigned (`identity: null` in `apps/desktop/electron-builder.yml`). On first launch, right-click the app and choose **Open**.
@@ -78,6 +78,22 @@ MYSTICALS_MOCK=1 node apps/terminal/dist/cli.js
 pnpm --filter mysticals dev                     # rebuild on change
 pnpm --filter mysticals test
 ```
+
+## Releasing
+
+A `v*` tag runs `.github/workflows/release.yml`: it builds the desktop app on macOS and attaches the `.dmg` and `.zip` files (arm64 + x64) to a GitHub Release, and publishes the terminal app to npm.
+
+1. Bump `version` in `apps/desktop/package.json` and `apps/terminal/package.json` (both must match the tag, or the job fails).
+2. Commit, then tag and push:
+
+   ```sh
+   git tag v0.2.0
+   git push origin v0.2.0
+   ```
+
+Required repo secrets: `NPM_TOKEN`, `MAIN_VITE_GOOGLE_CLIENT_ID`, `MAIN_VITE_GOOGLE_CLIENT_SECRET`, `MYSTICALS_GOOGLE_CLIENT_ID`, `MYSTICALS_GOOGLE_CLIENT_SECRET`.
+
+Installed apps pick up the release on their own. The desktop app downloads the `.zip` for its architecture and updates itself. The terminal app shows a hint to run `npm i -g mysticals`.
 
 ## Adding Namecheap Private Email (CalDAV)
 
