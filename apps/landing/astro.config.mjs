@@ -1,2 +1,5 @@
 import { defineConfig } from 'astro/config'
-export default defineConfig({ redirects: { '/desktop': '/install', '/terminal': '/install#terminal' } })
+export default defineConfig({
+  site: 'https://mysticals.sashkoratushnyi.com',
+  redirects: { '/desktop': '/install', '/terminal': '/install#terminal' },
+})

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="630" viewBox="0 0 1200 630">
+  <!-- Social card. Rendered to og-image.png by generate.sh; logo.svg must sit next to this file. -->
+  <rect width="1200" height="630" fill="#0b0b10"/>
+  <image href="logo.svg" xlink:href="logo.svg" x="60" y="115" width="400" height="400"/>
+  <g font-family="Geist Mono, JetBrains Mono, Menlo, DejaVu Sans Mono, monospace" fill="#f8f8f2">
+    <text x="500" y="290" font-size="84" font-weight="600">mysticals<tspan fill="#bd93f9">_</tspan></text>
+    <text x="504" y="360" font-size="30" fill="#bd93f9">All your calendars.</text>
+    <text x="504" y="402" font-size="30" fill="#ffb86c">None of them mixed up.</text>
+    <text x="504" y="470" font-size="22" fill="#8a8a99">Google + CalDAV · desktop &amp; terminal</text>
+  </g>
+</svg>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Split isolation: two accounts, two halves, a black gap that nothing crosses.
+       824px squircle on the macOS 1024 icon grid. -->
+  <defs>
+    <clipPath id="sq">
+      <path d="M285 100H739A185 185 0 0 1 924 285V739A185 185 0 0 1 739 924H285A185 185 0 0 1 100 739V285A185 185 0 0 1 285 100Z"/>
+    </clipPath>
+  </defs>
+  <path d="M285 100H739A185 185 0 0 1 924 285V739A185 185 0 0 1 739 924H285A185 185 0 0 1 100 739V285A185 185 0 0 1 285 100Z" fill="#0b0b10"/>
+  <g clip-path="url(#sq)">
+    <rect x="100" y="100" width="392" height="824" fill="#bd93f9"/>
+    <rect x="532" y="100" width="392" height="824" fill="#ffb86c"/>
+    <g fill="#0b0b10" fill-opacity="0.4">
+      <circle cx="196" cy="362" r="20"/><circle cx="296" cy="362" r="20"/><circle cx="396" cy="362" r="20"/>
+      <circle cx="196" cy="462" r="20"/><circle cx="296" cy="462" r="20"/><circle cx="396" cy="462" r="20"/>
+      <circle cx="196" cy="562" r="20"/><circle cx="296" cy="562" r="20"/>
+      <circle cx="196" cy="662" r="20"/><circle cx="296" cy="662" r="20"/><circle cx="396" cy="662" r="20"/>
+      <circle cx="628" cy="362" r="20"/><circle cx="728" cy="362" r="20"/><circle cx="828" cy="362" r="20"/>
+      <circle cx="628" cy="462" r="20"/><circle cx="728" cy="462" r="20"/><circle cx="828" cy="462" r="20"/>
+      <circle cx="628" cy="562" r="20"/><circle cx="728" cy="562" r="20"/><circle cx="828" cy="562" r="20"/>
+      <circle cx="628" cy="662" r="20"/><circle cx="728" cy="662" r="20"/><circle cx="828" cy="662" r="20"/>
+    </g>
+    <!-- today -->
+    <circle cx="396" cy="562" r="27" fill="#f8f8f2"/>
+  </g>
+  <path d="M285 100H739A185 185 0 0 1 924 285V739A185 185 0 0 1 739 924H285A185 185 0 0 1 100 739V285A185 185 0 0 1 285 100Z" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="4"/>
+</svg>
