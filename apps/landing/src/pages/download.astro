@@ -24,16 +24,16 @@ const v = desktop.version
       </div>
       <p class="muted">Pick your system. On a Mac, pick your chip: Apple menu → About This Mac → Chip. “Apple M…” means Apple Silicon.</p>
       <div class="picks">
-        <a class="pick btn" href={latest}>
+        <a class="pick btn" href={latest} data-track="download_click" data-props='{"os":"macos","arch":"arm64","format":"dmg"}'>
           <span><b>Apple Silicon</b><small class="mono">Mysticals-{v}-arm64.dmg</small></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
         </a>
-        <a class="pick ghost" href={latest}>
+        <a class="pick ghost" href={latest} data-track="download_click" data-props='{"os":"macos","arch":"x64","format":"dmg"}'>
           <span><b>Intel</b><small class="mono muted">Mysticals-{v}-x64.dmg</small></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
         </a>
-        <a class="pick ghost" href={latest}>
+        <a class="pick ghost" href={latest} data-track="download_click" data-props='{"os":"windows","arch":"x64","format":"exe"}'>
           <span><b>Windows</b><small class="mono muted">Mysticals-{v}-x64-setup.exe</small></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
         </a>
-        <a class="pick ghost" href={latest}>
+        <a class="pick ghost" href={latest} data-track="download_click" data-props='{"os":"linux","arch":"x64","format":"appimage"}'>
           <span><b>Linux</b><small class="mono muted">Mysticals-{v}-x86_64.AppImage · Mysticals-{v}-amd64.deb</small></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
         </a>
       </div>
@@ -55,7 +55,7 @@ const v = desktop.version
       <div class="shell mono">
         <div class="shell-bar">
           <span>zsh</span>
-          <button class="copy" type="button" data-copy="npm i -g mysticals" aria-label="Copy install command">
+          <button class="copy" type="button" data-copy="npm i -g mysticals" data-track="npm_copy" data-props='{"location":"download"}' aria-label="Copy install command">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></svg>
             <span class="lbl">copy</span>
           </button>

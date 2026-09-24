@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css'
+import Analytics from '../components/Analytics.astro'
 interface Props { title: string; description?: string }
 const { title, description = 'A calendar for several Google and CalDAV accounts, on the desktop or in your terminal. Every account stays in its own box.' } = Astro.props
 const here = Astro.url.pathname.replace(/\/$/, '') || '/'
@@ -7,6 +8,7 @@ const gh = 'https://github.com/a1exalexander/mysticals'
 const cur = (href: string) => (here === href ? 'page' : undefined)
 const canonical = new URL(Astro.url.pathname, Astro.site).href
 const ogImage = new URL('/og-image.png', Astro.site).href
+const phKey = process.env.MYSTICALS_POSTHOG_KEY
 ---
 <!doctype html>
 <html lang="en">
@@ -38,6 +40,7 @@ const ogImage = new URL('/og-image.png', Astro.site).href
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" />
     <title>{title}</title>
+    {phKey && <Analytics apiKey={phKey} />}
   </head>
   <body>
     <header>
@@ -56,6 +59,7 @@ const ogImage = new URL('/og-image.png', Astro.site).href
     <main><slot /></main>
     <footer class="wrap foot">
       <span class="mono">mysticals · MIT · © Oleksandr Ratushnyi</span>
+      {phKey && <span>Anonymous, cookie-free stats via PostHog.</span>}
       <nav>
         <a href="/">Home</a><a href="/download">Download</a><a href="/install">Install</a>
         <a href={gh}>GitHub</a><a href="https://www.npmjs.com/package/mysticals">npm</a>
