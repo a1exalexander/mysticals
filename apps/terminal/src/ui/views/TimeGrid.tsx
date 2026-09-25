@@ -6,9 +6,11 @@
  *   ───────┼──────────────┼──────────────┤
  *   09:00  │ 09:00 Standup│              │   one row per hour; events are colored blocks (calendar color),
  *   10:00  │ Room 3 · 1h  │              │   next rows: place · duration (narrow columns: title, times, place)
- *   23:37  │──────────────│              │   current hour: red clock, red now-line through today's free cells
+ *   23:37 ─┼──────────────┼──────────────┤   current hour: red clock and a red now-line across the grid (free cells;
+ *                                              bright on today, dim on the other days)
  *
  * Overlapping events share an hour side by side (core `layoutDay` + `packColumns`, snapped to whole hours).
+ * A block with another one right below it (back-to-back events) underlines its last row, so the two don't merge.
  * Cursor day (←/→): inverse column heading. Selected block: accent-colored block. Past: muted. Declined: struck through. Unanswered invite: italic.
  * Click an event to select it (again to open it); free cells ignore clicks. The wheel scrolls the hours.
  * Keys: none of its own; the App shell owns them all.
@@ -32,6 +34,20 @@ const COMPACT_BELOW = 18
 
 type Slot = Placed<Placed<CalEvent>>
 
+/** Blocks whose bottom row touches the top of another block below them in the same column span. */
+export function abutting(placed: Slot[]): Set<Slot> {
+  const span = (p: Slot): [number, number] => [p.col / p.cols, (p.col + 1) / p.cols]
+  return new Set(
+    placed.filter((p) => {
+      const [a, b] = span(p)
+      return placed.some((q) => {
+        const [c, d] = span(q)
+        return q !== p && q.start === p.end && a < d && c < b
+      })
+    })
+  )
+}
+
 /** Hour-snapped packing so two events sharing an hour row never share a column. */
 function slots(events: CalEvent[], day: Date): Slot[] {
   return packColumns(
@@ -48,7 +64,8 @@ export function TimeGrid({ days, events, now, cursor, selectedKey, width, height
     () =>
       days.map((day) => {
         const on = eventsOnDay(events, day)
-        return { day, count: on.length, allDay: on.filter((e) => e.allDay), placed: slots(events, day) }
+        const placed = slots(events, day)
+        return { day, count: on.length, allDay: on.filter((e) => e.allDay), placed, joined: abutting(placed) }
       }),
     [events, days]
   )
@@ -63,12 +80,12 @@ export function TimeGrid({ days, events, now, cursor, selectedKey, width, height
   const [top, scrollBy] = useScroll(sel ? focus : Math.max(focus - 1, 0), focus, gridH, 24)
 
   const bar = <Text color={C.muted}>│</Text>
-  const row = (key: string, gutter: ReactNode, cells: (c: (typeof cols)[number]) => ReactNode): ReactNode => (
+  const row = (key: string, gutter: ReactNode, cells: (c: (typeof cols)[number]) => ReactNode, sep: ReactNode = bar): ReactNode => (
     <Box key={key} width={width} height={1} overflow="hidden">
       {gutter}
       {cols.map((c) => (
         <Box key={c.day.getTime()} flexShrink={0}>
-          {bar}
+          {sep}
           <Box width={colW} flexShrink={0} overflow="hidden">
             {cells(c)}
           </Box>
@@ -82,15 +99,15 @@ export function TimeGrid({ days, events, now, cursor, selectedKey, width, height
     </Box>
   )
 
-  /** One column's cells for hour `h`: event blocks, gaps filled with blanks (or the red now-line). */
-  const hourCells = (placed: Slot[], day: Date, h: number, nowLine: boolean): ReactNode[] => {
+  /** One column's cells for hour `h`: event blocks, gaps filled with blanks (or the red now-line, dim off today). */
+  const hourCells = ({ placed, day, joined }: (typeof cols)[number], h: number, nowLine: false | 'today' | 'other'): ReactNode[] => {
     const out: ReactNode[] = []
     let pos = 0
     const gap = (to: number): void => {
       if (to <= pos) return
       out.push(
         <Box key={`g${pos}`} width={to - pos} flexShrink={0}>
-          <Text color={C.now}>{(nowLine ? '─' : ' ').repeat(to - pos)}</Text>
+          <Text color={C.now} dimColor={nowLine === 'other'}>{(nowLine ? '─' : ' ').repeat(to - pos)}</Text>
         </Box>
       )
       pos = to
@@ -127,6 +144,7 @@ export function TimeGrid({ days, events, now, cursor, selectedKey, width, height
             bold={selected || h === first}
             italic={e.myStatus === 'needsAction'}
             strikethrough={e.myStatus === 'declined'}
+            underline={h === p.end / 60 - 1 && joined.has(p)}
           >
             {(' ' + text).slice(0, inner).padEnd(inner)}
           </Text>
@@ -180,11 +198,16 @@ export function TimeGrid({ days, events, now, cursor, selectedKey, width, height
         const gutter = (
           <Box width={GUTTER} flexShrink={0}>
             <Text color={current ? C.now : C.muted} bold={current}>
-              {current ? format(now, 'HH:mm') : `${String(h).padStart(2, '0')}:00`}
+              {current ? `${format(now, 'HH:mm')}─` : `${String(h).padStart(2, '0')}:00`}
             </Text>
           </Box>
         )
-        return row(`h${h}`, gutter, (c) => hourCells(c.placed, c.day, h, current && isSameDay(c.day, now)))
+        return row(
+          `h${h}`,
+          gutter,
+          (c) => hourCells(c, h, current && (isSameDay(c.day, now) ? 'today' : 'other')),
+          current ? <Text color={C.now}>┼</Text> : bar
+        )
       })}
       </Clickable>
     </Box>

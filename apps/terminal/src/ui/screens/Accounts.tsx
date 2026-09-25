@@ -14,6 +14,7 @@ import { useApi, useDirectory } from '../hooks'
 import { Button, Clickable, useKeys } from '../mouse'
 import { ansiOf, C } from '../theme'
 import { AddCaldav, PALETTE, cycle, editText, useKeyState } from './AddCaldav'
+import { Spinner } from '../StatusLine'
 
 export interface AccountsProps {
   onClose(): void
@@ -208,6 +209,12 @@ export function Accounts({ onClose }: AccountsProps) {
                 </Text>
               </Text>
             </Clickable>
+            {a.syncing && !a.synced && (
+              <Text color={C.muted}>
+                {'    '}
+                <Spinner /> Loading calendars…
+              </Text>
+            )}
             {a.error && <Text color={C.red}>{`    Last sync failed: ${a.error}`}</Text>}
           </Box>
         )

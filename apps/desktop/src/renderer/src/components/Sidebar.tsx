@@ -32,45 +32,73 @@ export function Sidebar(): React.JSX.Element {
     <aside className="sidebar">
       <MiniMonth />
       <div className="sb-accounts">
-        {accounts.map((a) => (
-          <section key={a.id} className="sb-account" data-testid={`sidebar-account-${a.id}`}>
-            <button
-              type="button"
-              className="sb-account-head"
-              aria-expanded={!collapsed.includes(a.id)}
-              data-testid={`sidebar-account-toggle-${a.id}`}
-              onClick={() => toggleAccount(a.id)}
-            >
-              <svg className="sb-arrow" viewBox="0 0 10 10" width="10" height="10" aria-hidden>
-                <path d="M3.5 2l3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span className="sb-dot" style={{ background: a.color }} />
-              <span className="sb-label">{a.label}</span>
-              {a.error && (
-                <span className="sb-error" title={a.error} aria-label={`Sync error: ${a.error}`}>
-                  !
-                </span>
+        {accounts.map((a) => {
+          const open = !collapsed.includes(a.id)
+          const cals = calendars.filter((c) => c.accountId === a.id)
+          // Before its first sync lands an account has no calendars yet: say so instead of showing nothing.
+          const loading = !a.synced && !cals.length && !!a.syncing
+          const failed = !a.synced && !cals.length && !a.syncing && !!a.error
+          return (
+            <section key={a.id} className="sb-account" data-testid={`sidebar-account-${a.id}`}>
+              <button
+                type="button"
+                className="sb-account-head"
+                aria-expanded={open}
+                data-testid={`sidebar-account-toggle-${a.id}`}
+                onClick={() => toggleAccount(a.id)}
+              >
+                <svg className="sb-arrow" viewBox="0 0 10 10" width="10" height="10" aria-hidden>
+                  <path d="M3.5 2l3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span className="sb-dot" style={{ background: a.color }} />
+                <span className="sb-label">{a.label}</span>
+                {loading ? (
+                  <span className="sb-spin" aria-hidden />
+                ) : (
+                  a.error && (
+                    <span className="sb-error" title={a.error} aria-label={`Sync error: ${a.error}`}>
+                      !
+                    </span>
+                  )
+                )}
+                <span className="sb-email">{a.email}</span>
+              </button>
+              {open && loading && (
+                <div className="sb-loading" role="status" data-testid={`sidebar-loading-${a.id}`}>
+                  {[70, 45].map((w) => (
+                    <span key={w} className="sb-skel-row" aria-hidden>
+                      <i className="sb-skel sb-skel-box" />
+                      <i className="sb-skel" style={{ width: `${w}%` }} />
+                    </span>
+                  ))}
+                  <span className="sb-loading-text">Loading calendars…</span>
+                </div>
               )}
-              <span className="sb-email">{a.email}</span>
-            </button>
-            {!collapsed.includes(a.id) &&
-              calendars
-              .filter((c) => c.accountId === a.id)
-              .map((c) => (
-                <label key={c.id} className="sb-cal">
-                  <input
-                    type="checkbox"
-                    data-testid={`sidebar-calendar-${a.id}-${c.id}`}
-                    checked={c.visible !== false}
-                    style={{ accentColor: c.color }}
-                    onChange={(e) => setCalendarVisible(a.id, c.id, e.target.checked)}
-                  />
-                  <span className="sb-cal-name">{c.name}</span>
-                  {c.readOnly && <span className="sb-ro" title="Read-only">read-only</span>}
-                </label>
-              ))}
-          </section>
-        ))}
+              {open && failed && (
+                <div className="sb-loading sb-failed" role="alert">
+                  <span className="sb-loading-text">Couldn&apos;t load calendars</span>
+                  <button type="button" className="sb-retry" onClick={() => void window.api.sync.now(a.id).catch(() => {})}>
+                    retry
+                  </button>
+                </div>
+              )}
+              {open &&
+                cals.map((c) => (
+                  <label key={c.id} className="sb-cal">
+                    <input
+                      type="checkbox"
+                      data-testid={`sidebar-calendar-${a.id}-${c.id}`}
+                      checked={c.visible !== false}
+                      style={{ accentColor: c.color }}
+                      onChange={(e) => setCalendarVisible(a.id, c.id, e.target.checked)}
+                    />
+                    <span className="sb-cal-name">{c.name}</span>
+                    {c.readOnly && <span className="sb-ro" title="Read-only">read-only</span>}
+                  </label>
+                ))}
+            </section>
+          )
+        })}
       </div>
       <footer className="sb-foot">
         <button className="sb-add" onClick={() => bus.emit('accounts:open', {})}>

@@ -30,6 +30,10 @@ export class SyncEngine {
   private timers = new Map<string, ReturnType<typeof setTimeout>>()
   private inflight = new Map<string, Promise<void>>()
   private failures = new Map<string, number>()
+  /** Follow-up passes queued behind a running one (see `fresh`). */
+  private queued = new Map<string, Promise<void>>()
+  /** Bumped by `edited`: a pass that started before a local edit must not overwrite it. */
+  private edits = new Map<string, number>()
   private running = false
   private unsubscribe?: () => void
 
@@ -62,14 +66,31 @@ export class SyncEngine {
    * Sync one account, or all accounts independently when id omitted.
    * A single-account call rejects with that account's error; the all-accounts call never rejects.
    */
-  /** `quiet`: the change came from this app (own edit/RSVP), so don't notify about it. */
-  async syncNow(accountId?: string, opts: { quiet?: boolean } = {}): Promise<void> {
+  /**
+   * `quiet`: the change came from this app (own edit/RSVP), so don't notify about it.
+   * `fresh`: the caller just changed the account on the server, so a pass already running (it may have fetched
+   * before the change) is followed by one more instead of being reused.
+   */
+  async syncNow(accountId?: string, opts: { quiet?: boolean; fresh?: boolean } = {}): Promise<void> {
     if (accountId === undefined) {
       await Promise.allSettled(this.store.list().map((a) => this.syncNow(a.id)))
       return
     }
     const existing = this.inflight.get(accountId)
-    if (existing) return existing
+    if (existing && !opts.fresh) return existing
+    if (existing) {
+      let next = this.queued.get(accountId)
+      if (!next) {
+        next = existing
+          .catch(() => {})
+          .then(() => {
+            this.queued.delete(accountId)
+            return this.syncNow(accountId, { quiet: opts.quiet })
+          })
+        this.queued.set(accountId, next)
+      }
+      return next
+    }
     const p = this.syncAccount(accountId, !!opts.quiet).finally(() => {
       this.inflight.delete(accountId)
       this.schedule(accountId)
@@ -78,6 +99,11 @@ export class SyncEngine {
     this.inflight.set(accountId, p)
     this.opts.onSyncing?.(accountId)
     return p
+  }
+
+  /** A local edit was applied to this account's cache; a pass already running won't overwrite it. */
+  edited(accountId: string): void {
+    this.edits.set(accountId, (this.edits.get(accountId) ?? 0) + 1)
   }
 
   /** True while a sync of this account is running. */
@@ -104,6 +130,7 @@ export class SyncEngine {
   // ponytail: quiet silences the whole sync, so an external change landing in the same pass is not announced.
   private async syncAccount(id: string, quiet: boolean): Promise<void> {
     const hadError = !!this.store.list().find((a) => a.id === id)?.error
+    const edits = this.edits.get(id) ?? 0
     try {
       const provider = this.store.getProvider(id)
       const now = new Date()
@@ -116,6 +143,11 @@ export class SyncEngine {
         )
       )
       const next: AccountCache = { calendars, events: lists.flat(), syncedAt: now.toISOString() }
+      // Fetched before a local edit: keep the edit; the edit's own `fresh` pass brings the server's copy.
+      if ((this.edits.get(id) ?? 0) !== edits) {
+        this.failures.delete(id)
+        return
+      }
 
       let prev: AccountCache | undefined
       try {

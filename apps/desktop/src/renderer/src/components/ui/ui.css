@@ -13,8 +13,9 @@
   user-select: text;
 }
 .mc-sheet { margin-top: 52px; width: 460px; max-width: calc(100vw - 32px); max-height: calc(100vh - 80px); overflow: auto; padding: 18px 20px; animation: mc-drop 160ms ease-out; }
-.mc-popover { position: fixed; z-index: 40; width: 320px; max-height: calc(100vh - 24px); overflow: auto; padding: 14px 16px; animation: mc-fade 120ms ease-out; }
+.mc-popover { position: fixed; z-index: 40; width: 320px; max-height: calc(100vh - 24px); overflow: auto; padding: 14px 16px; animation: mc-pop 130ms ease-out; }
 @keyframes mc-fade { from { opacity: 0; } }
+@keyframes mc-pop { from { opacity: 0; transform: translateY(-3px) scale(0.985); } }
 @keyframes mc-drop { from { opacity: 0; transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .mc-overlay, .mc-sheet, .mc-popover { animation: none; } }
 

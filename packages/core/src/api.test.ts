@@ -3,7 +3,7 @@ import type { Account, CalEvent } from './shared/types'
 import type { AccountStore } from './accounts/store'
 import type { SyncEngine } from './sync/engine'
 import { MockProvider } from './mock/MockProvider'
-import { createApi } from './api'
+import { createApi, deletedBy } from './api'
 
 function setup() {
   const accounts: Account[] = [
@@ -30,9 +30,13 @@ function setup() {
     getProvider: (id: string) => providers[id],
     readCache: (id: string) => ({ calendars: providers[id].calendars, events: providers[id].events }),
     hiddenCalendars: (id: string) => hidden[id],
-    add: vi.fn(async (meta: Omit<Account, 'id'>) => ({ ...meta, id: 'new' }))
+    add: vi.fn(async (meta: Omit<Account, 'id'>) => ({ ...meta, id: 'new' })),
+    // local edits land on the provider's list, which readCache returns
+    patchCache: vi.fn((id: string, fn: (c: { calendars: unknown[]; events: CalEvent[] }) => { events: CalEvent[] }) => {
+      providers[id].events = fn({ calendars: providers[id].calendars, events: providers[id].events }).events
+    })
   } as unknown as AccountStore
-  const sync = { syncNow: vi.fn(async () => {}) } as unknown as SyncEngine
+  const sync = { syncNow: vi.fn(async () => {}), edited: vi.fn() } as unknown as SyncEngine
   const deps = { verifyCaldav: vi.fn(async () => ({ email: 'me@pe.example' })), googleSignIn: vi.fn() }
   for (const p of Object.values(providers)) {
     vi.spyOn(p, 'createEvent')
@@ -69,7 +73,7 @@ describe('createApi isolation', () => {
     expect(ev.organizer?.email).toBe('me@work.example')
     expect(providers.work.createEvent).toHaveBeenCalledOnce()
     expect(providers.personal.createEvent).not.toHaveBeenCalled()
-    expect(sync.syncNow).toHaveBeenCalledExactlyOnceWith('work', { quiet: true })
+    expect(sync.syncNow).toHaveBeenCalledExactlyOnceWith('work', { quiet: true, fresh: true })
   })
 
   it('respond rejects an event whose accountId was tampered with', async () => {
@@ -112,6 +116,37 @@ describe('createApi isolation', () => {
   })
 })
 
+describe('createApi local edits', () => {
+  it('shows a created, edited, answered or deleted event before the sync, then syncs', async () => {
+    const { api, store, sync, invite } = setup()
+    const list = async (): Promise<string[]> =>
+      (await api.events.list({ start: '2026-09-01T00:00:00Z', end: '2026-10-01T00:00:00Z' })).map((e) => `${e.id}:${e.title}`)
+    const ev = await api.events.create({ ...newEvent, accountId: 'work', calendarId: 'work-main' })
+    expect(await list()).toContain(`${ev.id}:X`)
+    await api.events.update({ ...ev, title: 'Y' })
+    expect(await list()).toContain(`${ev.id}:Y`)
+    const answered = await api.events.respond(invite, 'accepted')
+    expect(answered.myStatus).toBe('accepted')
+    await api.events.delete(ev)
+    expect(await list()).toEqual(['inv-1:Daily'])
+    expect(store.patchCache).toHaveBeenCalledTimes(4)
+    expect(sync.edited).toHaveBeenCalledTimes(4)
+    expect(sync.syncNow).toHaveBeenCalledTimes(4)
+  })
+
+  it('deletedBy removes the scope of a recurring series only', () => {
+    const at = (id: string, d: number, series?: string, calendarId = 'c'): CalEvent => ({
+      id, accountId: 'a', calendarId, title: id, allDay: false, attendees: [], recurringEventId: series,
+      start: `2026-09-${d}T10:00:00Z`, end: `2026-09-${d}T11:00:00Z`
+    })
+    const events = [at('s1', 21, 's'), at('s2', 22, 's'), at('s3', 23, 's'), at('o', 22), at('x', 22, 's', 'other')]
+    const gone = (scope: 'one' | 'following' | 'all'): string[] => events.filter((e) => deletedBy(events[1], scope, e)).map((e) => e.id)
+    expect(gone('one')).toEqual(['s2'])
+    expect(gone('following')).toEqual(['s2', 's3'])
+    expect(gone('all')).toEqual(['s1', 's2', 's3'])
+  })
+})
+
 describe('createApi validation', () => {
   it('zod rejects bad input', async () => {
     const { api, deps } = setup()
@@ -139,7 +174,7 @@ describe('createApi validation', () => {
       expect.objectContaining({ kind: 'caldav', email: 'me@pe.example' }),
       { kind: 'caldav', serverUrl: 'https://mail.privateemail.com/caldav', username: 'u', password: 'p' }
     )
-    expect(sync.syncNow).toHaveBeenCalledWith('new', { quiet: true })
+    expect(sync.syncNow).toHaveBeenCalledWith('new', { quiet: true, fresh: true })
   })
 
   it('reports added accounts by provider and preset only (no PII)', async () => {

@@ -6,6 +6,10 @@ directories:
 files:
   - out/**
   - package.json
+# mysticals:// brings the app forward (the Google sign-in success page opens it).
+protocols:
+  - name: Mysticals
+    schemes: [mysticals]
 mac:
   category: public.app-category.productivity
   icon: build/icon.png

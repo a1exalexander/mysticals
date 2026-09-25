@@ -80,6 +80,24 @@ export function Swatches(props: { value: string; onChange: (c: string) => void; 
   )
 }
 
+/** Progress of connecting a new account: done ✓, the active one spins, the rest wait. */
+export function ConnectSteps(props: { steps: string[]; active: number; testId?: string }): React.JSX.Element {
+  return (
+    <div className="acc-waiting" role="status" data-testid={props.testId}>
+      <ol className="acc-steps">
+        {props.steps.map((s, i) => (
+          <li key={s} className={i < props.active ? 'done' : i === props.active ? 'active' : undefined}>
+            {s}
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+/** Host part of a server URL, for "Connecting to caldav.icloud.com…". */
+export const hostOf = (url: string): string => (URL.canParse(url) ? new URL(url).host : url)
+
 export function KindIcon({ kind }: { kind: 'google' | 'caldav' }): React.JSX.Element {
   return (
     <span className={`acc-kind acc-kind-${kind}`} title={kind === 'google' ? 'Google' : 'CalDAV'}>

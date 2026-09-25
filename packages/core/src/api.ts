@@ -77,7 +77,7 @@ const AccountPatch = z.object({ label: text(200).min(1).optional(), color: color
 const RsvpStatus = z.enum(['accepted', 'declined', 'tentative'])
 const Scope = z.enum(['one', 'following', 'all']).default('one')
 
-export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps): Omit<Api, 'onChanged' | 'onMenu'> {
+export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps): Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'> {
   const account = (accountId: unknown) => {
     const a = store.get(id.parse(accountId))
     if (!a) throw new Error('unknown account')
@@ -86,7 +86,23 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
 
   /** Fire-and-forget quiet sync of exactly one account after this app changed it (no notifications). */
   const syncOne = (accountId: string): void => {
-    sync.syncNow(accountId, { quiet: true }).catch((e) => console.error(`sync ${accountId} failed`, e))
+    sync.syncNow(accountId, { quiet: true, fresh: true }).catch((e) => console.error(`sync ${accountId} failed`, e))
+  }
+
+  /** Shows an edit the provider accepted right away, instead of after the account's next sync (`syncOne`). */
+  const applyLocal = (accountId: string, fn: (events: CalEvent[]) => CalEvent[]): void => {
+    try {
+      store.patchCache(accountId, (c) => ({ ...c, events: fn(c.events) }))
+      sync.edited(accountId)
+      deps.onChanged?.(accountId)
+    } catch (e) {
+      console.error(`local update of ${accountId} failed`, e) // the sync still brings it
+    }
+  }
+  /** Replaces (or adds) one event, stamped with the owner like everything the sync stores. */
+  const upsert = (ev: CalEvent, accountId: string, calendarId: string): void => {
+    const own = { ...ev, accountId, calendarId }
+    applyLocal(accountId, (events) => [...events.filter((e) => e.id !== own.id), own])
   }
 
   const nextColor = (): string => PALETTE[store.list().length % PALETTE.length]
@@ -164,6 +180,7 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
         if (!cal) throw new Error('calendar does not belong to account')
         if (cal.readOnly) throw new Error('calendar is read-only')
         const ev = await store.getProvider(a.id).createEvent(cal.id, { ...input, accountId: a.id })
+        upsert(ev, a.id, cal.id)
         syncOne(a.id)
         return ev
       },
@@ -174,17 +191,21 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
         const ev = await store
           .getProvider(cached.accountId)
           .updateEvent({ ...cached, title, start, end, allDay, location, description, attendees })
+        upsert(ev, cached.accountId, cached.calendarId)
         syncOne(cached.accountId)
         return ev
       },
       delete: async (raw, scope) => {
         const cached = writable(cachedEvent(EventRef.parse(raw)))
-        await store.getProvider(cached.accountId).deleteEvent(cached, Scope.parse(scope))
+        const how = Scope.parse(scope)
+        await store.getProvider(cached.accountId).deleteEvent(cached, how)
+        applyLocal(cached.accountId, (events) => events.filter((e) => !deletedBy(cached, how, e)))
         syncOne(cached.accountId)
       },
       respond: async (raw, status) => {
         const cached = cachedEvent(EventRef.parse(raw))
         const ev = await store.getProvider(cached.accountId).respond(cached, RsvpStatus.parse(status))
+        upsert(ev, cached.accountId, cached.calendarId)
         syncOne(cached.accountId)
         return ev
       }
@@ -196,4 +217,12 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
       }
     }
   }
+}
+
+/** Whether deleting `target` with `scope` removes `e` (a recurring series' other instances for 'all'/'following'). */
+export function deletedBy(target: CalEvent, scope: z.infer<typeof Scope>, e: CalEvent): boolean {
+  if (e.id === target.id) return true
+  const series = target.recurringEventId
+  if (!series || scope === 'one' || e.recurringEventId !== series || e.calendarId !== target.calendarId) return false
+  return scope === 'all' || Date.parse(e.start) >= Date.parse(target.start)
 }

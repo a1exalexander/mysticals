@@ -91,14 +91,27 @@ export async function postToken(params: Record<string, string>): Promise<TokenRe
   return parseTokenResponse(json)
 }
 
-const DONE_HTML = (msg: string): string =>
-  `<!doctype html><meta charset="utf-8"><title>Mysticals</title><body style="font:15px -apple-system,sans-serif;text-align:center;padding-top:80px"><h2>${msg}</h2><p>You can close this tab and return to Mysticals.</p></body>`
+const DONE_HTML = (msg: string, returnUrl?: string): string =>
+  `<!doctype html><meta charset="utf-8"><title>Mysticals</title><body style="font:15px -apple-system,sans-serif;text-align:center;padding-top:80px"><h2>${msg}</h2>` +
+  (returnUrl
+    ? `<p>Returning to Mysticals…</p><p><a href="${returnUrl}" style="display:inline-block;padding:8px 16px;border-radius:6px;background:#bd93f9;color:#0b0b10;font-weight:600;text-decoration:none">Open Mysticals</a></p><p style="color:#888">You can close this tab.</p><script>location.href=${JSON.stringify(returnUrl)}</script></body>`
+    : `<p>You can close this tab and return to Mysticals.</p></body>`)
+
+export interface OAuthOptions {
+  /** The browser came back with a code: the rest (token exchange, email) takes a moment more. */
+  onCode?: () => void
+  /** App link (e.g. mysticals://) the success page opens so the browser hands focus back to the app. */
+  returnUrl?: string
+}
 
 /**
  * OAuth for installed apps: system browser + loopback redirect + PKCE.
  * `openUrl` opens the system browser; injected so core stays platform-free.
  */
-export async function runOAuthFlow(openUrl: (url: string) => Promise<void>): Promise<{ email: string; credentials: GoogleCredentials }> {
+export async function runOAuthFlow(
+  openUrl: (url: string) => Promise<void>,
+  opts: OAuthOptions = {}
+): Promise<{ email: string; credentials: GoogleCredentials }> {
   const cfg = getClientConfig()
   const { verifier, challenge } = createPkce()
   const state = randomBytes(16).toString('base64url')
@@ -123,7 +136,7 @@ export async function runOAuthFlow(openUrl: (url: string) => Promise<void>): Pro
         // Settle only after the page is flushed, so closing the server can't cut it off.
         const reply = (status: number, msg: string, then: () => void): void => {
           res.writeHead(status, { 'Content-Type': 'text/html; charset=utf-8', Connection: 'close' })
-          res.end(DONE_HTML(msg), then)
+          res.end(DONE_HTML(msg, status === 200 ? opts.returnUrl : undefined), then)
         }
         if (!params.has('code') && !params.has('error')) {
           res.writeHead(404, { Connection: 'close' }).end()
@@ -143,6 +156,7 @@ export async function runOAuthFlow(openUrl: (url: string) => Promise<void>): Pro
       )
     })
 
+    opts.onCode?.()
     const tok = await postToken({
       grant_type: 'authorization_code',
       code,

@@ -8,7 +8,7 @@ import { homeDir, socketPath } from './paths'
 import { encode, lineReader, METHODS, type Method, type Response } from './protocol'
 
 /** What the TUI talks to: the daemon's Api plus change pushes. */
-export type ClientApi = Omit<Api, 'onMenu'> & {
+export type ClientApi = Omit<Api, 'onMenu' | 'onSignIn'> & {
   /** Google sign-in URL, pushed while the daemon waits for the browser (so it can be opened by hand). */
   onAuthUrl(cb: (url: string) => void): () => void
   /** Disconnects; the daemon exits a few seconds after its last client leaves. */
@@ -115,7 +115,7 @@ export function clientFor(open: () => Promise<Socket>): ClientApi {
     api[group] ??= {}
     api[group][fn] = (...params: unknown[]) => call(m, params)
   }
-  return Object.assign(api as unknown as Omit<Api, 'onChanged' | 'onMenu'>, {
+  return Object.assign(api as unknown as Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'>, {
     onChanged(cb: (accountId: string) => void) {
       listeners.add(cb)
       return () => void listeners.delete(cb)

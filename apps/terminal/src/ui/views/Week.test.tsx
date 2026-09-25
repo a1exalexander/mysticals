@@ -3,6 +3,7 @@ import type { CalEvent } from '@mysticals/core/shared/types'
 import { renderApp, renderWith, type Rendered } from '../../test/harness'
 import { eventKey } from '../hooks'
 import { Week } from './Week'
+import { abutting } from './TimeGrid'
 
 let t: Rendered
 afterEach(() => t?.unmount())
@@ -35,12 +36,28 @@ describe('Week view', () => {
     expect(cell(f, '10:00', 4)).toBe('')
   })
 
-  it('marks the current time: red clock in the gutter and a now-line through today', () => {
-    t = renderWith(<Week {...props} events={[]} height={30} />)
+  it('marks the current time: red clock in the gutter and a now-line across every day', () => {
+    const lunch = ev('4', 'Lunch', at(24, 12), at(24, 13))
+    t = renderWith(<Week {...props} events={[lunch]} height={30} />)
     const f = t.lastFrame()!
-    expect(cell(f, '12:34', 2)).toMatch(/^─+$/) // Wed 23 = today
-    expect(cell(f, '12:34', 1)).toBe('')
+    const line = f.split('\n').find((l) => l.startsWith('12:34'))!
+    const cells = line.split('┼')
+    expect(cells[0]).toBe('12:34─')
+    expect(cells).toHaveLength(8) // the line crosses all seven day columns
+    expect(cells[3]).toMatch(/^─+$/) // Wed 23 = today
+    expect(cells[1]).toMatch(/^─+$/)
+    expect(cells[4]).toContain('Lunch') // blocks stay on top of the line
     expect(f).not.toContain('12:00')
+  })
+
+  it('underlines the last row of a block that another block follows directly', () => {
+    const slot = (start: number, end: number, col = 0, cols = 1) => ({ item: {} as never, start, end, col, cols })
+    const a = slot(540, 600) // 09–10
+    const b = slot(600, 720) // 10–12, right after a
+    const c = slot(720, 780, 1, 2) // 12–13, right half: touches b's span
+    const d = slot(900, 960) // 15–16, after a gap
+    expect([...abutting([a, b, c, d])]).toEqual([a, b])
+    expect([...abutting([slot(540, 600, 0, 2), slot(600, 660, 1, 2)])]).toEqual([]) // side by side, not stacked
   })
 
   it('scrolls the selected event into view', () => {

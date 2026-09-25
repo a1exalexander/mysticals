@@ -127,6 +127,32 @@ describe('SyncEngine', () => {
     expect(spy).toHaveBeenCalledTimes(1)
   })
 
+  it('a fresh sync runs once more after a pass already running, and that pass keeps a local edit', async () => {
+    const work = store.add('work')
+    let release!: () => void
+    const gate = new Promise<void>((r) => (release = r))
+    const spy = vi.spyOn(work, 'listCalendars').mockImplementationOnce(async () => {
+      await gate // this pass fetched before the edit
+      return structuredClone(work.calendars)
+    })
+    const engine = new SyncEngine(store, () => {}, { triggers: noTriggers })
+    const running = engine.syncNow('work')
+    await tick()
+    const local = ev('new', 'work-cal', '2026-09-23T09:00:00Z', '2026-09-23T10:00:00Z', 'work')
+    store.caches.set('work', { calendars: [], events: [local] })
+    engine.edited('work')
+    work.events.push(local) // the server has it too
+    const fresh = engine.syncNow('work', { quiet: true, fresh: true })
+    const again = engine.syncNow('work', { quiet: true, fresh: true }) // shares the queued pass
+    release()
+    await running
+    expect(store.readCache('work').events.map((e) => e.id)).toEqual(['new']) // not overwritten by the stale pass
+    await Promise.all([fresh, again])
+    expect(spy).toHaveBeenCalledTimes(2)
+    expect(store.readCache('work').syncedAt).toBeDefined()
+    expect(store.readCache('work').events.map((e) => e.id)).toEqual(['new'])
+  })
+
   it('backs off exponentially per account, keeps cache, clears error on recovery', async () => {
     const work = store.add('work')
     store.add('personal')

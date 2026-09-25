@@ -2,7 +2,7 @@ import { ipcMain } from 'electron'
 import type { Api } from '@shared/ipc'
 import { IPC } from '@shared/ipc'
 
-type Impl = Omit<Api, 'onChanged' | 'onMenu'>
+type Impl = Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'>
 
 /** Maps IPC channels to an Api implementation. Validation belongs inside impl (unit 5). */
 export function registerApi(api: Impl): void {

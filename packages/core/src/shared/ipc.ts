@@ -38,6 +38,8 @@ export interface Api {
   onChanged(cb: (accountId: string) => void): () => void
   /** Fires on native menu commands. Returns unsubscribe. */
   onMenu(cb: (cmd: MenuCommand) => void): () => void
+  /** Desktop: Google sign-in finished in the browser and the account is being connected. Returns unsubscribe. */
+  onSignIn?(cb: (stage: 'connecting') => void): () => void
 }
 
 /** Desktop self-update state (see apps/desktop/src/main/update.ts). */
@@ -83,6 +85,7 @@ export const IPC = {
   syncNow: 'sync:now',
   changed: 'changed',
   menu: 'menu',
+  signIn: 'signin',
   updateState: 'update:state',
   updateCheck: 'update:check',
   updateInstall: 'update:install',

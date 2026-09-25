@@ -28,6 +28,13 @@ if (!primary) app.quit()
 // Only once the backend is up: during startup (or the load-error box) there is nothing to show yet.
 let started = false
 app.on('second-instance', () => started && showMain())
+// mysticals:// links (the Google sign-in page opens one) just bring the app forward. Windows/Linux deliver them as a
+// second instance (above); macOS as open-url, which must be hooked before ready.
+const PROTOCOL = 'mysticals'
+app.on('open-url', (e) => {
+  e.preventDefault()
+  if (started) showMain()
+})
 
 /** Brings the main window forward, or opens one. */
 function showMain(): void {
@@ -150,6 +157,8 @@ app.whenReady().then(() => {
   // Packaged builds get the icon from electron-builder; in dev the dock would show Electron's.
   if (!app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'build/icon.png'))
   Menu.setApplicationMenu(buildMenu())
+  // Dev runs would register the bare Electron binary; electron-builder's `protocols` covers installed builds too.
+  if (app.isPackaged && !MOCK) app.setAsDefaultProtocolClient(PROTOCOL)
   const track = startDesktopTelemetry()
   if (MOCK) {
     registerApi(createMockApi(broadcast))
@@ -178,7 +187,17 @@ app.whenReady().then(() => {
       onSyncing: broadcast // renderer re-reads accounts.list for the `syncing` flag
     })
     try {
-      const signIn = (): ReturnType<typeof googleSignIn> => googleSignIn((url) => shell.openExternal(url))
+      // The user finishes sign-in in the browser: bring Mysticals back right away so they see the account connect
+      // (the sheet shows "connecting" while the code is exchanged); the success page also opens mysticals://.
+      const signIn = (): ReturnType<typeof googleSignIn> =>
+        googleSignIn((url) => shell.openExternal(url), {
+          returnUrl: app.isPackaged ? `${PROTOCOL}://signed-in` : undefined,
+          onCode: () => {
+            for (const w of BrowserWindow.getAllWindows()) w.webContents.send(IPC.signIn, 'connecting')
+            showMain()
+            if (MAC) app.focus({ steal: true })
+          }
+        })
       const onAccountAdded = (info: AccountAdded): void => track?.('account_added', info)
       registerApi(createApi(store, sync, { verifyCaldav, googleSignIn: signIn, onChanged: broadcast, onAccountAdded }))
       sync.start()

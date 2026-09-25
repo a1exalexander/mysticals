@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { meetingUrl } from './meeting'
+import { meetingUrl, place } from './meeting'
 
 describe('meetingUrl', () => {
   it('extracts the first http(s) url', () => {
@@ -11,5 +11,14 @@ describe('meetingUrl', () => {
     expect(meetingUrl(undefined)).toBeUndefined()
     expect(meetingUrl('Room 3')).toBeUndefined()
     expect(meetingUrl('ftp://x.example')).toBeUndefined()
+  })
+})
+
+describe('place', () => {
+  it('drops the meeting link from a location', () => {
+    expect(place('Room 3 / https://meet.example.com/x')).toBe('Room 3')
+    expect(place('https://meet.google.com/abc-defg-hij')).toBe('video call')
+    expect(place('Kyiv')).toBe('Kyiv')
+    expect(place(undefined)).toBe('')
   })
 })

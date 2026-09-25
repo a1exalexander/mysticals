@@ -11,7 +11,7 @@ const iso = (dayOffset: number, h: number, m = 0): string => {
 }
 
 /** Two isolated fake accounts with seeded events. Used when MYSTICALS_MOCK=1. */
-export function createMockApi(onChanged: (accountId: string) => void): Omit<Api, 'onChanged' | 'onMenu'> {
+export function createMockApi(onChanged: (accountId: string) => void): Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'> {
   const accounts: Account[] = [
     { id: 'work', kind: 'caldav', label: 'Work', email: 'me@work.example', color: '#8be9fd' },
     { id: 'personal', kind: 'google', label: 'Personal', email: 'me@gmail.example', color: '#50fa7b' }

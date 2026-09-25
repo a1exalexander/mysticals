@@ -178,6 +178,11 @@ export class AccountStore {
       this.caches.set(id, cache)
     })
   }
+  /** In-memory only: shows a local edit at once; the next sync writes the server's copy to disk. */
+  patchCache(id: string, fn: (cache: AccountCache) => AccountCache): void {
+    this.require(id)
+    this.caches.set(id, fn(this.readCache(id)))
+  }
   hiddenCalendars(id: string): string[] {
     // Prefs are only calendar visibility: a corrupt file just shows everything again (rewritten on the next toggle).
     const file = join(this.accountDir(id), 'prefs.json')

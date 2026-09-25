@@ -1,9 +1,11 @@
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { format, getISOWeek } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import type { MenuCommand } from '@shared/ipc'
 import { useCalendarData } from '../hooks/useCalendarData'
 import { visibleEvents } from '@mysticals/core/logic/visible'
+import { canEdit } from '@mysticals/core/logic/details'
+import { errorText } from '@mysticals/core/logic/editor'
 import { bus } from '../bus'
 import { nav, useNav } from './nav'
 import { rangeLabel, shiftDate, viewDays, viewRange, type View } from '@mysticals/core/logic/layout'
@@ -21,6 +23,12 @@ const MENU_VIEW: Partial<Record<MenuCommand, View>> = {
 }
 
 export type ColorOf = (e: CalEvent) => string
+/** Drag-and-drop from the grids: the event's new start/end (same format as the event's own). */
+export type MoveTo = (e: CalEvent, start: string, end: string) => void
+export type CanDrag = (e: CalEvent) => boolean
+
+const keyOf = (e: Pick<CalEvent, 'accountId' | 'id'>): string => `${e.accountId}/${e.id}`
+const same = (a: string, b: string): boolean => Date.parse(a) === Date.parse(b) || a === b
 
 const go = (dir: 1 | -1): void => {
   const { view, date } = nav.get()
@@ -33,7 +41,58 @@ export function CalendarView(): React.JSX.Element {
   const range = useMemo(() => viewRange(view, date), [view, date])
   const days = useMemo(() => viewDays(view, date), [view, date])
   const { accounts, calendars, events: all } = useCalendarData(range)
-  const events = useMemo(() => visibleEvents(all, calendars), [all, calendars])
+  // Dropped events show at their new time at once; an entry goes when the data has caught up or the save fails.
+  const [moved, setMoved] = useState<Map<string, { start: string; end: string }>>(() => new Map())
+  const events = useMemo(() => {
+    const shown = visibleEvents(all, calendars)
+    return moved.size ? shown.map((e) => ({ ...e, ...moved.get(keyOf(e)) })) : shown
+  }, [all, calendars, moved])
+  useEffect(() => {
+    setMoved((m) => {
+      if (!m.size) return m
+      const caught = [...m].filter(([k, to]) => {
+        const e = all.find((x) => keyOf(x) === k)
+        return !e || (same(e.start, to.start) && same(e.end, to.end))
+      })
+      if (!caught.length) return m
+      const next = new Map(m)
+      for (const [k] of caught) next.delete(k)
+      return next
+    })
+  }, [all])
+
+  const canDrag = useCallback<CanDrag>(
+    (e) =>
+      canEdit(
+        e,
+        accounts.find((a) => a.id === e.accountId),
+        calendars.find((c) => c.accountId === e.accountId && c.id === e.calendarId)
+      ),
+    [accounts, calendars]
+  )
+
+  const moveTo = useCallback<MoveTo>((e, start, end) => {
+    const k = keyOf(e)
+    const drop = (): void =>
+      setMoved((m) => {
+        const next = new Map(m)
+        next.delete(k)
+        return next
+      })
+    setMoved((m) => new Map(m).set(k, { start, end }))
+    window.api.events.update({ ...e, start, end }).then(
+      () =>
+        bus.emit('toast', {
+          text: `Moved “${e.title || 'Untitled'}”`,
+          // Undo is just the reverse move.
+          action: { label: 'Undo', run: () => moveTo({ ...e, start, end }, e.start, e.end) }
+        }),
+      (err) => {
+        drop()
+        bus.emit('toast', { text: `Couldn't move “${e.title || 'Untitled'}”: ${errorText(err)}`, error: true })
+      }
+    )
+  }, [])
   const firstSync = accounts.filter((a) => a.syncing && !a.synced)
 
   const colorOf = useMemo<ColorOf>(() => {
@@ -77,7 +136,8 @@ export function CalendarView(): React.JSX.Element {
   return (
     <div className="calendar-view" data-testid="calendar-view">
       <header className="toolbar">
-        <h1 className="toolbar-title">
+        {/* Keyed by the period so a step to the next one fades the new title in. */}
+        <h1 className="toolbar-title" key={`${view}/${format(days[0], 'yyyy-MM-dd')}`}>
           {view === 'day' ? format(date, 'd MMMM') : view === '3day' ? rangeLabel(days[0], days[2]) : format(date, 'MMMM')}
           <span className="toolbar-sub">
             {view !== '3day' && format(date, 'yyyy')}
@@ -116,10 +176,11 @@ export function CalendarView(): React.JSX.Element {
           + new
         </button>
       </header>
+      {firstSync.length > 0 && <div className="loadbar" role="progressbar" aria-label="Syncing" data-testid="loadbar" />}
       {view === 'month' ? (
-        <MonthGrid date={date} events={events} colorOf={colorOf} />
+        <MonthGrid date={date} events={events} colorOf={colorOf} canDrag={canDrag} moveTo={moveTo} />
       ) : (
-        <TimeGrid days={days} events={events} colorOf={colorOf} />
+        <TimeGrid days={days} events={events} colorOf={colorOf} canDrag={canDrag} moveTo={moveTo} />
       )}
       {firstSync.length > 0 && !events.length && (
         <div className="first-sync" role="status" data-testid="first-sync">

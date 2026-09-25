@@ -4,14 +4,16 @@ import type { CalEvent } from '@shared/types'
 export interface BusEvents {
   /** Open the create-event editor, optionally prefilled with a range. */
   'event:create': { start?: string; end?: string; allDay?: boolean }
-  /** Open details for an existing event (anchor = clicked element rect for popover). */
-  'event:open': { event: CalEvent; anchor?: DOMRect }
+  /** Open details for an existing event (anchor = clicked element rect for popover; el = that element, followed on resize). */
+  'event:open': { event: CalEvent; anchor?: DOMRect; el?: HTMLElement }
   /** Open the edit form for an existing event. */
   'event:edit': { event: CalEvent }
   'accounts:open': Record<string, never>
   'settings:open': Record<string, never>
   /** Toggle the invitations panel in the status bar. */
   'invites:open': Record<string, never>
+  /** Short notice above the status bar (e.g. "Event moved · Undo"); replaces the one shown. */
+  toast: { text: string; error?: boolean; action?: { label: string; run: () => void } }
   /** Optimistic calendar show/hide, applied locally before the IPC write settles. */
   'calendars:visible': { accountId: string; calendarId: string; visible: boolean }
 }

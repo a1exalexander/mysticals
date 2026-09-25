@@ -82,7 +82,7 @@ export function InvitesPanel(): React.JSX.Element {
                   <button
                     type="button"
                     className="invites-open"
-                    onClick={(ev) => bus.emit('event:open', { event: e, anchor: ev.currentTarget.getBoundingClientRect() })}
+                    onClick={(ev) => bus.emit('event:open', { event: e, anchor: ev.currentTarget.getBoundingClientRect(), el: ev.currentTarget })}
                   >
                     <span className="invites-name">{e.title || 'Untitled'}</span>
                     <span className="mc-muted">{formatWhen(e)}</span>

@@ -31,7 +31,8 @@ const api: Api = {
   },
   sync: { now: call(IPC.syncNow) },
   onChanged: (cb) => on<string>(IPC.changed, cb),
-  onMenu: (cb) => on<MenuCommand>(IPC.menu, cb)
+  onMenu: (cb) => on<MenuCommand>(IPC.menu, cb),
+  onSignIn: (cb) => on<'connecting'>(IPC.signIn, cb)
 } as Api
 
 contextBridge.exposeInMainWorld('api', api)

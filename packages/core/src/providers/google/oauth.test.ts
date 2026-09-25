@@ -80,6 +80,24 @@ describe('runOAuthFlow', () => {
     expect(body.get('code_verifier')).toMatch(/^[A-Za-z0-9_-]{43}$/)
   })
 
+  it('reports the code before the exchange and links the success page back to the app', async () => {
+    const order: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      order.push('token')
+      return Response.json({ access_token: 'at', expires_in: 3600, refresh_token: 'rt', id_token: jwt({ email: 'me@gmail.com' }) })
+    }))
+    let page: Promise<{ body: string }> | undefined
+    await runOAuthFlow(
+      async (authUrl) => {
+        const p = new URL(authUrl).searchParams
+        page = hit(`${p.get('redirect_uri')}/?code=abc&state=${p.get('state')}`)
+      },
+      { onCode: () => order.push('code'), returnUrl: 'mysticals://signed-in' }
+    )
+    expect(order).toEqual(['code', 'token'])
+    expect((await page!).body).toContain('href="mysticals://signed-in"')
+  })
+
   it('rejects a mismatched state and never exchanges the code', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)

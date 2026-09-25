@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { bus } from '../bus'
-import { PRESETS, SWATCHES, Sheet, Swatches, errorText, suggestLabel } from './AccountsShared'
+import { ConnectSteps, PRESETS, SWATCHES, Sheet, Swatches, errorText, hostOf, suggestLabel } from './AccountsShared'
 
-type Step = 'choose' | 'google' | 'caldav'
+type Step = 'choose' | 'google' | 'connecting' | 'caldav'
 
 // Unit 8 owns: add Google / CalDAV account. Listens to bus 'accounts:open'.
 export function AccountsHost(): React.JSX.Element | null {
@@ -22,6 +22,9 @@ export function AccountsHost(): React.JSX.Element | null {
       }),
     []
   )
+
+  // Back from the browser: the code is being exchanged and the account saved, which takes a few seconds.
+  useEffect(() => window.api.onSignIn?.(() => setStep((s) => (s === 'google' ? 'connecting' : s))), [])
 
   const close = (): void => {
     session.current++
@@ -84,10 +87,18 @@ export function AccountsHost(): React.JSX.Element | null {
         <div className="acc-waiting">
           <span className="acc-spinner" aria-hidden />
           <p>Waiting for Google sign-in in your browser…</p>
+          <p className="acc-hint-center">Finish signing in there; Mysticals comes back on its own.</p>
           <div className="acc-actions">
             <button type="button" onClick={close}>Cancel</button>
           </div>
         </div>
+      )}
+      {step === 'connecting' && (
+        <ConnectSteps
+          testId="google-connecting"
+          steps={['Signed in with Google', 'Connecting your account…', 'Loading calendars']}
+          active={1}
+        />
       )}
       {step === 'caldav' && <CaldavForm onBack={() => setStep('choose')} onDone={closeIfCurrent(session.current)} />}
     </Sheet>
@@ -127,6 +138,15 @@ function CaldavForm(props: { onBack: () => void; onDone: () => void }): React.JS
 
   return (
     <form className="acc-form" onSubmit={submit}>
+      {/* The server check takes a few seconds: show progress; the fields stay (hidden) for a retry after an error. */}
+      {busy && (
+        <ConnectSteps
+          testId="caldav-connecting"
+          steps={[`Signing in to ${hostOf(serverUrl.trim())}…`, 'Loading calendars']}
+          active={0}
+        />
+      )}
+      <div className="acc-form-fields" hidden={busy}>
       <label>
         <span>Provider</span>
         <select
@@ -196,11 +216,12 @@ function CaldavForm(props: { onBack: () => void; onDone: () => void }): React.JS
         <span>Colour</span>
         <Swatches value={color} onChange={setColor} name="Account colour" />
       </div>
+      </div>
       {error && <p className="acc-error" role="alert">{error}</p>}
-      <div className="acc-actions">
+      <div className="acc-actions" hidden={busy}>
         <button type="button" onClick={props.onBack} disabled={busy}>Back</button>
         <button type="submit" className="acc-primary" data-testid="add-caldav-submit" disabled={busy}>
-          {busy ? 'Connecting…' : 'Add account'}
+          Add account
         </button>
       </div>
     </form>

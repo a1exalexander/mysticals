@@ -49,3 +49,22 @@
 .details-rsvp [data-status='accepted'] { --accent: var(--green); }
 .details-rsvp [data-status='tentative'] { --accent: var(--orange); }
 .details-rsvp [data-status='declined'] { --accent: var(--red); }
+
+/* Deleted elsewhere while open: a notice on top, the rest dimmed and inert. */
+.details-gone {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: 8px;
+  margin: -2px 0 12px; padding: 8px 10px; border-radius: 6px;
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
+  animation: mc-pop 160ms ease-out;
+}
+.details-gone-icon {
+  display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--red); color: var(--on-accent); font: 700 10px/1 var(--mono);
+}
+.details-gone b { display: block; font-size: 12.5px; font-weight: 600; color: var(--fg); }
+.details-gone div span { display: block; margin-top: 2px; font: 11px/1.4 var(--mono); color: var(--muted); }
+.details-gone .mc-btn { height: 22px; padding: 0 8px; }
+.details.is-gone { border-left-color: var(--red); }
+.details.is-gone > :not(.details-gone) { opacity: 0.45; transition: opacity 200ms ease; }
+.details.is-gone h2 { text-decoration: line-through; }

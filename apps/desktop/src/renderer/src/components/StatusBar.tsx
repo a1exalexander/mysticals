@@ -51,7 +51,7 @@ function NowNext(): React.JSX.Element {
       className="sbar-seg sbar-ev"
       style={{ '--c': colorOf(e) } as React.CSSProperties}
       title={e.title}
-      onClick={(ev) => bus.emit('event:open', { event: e, anchor: ev.currentTarget.getBoundingClientRect() })}
+      onClick={(ev) => bus.emit('event:open', { event: e, anchor: ev.currentTarget.getBoundingClientRect(), el: ev.currentTarget })}
     >
       {label}
     </button>

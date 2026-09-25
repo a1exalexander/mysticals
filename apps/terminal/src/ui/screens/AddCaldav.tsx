@@ -5,6 +5,7 @@ import { errorText } from '@mysticals/core/logic/editor'
 import { useApi } from '../hooks'
 import { Button, Clickable, useKeys } from '../mouse'
 import { ansiOf, C } from '../theme'
+import { Spinner } from '../StatusLine'
 
 /** Same palette core api uses for new accounts. */
 export const PALETTE = ['#bd93f9', '#50fa7b', '#8be9fd', '#ff79c6', '#ffb86c', '#f1fa8c']
@@ -155,7 +156,11 @@ export function AddCaldav({ onBack, onDone }: { onBack(): void; onDone(): void }
         </Clickable>
       ))}
       <Text color={C.muted}>Check your provider's docs if connection fails.</Text>
-      {v.busy && <Text color={C.yellow}>Verifying…</Text>}
+      {v.busy && (
+        <Text>
+          <Spinner /> Signing in to {URL.canParse(v.serverUrl.trim()) ? new URL(v.serverUrl.trim()).host : 'the server'}…
+        </Text>
+      )}
       {v.error && <Text color={C.red}>{v.error}</Text>}
       <Box flexWrap="wrap">
         <Box marginRight={2}>

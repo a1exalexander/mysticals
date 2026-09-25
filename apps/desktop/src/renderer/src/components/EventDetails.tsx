@@ -1,9 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { addDays, subDays } from 'date-fns'
 import type { CalEvent, DeleteScope, PartStat } from '@shared/types'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
 import { canEdit, cleanNotes, formatWhen, linkify, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
+import { eventBounds } from '@mysticals/core/logic/layout'
 import './ui/ui.css'
 import './EventDetails.css'
 
@@ -16,7 +18,9 @@ const GAP = 8
 // Details popover + RSVP. Replies go only through the account that owns the event.
 export function EventDetailsHost(): React.JSX.Element | null {
   const { accounts, calendars } = useDirectory()
-  const [opened, setOpened] = useState<{ event: CalEvent; anchor?: DOMRect } | null>(null)
+  const [opened, setOpened] = useState<{ event: CalEvent; anchor?: DOMRect; el?: HTMLElement } | null>(null)
+  // Deleted elsewhere (another device, the web) while shown: kept open with a notice instead of vanishing.
+  const [gone, setGone] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -34,6 +38,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
         setError('')
         setConfirmDelete(false)
         setShowPeople(false)
+        setGone(false)
         setPos(null)
       }),
     []
@@ -55,19 +60,58 @@ export function EventDetailsHost(): React.JSX.Element | null {
     }
   }, [opened])
 
-  // Place beside the anchor (right, else left), clamped to the window.
-  useLayoutEffect(() => {
+  // Place beside the anchor (right, else left), clamped to the window. The anchor element is re-measured, so a
+  // resized window (the grid reflows) or a taller popover (invitees, notices) moves it along.
+  const place = useCallback((): void => {
     if (!opened || !ref.current) return
     const h = ref.current.offsetHeight
-    const a = opened.anchor
+    const a = opened.el?.isConnected ? opened.el.getBoundingClientRect() : opened.anchor
     const vw = window.innerWidth
     const vh = window.innerHeight
     let left = a ? (a.right + GAP + W <= vw ? a.right + GAP : a.left - GAP - W) : (vw - W) / 2
     let top = a ? a.top : (vh - h) / 3
     left = Math.max(12, Math.min(left, vw - W - 12))
     top = Math.max(12, Math.min(top, vh - h - 12))
-    setPos({ left, top })
+    setPos((p) => (p && p.left === left && p.top === top ? p : { left, top }))
   }, [opened])
+  useLayoutEffect(place, [place])
+  useEffect(() => {
+    const el = ref.current
+    if (!opened || !el) return
+    const ro = new ResizeObserver(place)
+    ro.observe(el)
+    window.addEventListener('resize', place)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', place)
+    }
+  }, [opened, place])
+
+  // Follow the event while shown: edits from elsewhere update it, a deletion shows a notice.
+  const deleting = useRef(false) // our own Delete: the popover closes, no notice
+  const accountId = opened?.event.accountId
+  const eventId = opened?.event.id
+  useEffect(() => {
+    if (!opened || !accountId || !eventId) return
+    let live = true
+    const b = eventBounds(opened.event)
+    // A window around the event: finds it after small moves without pulling every cached event over IPC.
+    const range = { start: subDays(b.start, 60).toISOString(), end: addDays(b.end, 60).toISOString() }
+    const off = window.api.onChanged((changed) => {
+      if (changed !== accountId) return
+      window.api.events.list(range).then((events) => {
+        if (!live || deleting.current) return
+        const fresh = events.find((e) => e.accountId === accountId && e.id === eventId)
+        setGone(!fresh)
+        if (fresh) setOpened((o) => (o && o.event.id === eventId ? { ...o, event: fresh } : o))
+      }, console.error)
+    })
+    return () => {
+      live = false
+      off()
+    }
+    // Re-subscribes per shown event, not per refreshed copy of it.
+  }, [accountId, eventId])
 
   if (!opened) return null
 
@@ -98,20 +142,35 @@ export function EventDetailsHost(): React.JSX.Element | null {
     })
   const remove = (scope: DeleteScope = 'one'): Promise<void> =>
     run(async () => {
-      await window.api.events.delete(event, scope)
-      if (still()) setOpened(null)
+      deleting.current = true
+      try {
+        await window.api.events.delete(event, scope)
+        if (still()) setOpened(null)
+      } finally {
+        deleting.current = false
+      }
     })
 
   return (
     <>
       <div
         ref={ref}
-        className="mc-popover details"
+        className={`mc-popover details${gone ? ' is-gone' : ''}`}
         data-testid="details"
         role="dialog"
         aria-label={event.title}
         style={{ '--accent': calendar?.color ?? account?.color ?? 'var(--accent)', left: pos?.left ?? -9999, top: pos?.top ?? 0 } as React.CSSProperties}
       >
+        {gone && (
+          <div className="details-gone" role="alert" data-testid="details-gone">
+            <span className="details-gone-icon" aria-hidden>✕</span>
+            <div>
+              <b>This event was deleted</b>
+              <span>It was removed from {owner.calendar || 'the calendar'}, possibly on another device.</span>
+            </div>
+            <button type="button" className="mc-btn" onClick={() => setOpened(null)}>Close</button>
+          </div>
+        )}
         <div className="details-head">
           <span className="mc-dot details-dot" />
           <h2>{event.title || 'Untitled'}</h2>
@@ -151,7 +210,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
         )}
         {notes && <p className="details-notes"><Linkified text={notes} /></p>}
 
-        {event.myStatus && (
+        {!gone && event.myStatus && (
           <div className="details-rsvp">
             <div className="mc-seg" role="group" aria-label="Reply">
               {REPLIES.map(([s, label]) => (
@@ -175,7 +234,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
 
         {error && <div className="details-error" role="alert">{error}</div>}
 
-        {editable &&
+        {editable && !gone &&
           (confirmDelete && event.recurringEventId ? (
             <div className="mc-actions details-confirm recurring">
               <span>Delete recurring event</span>

@@ -20,7 +20,7 @@ import { Box, Text } from 'ink'
 import { addDays, differenceInCalendarDays, differenceInMinutes, format, isSameDay, startOfDay } from 'date-fns'
 import { eventBounds, eventsOnDay, isPast, ymd } from '@mysticals/core/logic/layout'
 import { STATUS_ICON } from '@mysticals/core/logic/details'
-import { meetingUrl } from '@mysticals/core/logic/meeting'
+import { place } from '@mysticals/core/logic/meeting'
 import { startsLabel } from '@mysticals/core/logic/status'
 import type { CalEvent } from '@mysticals/core/shared/types'
 import { AGENDA_DAYS, eventKey, useDirectory, type ViewProps } from '../hooks'
@@ -82,12 +82,7 @@ export const WHEEL_STEP = 3
 export const rsvpMark = (e: CalEvent): string =>
   e.myStatus && e.myStatus !== 'accepted' ? `${STATUS_ICON[e.myStatus]} ` : ''
 
-/** Location without its meeting link ("Room 3 / https://…" → "Room 3"); "video call" when it is only a link. */
-export function place(location = ''): string {
-  const url = meetingUrl(location)
-  const rest = (url ? location.replace(url, '') : location).replace(/^[\s/|,·-]+|[\s/|,·-]+$/g, '')
-  return rest || (url ? 'video call' : '')
-}
+export { place } // shared with the desktop app (core logic/meeting)
 
 /** Minutes as "45m", "1h", "1h 5m". */
 const span = (m: number): string => {

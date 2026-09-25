@@ -94,6 +94,20 @@ describe('Accounts overlay', () => {
     await t.waitFor('Accounts & calendars')
   })
 
+  it('shows progress while a CalDAV account connects and while its calendars first load', async () => {
+    t = renderWith(<Accounts onClose={() => {}} />)
+    t.client.accounts.addCaldav.mockReturnValue(new Promise(() => {}))
+    const list = t.client.accounts.list.getMockImplementation()!
+    t.client.accounts.list.mockImplementation(async () => [
+      ...(await list()),
+      { id: 'new', kind: 'caldav', label: 'New', email: 'me@x.co', color: '#ff79c6', syncing: true, synced: false }
+    ])
+    t.client.emitChanged('new')
+    await t.waitFor('Loading calendars…')
+    await t.press('a', KEY.tab, KEY.tab, ...'me@x.co', KEY.tab, 'p', KEY.enter)
+    await t.waitFor('Signing in to dav.privateemail.com…')
+  })
+
   it('reports Google sign-in errors', async () => {
     t = renderWith(<Accounts onClose={() => {}} />)
     await t.waitFor('Holidays')

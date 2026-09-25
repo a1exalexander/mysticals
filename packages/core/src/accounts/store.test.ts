@@ -128,6 +128,16 @@ describe('AccountStore isolation', () => {
     expect(store.readCache(work.id).syncedAt).toBe('now')
   })
 
+  it('patchCache changes the cache in memory only', async () => {
+    const { work } = await addBoth()
+    await store.writeCache(work.id, { calendars: [], events: [], syncedAt: 'now' })
+    store.patchCache(work.id, (c) => ({ ...c, syncedAt: 'patched' }))
+    expect(store.readCache(work.id).syncedAt).toBe('patched')
+    const fresh = new AccountStore(dir, { caldav: factory(), google: factory() }, fakeCrypto)
+    expect(fresh.readCache(work.id).syncedAt).toBe('now')
+    expect(() => store.patchCache('ghost', (c) => c)).toThrow()
+  })
+
   it('rejects path-traversal ids before touching the filesystem', async () => {
     const { personal } = await addBoth()
     writeFileSync(join(dir, 'victim.txt'), 'x')
