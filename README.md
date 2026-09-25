@@ -14,11 +14,11 @@ One calendar for all your accounts, where every account stays in its own box.
 
 </div>
 
-Mysticals is a calendar for Google and CalDAV accounts: Namecheap Private Email, iCloud, Fastmail or any CalDAV server. It comes as a desktop app and a terminal app, both for macOS, Windows and Linux. You add accounts inside the app, and each one is kept isolated from the others.
+Mysticals is a calendar for Google and CalDAV accounts: Private Email, iCloud, Fastmail or any CalDAV server. It comes as a desktop app and a terminal app, both for macOS, Windows and Linux. You add accounts inside the app, and each one is kept isolated from the others.
 
 ## Why
 
-> I have a few personal calendars and a work one on Namecheap Private Email. That work account only speaks CalDAV, and on a Mac the only practical way to use CalDAV was the built-in Calendar app. I looked for something else and found nothing I enjoyed — Thunderbird can do it, but it was never for me.
+> I have a few personal calendars and a work one on Private Email. That work account only speaks CalDAV, and on a Mac the only practical way to use CalDAV was the built-in Calendar app. I looked for something else and found nothing I enjoyed — Thunderbird can do it, but it was never for me.
 >
 > And Calendar worked fine. Until one day the work account dropped off — something outside the Mac broke, not Apple’s fault. But the app kept going, and started sending invites for work meetings to my colleagues from my personal address.
 >
@@ -69,7 +69,7 @@ In PowerShell: `$env:MYSTICALS_MOCK=1; mysticals`
 
 **Add calendar → CalDAV**, pick a preset, then enter your full email address and an app password (not your main password):
 
-- **Namecheap Private Email**: create an application password in Private Email webmail. The server `https://dav.privateemail.com/dav.php/` is filled in.
+- **Private Email**: create an application password in Private Email webmail. The server `https://dav.privateemail.com/dav.php/` is filled in.
 - **iCloud**: app-specific password from [appleid.apple.com](https://appleid.apple.com).
 - **Fastmail**: app password from Settings → Privacy & Security.
 - Any other server: choose **Custom** and enter its URL.

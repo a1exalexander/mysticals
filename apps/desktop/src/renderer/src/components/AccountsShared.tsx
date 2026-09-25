@@ -5,7 +5,7 @@ import './Accounts.css'
 export const SWATCHES = ['#bd93f9', '#50fa7b', '#8be9fd', '#ff79c6', '#ffb86c', '#f1fa8c', '#ff5555', '#6272a4']
 
 export const PRESETS = [
-  { id: 'privateemail', name: 'Namecheap Private Email', url: 'https://dav.privateemail.com/dav.php/' },
+  { id: 'privateemail', name: 'Private Email', url: 'https://dav.privateemail.com/dav.php/' },
   { id: 'icloud', name: 'iCloud', url: 'https://caldav.icloud.com/' },
   { id: 'fastmail', name: 'Fastmail', url: 'https://caldav.fastmail.com/' },
   { id: 'custom', name: 'Custom', url: '' }

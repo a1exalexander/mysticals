@@ -67,7 +67,7 @@ describe('Accounts overlay', () => {
     t.client.accounts.addCaldav.mockResolvedValue({ id: 'n', kind: 'caldav', label: 'Work', email: 'a@b.co', color: '#bd93f9' })
     await t.waitFor('Holidays')
     await t.press('a')
-    await t.waitFor('Namecheap Private Email')
+    await t.waitFor('Private Email')
     await t.press(KEY.right) // iCloud
     await t.waitFor('https://caldav.icloud.com/')
     await t.press(KEY.tab, KEY.tab, ...'a@b.co', KEY.tab, ...'secret')
@@ -88,7 +88,9 @@ describe('Accounts overlay', () => {
   it('shows CalDAV errors and esc backs out to the list', async () => {
     t = renderWith(<Accounts onClose={() => {}} />)
     await t.waitFor('Holidays')
-    await t.press('a', KEY.tab, KEY.tab, ...'me@x.co', KEY.tab, 'p', KEY.enter)
+    await t.press('a')
+    await t.waitFor('Private Email')
+    await t.press(KEY.tab, KEY.tab, ...'me@x.co', KEY.tab, 'p', KEY.enter)
     await t.waitFor('Not available in mock mode')
     await t.press(KEY.esc)
     await t.waitFor('Accounts & calendars')
