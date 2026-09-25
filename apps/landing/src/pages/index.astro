@@ -154,8 +154,8 @@ const boxes = [
   .ghost.big { font-size: 15px; font-weight: 400; }
   .mono { font-family: var(--mono); } /* global .btn/.ghost `font: inherit` otherwise wins */
 
-  /* hero: copy left, demos stacked right — desktop on top, terminal below and to the right, never overlapping */
-  .hero { padding-block: clamp(56px, 7vw, 104px) clamp(64px, 8vw, 112px); display: grid; gap: 64px; align-items: center; overflow-x: clip; }
+  /* hero: copy left, demos right — the terminal overlays the desktop's lower right corner */
+  .hero { padding-block: clamp(56px, 7vw, 104px) clamp(64px, 8vw, 112px); display: grid; gap: 64px; align-items: start; overflow-x: clip; }
   .intro { display: flex; flex-direction: column; gap: 32px; }
   .providers { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: 14px; color: var(--muted); }
   .providers i { font-style: normal; color: var(--faint); }
@@ -163,10 +163,24 @@ const boxes = [
   .term :global(.win) { box-shadow: 0 30px 80px -10px rgb(0 0 0 / .95), 0 0 0 8px rgb(11 11 16 / .6); }
   .desk :global(.dwin) { box-shadow: 0 50px 140px -40px rgb(0 0 0 / .95); }
   .term { width: min(480px, 100%); }
-  /* terminal steps right, its window flush with the desktop's right edge */
-  @media (min-width: 760px) { .term { align-self: flex-end; } .term :global(.win) { margin-right: 0; } }
+  /* Both demos share one grid cell, so the terminal overlays the desktop yet still counts toward the stage height.
+     A % margin-top follows the stage width, and both demos scale with width (cqw), so the overlap stays proportional.
+     Every 12s the window in front swaps: z-index flips mid-transition while scale and brightness ease. */
+  @media (min-width: 760px) {
+    .stage { display: grid; }
+    .desk, .term { grid-area: 1 / 1; animation: swap 24s ease-in-out infinite both; }
+    .desk { margin-right: 8%; animation-delay: -12s; }
+    .term { justify-self: end; margin-top: 20%; }
+    .term :global(.win) { margin-right: 0; }
+  }
+  @keyframes swap {
+    0%, 46% { z-index: 2; transform: none; filter: none; }
+    50%, 96% { z-index: 1; transform: scale(.97); filter: brightness(.7); }
+    100% { z-index: 2; transform: none; filter: none; }
+  }
   @media (min-width: 1200px) {
     .hero { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .term { margin-top: 26%; }
   }
 
   .split { display: grid; gap: 48px 64px; }

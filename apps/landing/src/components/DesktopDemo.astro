@@ -1,103 +1,132 @@
 ---
 /**
- * Animated illustration of the desktop app, pure CSS on one 16s loop: sync loader, events of three accounts drop
- * into a week grid, a drag creates an event that must pick its account and calendar, an invite gets accepted from
- * the account that received it. Layout follows apps/desktop/src/renderer (Sidebar, TimeGrid, StatusBar).
+ * Animated illustration of the desktop app, pure CSS on one 16s loop: events of three accounts drop into the week
+ * grid, a drag creates an event whose editor must pick an account and calendar, and a pending invite is accepted
+ * from the status-bar invites popover. Markup and styles mirror apps/desktop/src/renderer (styles/base.css,
+ * components/ui/ui.css, EventEditor.css, Invites.css) with the default Dracula palette, scaled to em.
  * The script only fills dates from the viewer's today and pauses the loop off screen.
  * Base styles are the final frame, so reduced motion (animations off in global.css) shows a still.
  */
-type Ev = [off: number, start: number, hours: number, title: string, acc: 'work' | 'pers' | 'icl', extra?: string]
+type Ev = [off: number, start: number, hours: number, title: string, acc: 'work' | 'pers' | 'icl', meta?: string, extra?: string]
 const events: Ev[] = [
-  [0, 9.5, 0.25, 'Standup', 'work'],
-  [0, 10, 0.75, 'Design review', 'work', 'half1'],
-  [0, 10.5, 0.5, 'Dentist', 'pers', 'half2'],
-  [0, 14, 1, 'Lunch with Ana', 'icl', 'invite'],
-  [1, 11, 1.5, 'Sprint planning', 'work'],
-  [2, 8, 1, 'Yoga', 'pers'],
+  [0, 9.5, 0.25, 'Standup', 'work', 'Meet'],
+  [0, 10, 0.75, 'Design review', 'work', 'Room 3', 'half1'],
+  [0, 10.5, 0.5, 'Dentist', 'pers', '', 'half2'],
+  [0, 14, 1, 'Lunch with Ana', 'icl', 'Kyiv', 'invite'],
+  [1, 11, 1.5, 'Sprint planning', 'work', 'Room 3'],
+  [2, 8, 1, 'Yoga', 'pers', 'Studio'],
   [2, 15, 0.5, '1:1 with Sam', 'work'],
-  [3, 13, 3, 'Hike', 'icl'],
-  [-1, 16, 1, 'Retro', 'work'],
+  [3, 13, 3, 'Hike', 'icl', 'Carpathians'],
+  [-1, 16, 1, 'Retro', 'work', 'Room 1'],
   [-1, 8.5, 1, 'Gym', 'pers'],
   [-2, 9, 2, 'Focus', 'work'],
-  [-3, 16, 1, 'Dinner', 'icl'],
+  [-3, 15, 1.5, 'Dinner', 'icl', 'Kyiv'],
 ]
 const hours = [8, 9, 10, 11, 12, 13, 14, 15, 16]
+const hh = (s: number) => `${String(Math.floor(s)).padStart(2, '0')}:${s % 1 ? '30' : '00'}`
 const accounts = [
-  ['work', 'Work', 'Google', ['Team', 'Product']],
-  ['pers', 'Personal', 'Google', ['Health', 'Sport']],
-  ['icl', 'iCloud', 'CalDAV', ['Family']],
+  ['work', 'Work', 'me@work.example', [['Team'], ['Product']]],
+  ['pers', 'Personal', 'me@gmail.example', [['Health'], ['Holidays', 'read-only']]],
+  ['icl', 'iCloud', 'me@icloud.example', [['Family']]],
 ] as const
+const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" /></svg>'
 ---
 <figure class="ddemo">
   <div class="dwin" aria-hidden="true">
-    <div class="title"><i></i><i></i><i></i><span>Mysticals</span></div>
-    <div class="body">
-      <aside class="side">
-        <div class="mini">
-          <div class="mhead"><b class="month-name">Month</b><span>‹ ›</span></div>
-          <div class="mgrid">
-            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d) => <span class="dow">{d}</span>)}
-            {Array.from({ length: 42 }, () => <span class="md"></span>)}
-          </div>
+    <div class="lights"><i></i><i></i><i></i></div>
+    <aside class="side">
+      <div class="mini">
+        <div class="mhead"><b class="month-name">Month</b><span>‹</span><span>›</span></div>
+        <div class="mgrid">
+          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d) => <span class="dow">{d}</span>)}
+          {Array.from({ length: 42 }, () => <span class="md"></span>)}
         </div>
-        {accounts.map(([id, name, kind, cals]) => (
-          <div class="acc">
-            <div class="acc-head"><span>▾ {name}</span><small>{kind}</small></div>
-            {cals.map((c) => <div class={`cal ${id}`}><i></i>{c}</div>)}
+      </div>
+      <div class="accs">
+        {accounts.map(([id, name, email, cals]) => (
+          <div class={`acc ${id}`}>
+            <div class="acc-head"><span class="arrow">›</span><i></i><b>{name}</b><small>{email}</small></div>
+            {cals.map(([c, ro]) => (
+              <div class={`cal${c === 'Holidays' ? ' hol' : ''}`}><span class="ck">✓</span>{c}{ro && <small>{ro}</small>}</div>
+            ))}
           </div>
         ))}
-        <div class="add"><span>+ Google</span><span>+ CalDAV</span></div>
-      </aside>
-      <section class="main">
-        <div class="bar">
-          <span class="btn-s">Today</span><span class="dim">‹ ›</span><b class="range">This week</b>
-          <span class="seg"><span>Day</span><span>2 Days</span><span class="on">Week</span><span>Month</span></span>
-          <span class="btn-s new">+ New</span>
-        </div>
-        <div class="heads"><span></span>{Array.from({ length: 7 }, () => <span class="dh"></span>)}</div>
-        <div class="grid">
-          {hours.map((h, i) => <div class="hr" style={`--s:${i}`}>{String(h).padStart(2, '0')}:00</div>)}
-          <div class="cols">
-            {events.map(([off, s, n, t, acc, extra], i) => (
-              <div class={`ev ${acc} ${extra ?? ''}`} data-off={off} style={`--s:${s - 8};--n:${n};--d:${(i % 6) * 0.18}s`}>
-                <b>{t}</b>{n >= 0.75 && <small>{`${String(Math.floor(s)).padStart(2, '0')}:${s % 1 ? '30' : '00'}`}</small>}
-              </div>
-            ))}
-            <div class="now" data-off="0"></div>
-            <div class="ev work nb" data-off="2" style="--s:2;--n:2">
-              <b>Focus time</b><small>10:00 – 12:00</small>
-              <svg class="cur c1" viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" /></svg>
+      </div>
+      <div class="sfoot"><span>+ Add calendar</span><span class="gear">⚙</span></div>
+    </aside>
+    <section class="main">
+      <div class="toolbar">
+        <div class="ttl"><b class="tmonth">Month</b><span class="tsub">2026 · W1</span></div>
+        <div class="seg"><span>Day</span><span>3 Days</span><span class="on">[ Week ]</span><span>Month</span></div>
+        <div class="tnav"><span>‹</span><span class="today">today</span><span>›</span></div>
+        <span class="new">+ new</span>
+      </div>
+      <div class="heads">
+        <span></span>{Array.from({ length: 7 }, () => <span class="dh"><span class="dw"></span><span class="num"></span></span>)}
+      </div>
+      <div class="allday">
+        <span class="adg">all-day</span>
+        <div class="adcells"><div class="ev hol ad" data-off="3"><b>Holiday</b></div></div>
+      </div>
+      <div class="grid">
+        {hours.map((h, i) => <div class="hr" style={`--s:${i}`}><span>{String(h).padStart(2, '0')}:00</span></div>)}
+        <div class="cols">
+          <div class="tcol" data-off="0"></div>
+          {events.map(([off, s, n, t, acc, meta, extra], i) => (
+            <div class={`ev ${acc} ${extra ?? ''} ${n < 0.75 ? 'short' : ''}`} data-off={off} style={`--s:${s - 8};--n:${n};--d:${(i % 6) * 0.15}s`}>
+              <b>{t}</b><small>{hh(s)}{meta && ` · ${meta}`}</small>
             </div>
-            <div class="editor" data-off="2">
-              <b>New event</b>
-              <label>Account<span class="f"><em class="x1">Pick an account…</em><em class="x2">● Work · Google</em></span></label>
-              <label>Calendar<span class="f"><em class="y1">Pick a calendar…</em><em class="y2">Team</em></span></label>
-              <span class="save">Save</span>
-            </div>
+          ))}
+          <div class="now" data-off="0"></div>
+          <div class="ev work nb" data-off="2" style="--s:2;--n:2">
+            <b>Focus time</b><small>10:00 · Team</small>
+            <span class="dghost">10:00 – 12:00</span>
+            <span class="cur c1" set:html={cursor} />
           </div>
         </div>
-        <div class="toast">
-          <div><b>Lunch with Ana</b><small> · invite to iCloud</small></div>
-          <div class="acts"><span class="ok">Accept</span><span>Maybe</span><span>Decline</span></div>
-          <div class="done">✓ Accepted · reply sent from iCloud</div>
-          <svg class="cur c2" viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" /></svg>
-        </div>
-        <div class="loader">
-          <div><span class="g">~ $</span> mysticals --sync</div>
-          <div class="ll" style="--i:1">✓ Work <span class="dim">Google · 2 calendars</span></div>
-          <div class="ll" style="--i:2">✓ Personal <span class="dim">Google · 2 calendars</span></div>
-          <div class="ll" style="--i:3">✓ iCloud <span class="dim">CalDAV · 1 calendar</span></div>
-          <div class="ll" style="--i:4">loading events…<span class="blk"></span></div>
-        </div>
-      </section>
+      </div>
+    </section>
+    <footer class="status">
+      <span class="mode">Week</span>
+      <span class="seg-s range">This week</span>
+      <span class="seg-s"><i class="sdot">●</i> Design review · until 10:45</span>
+      <span class="seg-s"><span class="dim">next:</span> Dentist · in 10m</span>
+      <span class="grow"></span>
+      <span class="keys"><b>n</b> new · <b>t</b> today · <b>h</b>/<b>l</b> · <b>d</b>/<b>3</b>/<b>w</b>/<b>m</b> · <b>i</b> invites</span>
+      <span class="invc">1 invite</span>
+    </footer>
+
+    <div class="pop">
+      <div class="ptitle">Invitations</div>
+      <div class="pitem">
+        <b>Lunch with Ana</b>
+        <span class="dim pwhen">Today · 14:00 – 15:00</span>
+        <span class="pacc"><i></i> iCloud · me@icloud.example</span>
+        <div class="acts"><span class="dbtn primary ok">Accept</span><span class="dbtn">Decline</span></div>
+      </div>
     </div>
-    <div class="status"><span><b class="g">now</b> Design review</span><span><b class="cy">next</b> Dentist in 10m</span><span class="invc">1 invite</span><span class="sync">● synced</span></div>
+    <span class="cur c2" set:html={cursor} />
+
+    <div class="overlay">
+      <div class="sheet">
+        <div class="shead"><i></i><b>Focus time</b></div>
+        <div class="sgrid">
+          <label>Account</label><span class="f"><em class="x1">Pick an account…</em><em class="x2">Work · me@work.example</em></span>
+          <label>Calendar</label><span class="f"><em class="y1">Pick a calendar…</em><em class="y2">Team</em></span>
+          <label>Starts</label><span class="f2"><span class="f fd sday">Today</span><span class="f ft">10:00</span></span>
+          <label>Ends</label><span class="f2"><span class="f fd sday">Today</span><span class="f ft">12:00</span></span>
+        </div>
+        <div class="ident">Created in <b>Work</b> · me@work.example</div>
+        <div class="sacts"><span class="dbtn">Cancel</span><span class="dbtn add">Add Event</span></div>
+      </div>
+    </div>
   </div>
-  <figcaption class="sr-only">Animation: the Mysticals desktop app loading three accounts into one week view, creating an event with an explicit account and calendar, and accepting an invite.</figcaption>
+  <figcaption class="sr-only">Animation: the Mysticals desktop app showing a week of events from three accounts, creating an event with an explicit account and calendar, and accepting an invite from the account that received it.</figcaption>
 </figure>
 
 <script>
   const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const short = (d: Date) => d.toLocaleString('en', { month: 'short' })
   for (const fig of document.querySelectorAll<HTMLElement>('.ddemo')) {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -105,171 +134,241 @@ const accounts = [
     const at = (off: number) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + off)
     fig.querySelectorAll<HTMLElement>('.dh').forEach((el, i) => {
       const d = at(i - mon)
-      el.textContent = `${WD[d.getDay()]} ${d.getDate()}`
+      el.querySelector('.dw')!.textContent = WD[d.getDay()]
+      el.querySelector('.num')!.textContent = String(d.getDate())
       el.classList.toggle('today', i === mon)
     })
     fig.querySelectorAll<HTMLElement>('[data-off]').forEach((el) => {
-      const c = (mon + Number(el.dataset.off) + 7) % 7
+      const off = Number(el.dataset.off)
+      const c = (mon + off + 7) % 7
       el.style.setProperty('--c', String(c))
-      el.classList.toggle('flip', c > 3)
+      el.classList.toggle('past', off < 0 && c < mon)
     })
     const first = new Date(today.getFullYear(), today.getMonth(), 1)
     fig.querySelector('.month-name')!.textContent = first.toLocaleString('en', { month: 'long', year: 'numeric' })
-    fig.querySelector('.range')!.textContent = `${at(-mon).toLocaleString('en', { month: 'short', day: 'numeric' })} – ${at(6 - mon).toLocaleString('en', { month: 'short', day: 'numeric' })}`
     fig.querySelectorAll<HTMLElement>('.md').forEach((el, i) => {
       const d = new Date(first.getFullYear(), first.getMonth(), 1 - ((first.getDay() + 6) % 7) + i)
       el.textContent = String(d.getDate())
       el.classList.toggle('other', d.getMonth() !== first.getMonth())
       el.classList.toggle('today', +d === +today)
     })
+    // Toolbar "September 2026 · W39" (ISO week) and status-bar range "21 – 27 Sep 2026"
+    const thu = at(3 - mon)
+    const jan4 = new Date(thu.getFullYear(), 0, 4)
+    const week = 1 + Math.round(((+thu - +jan4) / 864e5 - 3 + ((jan4.getDay() + 6) % 7)) / 7)
+    fig.querySelector('.tmonth')!.textContent = today.toLocaleString('en', { month: 'long' })
+    fig.querySelector('.tsub')!.textContent = `${today.getFullYear()} · W${week}`
+    const a = at(-mon), b = at(6 - mon)
+    fig.querySelector('.range')!.textContent =
+      a.getMonth() === b.getMonth() ? `${a.getDate()} – ${b.getDate()} ${short(b)} ${b.getFullYear()}` : `${a.getDate()} ${short(a)} – ${b.getDate()} ${short(b)} ${b.getFullYear()}`
     new IntersectionObserver(([e]) => fig.classList.toggle('paused', !e.isIntersecting)).observe(fig)
   }
 </script>
 
 <style>
   .ddemo { margin: 0; container-type: inline-size; }
+  /* Dracula tokens from apps/desktop/src/renderer/src/styles/base.css; the page theme never leaks in */
   .dwin {
-    /* its own dark palette, independent of the page theme */
-    --bg: #0b0b10; --surface: #111118; --surface-2: #181822; --line: #1f1f2b; --line-strong: #2d2d3d;
-    --fg: #f8f8f2; --muted: #8a93b8; --accent: #bd93f9; --pink: #ff79c6; --green: #50fa7b; --cyan: #8be9fd;
-    --yellow: #f1fa8c; --red: #ff5555;
-    --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
-    --work: var(--accent); --pers: var(--green); --icl: var(--cyan); --T: 16s;
-    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: calc(100cqw / 70); line-height: 1.35;
-    background: #101017; border: 1px solid var(--line-strong); border-radius: .7em; overflow: hidden;
-    color: var(--fg); box-shadow: 0 24px 60px -24px rgb(22 23 29 / .45); user-select: none;
+    --bg: #0b0b10; --surface: #111118; --surface-2: #181822; --hover: #1d1d29; --line: #1f1f2b; --line-strong: #2d2d3d;
+    --fg: #f8f8f2; --muted: #6272a4; --faint: #3c4460; --accent: #bd93f9; --pink: #ff79c6; --green: #50fa7b;
+    --cyan: #8be9fd; --orange: #ffb86c; --red: #ff5555; --yellow: #f1fa8c;
+    --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+    --work: var(--accent); --pers: var(--green); --icl: var(--cyan); --hol: var(--yellow); --T: 16s;
+    position: relative; display: grid; grid-template-columns: 14em minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif; font-size: calc(100cqw / 72); line-height: 1.35;
+    background: var(--bg); color: var(--fg); border: 1px solid var(--line-strong); border-radius: .8em; overflow: hidden;
+    box-shadow: 0 24px 60px -24px rgb(22 23 29 / .45); user-select: none; -webkit-font-smoothing: antialiased;
   }
   .ddemo.paused * { animation-play-state: paused !important; }
-  .title { display: flex; align-items: center; gap: .45em; padding: .6em .9em; background: var(--surface-2); border-bottom: 1px solid var(--line); }
-  .title i { width: .8em; height: .8em; border-radius: 50%; background: var(--red); }
-  .title i:nth-child(2) { background: var(--yellow); }
-  .title i:nth-child(3) { background: var(--green); }
-  .title span { flex: 1; text-align: center; margin-right: 3.5em; color: var(--muted); font-size: .9em; }
-  .body { display: flex; }
+  .dim { color: var(--muted); }
 
-  .side { width: 13em; flex-shrink: 0; padding: .9em; border-right: 1px solid var(--line); background: var(--surface); font-size: .85em; display: flex; flex-direction: column; gap: 1em; }
-  .mhead { display: flex; justify-content: space-between; margin-bottom: .4em; }
-  .mhead span, .dow, .other { color: var(--muted); }
-  .mgrid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: .82em; gap: .15em 0; }
-  .md.today { background: var(--accent); color: var(--bg); border-radius: 50%; font-weight: 700; }
-  .acc-head { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: .2em; }
-  .acc-head small { color: var(--muted); font-weight: 400; }
-  .cal { display: flex; align-items: center; gap: .5em; padding: .1em .6em; color: var(--muted); }
-  .cal i { width: .75em; height: .75em; border-radius: .2em; background: var(--c); }
-  .cal.work { --c: var(--work); } .cal.pers { --c: var(--pers); } .cal.icl { --c: var(--icl); }
-  .add { margin-top: auto; display: flex; gap: .5em; }
-  .add span, .btn-s { white-space: nowrap; border: 1px solid var(--line-strong); border-radius: .4em; padding: .15em .6em; color: var(--fg); }
+  /* macOS traffic lights over the sidebar (hidden title bar) */
+  .lights { position: absolute; top: 1.1em; left: 1.1em; display: flex; gap: .6em; z-index: 2; }
+  .lights i { width: .95em; height: .95em; border-radius: 50%; background: var(--red); }
+  .lights i:nth-child(2) { background: #f1c84b; }
+  .lights i:nth-child(3) { background: #3fc55a; }
 
-  .main { position: relative; flex: 1; display: flex; flex-direction: column; min-width: 0; }
-  .bar { display: flex; align-items: center; gap: .7em; padding: .6em .9em; border-bottom: 1px solid var(--line); font-size: .9em; }
-  .seg { margin-left: auto; display: flex; border: 1px solid var(--line-strong); border-radius: .4em; overflow: hidden; }
-  .seg span { padding: .15em .6em; color: var(--muted); }
-  .seg .on { background: var(--surface-2); color: var(--fg); }
-  .new { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
-  .heads { display: grid; grid-template-columns: 3.4em repeat(7, 1fr); }
-  .heads { border-bottom: 1px solid var(--line); font-size: .82em; color: var(--muted); text-align: center; padding: .4em 0; }
-  .dh.today { color: var(--accent); font-weight: 700; }
-  .grid { position: relative; height: 24em; }
-  .hr { position: absolute; left: 0; right: 0; top: calc(var(--s) * 100% / 9); border-top: 1px solid var(--line); font-size: .72em; color: var(--muted); padding-left: .4em; }
-  .cols { position: absolute; inset: 0 0 0 3.4em; background: repeating-linear-gradient(90deg, transparent 0 calc(100% / 7 - 1px), var(--line) calc(100% / 7 - 1px) calc(100% / 7)); }
+  /* ---------- sidebar ---------- */
+  .side { display: flex; flex-direction: column; min-width: 0; padding-top: 3.4em; background: var(--surface); border-right: 1px solid var(--line); }
+  .mini { padding: .3em 1em 1em; }
+  .mhead { display: flex; gap: .8em; align-items: center; padding: 0 0 .6em .3em; font: 600 .82em/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+  .mhead b { flex: 1; font-weight: 600; }
+  .mhead span { color: var(--muted); }
+  .mgrid { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: .15em; text-align: center; font: .82em/1.9 var(--mono); }
+  .mgrid .dow { font-size: .9em; color: var(--muted); }
+  .md { border-radius: .3em; }
+  .md.other { color: var(--faint); }
+  .md.today { background: var(--pink); color: var(--bg); font-weight: 700; }
+  .accs { flex: 1; display: flex; flex-direction: column; gap: 1.1em; padding: 1em .75em; border-top: 1px solid var(--line); }
+  .acc-head { display: grid; grid-template-columns: .8em .55em 1fr; column-gap: .55em; align-items: center; padding: .3em .45em; }
+  .arrow { color: var(--muted); transform: rotate(90deg); font-size: .9em; }
+  .acc-head i { width: .55em; height: .55em; border-radius: .15em; background: var(--k); }
+  .acc-head b { font: 600 .8em/1.4 var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+  .acc-head small { grid-column: 3; font: .8em/1.5 var(--mono); color: color-mix(in srgb, var(--muted) 70%, var(--fg)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .acc.work { --k: var(--work); } .acc.pers { --k: var(--pers); } .acc.icl { --k: var(--icl); }
+  .cal { display: flex; align-items: center; gap: .6em; height: 2em; padding: 0 .45em; }
+  .cal small { margin-left: auto; font: .75em/1 var(--mono); color: var(--muted); }
+  .ck { width: 1em; height: 1em; flex: none; display: grid; place-items: center; border-radius: .2em; background: var(--k); color: var(--bg); font: 700 .75em/1 var(--mono); }
+  .cal.hol .ck { background: var(--hol); }
+  .sfoot { display: flex; justify-content: space-between; padding: .7em 1.2em; border-top: 1px solid var(--line); font: .88em/1.2 var(--mono); color: var(--muted); }
 
+  /* ---------- toolbar ---------- */
+  .main { position: relative; min-width: 0; display: flex; flex-direction: column; }
+  .toolbar { height: 4em; display: flex; align-items: center; gap: 1em; padding: 0 1em 0 1.5em; }
+  .ttl { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: .7em; white-space: nowrap; overflow: hidden; }
+  .tmonth { font-size: 1.4em; font-weight: 700; letter-spacing: -.01em; }
+  .tsub { font: 500 .95em/1 var(--mono); color: var(--muted); }
+  .seg { display: flex; gap: .15em; font: .92em/2.1 var(--mono); color: var(--muted); white-space: nowrap; }
+  .seg span { padding: 0 .45em; border-radius: .3em; }
+  .seg .on { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .tnav { display: flex; font: .92em/2 var(--mono); border: 1px solid var(--line-strong); border-radius: .3em; }
+  .tnav span { padding: 0 .65em; color: var(--muted); }
+  .tnav .today { color: var(--fg); border-inline: 1px solid var(--line-strong); }
+  .new { padding: 0 .75em; font: 700 .92em/2.1 var(--mono); background: var(--accent); color: var(--bg); border-radius: .3em; white-space: nowrap; }
+
+  /* ---------- time grid ---------- */
+  .heads, .allday { display: grid; grid-template-columns: 4.3em minmax(0, 1fr); }
+  .heads { grid-template-columns: 4.3em repeat(7, minmax(0, 1fr)); height: 2.6em; border-top: 1px solid var(--line); }
+  .dh { display: flex; align-items: center; justify-content: center; gap: .45em; border-left: 1px solid var(--line); font: .8em/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
+  .dw { color: var(--muted); }
+  .num { font-weight: 600; font-size: 1.24em; letter-spacing: 0; padding: .15em .3em; border-radius: .3em; }
+  .dh.today .dw { color: var(--pink); }
+  .dh.today .num { color: var(--pink); background: color-mix(in srgb, var(--pink) 18%, transparent); }
+  .allday { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line-strong); }
+  .adg { padding: .7em .6em 0 0; text-align: right; font: .73em/1 var(--mono); color: var(--muted); }
+  .adcells { position: relative; min-height: 2.15em; background: repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px calc(100% / 7)); }
+  .grid { position: relative; flex: 1; min-height: 26em; }
+  .hr { position: absolute; left: 0; right: 0; top: calc(var(--s) * 100% / 9); border-top: 1px solid var(--line); }
+  .hr span { position: absolute; left: 0; width: 3.8em; text-align: right; transform: translateY(-50%); font: .77em/1 var(--mono); color: var(--muted); background: var(--bg); }
+  .hr:first-child span { transform: translateY(15%); }
+  .cols { position: absolute; inset: 0 0 0 4.3em; background: repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px calc(100% / 7)); }
+  .tcol { position: absolute; inset: 0 auto 0 calc(var(--c, 0) * 100% / 7); width: calc(100% / 7); background: color-mix(in srgb, var(--pink) 3%, transparent); }
+
+  /* events: calendar colour in --k, soft tint + 2px left border, square corners */
   .ev {
-    --w: calc(100% / 7); position: absolute; overflow: hidden;
-    left: calc(var(--c, 0) * var(--w) + 2px); width: calc(var(--w) - 5px);
-    top: calc(var(--s) * 100% / 9 + 1px); height: calc(var(--n) * 100% / 9 - 2px); min-height: 1.3em;
-    padding: .15em .4em; border-radius: .35em; font-size: .78em; color: var(--fg);
-    background: color-mix(in srgb, var(--k) 22%, #101017); border-left: .25em solid var(--k);
-    animation: ev var(--T) var(--d) infinite both;
+    --w: calc(100% / 7); position: absolute; z-index: 1; overflow: hidden; display: flex; flex-direction: column;
+    left: calc(var(--c, 0) * var(--w) + 1px); width: calc(var(--w) - 3px);
+    top: calc(var(--s) * 100% / 9 + 1px); height: calc(var(--n) * 100% / 9 - 2px);
+    padding: .2em .45em .2em .5em; font-size: .85em; line-height: 1.3;
+    background: color-mix(in srgb, var(--k) 15%, var(--bg)); color: color-mix(in srgb, var(--k) 60%, var(--fg)); border-left: 2px solid var(--k);
+    animation: ev var(--T) var(--d, 0s) infinite both;
   }
-  .ev b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
-  .ev small { color: var(--muted); }
-  .ev.work { --k: var(--work); } .ev.pers { --k: var(--pers); } .ev.icl { --k: var(--icl); }
-  .ev.half1 { width: calc(var(--w) / 2 - 3px); }
-  .ev.half2 { left: calc(var(--c, 0) * var(--w) + var(--w) / 2); width: calc(var(--w) / 2 - 3px); }
-  .ev.invite { animation: ev var(--T) var(--d) infinite both, invite var(--T) var(--d) infinite both; }
-  @keyframes ev { 0%, 16% { opacity: 0; transform: translateY(-.6em); } 20%, 96% { opacity: 1; transform: none; } 100% { opacity: 0; } }
-  @keyframes invite {
-    0%, 80% { background: transparent; border-left-style: dashed; outline: 1px dashed var(--k); outline-offset: -1px; }
-    81%, 100% { background: color-mix(in srgb, var(--k) 22%, #101017); border-left-style: solid; outline: 1px dashed transparent; outline-offset: -1px; }
+  .ev b, .ev small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ev b { font-weight: 600; }
+  .ev small { font: .9em/1.3 var(--mono); opacity: .8; }
+  .ev.short { flex-direction: row; align-items: center; gap: .5em; padding-block: 0; }
+  .ev.short small { flex: none; }
+  .ev.past { opacity: .55; }
+  .ev.work { --k: var(--work); } .ev.pers { --k: var(--pers); } .ev.icl { --k: var(--icl); } .ev.hol { --k: var(--hol); }
+  .ev.half1 { width: calc(var(--w) / 2 - 2px); }
+  .ev.half2 { left: calc(var(--c, 0) * var(--w) + var(--w) / 2); width: calc(var(--w) / 2 - 2px); }
+  .ev.ad { top: .25em; height: 1.65em; justify-content: center; padding-block: 0; }
+  @keyframes ev { 0%, 1% { opacity: 0; transform: translateY(-.5em); } 5%, 96% { opacity: var(--o, 1); transform: none; } 100% { opacity: 0; } }
+  .ev.past { --o: .55; }
+  /* invite: pending (orange stripes, dashed outline) until it's accepted from the popover */
+  .ev.invite { animation: ev var(--T) var(--d) infinite both, pending var(--T) infinite both; }
+  @keyframes pending {
+    0%, 75% {
+      background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--orange) 13%, transparent) 0 .38em, transparent .38em .77em), color-mix(in srgb, var(--k) 7%, var(--bg));
+      outline: 1px dashed var(--orange); outline-offset: -1px;
+    }
+    76%, 100% { outline: 1px dashed transparent; outline-offset: -1px; }
   }
 
-  .now { position: absolute; left: calc(var(--c, 0) * 100% / 7); width: calc(100% / 7); top: calc(2.33 * 100% / 9); height: 2px; background: var(--red); animation: ev var(--T) infinite both; }
-  .now::before { content: ''; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+  .now { position: absolute; z-index: 3; left: calc(var(--c, 0) * 100% / 7); width: calc(100% / 7); top: calc(2.33 * 100% / 9); border-top: 2px solid var(--pink); animation: ev var(--T) infinite both; }
+  .now::before { content: ''; position: absolute; left: -.3em; top: -.4em; width: .6em; height: .6em; border-radius: 50%; background: var(--pink); }
 
-  .nb { animation: nb var(--T) infinite both; overflow: visible; }
+  /* drag-to-create: ghost block grows 10:00 → 12:00, the editor opens, then it becomes a real event */
+  .nb { overflow: visible; animation: nb var(--T) infinite both; }
   .nb b, .nb small { animation: nbtext var(--T) infinite both; }
-  @keyframes nb {
-    0%, 38% { opacity: 0; height: calc(.25 * 100% / 9); background: transparent; border-left-color: transparent; outline: 1px dashed var(--muted); }
-    40% { opacity: 1; height: calc(.25 * 100% / 9); background: transparent; border-left-color: transparent; outline: 1px dashed var(--muted); }
-    50%, 66% { opacity: 1; height: calc(2 * 100% / 9 - 2px); background: rgb(189 147 249 / .08); border-left-color: transparent; outline: 1px dashed var(--muted); }
-    68%, 96% { opacity: 1; outline-color: transparent; }
-    100% { opacity: 0; }
-  }
-  @keyframes nbtext { 0%, 67% { opacity: 0; } 69%, 100% { opacity: 1; } }
+  .dghost { position: absolute; inset: 0; padding: .25em .5em; background: color-mix(in srgb, var(--accent) 18%, var(--bg)); border-left: 2px solid var(--accent); margin-left: -2px; color: var(--accent); font: 600 .9em/1.4 var(--mono); white-space: nowrap; overflow: hidden; opacity: 0; animation: dghost var(--T) infinite both; }
+  @keyframes nb { 0%, 17% { opacity: 0; height: calc(.5 * 100% / 9 - 2px); } 18% { opacity: 1; height: calc(.5 * 100% / 9 - 2px); } 28%, 96% { opacity: 1; height: calc(2 * 100% / 9 - 2px); } 100% { opacity: 0; } }
+  @keyframes dghost { 0%, 17% { opacity: 0; } 18%, 55% { opacity: 1; } 56%, 100% { opacity: 0; } }
+  @keyframes nbtext { 0%, 55% { opacity: 0; } 57%, 100% { opacity: 1; } }
 
-  .cur { position: absolute; width: 1.1em; fill: #fff; stroke: #000; stroke-width: 1; opacity: 0; z-index: 5; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .6)); }
-  .c1 { right: -.4em; bottom: -.9em; animation: c1 var(--T) infinite both; }
-  @keyframes c1 { 0%, 34% { opacity: 0; transform: translate(6em, 4em); } 36% { opacity: 1; transform: translate(6em, 4em); } 40%, 50% { opacity: 1; transform: none; } 53%, 100% { opacity: 0; } }
+  .cur { position: absolute; z-index: 9; width: 1.2em; opacity: 0; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .6)); }
+  .cur :global(svg) { display: block; fill: #fff; stroke: #000; stroke-width: 1; }
+  .c1 { right: -.5em; bottom: -1em; animation: c1 var(--T) infinite both; }
+  @keyframes c1 { 0%, 13% { opacity: 0; transform: translate(5em, 4em); } 15% { opacity: 1; transform: translate(5em, 4em); } 18%, 29% { opacity: 1; transform: none; } 31%, 100% { opacity: 0; } }
 
-  .editor {
-    position: absolute; z-index: 4; top: calc(1.5 * 100% / 9); left: calc((var(--c, 0) + 1) * 100% / 7 + .4em); width: 15em;
-    padding: .7em .8em; font-size: .78em; background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: .5em;
-    box-shadow: 0 1em 2em rgb(0 0 0 / .5); display: flex; flex-direction: column; gap: .45em; opacity: 0;
-    animation: ed var(--T) infinite both;
-  }
-  /* no room on the right: open to the left of the new event */
-  .editor.flip { left: auto; right: calc((7 - var(--c, 0)) * 100% / 7 + .4em); }
-  .editor label { display: flex; flex-direction: column; color: var(--muted); font-size: .9em; }
-  .editor .f { position: relative; height: 1.7em; border: 1px solid var(--line-strong); border-radius: .3em; }
-  .editor em { position: absolute; inset: 0; padding: .2em .5em; font-style: normal; color: var(--fg); }
-  .editor .x1, .editor .y1 { color: var(--muted); }
-  .x2 { color: var(--work) !important; animation: sw var(--T) infinite both; }
-  .x1 { animation: sw1 var(--T) infinite both; }
-  .y2 { animation: sw2 var(--T) infinite both; }
-  .y1 { animation: sw3 var(--T) infinite both; }
-  @keyframes sw { 0%, 57% { opacity: 0; } 58%, 100% { opacity: 1; } }
-  @keyframes sw1 { 0%, 57% { opacity: 1; } 58%, 100% { opacity: 0; } }
-  @keyframes sw2 { 0%, 60% { opacity: 0; } 61%, 100% { opacity: 1; } }
-  @keyframes sw3 { 0%, 60% { opacity: 1; } 61%, 100% { opacity: 0; } }
-  .save { align-self: flex-end; padding: .15em .8em; border-radius: .3em; background: var(--line-strong); animation: save var(--T) infinite both; }
-  @keyframes save { 0%, 63% { background: var(--line-strong); color: var(--fg); } 64%, 100% { background: var(--accent); color: var(--bg); } }
-  @keyframes ed { 0%, 52% { opacity: 0; transform: scale(.96); } 54%, 66% { opacity: 1; transform: none; } 68%, 100% { opacity: 0; } }
+  /* ---------- status bar ---------- */
+  .status { grid-column: 1 / -1; display: flex; align-items: stretch; height: 1.9em; background: var(--surface); border-top: 1px solid var(--line); font: .85em/1.9em var(--mono); color: var(--fg); white-space: nowrap; overflow: hidden; }
+  .status > span { flex: none; }
+  .mode { padding: 0 .8em; background: var(--accent); color: var(--bg); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .seg-s { padding: 0 1em; border-right: 1px solid var(--line); }
+  .range { color: var(--muted); }
+  .sdot { font-style: normal; color: var(--work); }
+  .status > .grow { flex: 1; }
+  .keys { padding: 0 1em; color: var(--muted); }
+  .keys b { font-weight: 400; color: var(--fg); }
+  .invc { padding: 0 1em; border-left: 1px solid var(--line); color: var(--orange); animation: invc var(--T) infinite both; }
+  @keyframes invc { 0%, 75% { opacity: 1; } 76%, 100% { opacity: 0; } }
 
-  .toast {
-    position: absolute; right: 1em; bottom: 1em; z-index: 4; width: 19em; padding: .7em .9em; font-size: .85em;
-    background: var(--surface-2); border: 1px solid var(--line-strong); border-left: .25em solid var(--icl); border-radius: .5em;
-    box-shadow: 0 1em 2em rgb(0 0 0 / .5); opacity: 0; animation: toast var(--T) infinite both;
+  /* ---------- invites popover (opens upward from the status bar) ---------- */
+  .pop {
+    position: absolute; z-index: 7; right: .5em; bottom: 2.2em; width: 24em; padding: .8em 0 .5em;
+    background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: .6em; box-shadow: 0 1.4em 3.8em rgb(0 0 0 / .55);
+    opacity: 0; visibility: hidden; animation: pop var(--T) infinite both;
   }
-  .toast small { color: var(--muted); }
-  .acts { display: flex; gap: .5em; margin-top: .5em; animation: invc var(--T) infinite both; }
-  .acts span { padding: .1em .6em; border: 1px solid var(--line-strong); border-radius: .3em; }
+  .ptitle { padding: 0 1.1em .6em; font: 600 .8em/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .pitem { display: flex; flex-direction: column; gap: .15em; padding: .7em 1.1em; border-top: 1px solid var(--line); border-left: 2px solid var(--accent); }
+  .pwhen, .pacc { font: .85em/1.4 var(--mono); }
+  .pacc { display: flex; align-items: center; gap: .45em; color: var(--muted); }
+  .pacc i { width: .55em; height: .55em; border-radius: .15em; background: var(--icl); }
+  .acts { display: flex; gap: .45em; margin-top: .6em; }
+  .dbtn { padding: 0 .9em; font: 500 .92em/2em var(--mono); background: var(--surface); border: 1px solid var(--line-strong); border-radius: .3em; white-space: nowrap; }
+  .dbtn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 700; }
   .ok { animation: ok var(--T) infinite both; }
-  .done { position: absolute; left: .9em; bottom: .8em; color: var(--green); opacity: 0; animation: donex var(--T) infinite both; }
-  @keyframes toast { 0%, 70% { opacity: 0; transform: translateY(1em); } 72%, 92% { opacity: 1; transform: none; } 95%, 100% { opacity: 0; } }
-  @keyframes ok { 0%, 78% { background: transparent; color: var(--fg); } 79%, 100% { background: var(--green); color: var(--bg); border-color: var(--green); } }
-  @keyframes donex { 0%, 81% { opacity: 0; } 82%, 100% { opacity: 1; } }
-  .c2 { left: 3.2em; bottom: .2em; animation: c2 var(--T) infinite both; }
-  @keyframes c2 { 0%, 73% { opacity: 0; transform: translate(-4em, -5em); } 74% { opacity: 1; transform: translate(-4em, -5em); } 78%, 81% { opacity: 1; transform: none; } 83%, 100% { opacity: 0; } }
-
-  .loader {
-    position: absolute; inset: 0; z-index: 6; padding: 2em; background: #0b0b10; font-family: var(--mono); font-size: .9em;
-    display: flex; flex-direction: column; gap: .3em; opacity: 0; visibility: hidden; animation: loader var(--T) infinite both;
+  @keyframes pop { 0%, 63% { opacity: 0; visibility: hidden; transform: translateY(.4em); } 65%, 74% { opacity: 1; visibility: visible; transform: none; } 76%, 100% { opacity: 0; visibility: hidden; } }
+  @keyframes ok { 0%, 72% { filter: none; } 73%, 100% { filter: brightness(1.25); } }
+  .c2 { right: 2.4em; bottom: .2em; animation: c2 var(--T) infinite both; }
+  @keyframes c2 {
+    0%, 58% { opacity: 0; transform: translate(-3em, -6em); }
+    60% { opacity: 1; transform: translate(-3em, -6em); }
+    63%, 66% { opacity: 1; transform: none; }
+    71%, 74% { opacity: 1; transform: translate(-18.5em, -3.2em); }
+    77%, 100% { opacity: 0; transform: translate(-18.5em, -3.2em); }
   }
-  .ll { animation: ll var(--T) calc(var(--i) * .45s) infinite both; }
-  @keyframes ll { 0% { opacity: 0; } 1%, 100% { opacity: 1; } }
-  @keyframes loader { 0%, 13% { opacity: 1; visibility: visible; } 16%, 100% { opacity: 0; visibility: hidden; } }
-  .blk { display: inline-block; width: .55em; height: 1em; margin-left: .2em; vertical-align: -.15em; background: var(--fg); animation: blink 1s steps(1) infinite; }
-  .g { color: var(--green); } .cy { color: var(--cyan); } .dim { color: var(--muted); }
-  @keyframes blink { 50% { opacity: 0; } }
 
-  .status { display: flex; gap: 1.4em; padding: .35em .9em; font-size: .78em; background: var(--surface); border-top: 1px solid var(--line); color: var(--fg); }
-  .invc { color: var(--yellow); animation: invc var(--T) infinite both; }
-  @keyframes invc { 0%, 81% { opacity: 1; } 82%, 100% { opacity: 0; } }
-  .sync { margin-left: auto; color: var(--green); }
+  /* ---------- event editor sheet (mc-overlay + mc-sheet + editor) ---------- */
+  .overlay { position: absolute; inset: 0; z-index: 8; display: flex; justify-content: center; align-items: flex-start; background: color-mix(in srgb, var(--bg) 60%, transparent); opacity: 0; visibility: hidden; animation: ov var(--T) infinite both; }
+  .sheet {
+    margin-top: 4em; width: min(33em, 92%); padding: 1.3em 1.5em; background: var(--surface-2);
+    border: 1px solid var(--line-strong); border-top: 2px solid var(--accent); border-radius: .6em; box-shadow: 0 1.4em 3.8em rgb(0 0 0 / .55);
+    animation: drop var(--T) infinite both;
+  }
+  .shead { display: flex; align-items: center; gap: .75em; margin-bottom: 1.2em; }
+  .shead i { width: .77em; height: .77em; border-radius: .23em; background: var(--accent); }
+  .shead b { font-size: 1.3em; font-weight: 600; }
+  .sgrid { display: grid; grid-template-columns: 6em 1fr; gap: .6em .9em; align-items: center; }
+  .sgrid label { text-align: right; font: .8em/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .f { position: relative; display: block; min-height: 2.15em; background: var(--bg); border: 1px solid var(--line-strong); border-radius: .3em; }
+  .f em { position: absolute; inset: 0; padding: .35em .6em; font-style: normal; white-space: nowrap; overflow: hidden; }
+  .f em::after { content: '⌄'; position: absolute; right: .6em; top: .1em; color: var(--muted); }
+  .f2 { display: grid; grid-template-columns: 1fr 5em; gap: .6em; }
+  .fd, .ft { padding: .35em .6em; font: .95em/1.35 var(--mono); }
+  .ft { text-align: center; }
+  .x1, .y1 { color: var(--muted); }
+  .x1 { animation: out1 var(--T) infinite both; } .x2 { animation: in1 var(--T) infinite both; }
+  .y1 { animation: out2 var(--T) infinite both; } .y2 { animation: in2 var(--T) infinite both; }
+  @keyframes in1 { 0%, 39% { opacity: 0; } 40%, 100% { opacity: 1; } }
+  @keyframes out1 { 0%, 39% { opacity: 1; } 40%, 100% { opacity: 0; } }
+  @keyframes in2 { 0%, 44% { opacity: 0; } 45%, 100% { opacity: 1; } }
+  @keyframes out2 { 0%, 44% { opacity: 1; } 45%, 100% { opacity: 0; } }
+  .ident { margin-top: 1.2em; padding: .6em .8em; font: .88em/1.6 var(--mono); background: color-mix(in srgb, var(--accent) 9%, transparent); border-left: 2px solid var(--accent); border-radius: .3em; animation: in1 var(--T) infinite both; }
+  .sacts { display: flex; justify-content: flex-end; gap: .6em; margin-top: 1.2em; }
+  .add { animation: add var(--T) infinite both; }
+  @keyframes add {
+    0%, 44% { opacity: .4; }
+    45%, 100% { opacity: 1; background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 700; }
+  }
+  @keyframes ov { 0%, 30% { opacity: 0; visibility: hidden; } 32%, 52% { opacity: 1; visibility: visible; } 55%, 100% { opacity: 0; visibility: hidden; } }
+  @keyframes drop { 0%, 30% { transform: translateY(-.5em); } 32%, 100% { transform: none; } }
 
-  @container (max-width: 640px) {
-    .dwin { font-size: calc(100cqw / 44); }
-    .side { display: none; }
-    .seg span:not(.on), .status span:nth-child(2) { display: none; }
+  @container (max-width: 470px) {
+    .dwin { grid-template-columns: minmax(0, 1fr); font-size: calc(100cqw / 46); }
+    .side, .keys, .seg span:not(.on), .status .seg-s:nth-child(4) { display: none; }
+    .toolbar { padding-left: 5.5em; }
+    .lights { top: 1.5em; }
   }
 </style>
