@@ -76,7 +76,7 @@ pnpm --filter mysticals test
 
 ## Releasing
 
-A `v*` tag runs `.github/workflows/release.yml`. It builds the desktop app on macOS, Windows and Linux runners, attaches the `.dmg` and `.zip` (arm64 + x64), the Windows `-setup.exe` and the Linux `.AppImage` and `.deb` to one GitHub Release, and publishes the terminal app to npm.
+A `v*` tag runs `.github/workflows/release.yml`. It builds the desktop app on macOS, Windows and Linux runners, attaches the `.dmg` and `.zip` (arm64 + x64), the Windows `-setup.exe` and the Linux `.AppImage` and `.deb` to one GitHub Release, and publishes the terminal app to npm. Installer names carry no version (`Mysticals-arm64.dmg`, `Mysticals-x64-setup.exe`, …) because the website's download buttons link to `releases/latest/download/<name>`; keep them stable. The `-mac.zip` keeps its version: the in-app updater finds it by the `-<arch>-mac.zip` suffix.
 
 1. Bump `version` in `apps/desktop/package.json` and `apps/terminal/package.json`. Both must match the tag, or the job fails.
 2. Commit, then tag and push:

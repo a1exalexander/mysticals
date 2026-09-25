@@ -24,8 +24,9 @@ mac:
   # APPLE_API_KEY_ID and APPLE_API_ISSUER are set (see release.yml). Hardened runtime uses
   # electron-builder's default Electron entitlements. Local builds without a cert: pnpm dist -c.mac.identity=-
   hardenedRuntime: true
+# Installers carry no version in their name: the website links to releases/latest/download/<name>.
 dmg:
-  artifactName: ${productName}-${version}-${arch}.dmg
+  artifactName: ${productName}-${arch}.dmg
 # Unsigned too: SmartScreen shows "More info → Run anyway" on first launch.
 win:
   icon: build/icon.png
@@ -33,7 +34,7 @@ win:
     - target: nsis
       arch: [x64]
 nsis:
-  artifactName: ${productName}-${version}-${arch}-setup.${ext}
+  artifactName: ${productName}-${arch}-setup.${ext}
   oneClick: false
   allowToChangeInstallationDirectory: true
 linux:
@@ -43,7 +44,7 @@ linux:
   category: Office
   # Required by the deb target.
   maintainer: Oleksandr Ratushnyi <forcewizu@gmail.com>
-  artifactName: ${productName}-${version}-${arch}.${ext}
+  artifactName: ${productName}-${arch}.${ext}
   target:
     - target: AppImage
       arch: [x64]

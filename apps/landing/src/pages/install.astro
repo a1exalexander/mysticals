@@ -54,7 +54,7 @@ const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
 
       <ol class="steps" data-panel="desktop-windows" hidden>
         <li><div><h3>Download the setup .exe</h3>
-          <p><code>Mysticals-…-x64-setup.exe</code> from the latest release.</p>
+          <p><code>Mysticals-x64-setup.exe</code> from the latest release.</p>
           <a class="btn" href="/download/">Go to downloads</a></div></li>
         <li><div><h3>Run the installer</h3>
           <p>Mysticals is shared unsigned, so SmartScreen warns about an unknown publisher. Click More info → Run anyway, then follow the installer. It asks whether to install just for you or for everyone on this computer (that one needs admin rights) and lets you pick the folder.</p></div></li>
@@ -66,10 +66,10 @@ const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
 
       <ol class="steps" data-panel="desktop-linux" hidden>
         <li><div><h3>Download the AppImage or .deb</h3>
-          <p><code>Mysticals-…-x86_64.AppImage</code> runs on most distros. On Debian or Ubuntu you can take the <code>.deb</code> instead.</p>
+          <p><code>Mysticals-x86_64.AppImage</code> runs on most distros. On Debian or Ubuntu you can take the <code>.deb</code> instead.</p>
           <a class="btn" href="/download/">Go to downloads</a></div></li>
         <li><div><h3>Install or run it</h3>
-          <div class="code"><div>chmod +x Mysticals-*.AppImage &amp;&amp; ./Mysticals-*.AppImage</div><div class="c"># or</div><div>sudo apt install ./Mysticals-*-amd64.deb</div></div></div></li>
+          <div class="code"><div>chmod +x Mysticals-x86_64.AppImage &amp;&amp; ./Mysticals-x86_64.AppImage</div><div class="c"># or</div><div>sudo apt install ./Mysticals-amd64.deb</div></div></div></li>
         <li><div><h3>Make sure a keyring is running</h3>
           <p>Credentials are encrypted with the Secret Service (GNOME Keyring, KWallet). GNOME and KDE desktops have one already. Without one, Mysticals refuses to store credentials rather than keep them in plain text.</p></div></li>
         <li><div><h3>Add your first account</h3>
