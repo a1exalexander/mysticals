@@ -1,0 +1,41 @@
+---
+import Layout from '../layouts/Layout.astro'
+const updated = 'September 25, 2026'
+const email = 'forcewizu@gmail.com'
+---
+<Layout title="Terms of Service · Mysticals" description="The terms for using the Mysticals desktop and terminal apps and this website.">
+  <section class="wrap page-head">
+    <span class="eyebrow">$ cat TERMS</span>
+    <h1>Terms of Service</h1>
+    <p class="lead">Mysticals is free, open-source software. Use it, change it, share it. It comes with no warranty.</p>
+  </section>
+
+  <article class="wrap prose">
+    <p class="muted">Effective {updated}. These terms cover the Mysticals desktop app, the Mysticals terminal app (the <code>mysticals</code> npm package) and the website mysticals.sashkoratushnyi.com (together, “Mysticals”), provided by Oleksandr Ratushnyi (“we”). By using Mysticals you agree to them.</p>
+
+    <h2 id="license">License</h2>
+    <p>The software is released under the <a class="ul" href="https://github.com/a1exalexander/mysticals/blob/main/LICENSE">MIT License</a>. It grants you the right to use, copy, modify and distribute it. If these terms and the MIT License conflict, the license wins for the software itself.</p>
+
+    <h2 id="accounts">Your accounts</h2>
+    <ul>
+      <li>Mysticals connects to calendar accounts you own or are allowed to use: Google and CalDAV servers such as iCloud or Fastmail. Your use of those services stays under their terms, including the <a class="ul" href="https://policies.google.com/terms">Google Terms of Service</a>.</li>
+      <li>You are responsible for the credentials you add and for what the app does on your behalf, such as creating, editing, deleting or replying to events.</li>
+      <li>How we handle data is described in the <a class="ul" href="/privacy/">Privacy Policy</a>.</li>
+    </ul>
+
+    <h2 id="use">Acceptable use</h2>
+    <p>Don’t use Mysticals to break the law, to access accounts you aren’t authorized to use, to send spam or unwanted invitations, or to overload or interfere with a calendar provider’s service.</p>
+
+    <h2 id="warranty">No warranty</h2>
+    <p>Mysticals is provided “as is” and “as available”, without warranties of any kind, express or implied, including merchantability, fitness for a particular purpose and non-infringement. We don’t promise it will be error-free, uninterrupted or that it will keep working with every calendar provider. Keep your own backups of anything important. Your calendar provider holds the authoritative copy of your events.</p>
+
+    <h2 id="liability">Limitation of liability</h2>
+    <p>To the fullest extent the law allows, we are not liable for any indirect, incidental, special, consequential or punitive damages, or for lost data, events, meetings, profits or goodwill, arising from your use of Mysticals or inability to use it. Mysticals is free, and our total liability for any claim is limited to zero.</p>
+
+    <h2 id="changes">Changes and termination</h2>
+    <p>We may change Mysticals or these terms at any time. Changed terms are posted here with a new effective date, and continuing to use Mysticals means you accept them. You can stop using Mysticals at any time by uninstalling it and removing your accounts.</p>
+
+    <h2 id="contact">Contact</h2>
+    <p>Questions: <a class="ul" href={`mailto:${email}`}>{email}</a>.</p>
+  </article>
+</Layout>

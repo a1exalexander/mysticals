@@ -29,6 +29,7 @@
 }
 .acc-section-title:first-of-type { margin-top: 6px; }
 .acc-note { margin: 0 0 16px; color: var(--muted); line-height: 1.5; }
+.acc-note a { color: var(--cyan); }
 .acc-hint { margin: -4px 0 0 108px; color: var(--muted); font: 10.5px/1.4 var(--mono); }
 .acc-error {
   margin: 0; padding: 7px 10px; border-radius: 4px; border-left: 2px solid var(--red);

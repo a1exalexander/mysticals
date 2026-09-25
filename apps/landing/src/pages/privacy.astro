@@ -1,0 +1,82 @@
+---
+import Layout from '../layouts/Layout.astro'
+const updated = 'September 25, 2026'
+const email = 'forcewizu@gmail.com'
+---
+<Layout title="Privacy Policy · Mysticals" description="What the Mysticals desktop and terminal apps and this website do with your data. Short version: your calendars stay on your device.">
+  <section class="wrap page-head">
+    <span class="eyebrow">$ cat PRIVACY</span>
+    <h1>Privacy Policy</h1>
+    <p class="lead">Mysticals has no servers. Your accounts, passwords and calendar events travel only between your device and your calendar provider.</p>
+  </section>
+
+  <article class="wrap prose">
+    <p class="muted">Effective {updated}. This policy covers the Mysticals desktop app, the Mysticals terminal app (the <code>mysticals</code> npm package) and the website mysticals.sashkoratushnyi.com. Mysticals is an open-source project run by Oleksandr Ratushnyi (“we”). The source code is on <a class="ul" href="https://github.com/a1exalexander/mysticals">GitHub</a>, so every claim here can be checked.</p>
+
+    <h2 id="apps">What the apps handle</h2>
+    <p>To show your calendars, the apps connect directly from your device to the providers you add:</p>
+    <ul>
+      <li><b>Google accounts.</b> Sign-in happens in your browser through Google’s OAuth. The app receives an access token, a refresh token and your email address.</li>
+      <li><b>CalDAV accounts</b> (iCloud, Fastmail, Namecheap Private Email or your own server). You enter a server address, a username and an app password.</li>
+    </ul>
+    <p>Where this data lives:</p>
+    <ul>
+      <li><b>Credentials</b> (tokens, passwords) are encrypted on your device. The desktop app uses the operating system’s secure storage (macOS Keychain, Windows DPAPI, or the GNOME Keyring or KWallet on Linux). The terminal app encrypts them with AES-256-GCM, with a key held in the OS keychain.</li>
+      <li><b>Calendar data</b> (calendars, events, attendees) is cached in the app’s data folder on your device so the app works offline.</li>
+      <li>Accounts stay isolated from each other. The desktop and terminal apps don’t share data.</li>
+    </ul>
+    <p>None of this is sent to us or to anyone other than the provider it belongs to. We don’t operate a backend, and we can’t see your accounts or events.</p>
+
+    <h2 id="google">Google user data</h2>
+    <p>For Google accounts the apps request these scopes:</p>
+    <ul>
+      <li><code>openid</code> and <code>email</code>: to show which Google account is connected.</li>
+      <li><code>https://www.googleapis.com/auth/calendar</code>: to read your calendars and events and to create, edit, delete and respond to events when you ask.</li>
+    </ul>
+    <p>Google data is used only to provide these calendar features inside the app on your device. It is never transferred to us or to third parties, never sold, never used for advertising, and never used to train AI or machine-learning models. No person reads it.</p>
+    <p>Mysticals’ use and transfer of information received from Google APIs will adhere to the <a class="ul" href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+    <p>To disconnect, remove the account in the app. That deletes its tokens and cached events from your device. You can also revoke access at any time at <a class="ul" href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</p>
+
+    <h2 id="telemetry">Anonymous usage stats in the apps</h2>
+    <p>To know how many people use Mysticals, the apps send two events to <a class="ul" href="https://posthog.com">PostHog</a>, hosted in the EU:</p>
+    <ul>
+      <li><code>app_installed</code>, once, on first launch.</li>
+      <li><code>account_added</code>, when you add an account. This includes the provider type (Google or CalDAV) and which preset you picked (iCloud, Fastmail, Private Email or custom).</li>
+    </ul>
+    <p>Each event carries the app (desktop or terminal), its version, your OS and CPU architecture, and a random ID generated on your device. That’s all. No emails, names, server addresses, calendars or events. GeoIP lookup is disabled and PostHog is set to discard IP addresses.</p>
+    <p>To turn the stats off:</p>
+    <ul>
+      <li>Desktop: Settings → Privacy → uncheck “Share anonymous usage stats”.</li>
+      <li>Both apps: set <code>MYSTICALS_TELEMETRY=0</code> or <code>DO_NOT_TRACK=1</code> in your environment.</li>
+    </ul>
+
+    <h2 id="website">This website</h2>
+    <p>The website counts page views and download-button clicks with PostHog (EU). It sets no cookies and stores nothing in your browser: analytics state lives in memory and is gone when you close the tab. There’s no session recording, and a Do Not Track signal turns analytics off. Fonts are loaded from Google Fonts, which receives your IP address as part of the request.</p>
+
+    <h2 id="third-parties">Other services the apps contact</h2>
+    <ul>
+      <li><b>Google</b> (<code>accounts.google.com</code>, <code>googleapis.com</code>) and <b>your CalDAV server</b>: your calendar data, under their own privacy policies.</li>
+      <li><b>GitHub</b>: the desktop app checks for new releases on <code>api.github.com</code> and downloads updates from GitHub Releases.</li>
+      <li><b>npm</b>: the terminal app checks <code>registry.npmjs.org</code> for a newer version.</li>
+      <li><b>PostHog (EU)</b>: the anonymous stats above.</li>
+    </ul>
+    <p>These update checks send no personal data beyond what any HTTP request contains, like your IP address.</p>
+
+    <h2 id="delete">Deleting your data</h2>
+    <p>Everything is on your device, so you’re in control. Remove an account in the app to delete its credentials and cache. To remove everything, delete the data folder:</p>
+    <ul>
+      <li>Desktop: <code>~/Library/Application Support/mysticals</code> on macOS, <code>%APPDATA%\mysticals</code> on Windows, <code>~/.config/mysticals</code> on Linux.</li>
+      <li>Terminal: <code>~/Library/Application Support/mysticals-terminal</code> on macOS, <code>%APPDATA%\mysticals-terminal</code> on Windows, <code>~/.local/share/mysticals-terminal</code> on Linux (or <code>$MYSTICALS_HOME</code>).</li>
+    </ul>
+    <p>We hold no copy of your data, so there is nothing for us to delete. The anonymous stats can’t be tied to you, but if you send us the random ID from the <code>telemetry-id</code> file in the data folder, we’ll delete its events.</p>
+
+    <h2 id="children">Children</h2>
+    <p>Mysticals isn’t directed at children under 13 and we don’t knowingly collect their data.</p>
+
+    <h2 id="changes">Changes</h2>
+    <p>If this policy changes, we’ll update this page and its effective date. The history of every change is in the public repository.</p>
+
+    <h2 id="contact">Contact</h2>
+    <p>Questions or requests: <a class="ul" href={`mailto:${email}`}>{email}</a>.</p>
+  </article>
+</Layout>

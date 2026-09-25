@@ -55,7 +55,7 @@ MYSTICALS_MOCK=1 pnpm dev # two fake isolated accounts, no network
 pnpm typecheck
 pnpm test                 # unit tests
 pnpm e2e                  # Playwright smoke tests of the desktop app (mock mode)
-pnpm dist                 # installers for the current OS (ad-hoc signed on macOS) in apps/desktop/dist/
+pnpm dist                 # installers for the current OS in apps/desktop/dist/ (macOS without a Developer ID cert: pnpm dist -c.mac.identity=-)
                           # (macOS .dmg/.zip, Windows setup .exe, Linux .AppImage/.deb)
 ```
 
@@ -63,7 +63,7 @@ On Windows, set the mock flag first: `$env:MYSTICALS_MOCK=1` (PowerShell) or `se
 
 Run a single app with `pnpm --filter <name> <script>`, for example `pnpm --filter @mysticals/desktop dev` or `pnpm --filter @mysticals/landing dev`.
 
-Builds are not code-signed with a certificate: macOS builds are ad-hoc signed and not notarized (`identity: "-"` in `apps/desktop/electron-builder.yml`), Windows builds are unsigned.
+Release macOS builds are signed with a Developer ID certificate, use the hardened runtime and are notarized by CI (see Releasing). Locally, `pnpm dist` signs with a Developer ID cert from your keychain if there is one; otherwise pass `-c.mac.identity=-` for an ad-hoc build (Apple Silicon refuses to run a fully unsigned one). Windows builds are unsigned.
 
 ### Terminal app
 
@@ -87,5 +87,11 @@ A `v*` tag runs `.github/workflows/release.yml`. It builds the desktop app on ma
    ```
 
 Required repo secrets: `NPM_TOKEN`, `MYSTICALS_GOOGLE_CLIENT_ID`, `MYSTICALS_GOOGLE_CLIENT_SECRET` (one Desktop-app OAuth client shared by both apps). Optional: `MYSTICALS_POSTHOG_KEY` (no telemetry without it).
+
+macOS signing and notarization secrets (all required, the macOS job fails without them):
+
+- `CSC_LINK`: base64 of the **Developer ID Application** certificate exported as `.p12` (`base64 -i cert.p12 | pbcopy`), and `CSC_KEY_PASSWORD`, its export password.
+- `APPLE_API_KEY_P8`: contents of an App Store Connect API key (`AuthKey_XXXX.p8`, Team key with the Developer role), `APPLE_API_KEY_ID` (its Key ID) and `APPLE_API_ISSUER` (the Issuer ID on the same page).
+- `MYSTICALS_APPLE_TEAM_ID`: the 10-character Team ID from developer.apple.com → Membership. The desktop updater refuses any update not signed by this team.
 
 Installed apps pick up the release on their own. On macOS the desktop app downloads the `.zip` for its architecture and updates itself. On Windows and Linux its update button opens the release page. The terminal app shows a hint to run `npm i -g mysticals`.

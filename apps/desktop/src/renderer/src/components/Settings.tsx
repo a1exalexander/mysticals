@@ -178,7 +178,10 @@ function PrivacyPanel(): React.JSX.Element {
     <>
       <p className="acc-note">
         Mysticals sends two anonymous events: when the app is first installed and when an account is added (provider
-        only). Never emails, server addresses, calendars or events.
+        only). Never emails, server addresses, calendars or events.{' '}
+        <a href="https://mysticals.sashkoratushnyi.com/privacy/" target="_blank" rel="noreferrer">
+          Privacy policy
+        </a>
       </p>
       <label className="set-check">
         <input

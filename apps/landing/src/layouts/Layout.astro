@@ -59,10 +59,11 @@ const phKey = process.env.MYSTICALS_POSTHOG_KEY
     <main><slot /></main>
     <footer class="wrap foot">
       <span class="mono">mysticals · MIT · © Oleksandr Ratushnyi</span>
-      {phKey && <span>Anonymous, cookie-free stats via PostHog.</span>}
+      {phKey && <span>Anonymous, cookie-free stats via PostHog. <a class="ul" href="/privacy/#website">Details</a></span>}
       <nav>
         <a href="/">Home</a><a href="/download/">Download</a><a href="/install/">Install</a>
         <a href={gh}>GitHub</a><a href="https://www.npmjs.com/package/mysticals">npm</a>
+        <a href="/privacy/">Privacy</a><a href="/terms/">Terms</a>
       </nav>
     </footer>
     <script>

@@ -46,9 +46,6 @@ const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
           <a class="btn" href="/download/">Go to downloads</a></div></li>
         <li><div><h3>Drag Mysticals into Applications</h3>
           <p>Open the .dmg, drag the icon onto the Applications folder, then eject the disk image.</p></div></li>
-        <li><div><h3>Open it the first time</h3>
-          <p>Mysticals isn’t notarized by Apple, so macOS blocks the first launch. Open it from Applications, click Done, then go to System Settings → Privacy &amp; Security and click “Open Anyway”. Or from the terminal:</p>
-          <div class="code"><div>xattr -dr com.apple.quarantine /Applications/Mysticals.app</div></div></div></li>
         <li><div><h3>Add your first account</h3>
           <p>Add calendar → Google (sign in in the browser) or CalDAV (pick a preset below). Give it a label and a colour. Repeat for every account — each one gets its own box.</p></div></li>
         <li><div><h3>That’s it. Updates are automatic</h3>
@@ -144,8 +141,7 @@ const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
   <section class="wrap block last">
     <h2>Troubleshooting</h2>
     <div class="grid3">
-      <div class="fact"><b>“Can’t be opened” on launch</b><span>The desktop app isn’t notarized. macOS: “Open Anyway” in System Settings → Privacy &amp; Security, or <code>xattr -dr com.apple.quarantine /Applications/Mysticals.app</code>. Windows: More info → Run anyway.</span></div>
-      <div class="fact"><b>macOS: Keychain prompt after an update</b><span>Every build has its own signature, so after an update macOS asks once to access “Mysticals Safe Storage”. Choose Always Allow: it holds the key to your saved accounts. If you deny it, the accounts have to be added again.</span></div>
+      <div class="fact"><b>Windows: “Windows protected your PC”</b><span>The Windows build isn’t code-signed yet, so SmartScreen warns about an unknown publisher. Click More info → Run anyway.</span></div>
       <div class="fact"><b>Linux: “Secure storage is unavailable”</b><span>No Secret Service keyring is running. Install and unlock GNOME Keyring or KWallet (and <code>libsecret-tools</code> for the terminal app).</span></div>
       <div class="fact"><b>Terminal daemon won’t start</b><span>Read <code>daemon.log</code> in the data folder. Stuck? Close every window, then <code>pkill -f 'cli.js --daemon'</code> (Windows: end the Node.js process in Task Manager).</span></div>
       <div class="fact"><b>Can’t select text in the TUI</b><span>Hold ⌥ Option while dragging on macOS, Shift in most Linux and Windows terminals. In tmux, set <code>mouse on</code> to pass clicks through.</span></div>

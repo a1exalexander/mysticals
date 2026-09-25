@@ -16,6 +16,8 @@ const ENABLED = app.isPackaged || !!process.env.MYSTICALS_UPDATE_FEED
 const EVERY = 6 * 60 * 60_000
 // ponytail: in-place swap is macOS-only; Windows/Linux get the release page. electron-updater if that's not enough.
 const SWAP = process.platform === 'darwin'
+// Developer ID team the update must be signed by; empty in dev and local ad-hoc builds, which skip the check.
+const TEAM = import.meta.env.MYSTICALS_APPLE_TEAM_ID?.match(/^[A-Z0-9]{10}$/)?.[0] ?? ''
 
 let state: UpdateState = { status: 'idle' }
 let zipUrl = ''
@@ -122,7 +124,12 @@ async function install(): Promise<void> {
     const name = readdirSync(out).find((n) => n.endsWith('.app'))
     if (!name) throw new Error('no .app in update archive')
     const fresh = join(out, name)
-    // Unsigned build: drop quarantine so Gatekeeper does not block the relaunch.
+    // Refuse a bundle not signed by our Developer ID team, so a tampered release asset never replaces the app.
+    if (TEAM) {
+      const req = `anchor apple generic and certificate leaf[subject.OU] = "${TEAM}"`
+      await run('codesign', ['--verify', '--deep', '--strict', '-R', req, fresh])
+    }
+    // Drop quarantine so Gatekeeper does not re-assess the relaunch.
     await run('xattr', ['-cr', fresh])
     set({ status: 'ready', version })
     if (!app.isPackaged) return
