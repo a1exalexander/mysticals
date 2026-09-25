@@ -58,9 +58,9 @@ it('two TUIs share one daemon, see each other’s changes, and the daemon stops 
   await vi.waitFor(() => expect(a.out()).toContain('Holiday'), { timeout: 10_000, interval: 50 })
   await vi.waitFor(() => expect(b.out()).toContain('Holiday'), { timeout: 10_000, interval: 50 })
 
-  const daemons = daemonsOf([a.proc.pid!, b.proc.pid!])
-  expect(daemons).toHaveLength(1)
-  const [daemon] = daemons
+  // Both TUIs may spawn a daemon; the loser hits EADDRINUSE and exits, but can still be alive at first glance.
+  await vi.waitFor(() => expect(daemonsOf([a.proc.pid!, b.proc.pid!])).toHaveLength(1), { timeout: 5_000, interval: 100 })
+  const [daemon] = daemonsOf([a.proc.pid!, b.proc.pid!])
 
   // Two more clients on the same socket: a change from one reaches the other.
   const noSpawn = (): void => {
