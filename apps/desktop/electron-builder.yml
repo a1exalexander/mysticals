@@ -47,9 +47,9 @@ linux:
   artifactName: ${productName}-${arch}.${ext}
   target:
     - target: AppImage
-      arch: [x64]
+      arch: [x64, arm64]
     - target: deb
-      arch: [x64]
+      arch: [x64, arm64]
 deb:
   # Default is productName ("Mysticals"); Debian package names must be lowercase.
   packageName: mysticals

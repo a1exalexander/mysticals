@@ -66,10 +66,10 @@ const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
 
       <ol class="steps" data-panel="desktop-linux" hidden>
         <li><div><h3>Download the AppImage or .deb</h3>
-          <p><code>Mysticals-x86_64.AppImage</code> runs on most distros. On Debian or Ubuntu you can take the <code>.deb</code> instead.</p>
+          <p>Intel / AMD PCs take <code>Mysticals-x86_64.AppImage</code>, ARM machines (Raspberry Pi 4 and 5, ARM laptops) take <code>Mysticals-arm64.AppImage</code>. <code>uname -m</code> tells you which: <code>x86_64</code> or <code>aarch64</code>. The AppImage runs on most distros; on Debian or Ubuntu you can take the <code>.deb</code> instead.</p>
           <a class="btn" href="/download/">Go to downloads</a></div></li>
         <li><div><h3>Install or run it</h3>
-          <div class="code"><div>chmod +x Mysticals-x86_64.AppImage &amp;&amp; ./Mysticals-x86_64.AppImage</div><div class="c"># or</div><div>sudo apt install ./Mysticals-amd64.deb</div></div></div></li>
+          <div class="code"><div>chmod +x Mysticals-x86_64.AppImage &amp;&amp; ./Mysticals-x86_64.AppImage</div><div class="c"># or</div><div>sudo apt install ./Mysticals-amd64.deb</div><div class="c"># on ARM: Mysticals-arm64.AppImage / Mysticals-arm64.deb</div></div></div></li>
         <li><div><h3>Make sure a keyring is running</h3>
           <p>Credentials are encrypted with the Secret Service (GNOME Keyring, KWallet). GNOME and KDE desktops have one already. Without one, Mysticals refuses to store credentials rather than keep them in plain text.</p></div></li>
         <li><div><h3>Add your first account</h3>
@@ -111,7 +111,7 @@ const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
       <div class="side">
         <span class="eyebrow">requirements</span>
         <div><span class="muted">System</span><span>macOS, Windows, Linux</span></div>
-        <div><span class="muted">Chips</span><span>Apple Silicon, Intel · x64 on Windows/Linux</span></div>
+        <div><span class="muted">Chips</span><span>Apple Silicon, Intel · x64 on Windows · x64 and arm64 on Linux</span></div>
         <div><span class="muted">Terminal app</span><span>Node.js 20.3+</span></div>
       </div>
       <div class="side">

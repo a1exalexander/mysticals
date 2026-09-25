@@ -42,7 +42,7 @@ Download the latest build from [GitHub Releases](https://github.com/a1exalexande
 
 - **macOS**: `.dmg` (Apple Silicon `arm64` or Intel `x64`). Signed with an Apple Developer ID and notarized, so it opens like any other app.
 - **Windows**: `-setup.exe`. SmartScreen warns about an unknown publisher: **More info → Run anyway**.
-- **Linux**: `.AppImage` or `.deb`. Storing credentials needs a running keyring (GNOME Keyring, KWallet).
+- **Linux**: `.AppImage` or `.deb`, for Intel/AMD `x64` or ARM `arm64`. Storing credentials needs a running keyring (GNOME Keyring, KWallet).
 
 ### Terminal
 
