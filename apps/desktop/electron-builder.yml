@@ -16,8 +16,8 @@ mac:
       arch: [arm64, x64]
     - target: zip
       arch: [arm64, x64]
-  # Unsigned build, shared as-is.
-  identity: null
+  # Ad-hoc signed, not notarized: a valid signature gets macOS "Open Anyway" instead of "damaged".
+  identity: "-"
   hardenedRuntime: false
 dmg:
   artifactName: ${productName}-${version}-${arch}.dmg

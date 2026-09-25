@@ -50,9 +50,9 @@ const phKey = process.env.MYSTICALS_POSTHOG_KEY
           <a class="sec" href="/#isolation">Isolation</a>
           <a class="sec" href="/#apps">Desktop &amp; Terminal</a>
           <a class="sec" href="/#why">Why</a>
-          <a href="/install" aria-current={cur('/install')}>Install</a>
+          <a href="/install/" aria-current={cur('/install')}>Install</a>
           <a class="gh" href={gh}>GitHub</a>
-          <a class="btn" href="/download" aria-current={cur('/download')}>Download</a>
+          <a class="btn" href="/download/" aria-current={cur('/download')}>Download</a>
         </nav>
       </div>
     </header>
@@ -61,7 +61,7 @@ const phKey = process.env.MYSTICALS_POSTHOG_KEY
       <span class="mono">mysticals · MIT · © Oleksandr Ratushnyi</span>
       {phKey && <span>Anonymous, cookie-free stats via PostHog.</span>}
       <nav>
-        <a href="/">Home</a><a href="/download">Download</a><a href="/install">Install</a>
+        <a href="/">Home</a><a href="/download/">Download</a><a href="/install/">Install</a>
         <a href={gh}>GitHub</a><a href="https://www.npmjs.com/package/mysticals">npm</a>
       </nav>
     </footer>

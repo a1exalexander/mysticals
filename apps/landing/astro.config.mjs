@@ -7,5 +7,6 @@ if (existsSync(rootEnv)) process.loadEnvFile(rootEnv)
 
 export default defineConfig({
   site: 'https://mysticals.sashkoratushnyi.com',
-  redirects: { '/desktop': '/install', '/terminal': '/install#terminal' },
+  trailingSlash: 'always',
+  redirects: { '/desktop': '/install/', '/terminal': '/install/#terminal' },
 })

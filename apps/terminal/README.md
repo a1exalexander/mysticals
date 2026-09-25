@@ -88,7 +88,7 @@ The desktop app uses its own folder and key; the two never share data. Set `MYST
 
 ## Telemetry
 
-Two anonymous events go to PostHog (EU): `app_installed` on first run and `account_added` when you add an account. They carry the app, version, OS, architecture and, for accounts, the provider and CalDAV preset. The only ID is random and stored in the data folder. Emails, usernames, servers, calendars and events are never sent. The first run says so in the status line. Opt out with `MYSTICALS_TELEMETRY=0` or `DO_NOT_TRACK=1` (set it before the first window opens: windows share the background daemon, which reads it when it starts). More in the [root README](../../README.md#telemetry).
+Two anonymous events go to PostHog (EU): `app_installed` on first run and `account_added` when you add an account. They carry the app, version, OS, architecture and, for accounts, the provider and CalDAV preset. The only ID is random and stored in the data folder. Emails, usernames, servers, calendars and events are never sent. The first run says so in the status line. Opt out with `MYSTICALS_TELEMETRY=0` or `DO_NOT_TRACK=1` (set it before the first window opens: windows share the background daemon, which reads it when it starts). More in the [root README](https://github.com/a1exalexander/mysticals#telemetry).
 
 ## Troubleshooting
 
@@ -117,7 +117,7 @@ After a rebuild, close every window so the old daemon exits before you test the 
 
 ### Google OAuth client
 
-Create a Google Cloud OAuth client of type **Desktop app** (steps in the [root README](../../README.md#google-oauth-client-for-google-accounts)) and put it in the repo-root `.env`:
+Create a Google Cloud OAuth client of type **Desktop app** (steps in [CONTRIBUTING.md](https://github.com/a1exalexander/mysticals/blob/main/CONTRIBUTING.md#google-oauth-client-for-google-accounts)) and put it in the repo-root `.env`:
 
 ```
 MYSTICALS_GOOGLE_CLIENT_ID=...apps.googleusercontent.com
@@ -128,14 +128,8 @@ The values are embedded into `dist/cli.js` at build time. The same variables set
 
 ### Publish
 
-```sh
-cd apps/terminal
-npm version patch
-pnpm publish       # prepublishOnly builds dist/ first
-```
-
-Use `pnpm publish`, not `npm publish`: it rewrites the `workspace:` version of `@mysticals/core`. Only `dist/` is published and core is bundled into it.
+Releases go out from a `v*` tag in CI, together with the desktop app. See [Releasing](https://github.com/a1exalexander/mysticals/blob/main/CONTRIBUTING.md#releasing).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](https://github.com/a1exalexander/mysticals/blob/main/LICENSE).

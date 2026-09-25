@@ -25,7 +25,7 @@ export function setClientConfig(cfg: Partial<ClientConfig>): void {
 
 export function getClientConfig(): ClientConfig {
   const { clientId, clientSecret } = clientConfig
-  if (!clientId || !clientSecret) throw new Error('Google sign-in is not configured: set the OAuth client id and secret (MYSTICALS_GOOGLE_CLIENT_ID/SECRET in the repo-root .env)')
+  if (!clientId || !clientSecret) throw new Error('Google sign-in is not configured in this build: add a CalDAV account, or build from source with MYSTICALS_GOOGLE_CLIENT_ID/SECRET set')
   return { clientId, clientSecret }
 }
 

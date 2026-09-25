@@ -55,7 +55,7 @@ MYSTICALS_MOCK=1 pnpm dev # two fake isolated accounts, no network
 pnpm typecheck
 pnpm test                 # unit tests
 pnpm e2e                  # Playwright smoke tests of the desktop app (mock mode)
-pnpm dist                 # unsigned installers for the current OS in apps/desktop/dist/
+pnpm dist                 # installers for the current OS (ad-hoc signed on macOS) in apps/desktop/dist/
                           # (macOS .dmg/.zip, Windows setup .exe, Linux .AppImage/.deb)
 ```
 
@@ -63,7 +63,7 @@ On Windows, set the mock flag first: `$env:MYSTICALS_MOCK=1` (PowerShell) or `se
 
 Run a single app with `pnpm --filter <name> <script>`, for example `pnpm --filter @mysticals/desktop dev` or `pnpm --filter @mysticals/landing dev`.
 
-Builds are unsigned (`identity: null` in `apps/desktop/electron-builder.yml`).
+Builds are not code-signed with a certificate: macOS builds are ad-hoc signed and not notarized (`identity: "-"` in `apps/desktop/electron-builder.yml`), Windows builds are unsigned.
 
 ### Terminal app
 

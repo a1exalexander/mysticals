@@ -40,7 +40,7 @@ So Mysticals guarantees:
 
 Download the latest build from [GitHub Releases](https://github.com/a1exalexander/mysticals/releases/latest):
 
-- **macOS**: `.dmg` (Apple Silicon `arm64` or Intel `x64`). The app is unsigned: on first launch, right-click it and choose **Open**.
+- **macOS**: `.dmg` (Apple Silicon `arm64` or Intel `x64`). The app isn't notarized: after the first launch, click **Open Anyway** in System Settings → Privacy & Security (or run `xattr -dr com.apple.quarantine /Applications/Mysticals.app`). After each update macOS asks once to access **Mysticals Safe Storage**: choose **Always Allow**, it holds the key to your saved accounts.
 - **Windows**: `-setup.exe`. SmartScreen warns about an unknown publisher: **More info → Run anyway**.
 - **Linux**: `.AppImage` or `.deb`. Storing credentials needs a running keyring (GNOME Keyring, KWallet).
 
