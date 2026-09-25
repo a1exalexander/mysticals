@@ -1,6 +1,6 @@
 {
   "name": "mysticals",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Isolated multi-account calendar for the terminal on macOS, Linux and Windows",
   "keywords": ["calendar", "cli", "tui", "terminal", "google-calendar", "caldav", "macos", "linux", "windows"],
   "author": "Oleksandr Ratushnyi",
