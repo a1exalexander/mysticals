@@ -1,7 +1,7 @@
 {
   "name": "@mysticals/desktop",
   "productName": "mysticals",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Isolated multi-account calendar for macOS, Windows and Linux",
   "main": "./out/main/index.js",
