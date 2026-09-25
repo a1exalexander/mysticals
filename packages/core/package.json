@@ -1,6 +1,6 @@
 {
   "name": "@mysticals/core",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "license": "MIT",
   "description": "Platform-free calendar core shared by the desktop and terminal apps (TS source; consumers bundle it)",
