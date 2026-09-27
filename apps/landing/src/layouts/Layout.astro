@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css'
 import Analytics from '../components/Analytics.astro'
+import { PREVIEW } from '../preview'
 interface Props { title: string; description?: string }
 const { title, description = 'A calendar for several Google and CalDAV accounts, on the desktop or in your terminal. Every account stays in its own box.' } = Astro.props
 const here = Astro.url.pathname.replace(/\/$/, '') || '/'
@@ -50,19 +51,24 @@ const phKey = process.env.MYSTICALS_POSTHOG_KEY
           <a class="sec" href="/#isolation">Isolation</a>
           <a class="sec" href="/#apps">Desktop &amp; Terminal</a>
           <a class="sec" href="/#why">Why</a>
-          <a href="/install/" aria-current={cur('/install')}>Install</a>
+          {!PREVIEW && <a href="/install/" aria-current={cur('/install')}>Install</a>}
           <a class="gh" href={gh}>GitHub</a>
-          <a class="btn" href="/download/" aria-current={cur('/download')}>Download</a>
+          {PREVIEW ? <a class="btn" href={gh}>Follow on GitHub</a> : <a class="btn" href="/download/" aria-current={cur('/download')}>Download</a>}
         </nav>
       </div>
     </header>
+    {PREVIEW && (
+      <div class="preview-bar" role="status">
+        <div class="wrap"><b>In development.</b> Mysticals isn’t available for download yet: we’re finishing Google’s review of its calendar access. Follow along on <a class="ul" href={gh}>GitHub</a>.</div>
+      </div>
+    )}
     <main><slot /></main>
     <footer class="wrap foot">
       <span class="mono">mysticals · MIT · © <a class="ul" href="https://www.sashkoratushnyi.com/">Oleksandr Ratushnyi</a></span>
       {phKey && <span>Anonymous, cookie-free stats via PostHog. <a class="ul" href="/privacy/#website">Details</a></span>}
       <nav>
-        <a href="/">Home</a><a href="/download/">Download</a><a href="/install/">Install</a>
-        <a href={gh}>GitHub</a><a href="https://www.npmjs.com/package/mysticals">npm</a>
+        <a href="/">Home</a>{!PREVIEW && <><a href="/download/">Download</a><a href="/install/">Install</a></>}
+        <a href={gh}>GitHub</a>{!PREVIEW && <a href="https://www.npmjs.com/package/mysticals">npm</a>}
         <a href="/privacy/">Privacy</a><a href="/terms/">Terms</a>
       </nav>
     </footer>
