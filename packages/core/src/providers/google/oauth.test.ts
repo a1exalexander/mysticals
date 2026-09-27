@@ -33,7 +33,7 @@ describe('oauth pure parts', () => {
       code_challenge_method: 'S256',
       access_type: 'offline',
       prompt: 'consent',
-      scope: 'openid email https://www.googleapis.com/auth/calendar'
+      scope: 'openid email https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events'
     })
   })
 

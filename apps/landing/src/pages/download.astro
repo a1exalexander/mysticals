@@ -1,5 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro'
+import { PREVIEW } from '../preview'
+if (PREVIEW) return Astro.redirect('/')
 import OsIcon from '../components/OsIcon.astro'
 import desktop from '../../../desktop/package.json'
 import terminal from '../../../terminal/package.json'
