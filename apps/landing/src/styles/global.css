@@ -120,3 +120,8 @@ kbd { display: inline-block; min-width: 1.8em; text-align: center; padding: 0 6p
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* pre-release notice under the header (src/preview.ts) */
+.preview-bar { border-bottom: 1px solid color-mix(in srgb, var(--work) 45%, transparent); background: color-mix(in srgb, var(--work) 12%, transparent); color: var(--fg); font-size: 14px; line-height: 1.5; }
+.preview-bar .wrap { padding-block: 12px; }
+.preview-bar b { color: var(--work); font-weight: 600; }

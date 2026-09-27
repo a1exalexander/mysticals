@@ -1,5 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro'
+import { PREVIEW } from '../preview'
+if (PREVIEW) return Astro.redirect('/')
 const gh = 'https://github.com/a1exalexander/mysticals'
 const keys: [string[], string][] = [
   [['a', 'd', '2', 'w', 'm'], 'Agenda, Day, 2 Days, Week, Month'],

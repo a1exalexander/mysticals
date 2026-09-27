@@ -3,6 +3,8 @@ import Layout from '../layouts/Layout.astro'
 import TermDemo from '../components/TermDemo.astro'
 import DesktopDemo from '../components/DesktopDemo.astro'
 import desktop from '../../../desktop/package.json'
+import { PREVIEW } from '../preview'
+const gh = 'https://github.com/a1exalexander/mysticals'
 const rules: [string, string][] = [
   ['No default account', 'Every new event asks which account and calendar it belongs to.'],
   ['No copying across accounts', 'Events are never copied, moved or re-created in another account.'],
@@ -17,18 +19,25 @@ const boxes = [
 <Layout title="Mysticals — all your calendars, none of them mixed up">
   <section class="wrap hero">
     <div class="intro">
-      <p class="eyebrow dot">v{desktop.version} · macOS · Windows · Linux · free &amp; open source</p>
+      <p class="eyebrow dot">{PREVIEW ? 'in development' : `v${desktop.version}`} · macOS · Windows · Linux · free &amp; open source</p>
       <h1>All your calendars.<br />None of them mixed&nbsp;up.<span class="cursor" aria-hidden="true">_</span></h1>
       <p class="lead">A calendar for several Google and CalDAV accounts — on the desktop or right in your terminal. Every account lives in its own box: its own credentials, sync and cache. Nothing ever crosses between them.</p>
-      <div class="row">
-        <a class="btn big" href="/download/">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
-          Download
-        </a>
-        <button class="ghost big mono" type="button" data-copy="npm i -g mysticals" data-track="npm_copy" data-props='{"location":"hero"}' aria-label="Copy npm i -g mysticals">
-          <span class="muted">$</span><span class="lbl">npm i -g mysticals</span>
-        </button>
-      </div>
+      {PREVIEW ? (
+        <div class="row">
+          <a class="btn big" href={gh}>Follow on GitHub</a>
+          <span class="muted">Downloads open once Google’s review is done.</span>
+        </div>
+      ) : (
+        <div class="row">
+          <a class="btn big" href="/download/">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+            Download
+          </a>
+          <button class="ghost big mono" type="button" data-copy="npm i -g mysticals" data-track="npm_copy" data-props='{"location":"hero"}' aria-label="Copy npm i -g mysticals">
+            <span class="muted">$</span><span class="lbl">npm i -g mysticals</span>
+          </button>
+        </div>
+      )}
       <p class="providers">Google <i>/</i> Private Email <i>/</i> iCloud <i>/</i> Fastmail <i>/</i> any CalDAV</p>
     </div>
     <div class="stage">
@@ -86,10 +95,12 @@ const boxes = [
           <li>Credentials encrypted per account with the system keychain</li>
           <li>Update notices from GitHub Releases (self-updates on macOS)</li>
         </ul>
-        <div class="row push">
-          <a class="btn" href="/download/">Download</a>
-          <a class="ghost" href="/install/">How to install</a>
-        </div>
+        {!PREVIEW && (
+          <div class="row push">
+            <a class="btn" href="/download/">Download</a>
+            <a class="ghost" href="/install/">How to install</a>
+          </div>
+        )}
       </article>
       <article class="card">
         <div class="card-head">
@@ -106,10 +117,12 @@ const boxes = [
           <li>One background daemon syncs for every open window</li>
           <li>System notifications, 16 ANSI colours, NO_COLOR respected</li>
         </ul>
-        <div class="row push">
-          <button class="btn mono" type="button" data-copy="npm i -g mysticals" data-track="npm_copy" data-props='{"location":"terminal_card"}' aria-label="Copy npm i -g mysticals"><span class="lbl">npm i -g mysticals</span></button>
-          <a class="ghost" href="/install/#terminal">How to install</a>
-        </div>
+        {!PREVIEW && (
+          <div class="row push">
+            <button class="btn mono" type="button" data-copy="npm i -g mysticals" data-track="npm_copy" data-props='{"location":"terminal_card"}' aria-label="Copy npm i -g mysticals"><span class="lbl">npm i -g mysticals</span></button>
+            <a class="ghost" href="/install/#terminal">How to install</a>
+          </div>
+        )}
       </article>
     </div>
     <div class="grid3">
@@ -138,11 +151,13 @@ const boxes = [
     <div class="cta card">
       <div class="stack">
         <h2>Keep work at work.</h2>
-        <p class="lead">Free for macOS, Windows and Linux. Desktop or terminal — or both.</p>
+        <p class="lead">{PREVIEW ? 'Coming soon for macOS, Windows and Linux. Desktop or terminal — or both.' : 'Free for macOS, Windows and Linux. Desktop or terminal — or both.'}</p>
       </div>
       <div class="row">
-        <a class="btn big" href="/download/">Download</a>
-        <a class="ghost big" href="/install/">Install guide</a>
+        {PREVIEW ? <a class="btn big" href={gh}>Follow on GitHub</a> : <>
+          <a class="btn big" href="/download/">Download</a>
+          <a class="ghost big" href="/install/">Install guide</a>
+        </>}
       </div>
     </div>
   </section>

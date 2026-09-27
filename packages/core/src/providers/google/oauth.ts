@@ -8,7 +8,8 @@ export type GoogleCredentials = Extract<Credentials, { kind: 'google' }>
 
 export const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 export const TOKEN_URL = 'https://oauth2.googleapis.com/token'
-export const SCOPES = 'openid email https://www.googleapis.com/auth/calendar'
+/** Least privilege: read the calendar list, read/write events. No calendar create/delete, sharing (ACL) or settings access. */
+export const SCOPES = 'openid email https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events'
 const TIMEOUT_MS = 5 * 60 * 1000
 
 export interface ClientConfig {
