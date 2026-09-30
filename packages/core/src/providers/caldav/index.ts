@@ -22,6 +22,7 @@ import {
   buildIcs,
   cleanEmail,
   parseEvents,
+  recurrenceOf,
   type CaldavRaw
 } from './ics'
 import { timedFetch } from '../http'
@@ -158,7 +159,8 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
       const raw = event.raw as CaldavRaw
       if (!raw.recurrenceId || scope === 'one') {
         await put(event, applyUpdate(event, ctx.email), 'Update event')
-        return reload(event.calendarId, raw.href, event.id, event)
+        // A single event that starts repeating gets instance ids: find it by time.
+        return reload(event.calendarId, raw.href, event.recurrence ? undefined : event.id, event)
       }
       const uid = randomUUID()
       const split = scope === 'following' ? applySplitFollowing(event, ctx.email, uid) : null
@@ -182,6 +184,10 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
       if (rest) return put(event, rest, 'Delete event')
       const { headers } = await getConn()
       check(await deleteCalendarObject({ calendarObject: { url: raw.href, etag: event.etag }, headers, fetch: timedFetch }), 'Delete event')
+    },
+
+    async getRecurrence(event) {
+      return recurrenceOf(event.raw as CaldavRaw)
     },
 
     async respond(event, status) {

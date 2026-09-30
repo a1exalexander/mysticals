@@ -1,5 +1,6 @@
-import type { Attendee, Calendar, CalEvent, DeleteScope, PartStat } from '../../shared/types'
+import type { Attendee, Calendar, CalEvent, DeleteScope, PartStat, Recurrence } from '../../shared/types'
 import type { CalendarProvider, ProviderContext } from '../types'
+import { fromRRule, toRRule } from '../../logic/recurrence'
 import { timedFetch } from '../http'
 import { getClientConfig, postToken, type GoogleCredentials } from './oauth'
 
@@ -105,6 +106,10 @@ function endFrom(from: GTime, event: CalEvent, timeZone: string): GTime {
 /** PATCH merges nested objects, so the unused field is nulled to allow timed <-> all-day switches. */
 const toGTime = (iso: string, allDay: boolean): Record<string, string | null> =>
   allDay ? { date: iso.slice(0, 10), dateTime: null, timeZone: null } : { dateTime: iso, date: null, timeZone: null }
+/** A time for a recurring event, which Google requires to carry a time zone when timed. */
+const zoned = (iso: string, allDay: boolean, timeZone: string): GTime => (allDay ? { date: iso.slice(0, 10) } : { dateTime: iso, timeZone })
+const localZone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone
+const rruleLines = (r: Recurrence, allDay: boolean): string[] => [`RRULE:${toRRule(r, allDay)}`]
 const nulled = (t: GTime): Record<string, string | null> => ({ date: null, dateTime: null, timeZone: null, ...t })
 
 export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider {
@@ -234,17 +239,19 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
 
     async createEvent(calendarId, input) {
       const attendees = (input.attendees ?? []).map((email) => ({ email }))
+      const rule = input.recurrence
       const g = await api<GEvent>(
         'POST',
         eventPath(calendarId),
         { sendUpdates: attendees.length ? 'all' : 'none' },
         {
           summary: input.title,
-          start: toGTime(input.start, input.allDay),
-          end: toGTime(input.end, input.allDay),
+          start: rule ? zoned(input.start, input.allDay, localZone()) : toGTime(input.start, input.allDay),
+          end: rule ? zoned(input.end, input.allDay, localZone()) : toGTime(input.end, input.allDay),
           location: input.location,
           description: input.description,
-          attendees
+          attendees,
+          ...(rule ? { recurrence: rruleLines(rule, input.allDay) } : {})
         }
       )
       return map(g, calendarId)
@@ -256,33 +263,50 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
       const series = event.recurringEventId
       const before = rawOf(event)?.start
       if (!series || scope === 'one' || !before) {
-        const body = { ...fields(event, rawOf(event)?.attendees, organizer), start: toGTime(event.start, event.allDay), end: toGTime(event.end, event.allDay) }
+        // A single event may start repeating here (the API refuses a rule change for one instance of a series).
+        const rule = !series ? event.recurrence : undefined
+        const time = (iso: string): Record<string, string | null> => (rule ? nulled(zoned(iso, event.allDay, localZone())) : toGTime(iso, event.allDay))
+        const body = {
+          ...fields(event, rawOf(event)?.attendees, organizer),
+          start: time(event.start),
+          end: time(event.end),
+          ...(rule ? { recurrence: rruleLines(rule, event.allDay) } : {})
+        }
         return map(await api<GEvent>('PATCH', eventPath(event.calendarId, event.id), q, body), event.calendarId)
       }
       const master = await api<GEvent>('GET', eventPath(event.calendarId, series))
       // Recurring events need an explicit zone; keep the series' own.
-      const timeZone = master.start.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+      const timeZone = master.start.timeZone ?? localZone()
+      const rule = event.recurrence
       const slot = rawOf(event)?.originalStartTime ?? before
       const first = master.start.dateTime ?? master.start.date!
       const at = slot.dateTime ?? slot.date!
       // "This and following" from the first instance is the whole series.
       if (scope === 'all' || Date.parse(at) <= Date.parse(first)) {
-        const start = shiftAnchor(master.start, before, event.start, event.allDay, timeZone)
-        const body = { ...fields(event, master.attendees, organizer), start: nulled(start), end: nulled(endFrom(start, event, timeZone)) }
+        // Stop repeating: the series becomes just the edited event.
+        const start = rule === null ? zoned(event.start, event.allDay, timeZone) : shiftAnchor(master.start, before, event.start, event.allDay, timeZone)
+        const body = {
+          ...fields(event, master.attendees, organizer),
+          start: nulled(start),
+          end: nulled(endFrom(start, event, timeZone)),
+          // A new RRULE replaces the old ones; EXDATE/RDATE lines stay.
+          ...(rule === undefined ? {} : { recurrence: rule ? [...rruleLines(rule, event.allDay), ...(master.recurrence ?? []).filter((l) => !l.startsWith('RRULE:'))] : [] })
+        }
         await api<GEvent>('PATCH', eventPath(event.calendarId, series), q, body)
         return event // its instance id may change with the time; the sync that follows brings the real ones
       }
       // Split: end the old series right before this instance, start a new one from it with the edit.
-      const recurrence = await remainingRecurrence(event.calendarId, series, master.recurrence ?? [], slot)
+      const recurrence =
+        rule === undefined ? await remainingRecurrence(event.calendarId, series, master.recurrence ?? [], slot) : rule ? rruleLines(rule, event.allDay) : undefined
       await api('PATCH', eventPath(event.calendarId, series), q, { recurrence: truncateRecurrence(master.recurrence ?? [], slot) })
       const start = shiftAnchor(slot, before, event.start, event.allDay, timeZone)
       const created = await api<GEvent>('POST', eventPath(event.calendarId), q, {
         ...fields(event, master.attendees, organizer),
         start,
         end: endFrom(start, event, timeZone),
-        recurrence
+        ...(recurrence ? { recurrence } : {})
       })
-      return { ...map(created, event.calendarId), start: event.start, end: event.end, recurringEventId: created.id }
+      return { ...map(created, event.calendarId), start: event.start, end: event.end, recurringEventId: recurrence ? created.id : undefined }
     },
 
     async deleteEvent(event, scope: DeleteScope = 'one') {
@@ -301,6 +325,13 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
         }
       }
       await api('DELETE', eventPath(event.calendarId, series), q)
+    },
+
+    async getRecurrence(event) {
+      if (!event.recurringEventId) return null
+      const master = await api<GEvent>('GET', eventPath(event.calendarId, event.recurringEventId))
+      const line = master.recurrence?.find((l) => l.startsWith('RRULE:'))
+      return line ? fromRRule(line, master.start.dateTime ?? master.start.date) : null
     },
 
     async respond(event, status) {

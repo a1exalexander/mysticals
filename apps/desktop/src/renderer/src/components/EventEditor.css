@@ -42,3 +42,15 @@
 }
 .editor-warn { color: var(--orange); }
 .editor-error { margin-top: 10px; color: var(--red); }
+
+.editor-muted { color: var(--muted); }
+.editor-repeat-row { display: flex; align-items: center; gap: 8px; }
+.editor-grid .editor-repeat-row input[type='number'] { width: 72px; }
+.editor-grid .editor-repeat-row select { width: auto; }
+.editor-days { display: flex; gap: 4px; }
+.editor-days button {
+  flex: 1; height: 26px; font: 500 11px/1 var(--mono); color: var(--muted); background: var(--bg);
+  border: 1px solid var(--line-strong); border-radius: 4px;
+}
+.editor-days button.on { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+.editor-days button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

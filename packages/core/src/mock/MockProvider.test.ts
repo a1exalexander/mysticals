@@ -37,6 +37,24 @@ describe('mock api isolation', () => {
     expect(await runs()).toHaveLength(0)
   })
 
+  it('creates repeating events and changes or stops their rule', async () => {
+    const api = createMockApi(() => {})
+    const range = { start: '2026-01-01T00:00:00Z', end: '2026-03-01T00:00:00Z' }
+    const gyms = async () => (await api.events.list(range)).filter((e) => e.title === 'Gym weekly').map((e) => e.start.slice(0, 10)).sort()
+    const first = await api.events.create({ accountId: 'work', calendarId: 'work-main', title: 'Gym weekly', start: '2026-01-05T18:00:00.000Z', end: '2026-01-05T19:00:00.000Z', allDay: false, recurrence: { freq: 'weekly', byDay: ['MO', 'TH'], count: 4 } })
+    expect(await gyms()).toEqual(['2026-01-05', '2026-01-08', '2026-01-12', '2026-01-15'])
+    expect(await api.events.recurrence(first)).toEqual({ freq: 'weekly', byDay: ['MO', 'TH'], count: 4 })
+    const [, second] = (await api.events.list(range)).filter((e) => e.title === 'Gym weekly').sort((a, b) => a.start.localeCompare(b.start))
+    await api.events.update({ ...second, recurrence: { freq: 'daily', count: 3 } }, 'following')
+    expect(await gyms()).toEqual(['2026-01-05', '2026-01-08', '2026-01-09', '2026-01-10'])
+    await api.events.update({ ...first, recurrence: null }, 'all')
+    expect(await gyms()).toEqual(['2026-01-05', '2026-01-08', '2026-01-09', '2026-01-10'])
+    const single = await api.events.create({ accountId: 'work', calendarId: 'work-main', title: 'Once', start: '2026-01-06', end: '2026-01-07', allDay: true })
+    expect(await api.events.recurrence(single)).toBeNull()
+    await api.events.update({ ...single, recurrence: { freq: 'monthly', count: 2 } })
+    expect((await api.events.list(range)).filter((e) => e.title === 'Once').map((e) => e.start)).toEqual(['2026-01-06', '2026-02-06'])
+  })
+
   it('edits recurring instances by scope', async () => {
     const api = createMockApi(() => {})
     const range = { start: new Date(Date.now() - 7 * 864e5).toISOString(), end: new Date(Date.now() + 7 * 864e5).toISOString() }

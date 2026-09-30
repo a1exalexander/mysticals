@@ -236,6 +236,62 @@ describe('provider', () => {
     })
   })
 
+  describe('repeat rules', () => {
+    const master: GEvent = {
+      id: 'series1',
+      start: { dateTime: '2026-09-01T10:00:00+03:00', timeZone: 'Europe/Kyiv' },
+      end: { dateTime: '2026-09-01T10:30:00+03:00', timeZone: 'Europe/Kyiv' },
+      organizer: { email: 'me@gmail.com', self: true },
+      recurrence: ['RRULE:FREQ=DAILY;COUNT=30', 'EXDATE;TZID=Europe/Kyiv:20260905T100000']
+    }
+    const inst = mapEvent({ ...invite, id: 'series1_20260923T070000Z', organizer: { email: 'me@gmail.com', self: true }, originalStartTime: invite.start }, 'acc1', 'primary')
+
+    it('reads the series rule; a single event has none', async () => {
+      respond = () => Response.json(master)
+      expect(await provider().getRecurrence(inst)).toEqual({ freq: 'daily', count: 30 })
+      expect(await provider().getRecurrence(mapEvent(own, 'acc1', 'primary'))).toBeNull()
+      expect(calls).toHaveLength(1)
+    })
+
+    it('creates a repeating event with a time zone', async () => {
+      respond = (c) => Response.json({ ...c.body, id: 'n1' })
+      await provider().createEvent('primary', { accountId: 'acc1', calendarId: 'primary', title: 'Gym', start: '2026-09-23T16:00:00.000Z', end: '2026-09-23T17:00:00.000Z', allDay: false, recurrence: { freq: 'weekly', count: 4 } })
+      expect(calls[0].body).toMatchObject({ recurrence: ['RRULE:FREQ=WEEKLY;COUNT=4'], start: { dateTime: '2026-09-23T16:00:00.000Z', timeZone: expect.any(String) } })
+    })
+
+    it('makes a single event repeat', async () => {
+      respond = () => Response.json(own)
+      await provider().updateEvent({ ...mapEvent(own, 'acc1', 'primary'), recurrence: { freq: 'yearly' } })
+      expect(calls[0].method).toBe('PATCH')
+      expect(calls[0].body).toMatchObject({ recurrence: ['RRULE:FREQ=YEARLY'], start: { date: '2026-09-23', dateTime: null } })
+    })
+
+    it('all: a new rule replaces the RRULE and keeps EXDATEs', async () => {
+      respond = () => Response.json(master)
+      await provider().updateEvent({ ...inst, recurrence: { freq: 'weekly', interval: 2 } }, 'all')
+      expect(calls[1].body.recurrence).toEqual(['RRULE:FREQ=WEEKLY;INTERVAL=2', 'EXDATE;TZID=Europe/Kyiv:20260905T100000'])
+      expect(calls[1].body.start).toMatchObject({ dateTime: '2026-09-01T07:00:00.000Z', timeZone: 'Europe/Kyiv' })
+    })
+
+    it('all: stop repeating leaves just this event, at its own time', async () => {
+      respond = () => Response.json(master)
+      await provider().updateEvent({ ...inst, recurrence: null }, 'all')
+      expect(calls[1].body).toMatchObject({ recurrence: [], start: { dateTime: inst.start, timeZone: 'Europe/Kyiv' } })
+    })
+
+    it('following: the new series takes the new rule, or none', async () => {
+      respond = (c) => (c.method === 'POST' ? Response.json({ ...c.body, id: 'series2' }) : Response.json(master))
+      const weekly = await provider().updateEvent({ ...inst, recurrence: { freq: 'weekly' } }, 'following')
+      expect(calls.map((c) => c.method)).toEqual(['GET', 'PATCH', 'POST'])
+      expect(calls[2].body.recurrence).toEqual(['RRULE:FREQ=WEEKLY'])
+      expect(weekly.recurringEventId).toBe('series2')
+      calls.length = 0
+      const single = await provider().updateEvent({ ...inst, recurrence: null }, 'following')
+      expect(calls[2].body.recurrence).toBeUndefined()
+      expect(single.recurringEventId).toBeUndefined()
+    })
+  })
+
   describe('shiftAnchor', () => {
     it('moves all-day series by days and switches between timed and all-day', () => {
       expect(shiftAnchor({ date: '2026-09-01' }, { date: '2026-09-10' }, '2026-09-12', true, 'UTC')).toEqual({ date: '2026-09-03' })

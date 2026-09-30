@@ -25,6 +25,18 @@ const ordered = <T extends { start: string; end: string }>(v: T): boolean => Dat
 
 const Range = z.object({ start: isoDateOrTime, end: isoDateOrTime }).refine(ordered, 'end before start')
 
+const Recurrence = z
+  .object({
+    freq: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
+    interval: z.number().int().min(1).max(999).optional(),
+    byDay: z.array(z.enum(['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'])).max(7).optional(),
+    until: z.iso.date().optional(),
+    count: z.number().int().min(1).max(999).optional(),
+    // An RRULE value kept from the provider: one line of plain RRULE parts only.
+    rule: z.string().max(1000).regex(/^[A-Z0-9=;,+-]+$/i).optional()
+  })
+  .strict()
+
 const NewEvent = z
   .object({
     accountId: id,
@@ -35,7 +47,8 @@ const NewEvent = z
     allDay: z.boolean(),
     location: text(1000).optional(),
     description: text(20000).optional(),
-    attendees: z.array(z.email()).max(500).optional()
+    attendees: z.array(z.email()).max(500).optional(),
+    recurrence: Recurrence.optional()
   })
   .refine(ordered, 'end before start')
 
@@ -57,7 +70,9 @@ const EventEdit = EventRef.extend({
   allDay: z.boolean(),
   location: text(1000).optional(),
   description: text(20000).optional(),
-  attendees: z.array(Attendee).max(500)
+  attendees: z.array(Attendee).max(500),
+  // Absent keeps the series' rule; null stops repeating.
+  recurrence: Recurrence.nullish()
 }).refine(ordered, 'end before start')
 
 const LOOPBACK = new Set(['127.0.0.1', 'localhost'])
@@ -189,10 +204,12 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
         const edit = EventEdit.parse(raw)
         const cached = writable(cachedEvent(edit))
         const how = cached.recurringEventId ? Scope.parse(scope) : 'one'
-        const { title, start, end, allDay, location, description, attendees } = edit
+        const { title, start, end, allDay, location, description, attendees, recurrence } = edit
+        if (recurrence !== undefined && cached.recurringEventId && how === 'one')
+          throw new Error('The repeat rule belongs to the series: choose “This and following” or “All events”')
         const ev = await store
           .getProvider(cached.accountId)
-          .updateEvent({ ...cached, title, start, end, allDay, location, description, attendees }, how)
+          .updateEvent({ ...cached, title, start, end, allDay, location, description, attendees, ...(recurrence !== undefined ? { recurrence } : {}) }, how)
         if (how === 'one') upsert(ev, cached.accountId, cached.calendarId)
         else {
           // The series' other instances moved or split; drop the stale ones until the sync below refills them.
@@ -208,6 +225,10 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
         await store.getProvider(cached.accountId).deleteEvent(cached, how)
         applyLocal(cached.accountId, (events) => events.filter((e) => !deletedBy(cached, how, e)))
         syncOne(cached.accountId)
+      },
+      recurrence: async (raw) => {
+        const cached = cachedEvent(EventRef.parse(raw))
+        return store.getProvider(cached.accountId).getRecurrence(cached)
       },
       respond: async (raw, status) => {
         const cached = cachedEvent(EventRef.parse(raw))

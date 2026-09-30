@@ -5,17 +5,21 @@
  *
  * Keys (overlay owns all input): tab/shift-tab or ↓/↑ move between fields, typing edits text fields, ←/→ or space
  * cycle pickers / toggle all-day, enter moves on (saves on the last field), ctrl+s saves, esc cancels.
- * Saving a recurring event asks 1 this event / 2 this and following / 3 all events (esc back to the form).
+ * Saving a recurring event asks 1 this event / 2 this and following / 3 all events (esc back to the form);
+ * a changed repeat rule offers only 2 and 3. Repeat: ←/→ cycles presets and "custom" (every / on days / stops fields).
  * Mouse: click a field to focus it (a focused picker / all-day again to cycle / toggle it); Save and Cancel buttons.
  */
 import { useEffect, useRef, useState } from 'react'
 import { Box, Text } from 'ink'
 import { format, isValid, parse } from 'date-fns'
 import {
-  applyForm, emptyForm, errorText, formFromEvent, formToInput, moveStart, setAllDay, soleId, splitEmails,
-  writableAccounts, writableCalendars, type EventForm
+  applyForm, emptyForm, errorText, formFromEvent, formToInput, moveStart, repeatChanged, setAllDay, soleId, splitEmails,
+  withLoadedRepeat, writableAccounts, writableCalendars, type EventForm
 } from '@mysticals/core/logic/editor'
-import type { CalEvent, DeleteScope } from '@mysticals/core/shared/types'
+import {
+  daysText, describe, endsText, everyText, parseDays, parseEnds, parseEvery, presetOf, presets, weekdayOf, withEnd, type PresetId
+} from '@mysticals/core/logic/recurrence'
+import type { CalEvent, DeleteScope, Recurrence } from '@mysticals/core/shared/types'
 import { useApi, useDirectory } from '../hooks'
 import { Button, Clickable, useKeys } from '../mouse'
 import { C } from '../theme'
@@ -26,20 +30,24 @@ export interface EventEditorProps {
   onClose(): void
 }
 
-type TextField = 'title' | 'startDate' | 'startTime' | 'endDate' | 'endTime' | 'location' | 'description' | 'attendees'
-type Field = TextField | 'account' | 'calendar' | 'allDay'
+type TextField =
+  | 'title' | 'startDate' | 'startTime' | 'endDate' | 'endTime' | 'location' | 'description' | 'attendees'
+  | 'repeatEvery' | 'repeatDays' | 'repeatEnds'
+type Field = TextField | 'account' | 'calendar' | 'allDay' | 'repeat'
 type Texts = Record<TextField, string>
 
 const LABELS: Record<Field, string> = {
   title: 'Title', account: 'Account', calendar: 'Calendar', allDay: 'All-day', startDate: 'Start date',
   startTime: 'Start time', endDate: 'End date', endTime: 'End time', location: 'Location', description: 'Notes',
-  attendees: 'Invitees'
+  attendees: 'Invitees', repeat: 'Repeat', repeatEvery: 'Every', repeatDays: 'On days', repeatEnds: 'Stops'
 }
 const SCOPE_KEYS: Record<string, DeleteScope> = { '1': 'one', '2': 'following', '3': 'all' }
 const HINTS: Partial<Record<Field, string>> = {
   startDate: 'YYYY-MM-DD', startTime: 'HH:mm', endDate: 'YYYY-MM-DD', endTime: 'HH:mm',
-  attendees: 'a@x.com, b@y.com', title: 'New Event'
+  attendees: 'a@x.com, b@y.com', title: 'New Event', repeatEvery: '2 weeks', repeatDays: 'mo th',
+  repeatEnds: 'never · 2026-12-31 · 10 times'
 }
+const PICKERS = new Set<Field>(['account', 'calendar', 'allDay', 'repeat'])
 
 /** Strictly parses 'YYYY-MM-DD' + 'HH:mm' into the form's local 'YYYY-MM-DDTHH:mm', or undefined. */
 function toLocal(date: string, time: string): string | undefined {
@@ -53,28 +61,58 @@ const timeTexts = (f: EventForm): Pick<Texts, 'startDate' | 'startTime' | 'endDa
   startDate: f.start.slice(0, 10), startTime: f.start.slice(11), endDate: f.end.slice(0, 10), endTime: f.end.slice(11)
 })
 
+const repeatTexts = (r: Recurrence | null, start: string): Pick<Texts, 'repeatEvery' | 'repeatDays' | 'repeatEnds'> => ({
+  repeatEvery: r ? everyText(r) : '',
+  repeatDays: daysText(r?.byDay?.length ? r.byDay : [weekdayOf(start)]),
+  repeatEnds: r ? endsText(r) : 'never'
+})
+
 const textsFrom = (f: EventForm): Texts => ({
-  title: f.title, location: f.location, description: f.description, attendees: f.attendees.join(', '), ...timeTexts(f)
+  title: f.title, location: f.location, description: f.description, attendees: f.attendees.join(', '), ...timeTexts(f),
+  ...repeatTexts(f.repeat, f.start)
 })
 
 interface State {
   form: EventForm
   texts: Texts
   focus: number
+  /** "custom" picked for the repeat rule (also shown for a rule no preset matches). */
+  custom: boolean
 }
 
-const fieldsFor = (form: EventForm, editing: boolean): Field[] => [
-  'title',
-  ...(editing ? [] : (['account', 'calendar'] as const)),
-  'allDay',
-  'startDate',
-  ...(form.allDay ? [] : (['startTime'] as const)),
-  'endDate',
-  ...(form.allDay ? [] : (['endTime'] as const)),
-  'location',
-  'description',
-  'attendees'
-]
+const isCustom = (s: Pick<State, 'form' | 'custom'>): boolean =>
+  !!s.form.repeat && !s.form.repeat.rule && (s.custom || presetOf(s.form.repeat, s.form.start) === 'custom')
+
+const fieldsFor = (s: Pick<State, 'form' | 'custom'>, editing: boolean): Field[] => {
+  const { form } = s
+  const custom = isCustom(s)
+  return [
+    'title',
+    ...(editing ? [] : (['account', 'calendar'] as const)),
+    'allDay',
+    'startDate',
+    ...(form.allDay ? [] : (['startTime'] as const)),
+    'endDate',
+    ...(form.allDay ? [] : (['endTime'] as const)),
+    'repeat',
+    ...(custom ? (['repeatEvery'] as const) : []),
+    ...(custom && form.repeat?.freq === 'weekly' ? (['repeatDays'] as const) : []),
+    ...(form.repeat && !form.repeat.rule ? (['repeatEnds'] as const) : []),
+    'location',
+    'description',
+    'attendees'
+  ]
+}
+
+/** The form's rule with the repeat text fields applied. Throws a user-facing Error. */
+function readRepeat(s: State): Recurrence | null {
+  const r = s.form.repeat
+  if (!r || r.rule) return r
+  const { until: _u, count: _c, ...base } = r
+  const rule: Recurrence = isCustom(s) ? { ...parseEvery(s.texts.repeatEvery) } : base
+  if (isCustom(s) && rule.freq === 'weekly') rule.byDay = parseDays(s.texts.repeatDays)
+  return { ...rule, ...parseEnds(s.texts.repeatEnds) }
+}
 
 export function EventEditor({ event, initialStart, onClose }: EventEditorProps) {
   const api = useApi()
@@ -91,12 +129,14 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
   const [saving, setSaving] = useState(false)
   const busy = useRef(false)
   // Which part of a recurring series the save is for, asked on save.
-  const [askScope, setAskScopeState] = useState(false)
-  const asking = useRef(false)
-  const setAskScope = (on: boolean): void => {
+  // 'rule': the repeat rule changed, which only "this and following" / "all events" can do.
+  const [askScope, setAskScopeState] = useState<false | 'any' | 'rule'>(false)
+  const asking = useRef<false | 'any' | 'rule'>(false)
+  const setAskScope = (on: false | 'any' | 'rule'): void => {
     asking.current = on
     setAskScopeState(on)
   }
+  const [repeatFailed, setRepeatFailed] = useState(false)
   const alive = useRef(true)
   useEffect(() => () => void (alive.current = false), [])
 
@@ -104,8 +144,19 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
     if (latest.current || !loaded) return
     // emptyForm rounds `now` up to the next hour, so the new event lands on the navigated day.
     const form = event ? formFromEvent(event) : emptyForm(accounts, calendars, {}, initialStart)
-    latest.current = { form, texts: textsFrom(form), focus: 0 }
+    latest.current = { form, texts: textsFrom(form), focus: 0, custom: false }
     setState(latest.current)
+    // A series' rule isn't cached: read it; until then the rule can't be changed.
+    if (event?.recurringEventId) {
+      api.events.recurrence(event).then(
+        (rule) => {
+          if (!alive.current || !latest.current) return
+          const f = withLoadedRepeat(latest.current.form, rule)
+          update({ form: f, texts: { ...latest.current.texts, ...repeatTexts(rule, f.start) } })
+        },
+        () => alive.current && setRepeatFailed(true)
+      )
+    }
   }, [loaded])
 
   const choices = writableAccounts(accounts, calendars)
@@ -113,6 +164,12 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
   const save = async (scope?: DeleteScope): Promise<void> => {
     if (!latest.current || busy.current) return
     const { form, texts } = latest.current
+    let repeat: Recurrence | null
+    try {
+      repeat = readRepeat(latest.current)
+    } catch (e) {
+      return setError(errorText(e))
+    }
     setError('')
     const start = toLocal(texts.startDate, form.allDay ? form.start.slice(11) : texts.startTime)
     const end = toLocal(texts.endDate, form.allDay ? form.end.slice(11) : texts.endTime)
@@ -121,13 +178,13 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
     const f: EventForm = {
       ...form,
       title: texts.title, location: texts.location, description: texts.description,
-      attendees: splitEmails(texts.attendees), start, end
+      attendees: splitEmails(texts.attendees), start, end, repeat
     }
     let request: Promise<unknown>
     try {
       // Both throw a user-facing Error on invalid input, before any request is sent.
       const edited = event && applyForm(event, f)
-      if (edited && event.recurringEventId && !scope) return setAskScope(true)
+      if (edited && event.recurringEventId && !scope) return setAskScope(repeatChanged(f) ? 'rule' : 'any')
       request = edited ? api.events.update(edited, scope) : api.events.create(formToInput(f))
     } catch (e) {
       return setError(errorText(e))
@@ -153,7 +210,8 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
     return items[i < 0 ? (dir > 0 ? 0 : items.length - 1) : (i + dir + items.length) % items.length].id
   }
 
-  const pick = ({ form, texts }: State, field: Field, dir: 1 | -1): void => {
+  const pick = (st: State, field: Field, dir: 1 | -1): void => {
+    const { form, texts } = st
     if (field === 'account') {
       const accountId = cycle(choices, form.accountId, dir)
       update({ form: { ...form, accountId, calendarId: soleId(writableCalendars(calendars, accountId)) } })
@@ -162,6 +220,21 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
     } else if (field === 'allDay') {
       const f = setAllDay(form, !form.allDay)
       update({ form: f, texts: { ...texts, ...timeTexts(f) } })
+    } else if (field === 'repeat') {
+      if (form.repeatWas === undefined) return // the series' rule is still loading
+      const ids: PresetId[] = [...presets(form.start).map((p) => p.id), 'custom']
+      const at = ids.indexOf(isCustom(st) ? 'custom' : presetOf(form.repeat, form.start))
+      const next = ids[(at + dir + ids.length) % ids.length]
+      // Keep what was typed into the rule's fields (its end, the custom parts) where it still applies.
+      let prev = form.repeat
+      try {
+        prev = readRepeat(st)
+      } catch {
+        // half-typed: fall back to the last valid rule
+      }
+      const preset = presets(form.start).find((p) => p.id === next)?.recurrence
+      const repeat = next === 'custom' ? (prev && !prev.rule ? prev : withEnd({ freq: 'weekly' }, prev)) : preset ? withEnd(preset, prev) : null
+      update({ form: { ...form, repeat }, custom: next === 'custom', texts: { ...texts, ...repeatTexts(repeat, form.start) } })
     }
   }
 
@@ -185,9 +258,9 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
   const clickField = (f: Field): void => {
     const s = latest.current
     if (!s || busy.current) return
-    const i = fieldsFor(s.form, !!event).indexOf(f)
+    const i = fieldsFor(s, !!event).indexOf(f)
     if (i < 0) return // fixed rows (account/calendar while editing)
-    if (i === s.focus && (f === 'account' || f === 'calendar' || f === 'allDay')) return pick(s, f, 1)
+    if (i === s.focus && PICKERS.has(f)) return pick(s, f, 1)
     update({ focus: i })
   }
 
@@ -196,9 +269,12 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
     if (key.escape) return onClose()
     const s = latest.current
     if (!s || busy.current) return
-    if (asking.current) return void (Object.hasOwn(SCOPE_KEYS, input) && save(SCOPE_KEYS[input]))
+    if (asking.current) {
+      if (!Object.hasOwn(SCOPE_KEYS, input) || (asking.current === 'rule' && SCOPE_KEYS[input] === 'one')) return
+      return void save(SCOPE_KEYS[input])
+    }
     if (key.ctrl && input === 's') return void save()
-    const fields = fieldsFor(s.form, !!event)
+    const fields = fieldsFor(s, !!event)
     const i = Math.min(s.focus, fields.length - 1)
     const field = fields[i]
     const move = (dir: 1 | -1): void => update({ focus: (i + dir + fields.length) % fields.length })
@@ -206,21 +282,22 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
     if (key.downArrow) return move(1)
     if (key.upArrow) return move(-1)
     if (key.return) return i === fields.length - 1 ? void save() : move(1)
-    if (field === 'account' || field === 'calendar' || field === 'allDay') {
+    if (PICKERS.has(field)) {
       if (key.leftArrow) pick(s, field, -1)
       else if (key.rightArrow || input === ' ') pick(s, field, 1)
       return
     }
-    if (key.backspace || key.delete) return edit(s, field, s.texts[field].slice(0, -1))
+    const text = field as TextField
+    if (key.backspace || key.delete) return edit(s, text, s.texts[text].slice(0, -1))
     if (key.ctrl || key.meta || !input) return
     // ponytail: append-only single-line editing (no cursor movement); a real cursor if users ask for it.
     const printable = input.replace(/[\u0000-\u001f\u007f]/g, '')
-    if (printable) edit(s, field, s.texts[field] + printable)
+    if (printable) edit(s, text, s.texts[text] + printable)
   })
 
   if (!state) return <Text color={C.muted}>Loading…</Text>
   const { form, texts } = state
-  const fields = fieldsFor(form, !!event)
+  const fields = fieldsFor(state, !!event)
   const current = fields[Math.min(state.focus, fields.length - 1)]
 
 
@@ -238,6 +315,11 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
         return calendar ? { text: calendar.name } : { text: '‹ choose calendar ›', dim: true }
       case 'allDay':
         return { text: form.allDay ? '[x]' : '[ ]' }
+      case 'repeat':
+        if (form.repeatWas === undefined) return { text: repeatFailed ? 'couldn’t load; stays as it is' : 'loading…', dim: true }
+        if (form.repeat?.rule) return { text: describe(form.repeat, form.start) }
+        if (isCustom(state)) return { text: 'Custom' }
+        return { text: presets(form.start).find((p) => p.id === presetOf(form.repeat, form.start))!.label }
       default:
         return texts[f] ? { text: texts[f] } : { text: HINTS[f] ?? '', dim: true }
     }
@@ -252,7 +334,7 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
       {rows.map((f) => {
         const on = f === current
         const v = value(f)
-        const picker = !event && (f === 'account' || f === 'calendar')
+        const picker = (!event && (f === 'account' || f === 'calendar')) || f === 'repeat'
         return (
           <Clickable key={f} onClick={() => clickField(f)}>
             <Text color={on ? C.cyan : undefined}>{on ? '› ' : '  '}{LABELS[f].padEnd(11)}</Text>
@@ -273,8 +355,8 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
         <Text color={C.yellow}>Saving…</Text>
       ) : askScope ? (
         <Box flexWrap="wrap">
-          <Text color={C.yellow}>Save recurring event: </Text>
-          <Button k="1" label="this event" color={C.green} onPress={() => void save('one')} />
+          <Text color={C.yellow}>{askScope === 'rule' ? 'Change the repeat rule for: ' : 'Save recurring event: '}</Text>
+          {askScope !== 'rule' && <Button k="1" label="this event" color={C.green} onPress={() => void save('one')} />}
           <Button k="2" label="this and following" color={C.green} onPress={() => void save('following')} />
           <Button k="3" label="all events" color={C.green} onPress={() => void save('all')} />
           <Button k="esc" label="back" onPress={() => setAskScope(false)} />

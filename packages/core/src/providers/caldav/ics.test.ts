@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyDeleteFollowing, applyDeleteInstance, applyRespond, applySplitFollowing, applyUpdate, applyUpdateSeries, buildIcs, mapPartStat, parseEvents,
-  type CaldavRaw
+  recurrenceOf, type CaldavRaw
 } from './ics'
 
 const ctx = { accountId: 'work', calendarId: 'https://dav.example/cal/', email: 'Me@Work.example' }
@@ -357,5 +357,64 @@ describe('applySplitFollowing', () => {
 
   it('returns null from the first instance so the whole series is edited', () => {
     expect(applySplitFollowing({ ...evs[0], title: 'X' }, ctx.email, 'u')).toBeNull()
+  })
+})
+
+describe('repeat rules', () => {
+  const evs = parseEvents(DAILY, HREF, undefined, ctx, JAN)
+  const starts = (ics: string, href = HREF) => parseEvents(ics, href, undefined, ctx, JAN).map((e) => e.start.slice(0, 16))
+
+  it('reads the series rule, and null for a single event', () => {
+    expect(recurrenceOf(evs[0].raw as CaldavRaw)).toEqual({ freq: 'daily', count: 5 })
+    const [single] = parseEvents(ALLDAY, HREF, undefined, ctx, JAN)
+    expect(recurrenceOf(single.raw as CaldavRaw)).toBeNull()
+  })
+
+  it('creates a repeating event', () => {
+    const ics = buildIcs('u1', { accountId: 'a', calendarId: 'c', title: 'Gym', start: '2026-01-05T18:00:00.000Z', end: '2026-01-05T19:00:00.000Z', allDay: false, recurrence: { freq: 'weekly', byDay: ['MO', 'WE'], count: 4 } }, ctx.email)
+    expect(ics).toMatch(/RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=MO,WE/)
+    expect(starts(ics)).toEqual(['2026-01-05T18:00', '2026-01-07T18:00', '2026-01-12T18:00', '2026-01-14T18:00'])
+  })
+
+  it('makes a single event repeat', () => {
+    const [single] = parseEvents(ALLDAY, HREF, undefined, ctx, JAN)
+    const out = applyUpdate({ ...single, recurrence: { freq: 'weekly', count: 2 } }, ctx.email)
+    expect(starts(out)).toEqual(['2026-01-10', '2026-01-17'])
+  })
+
+  it('all: a new rule drops the exceptions it has no slot for', () => {
+    // Daily from Jan 5 -> every 2 days (5, 7, 9): the Jan 8 override has no slot any more; the Jan 7 EXDATE still does.
+    const out = applyUpdateSeries({ ...evs[0], recurrence: { freq: 'daily', interval: 2, count: 3 } }, ctx.email)
+    expect(out).toMatch(/RRULE:FREQ=DAILY;COUNT=3;INTERVAL=2/)
+    expect(out).not.toMatch(/RECURRENCE-ID/)
+    expect(out).toMatch(/EXDATE:20260107T090000Z/)
+    expect(starts(out)).toEqual(['2026-01-05T09:00', '2026-01-09T09:00'])
+  })
+
+  it('all: a weekly rule drops an EXDATE off its days', () => {
+    const out = applyUpdateSeries({ ...evs[0], recurrence: { freq: 'weekly' } }, ctx.email)
+    expect(out).not.toMatch(/EXDATE|RECURRENCE-ID/)
+  })
+
+  it('all: a new rule keeps exceptions still on a slot', () => {
+    const out = applyUpdateSeries({ ...evs[1], recurrence: { freq: 'daily' } }, ctx.email)
+    expect(out).toMatch(/EXDATE:20260107T090000Z/)
+    expect(out).toMatch(/RECURRENCE-ID:20260108T090000Z/)
+  })
+
+  it('all: stop repeating keeps just the edited event', () => {
+    const out = applyUpdateSeries({ ...evs[1], title: 'Once', recurrence: null }, ctx.email)
+    const all = parseEvents(out, HREF, undefined, ctx, JAN)
+    expect(all.map((e) => [e.title, e.start])).toEqual([['Once', '2026-01-06T09:00:00.000Z']])
+    expect(all[0].recurringEventId).toBeUndefined()
+  })
+
+  it('following: the new series gets the new rule, or none', () => {
+    const weekly = applySplitFollowing({ ...evs[1], recurrence: { freq: 'weekly', count: 2 } }, ctx.email, 'n1')!
+    expect(weekly.next).toMatch(/RRULE:FREQ=WEEKLY;COUNT=2/)
+    expect(starts(weekly.next, 'n')).toEqual(['2026-01-06T09:00', '2026-01-13T09:00'])
+    const single = applySplitFollowing({ ...evs[1], recurrence: null }, ctx.email, 'n2')!
+    expect(single.next).not.toMatch(/RRULE|RECURRENCE-ID|EXDATE/)
+    expect(starts(single.next, 'n')).toEqual(['2026-01-06T09:00'])
   })
 })

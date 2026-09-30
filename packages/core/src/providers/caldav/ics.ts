@@ -1,6 +1,7 @@
 // Pure ICS parse/map/serialize logic for the CalDAV provider. No network here.
 import ICAL from 'ical.js'
-import type { Attendee, CalEvent, NewEventInput, PartStat, TimeRange } from '../../shared/types'
+import type { Attendee, CalEvent, NewEventInput, PartStat, Recurrence, TimeRange } from '../../shared/types'
+import { fromRRule, toRRule } from '../../logic/recurrence'
 
 /** Provider payload stored in CalEvent.raw. */
 export interface CaldavRaw {
@@ -170,8 +171,47 @@ export function buildIcs(uid: string, input: NewEventInput, email: string): stri
   setText(v, 'location', input.location)
   setText(v, 'description', input.description)
   setAttendees(v, input.attendees ?? [], email)
+  if (input.recurrence) setRule(v, input.recurrence, input.allDay)
   root.addSubcomponent(v)
   return root.toString()
+}
+
+function setRule(v: ICAL.Component, r: Recurrence, allDay: boolean): void {
+  v.removeAllProperties('rrule')
+  v.addPropertyWithValue('rrule', ICAL.Recur.fromString(toRRule(r, allDay)))
+}
+
+/** The series rule of a CalDAV event (from its stored ICS), null for a single event. */
+export function recurrenceOf(raw: CaldavRaw): Recurrence | null {
+  const master = findMaster(parse(raw.ics))
+  const rule = master?.getFirstPropertyValue('rrule') as ICAL.Recur | null | undefined
+  return master && rule ? fromRRule(rule.toString(), toIso(dtstart(master))) : null
+}
+
+/**
+ * Give the series `event.recurrence` (after its fields were rewritten): a new RRULE, dropping the
+ * EXDATEs and overrides it no longer has a slot for; or, for null, just the edited event on its own.
+ */
+function applyRule(root: ICAL.Component, master: ICAL.Component, event: CalEvent): void {
+  if (event.recurrence === undefined) return
+  const overrides = root.getAllSubcomponents('vevent').filter((v) => v !== master)
+  if (event.recurrence === null) {
+    for (const n of ['rrule', 'rdate', 'exdate']) master.removeAllProperties(n)
+    for (const o of overrides) root.removeSubcomponent(o)
+    master.addProperty(replaceTime(master, 'dtstart', fromIso(event.start, event.allDay)))
+    master.addProperty(replaceTime(master, 'dtend', fromIso(event.end, event.allDay)))
+    return
+  }
+  setRule(master, event.recurrence, event.allDay)
+  const ms = (t: ICAL.Time): number => t.toJSDate().getTime()
+  const rid = (o: ICAL.Component): ICAL.Time => o.getFirstPropertyValue('recurrence-id') as ICAL.Time
+  const exdates = master.getAllProperties('exdate').flatMap((p) => p.getValues()).filter((t): t is ICAL.Time => t instanceof ICAL.Time)
+  const last = Math.max(-Infinity, ...overrides.map((o) => ms(rid(o))), ...exdates.map(ms))
+  const slots = new Set<number>()
+  const it = (master.getFirstPropertyValue('rrule') as ICAL.Recur).iterator(dtstart(master))
+  for (let t = it.next(), n = 0; t && ms(t) <= last && n < MAX_INSTANCES; t = it.next(), n++) slots.add(ms(t))
+  for (const o of overrides) if (!slots.has(ms(rid(o)))) root.removeSubcomponent(o)
+  mapDates(master, 'exdate', (t) => (slots.has(ms(t)) ? t : null))
 }
 
 /**
@@ -248,7 +288,10 @@ function targetVevent(root: ICAL.Component, raw: CaldavRaw): ICAL.Component {
 export function applyUpdate(event: CalEvent, email: string): string {
   const raw = event.raw as CaldavRaw
   const root = parse(raw.ics)
-  writeEdit(targetVevent(root, raw), event, email, fromIso(event.start, event.allDay), fromIso(event.end, event.allDay))
+  const v = targetVevent(root, raw)
+  writeEdit(v, event, email, fromIso(event.start, event.allDay), fromIso(event.end, event.allDay))
+  // A single event can start repeating here; a series' rule changes via applyUpdateSeries / applySplitFollowing.
+  if (event.recurrence && !raw.recurrenceId && !v.hasProperty('rrule')) setRule(v, event.recurrence, event.allDay)
   return root.toString()
 }
 
@@ -417,6 +460,7 @@ export function applyUpdateSeries(event: CalEvent, email: string): string {
   const edited = findOverride(root, raw.recurrenceId)
   const shift = slotShift(master, instanceStart(master, edited, raw.recurrenceId), event)
   rewriteSeries(root, master, edited, event, email, shift, dtstart(master))
+  applyRule(root, master, event)
   return root.toString()
 }
 
@@ -445,8 +489,9 @@ export function applySplitFollowing(event: CalEvent, email: string, uid: string)
   mapDates(master, 'exdate', later)
   mapDates(master, 'rdate', later)
   // COUNT counts RRULE slots (EXDATEs included), so the new series gets what the old one had left.
+  // A new rule (applyRule below) starts counting afresh.
   const first = dtstart(master)
-  for (const p of master.getAllProperties('rrule')) {
+  for (const p of event.recurrence === undefined ? master.getAllProperties('rrule') : []) {
     const r = (p.getFirstValue() as ICAL.Recur).clone()
     if (!r.count) continue
     const it = r.iterator(first)
@@ -461,6 +506,7 @@ export function applySplitFollowing(event: CalEvent, email: string, uid: string)
     v.updatePropertyWithValue('created', ICAL.Time.now())
   }
   rewriteSeries(root, master, edited, event, email, shift, slot)
+  applyRule(root, master, event)
   return { rest, next: root.toString() }
 }
 

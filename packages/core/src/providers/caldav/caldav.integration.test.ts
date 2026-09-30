@@ -100,6 +100,31 @@ describe.skipIf(!url)('CalDAV provider against a real server', () => {
     expect(evs.map((e) => e.title)).toEqual(['Daily', 'Daily', 'Sync', 'Sync', 'Sync'])
   })
 
+  it('creates a repeating event, changes its rule and stops it', async () => {
+    const calUrl = new URL(`${encodeURIComponent(username)}/test-${randomUUID()}/`, url).href
+    await makeCalendar({ url: calUrl, props: { 'd:displayname': 'Rules' }, headers: getBasicAuthHeaders({ username, password }) })
+    const p = createCaldavProvider({ accountId: 'acc', email: username, credentials: { kind: 'caldav', serverUrl: url!, username, password }, saveCredentials: async () => {} })
+    const range = { start: '2026-03-01T00:00:00.000Z', end: '2026-05-01T00:00:00.000Z' }
+    const list = async () => (await p.listEvents(calUrl, range)).sort((a, b) => a.start.localeCompare(b.start))
+
+    const first = await p.createEvent(calUrl, { accountId: 'acc', calendarId: calUrl, title: 'Gym', start: '2026-03-02T18:00:00.000Z', end: '2026-03-02T19:00:00.000Z', allDay: false, recurrence: { freq: 'daily', count: 3 } })
+    expect(first.start).toBe('2026-03-02T18:00:00.000Z')
+    expect((await list()).map((e) => e.start.slice(0, 10))).toEqual(['2026-03-02', '2026-03-03', '2026-03-04'])
+    expect(await p.getRecurrence(first)).toEqual({ freq: 'daily', count: 3 })
+
+    await p.updateEvent({ ...(await list())[0], recurrence: { freq: 'weekly', count: 2 } }, 'all')
+    expect((await list()).map((e) => e.start.slice(0, 10))).toEqual(['2026-03-02', '2026-03-09'])
+
+    await p.updateEvent({ ...(await list())[1], title: 'Once', recurrence: null }, 'all')
+    const evs = await list()
+    expect(evs.map((e) => [e.title, e.start.slice(0, 10)])).toEqual([['Once', '2026-03-09']])
+    expect(evs[0].recurringEventId).toBeUndefined()
+
+    const repeated = await p.updateEvent({ ...evs[0], recurrence: { freq: 'monthly', count: 2 } })
+    expect(repeated.recurringEventId).toBeTruthy()
+    expect((await list()).map((e) => e.start.slice(0, 10))).toEqual(['2026-03-09', '2026-04-09'])
+  })
+
   it('rejects a bad URL with a readable error', async () => {
     await expect(verifyCaldav({ label: 'x', serverUrl: 'not a url', username, password })).rejects.toThrow(/Invalid server URL/)
   })

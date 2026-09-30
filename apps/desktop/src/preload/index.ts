@@ -27,7 +27,8 @@ const api: Api = {
     create: call(IPC.eventsCreate),
     update: call(IPC.eventsUpdate),
     delete: call(IPC.eventsDelete),
-    respond: call(IPC.eventsRespond)
+    respond: call(IPC.eventsRespond),
+    recurrence: call(IPC.eventsRecurrence)
   },
   sync: { now: call(IPC.syncNow) },
   onChanged: (cb) => on<string>(IPC.changed, cb),

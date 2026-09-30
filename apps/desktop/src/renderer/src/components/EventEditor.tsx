@@ -4,9 +4,10 @@ import { bus, type BusEvents } from '../bus'
 import { useDirectory } from './ui/useDirectory'
 import { DateTimeField } from './ui/DateTimeField'
 import { RecurringScope } from './ui/RecurringScope'
+import { RepeatField } from './ui/RepeatField'
 import {
-  applyForm, emptyForm, setAllDay, errorText, formFromEvent, formToInput, isEmail, moveStart, soleId, splitEmails,
-  writableAccounts, writableCalendars, type EventForm
+  applyForm, emptyForm, setAllDay, errorText, formFromEvent, formToInput, isEmail, moveStart, repeatChanged, soleId, splitEmails,
+  withLoadedRepeat, writableAccounts, writableCalendars, type EventForm
 } from '@mysticals/core/logic/editor'
 import './ui/ui.css'
 import './EventEditor.css'
@@ -23,6 +24,7 @@ export function EventEditorHost(): React.JSX.Element | null {
   const [saving, setSaving] = useState(false)
   // Saving a recurring event first asks which part of the series the edit is for.
   const [askScope, setAskScope] = useState(false)
+  const [repeatFailed, setRepeatFailed] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
   const session = useRef(0) // bumps on every open/close so a late save can't touch a newer editor
 
@@ -31,6 +33,7 @@ export function EventEditorHost(): React.JSX.Element | null {
       session.current++
       setSaving(false)
       setAskScope(false)
+      setRepeatFailed(false)
       setOpened(o)
       setForm(null)
       setDraft('')
@@ -48,6 +51,14 @@ export function EventEditorHost(): React.JSX.Element | null {
     if (!opened || form || !loaded) return
     setForm(opened.mode === 'edit' ? formFromEvent(opened.event) : emptyForm(accounts, calendars, opened.prefill))
     requestAnimationFrame(() => titleRef.current?.focus())
+    // A series' rule isn't cached: read it from the provider; until then the rule can't be changed.
+    if (opened.mode === 'edit' && opened.event.recurringEventId) {
+      const mine = session.current
+      window.api.events.recurrence(opened.event).then(
+        (rule) => session.current === mine && setForm((f) => f && withLoadedRepeat(f, rule)),
+        () => session.current === mine && setRepeatFailed(true)
+      )
+    }
   }, [opened, form, loaded, accounts, calendars])
 
   const close = (): void => {
@@ -176,6 +187,13 @@ export function EventEditorHost(): React.JSX.Element | null {
           <label>Ends</label>
           <DateTimeField label="Ends" value={form.end} dateOnly={form.allDay} onChange={(end) => set({ end })} />
 
+          <RepeatField
+            value={form.repeat}
+            start={form.start}
+            status={form.repeatWas === undefined ? (repeatFailed ? 'error' : 'loading') : undefined}
+            onChange={(repeat) => set({ repeat })}
+          />
+
           <label>Location</label>
           <input placeholder="Add location" value={form.location} onChange={(e) => set({ location: e.target.value })} />
 
@@ -221,7 +239,14 @@ export function EventEditorHost(): React.JSX.Element | null {
         {error && <div className="editor-error" role="alert">{error}</div>}
 
         {askScope ? (
-          <RecurringScope title="Save recurring event" busy={saving} onPick={(scope) => void save(scope)} onCancel={() => setAskScope(false)} />
+          <RecurringScope
+            title={repeatChanged(form) ? 'Change the repeat rule for' : 'Save recurring event'}
+            // The rule belongs to the series: no "this event only" for a rule change.
+            scopes={repeatChanged(form) ? ['following', 'all'] : undefined}
+            busy={saving}
+            onPick={(scope) => void save(scope)}
+            onCancel={() => setAskScope(false)}
+          />
         ) : (
           <div className="mc-actions">
             <button type="button" className="mc-btn" onClick={close}>Cancel</button>

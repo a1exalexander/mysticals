@@ -113,6 +113,19 @@ describe('createApi isolation', () => {
     expect(vi.mocked(providers.work.updateEvent).mock.calls[3][1]).toBe('one')
   })
 
+  it('a new repeat rule needs a series scope; a single event can start repeating; bad rules are refused', async () => {
+    const { api, providers, invite } = setup()
+    const run = { ...invite, id: 'run-1', recurringEventId: 'runs' }
+    providers.work.events.push(run)
+    await expect(api.events.update({ ...run, recurrence: { freq: 'weekly' } }, 'one')).rejects.toThrow(/belongs to the series/)
+    await expect(api.events.update({ ...run, recurrence: { freq: 'hourly' } as never }, 'all')).rejects.toThrow()
+    await expect(api.events.update({ ...run, recurrence: { freq: 'daily', rule: 'FREQ=DAILY\r\nX' } }, 'all')).rejects.toThrow()
+    await api.events.update({ ...invite, recurrence: { freq: 'daily', count: 2 } })
+    expect(vi.mocked(providers.work.updateEvent).mock.calls.at(-1)![0].recurrence).toEqual({ freq: 'daily', count: 2 })
+    await api.events.update({ ...run, title: 'no rule change' }, 'one')
+    expect(vi.mocked(providers.work.updateEvent).mock.calls.at(-1)![0]).not.toHaveProperty('recurrence')
+  })
+
   it('a series edit drops the affected cached instances until the sync refills them', async () => {
     const { api, providers, invite, sync } = setup()
     const run = { ...invite, id: 'run-1', recurringEventId: 'runs' }

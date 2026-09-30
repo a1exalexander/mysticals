@@ -5,12 +5,15 @@ const SCOPES: [DeleteScope, string][] = [['one', 'This event'], ['following', 'T
 /** "This event / This and following / All events" choice for a change to a recurring event. */
 export function RecurringScope({
   title,
+  scopes,
   danger,
   busy,
   onPick,
   onCancel
 }: {
   title: string
+  /** The choices offered (default all three). */
+  scopes?: DeleteScope[]
   danger?: boolean
   busy?: boolean
   onPick: (scope: DeleteScope) => void
@@ -19,7 +22,7 @@ export function RecurringScope({
   return (
     <div className="mc-actions mc-scope" role="group" aria-label={title}>
       <span>{title}</span>
-      {SCOPES.map(([scope, label]) => (
+      {SCOPES.filter(([scope]) => !scopes || scopes.includes(scope)).map(([scope, label]) => (
         <button key={scope} type="button" className={danger ? 'mc-btn danger' : 'mc-btn'} disabled={busy} onClick={() => onPick(scope)}>
           {label}
         </button>
