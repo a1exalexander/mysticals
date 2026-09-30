@@ -3,6 +3,7 @@ import { addDays, subDays } from 'date-fns'
 import type { CalEvent, DeleteScope, PartStat } from '@shared/types'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
+import { RecurringScope } from './ui/RecurringScope'
 import { canEdit, cleanNotes, formatWhen, linkify, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
 import { eventBounds } from '@mysticals/core/logic/layout'
@@ -11,7 +12,6 @@ import './EventDetails.css'
 
 type Reply = Exclude<PartStat, 'needsAction'>
 const REPLIES: [Reply, string][] = [['accepted', 'Accept'], ['tentative', 'Maybe'], ['declined', 'Decline']]
-const SCOPES: [DeleteScope, string][] = [['one', 'This event'], ['following', 'This and following'], ['all', 'All events']]
 const W = 320
 const GAP = 8
 
@@ -236,15 +236,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
 
         {editable && !gone &&
           (confirmDelete && event.recurringEventId ? (
-            <div className="mc-actions details-confirm recurring">
-              <span>Delete recurring event</span>
-              {SCOPES.map(([scope, label]) => (
-                <button key={scope} type="button" className="mc-btn danger" disabled={busy} onClick={() => remove(scope)}>
-                  {label}
-                </button>
-              ))}
-              <button type="button" className="mc-btn" onClick={() => setConfirmDelete(false)}>Cancel</button>
-            </div>
+            <RecurringScope title="Delete recurring event" danger busy={busy} onPick={remove} onCancel={() => setConfirmDelete(false)} />
           ) : confirmDelete ? (
             <div className="mc-actions details-confirm">
               <span>Delete this event?</span>

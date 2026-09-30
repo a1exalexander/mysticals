@@ -57,9 +57,27 @@ export interface CalEvent {
   raw?: unknown
   /** Recurrence instance marker; providers expand series into instances. */
   recurringEventId?: string
+  /** Edits only: the series' new repeat rule (null stops repeating). Absent keeps the rule. Read it with events.recurrence. */
+  recurrence?: Recurrence | null
 }
 
-/** Which part of a recurring series a delete removes. Ignored for single events. */
+export type Weekday = 'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU'
+
+/** How an event repeats (a subset of RFC 5545 RRULE the app can edit). */
+export interface Recurrence {
+  freq: 'daily' | 'weekly' | 'monthly' | 'yearly'
+  /** Every N periods; default 1. */
+  interval?: number
+  /** Weekly only: the days it happens on (default: the start's weekday). */
+  byDay?: Weekday[]
+  /** Last day it may happen on, 'YYYY-MM-DD' (inclusive). */
+  until?: string
+  count?: number
+  /** An RRULE the app can't edit (e.g. "2nd Tuesday"): shown read-only and kept as-is. */
+  rule?: string
+}
+
+/** Which part of a recurring series a delete removes or an edit changes. Ignored for single events. */
 export type DeleteScope = 'one' | 'following' | 'all'
 
 export interface NewEventInput {
@@ -73,6 +91,7 @@ export interface NewEventInput {
   description?: string
   /** Emails to invite. Never filled automatically. */
   attendees?: string[]
+  recurrence?: Recurrence
 }
 
 export interface TimeRange {

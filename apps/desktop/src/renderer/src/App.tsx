@@ -8,6 +8,7 @@ import { SettingsHost } from './components/Settings'
 import { StatusBar } from './components/StatusBar'
 import { EventTooltipHost } from './components/EventTooltip'
 import { ToastHost } from './components/Toast'
+import { ScopePromptHost } from './components/ScopePrompt'
 import { useDirectory } from './components/ui/useDirectory'
 
 // Layout shell. Each child is owned by a different unit; communicate via ./bus.
@@ -33,6 +34,7 @@ export function App(): React.JSX.Element {
       <SettingsHost />
       <EventTooltipHost />
       <ToastHost />
+      <ScopePromptHost />
       <div className="app-loader" data-done={done} aria-hidden={done} role="status" aria-label="Loading">
         <div className="app-loader-term">
           <div><span className="app-loader-prompt">~ $</span> mysticals --sync</div>

@@ -25,6 +25,114 @@ test('recurring delete: "This and following" keeps earlier instances only', asyn
   await app.close()
 })
 
+test('recurring edit: saving asks the scope; "All events" renames every instance', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 1200, height: 800 })
+  await page.getByTestId('view-switch-day').click()
+  const titles = async (): Promise<string[]> =>
+    (await page.evaluate((r) => window.api.events.list(r), range)).filter((e) => e.recurringEventId === 'run-series').map((e) => e.title)
+
+  await page.getByTestId('event-block').filter({ hasText: 'Morning run' }).first().click()
+  await page.getByTestId('details').getByRole('button', { name: 'Edit' }).click()
+  const editor = page.getByTestId('editor')
+  await editor.getByPlaceholder('Title').fill('Evening run')
+  await page.getByTestId('editor-save').click()
+  const scope = editor.getByRole('group', { name: 'Save recurring event' })
+  await expect(scope).toBeVisible()
+  await page.screenshot({ path: 'e2e/screens/recurring-edit.png' })
+  // Esc goes back to the form without saving.
+  await page.keyboard.press('Escape')
+  await expect(scope).toBeHidden()
+  await expect(editor).toBeVisible()
+  await page.getByTestId('editor-save').click()
+  await scope.getByRole('button', { name: 'All events' }).click()
+  await expect(editor).toBeHidden()
+  await expect.poll(titles).toEqual(Array(7).fill('Evening run'))
+  await app.close()
+})
+
+test('recurring drag: asks the scope; "This event" moves one instance, Cancel moves none', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 1200, height: 800 })
+  await page.getByTestId('view-switch-day').click()
+  const starts = async (): Promise<string[]> =>
+    (await page.evaluate((r) => window.api.events.list(r), range)).filter((e) => e.recurringEventId === 'run-series').map((e) => e.start).sort()
+  const before = await starts()
+  const drag = async (): Promise<void> => {
+    const run = page.getByTestId('event-block').filter({ hasText: 'Morning run' }).first()
+    await run.scrollIntoViewIfNeeded()
+    const box = (await run.boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + 8)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width / 2, box.y + 32, { steps: 4 })
+    await page.mouse.move(box.x + box.width / 2, box.y + 56, { steps: 4 })
+    await page.mouse.up()
+  }
+  const prompt = page.getByTestId('scope-prompt')
+
+  await drag()
+  await expect(prompt).toContainText('Move recurring event')
+  await page.waitForTimeout(250)
+  await page.screenshot({ path: 'e2e/screens/recurring-drag.png' })
+  await prompt.getByRole('button', { name: 'Cancel' }).click()
+  await expect(prompt).toBeHidden()
+  expect(await starts()).toEqual(before)
+
+  await drag()
+  await prompt.getByRole('button', { name: 'This event' }).click()
+  await expect(page.getByTestId('toast')).toContainText('Moved “Morning run”')
+  await expect.poll(async () => (await starts()).filter((s) => !before.includes(s))).toHaveLength(1)
+  await app.close()
+})
+
+test('repeat rule: create "every 2 days, 3 times", then make "Morning run" weekly for all events', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 1200, height: 900 })
+  const wide = { start: new Date(Date.now() - 864e5 * 30).toISOString(), end: new Date(Date.now() + 864e5 * 90).toISOString() }
+  const list = async (title: string): Promise<string[]> =>
+    (await page.evaluate((r) => window.api.events.list(r), wide)).filter((e) => e.title === title).map((e) => e.start).sort()
+
+  await page.getByTestId('new-event').click()
+  const editor = page.getByTestId('editor')
+  await page.getByTestId('editor-account').selectOption('personal')
+  await editor.getByPlaceholder('New Event').fill('Stretch')
+  await page.getByTestId('editor-repeat').selectOption('custom')
+  await editor.getByLabel('Repeat every').fill('2')
+  await editor.getByLabel('Repeat unit').selectOption('daily')
+  await editor.getByLabel('Repeat stops').selectOption('count')
+  await editor.getByLabel('Occurrences').fill('3')
+  await expect(page.getByTestId('editor-repeat').locator('option:checked')).toHaveText('Every 2 days · 3 times')
+  await page.screenshot({ path: 'e2e/screens/repeat-custom.png' })
+  await page.getByTestId('editor-save').click()
+  await expect(editor).toBeHidden()
+  await expect.poll(async () => (await list('Stretch')).length).toBe(3)
+  const [a, b] = (await list('Stretch')).map((s) => new Date(s).getTime())
+  expect((b - a) / 864e5).toBe(2)
+
+  await page.getByTestId('view-switch-day').click()
+  await page.getByTestId('event-block').filter({ hasText: 'Morning run' }).first().click()
+  await page.getByTestId('details').getByRole('button', { name: 'Edit' }).click()
+  await expect(page.getByTestId('editor-repeat')).toHaveValue('daily')
+  await expect(editor.getByLabel('Repeat stops')).toHaveValue('count')
+  await expect(editor.getByLabel('Occurrences')).toHaveValue('7')
+  await page.getByTestId('editor-repeat').selectOption('weekly')
+  await page.getByTestId('editor-save').click()
+  const scope = editor.getByRole('group', { name: 'Change the repeat rule for' })
+  await expect(scope.getByRole('button', { name: 'This event' })).toHaveCount(0)
+  await page.screenshot({ path: 'e2e/screens/repeat-scope.png' })
+  await scope.getByRole('button', { name: 'All events' }).click()
+  await expect(editor).toBeHidden()
+  // The 7 daily runs become weekly (still 7 times): one per week from the first one.
+  await expect.poll(async () => {
+    const runs = (await list('Morning run')).map((s) => new Date(s).getTime())
+    return runs.slice(1).map((t, i) => (t - runs[i]) / 864e5)
+  }).toEqual([7, 7, 7, 7, 7, 7])
+  await app.close()
+})
+
 test('toolbar "+ new" opens the editor; custom picker sets date and time', async () => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()

@@ -48,6 +48,7 @@ export function createMockApi(onChanged: (accountId: string) => void): Omit<Api,
   for (let d = -2; d <= 4; d++) {
     seed(personal, 'p-main', { title: 'Morning run', start: iso(d, 7), end: iso(d, 7, 45), recurringEventId: 'run-series' })
   }
+  personal.rules.set('run-series', { freq: 'daily', count: 7 })
   seed(personal, 'p-main', { title: 'Dinner with friends', start: iso(2, 20), end: iso(2, 22), location: 'Kyiv' })
   // Local dates (toISOString() would be off by a day near midnight); all-day ends are exclusive, like Google and iCal.
   const day = (offset: number): string => format(addDays(new Date(), offset), 'yyyy-MM-dd')
@@ -106,8 +107,8 @@ export function createMockApi(onChanged: (accountId: string) => void): Omit<Api,
         onChanged(input.accountId)
         return ev
       },
-      update: async (ev) => {
-        const r = await own(ev.accountId, ev.calendarId).updateEvent(ev)
+      update: async (ev, scope) => {
+        const r = await own(ev.accountId, ev.calendarId).updateEvent(ev, scope)
         onChanged(ev.accountId)
         return r
       },
@@ -115,6 +116,7 @@ export function createMockApi(onChanged: (accountId: string) => void): Omit<Api,
         await own(ev.accountId, ev.calendarId).deleteEvent(ev, scope)
         onChanged(ev.accountId)
       },
+      recurrence: async (ev) => own(ev.accountId, ev.calendarId).getRecurrence(ev),
       respond: async (ev, status) => {
         const r = await own(ev.accountId, ev.calendarId).respond(ev, status)
         onChanged(ev.accountId)

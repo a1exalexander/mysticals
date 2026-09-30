@@ -1,5 +1,6 @@
 import { addDays, addHours, format, parseISO, startOfHour } from 'date-fns'
-import type { Account, Attendee, Calendar, CalEvent, NewEventInput } from '../shared/types'
+import type { Account, Attendee, Calendar, CalEvent, NewEventInput, Recurrence } from '../shared/types'
+import { sameRecurrence } from './recurrence'
 
 /** Form state. start/end are always 'YYYY-MM-DDTHH:mm' (local); all-day uses the date part, end inclusive. */
 export interface EventForm {
@@ -12,6 +13,10 @@ export interface EventForm {
   location: string
   description: string
   attendees: string[]
+  /** How it repeats; null = does not repeat. */
+  repeat: Recurrence | null
+  /** The rule when the editor opened; undefined while a series' rule is still loading (or failed to load). */
+  repeatWas: Recurrence | null | undefined
 }
 
 const LOCAL = "yyyy-MM-dd'T'HH:mm"
@@ -58,7 +63,9 @@ export function emptyForm(
     allDay: !!prefill.allDay,
     location: '',
     description: '',
-    attendees: []
+    attendees: [],
+    repeat: null,
+    repeatWas: null
   }
 }
 
@@ -79,9 +86,18 @@ export function formFromEvent(e: CalEvent): EventForm {
     allDay: e.allDay,
     location: e.location ?? '',
     description: e.description ?? '',
-    attendees: e.attendees.filter((a) => !a.self && !a.organizer).map((a) => a.email)
+    attendees: e.attendees.filter((a) => !a.self && !a.organizer).map((a) => a.email),
+    repeat: null,
+    // A series' rule isn't cached: the editor loads it (events.recurrence) and sets both fields.
+    repeatWas: e.recurringEventId ? undefined : null
   }
 }
+
+/** The form with the loaded series rule as both the current and the original value. */
+export const withLoadedRepeat = (f: EventForm, rule: Recurrence | null): EventForm => ({ ...f, repeat: rule, repeatWas: rule })
+
+/** Whether the user changed how the event repeats. */
+export const repeatChanged = (f: EventForm): boolean => f.repeatWas !== undefined && !sameRecurrence(f.repeat, f.repeatWas, f.start)
 
 /** Toggle all-day; a timed event gets at least a 1h span so it stays savable. */
 export function setAllDay(f: EventForm, allDay: boolean): EventForm {
@@ -128,7 +144,8 @@ export function formToInput(f: EventForm): NewEventInput {
     ...times(f),
     location: f.location.trim() || undefined,
     description: f.description.trim() || undefined,
-    ...(attendees.length ? { attendees } : {})
+    ...(attendees.length ? { attendees } : {}),
+    ...(f.repeat ? { recurrence: f.repeat } : {})
   }
 }
 
@@ -146,7 +163,9 @@ export function applyForm(e: CalEvent, f: EventForm): CalEvent {
     ...times(f),
     location: f.location.trim() || undefined,
     description: f.description.trim() || undefined,
-    attendees: [...keep, ...invited]
+    attendees: [...keep, ...invited],
+    // Only a changed rule is sent; absent keeps the series' rule.
+    ...(repeatChanged(f) ? { recurrence: f.repeat } : {})
   }
 }
 
