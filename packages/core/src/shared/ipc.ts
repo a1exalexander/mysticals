@@ -6,6 +6,7 @@ import type {
   DeleteScope,
   NewEventInput,
   PartStat,
+  Recurrence,
   TimeRange
 } from './types'
 
@@ -27,9 +28,11 @@ export interface Api {
     /** Cached events of all calendars in range, hidden ones included (the renderer filters by `visible`). Each event keeps its accountId. */
     list(range: TimeRange): Promise<CalEvent[]>
     create(input: NewEventInput): Promise<CalEvent>
-    update(event: CalEvent): Promise<CalEvent>
+    update(event: CalEvent, scope?: DeleteScope): Promise<CalEvent>
     delete(event: CalEvent, scope?: DeleteScope): Promise<void>
     respond(event: CalEvent, status: Exclude<PartStat, 'needsAction'>): Promise<CalEvent>
+    /** How the event's series repeats (null for a single event). Reads the provider, not the cache. */
+    recurrence(event: CalEvent): Promise<Recurrence | null>
   }
   sync: {
     now(accountId?: string): Promise<void>
@@ -82,6 +85,7 @@ export const IPC = {
   eventsUpdate: 'events:update',
   eventsDelete: 'events:delete',
   eventsRespond: 'events:respond',
+  eventsRecurrence: 'events:recurrence',
   syncNow: 'sync:now',
   changed: 'changed',
   menu: 'menu',

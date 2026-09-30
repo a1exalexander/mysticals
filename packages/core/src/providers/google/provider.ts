@@ -1,5 +1,6 @@
-import type { Attendee, Calendar, CalEvent, DeleteScope, PartStat } from '../../shared/types'
+import type { Attendee, Calendar, CalEvent, DeleteScope, PartStat, Recurrence } from '../../shared/types'
 import type { CalendarProvider, ProviderContext } from '../types'
+import { fromRRule, toRRule } from '../../logic/recurrence'
 import { timedFetch } from '../http'
 import { getClientConfig, postToken, type GoogleCredentials } from './oauth'
 
@@ -74,9 +75,42 @@ export function truncateRecurrence(recurrence: string[], cutoff: GTime): string[
   })
 }
 
+const DAY = 86_400_000
+const plusDays = (date: string, days: number): string => new Date(Date.parse(date.slice(0, 10)) + days * DAY).toISOString().slice(0, 10)
+const daysBetween = (a: string, b: string): number => Math.round((Date.parse(b.slice(0, 10)) - Date.parse(a.slice(0, 10))) / DAY)
+const localDate = (d: Date): string => [d.getFullYear(), d.getMonth() + 1, d.getDate()].map((n) => String(n).padStart(2, '0')).join('-')
+
+/**
+ * Where the series' first slot `anchor` goes when one instance moves from `before` to the edited start:
+ * by the same offset, so "9:00 -> 10:00" moves every instance (Google expands in the series' time zone).
+ * Switching all-day on or off keeps each slot's day offset and takes the edited time of day.
+ */
+export function shiftAnchor(anchor: GTime, before: GTime, start: string, allDay: boolean, timeZone: string): GTime {
+  if (allDay) return { date: plusDays(anchor.date ?? anchor.dateTime!, daysBetween(before.date ?? before.dateTime!, start)) }
+  if (anchor.dateTime && before.dateTime) {
+    return { dateTime: new Date(Date.parse(anchor.dateTime) + Date.parse(start) - Date.parse(before.dateTime)).toISOString(), timeZone }
+  }
+  // All-day series becomes timed, in this machine's zone.
+  const at = new Date(start)
+  const day = new Date(`${plusDays(anchor.date!, daysBetween(before.date!, localDate(at)))}T00:00:00`)
+  day.setHours(at.getHours(), at.getMinutes(), at.getSeconds())
+  return { dateTime: day.toISOString(), timeZone }
+}
+
+/** GTime `from` plus the edited event's duration. */
+function endFrom(from: GTime, event: CalEvent, timeZone: string): GTime {
+  if (event.allDay) return { date: plusDays(from.date!, daysBetween(event.start, event.end)) }
+  return { dateTime: new Date(Date.parse(from.dateTime!) + Date.parse(event.end) - Date.parse(event.start)).toISOString(), timeZone }
+}
+
 /** PATCH merges nested objects, so the unused field is nulled to allow timed <-> all-day switches. */
 const toGTime = (iso: string, allDay: boolean): Record<string, string | null> =>
   allDay ? { date: iso.slice(0, 10), dateTime: null, timeZone: null } : { dateTime: iso, date: null, timeZone: null }
+/** A time for a recurring event, which Google requires to carry a time zone when timed. */
+const zoned = (iso: string, allDay: boolean, timeZone: string): GTime => (allDay ? { date: iso.slice(0, 10) } : { dateTime: iso, timeZone })
+const localZone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone
+const rruleLines = (r: Recurrence, allDay: boolean): string[] => [`RRULE:${toRRule(r, allDay)}`]
+const nulled = (t: GTime): Record<string, string | null> => ({ date: null, dateTime: null, timeZone: null, ...t })
 
 export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider {
   if (ctx.credentials.kind !== 'google') throw new Error('Google provider needs Google credentials')
@@ -125,6 +159,44 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
   }
   const map = (g: GEvent, calendarId: string): CalEvent => mapEvent(g, ctx.accountId, calendarId)
 
+  /** The editable fields of `event` as a Google body. */
+  const fields = (event: CalEvent, prevAttendees: GAttendee[] | undefined, organizer: boolean): Record<string, unknown> => {
+    const body: Record<string, unknown> = { summary: event.title, location: event.location ?? null, description: event.description ?? null }
+    // Only the organizer controls the guest list. Existing guests keep Google's fields (incl. their
+    // responseStatus, so a stale local copy can't reset replies); new guests are just an email.
+    if (organizer) {
+      const prev = new Map((prevAttendees ?? []).map((a) => [a.email.toLowerCase(), a]))
+      body.attendees = event.attendees.map((a) => prev.get(a.email.toLowerCase()) ?? { email: a.email, displayName: a.name })
+    }
+    return body
+  }
+
+  /**
+   * The series' RRULEs for a new series starting at `slot`: COUNT becomes what is left after the
+   * instances before `slot` (cancelled ones count too). EXDATE/RDATE lines stay with the old series.
+   */
+  async function remainingRecurrence(calendarId: string, series: string, recurrence: string[], slot: GTime): Promise<string[]> {
+    const rules = recurrence.filter((l) => l.startsWith('RRULE:'))
+    if (!rules.some((l) => /;COUNT=|:COUNT=/i.test(l))) return rules
+    const cut = Date.parse(slot.dateTime ?? slot.date!)
+    let passed = 0
+    let pageToken: string | undefined
+    do {
+      const page = await api<{ items?: GEvent[]; nextPageToken?: string }>('GET', `${eventPath(calendarId, series)}/instances`, {
+        showDeleted: 'true',
+        timeMax: new Date(cut).toISOString(),
+        maxResults: '2500',
+        ...(pageToken ? { pageToken } : {})
+      })
+      for (const g of page.items ?? []) {
+        const t = g.originalStartTime ?? g.start
+        if (Date.parse(t.dateTime ?? t.date!) < cut) passed++
+      }
+      pageToken = page.nextPageToken
+    } while (pageToken)
+    return rules.map((l) => l.replace(/COUNT=(\d+)/i, (_, n: string) => `COUNT=${Math.max(1, Number(n) - passed)}`))
+  }
+
   return {
     async listCalendars(): Promise<Calendar[]> {
       const out: Calendar[] = []
@@ -167,39 +239,74 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
 
     async createEvent(calendarId, input) {
       const attendees = (input.attendees ?? []).map((email) => ({ email }))
+      const rule = input.recurrence
       const g = await api<GEvent>(
         'POST',
         eventPath(calendarId),
         { sendUpdates: attendees.length ? 'all' : 'none' },
         {
           summary: input.title,
-          start: toGTime(input.start, input.allDay),
-          end: toGTime(input.end, input.allDay),
+          start: rule ? zoned(input.start, input.allDay, localZone()) : toGTime(input.start, input.allDay),
+          end: rule ? zoned(input.end, input.allDay, localZone()) : toGTime(input.end, input.allDay),
           location: input.location,
           description: input.description,
-          attendees
+          attendees,
+          ...(rule ? { recurrence: rruleLines(rule, input.allDay) } : {})
         }
       )
       return map(g, calendarId)
     },
 
-    async updateEvent(event) {
+    async updateEvent(event, scope: DeleteScope = 'one') {
       const organizer = isOrganizer(event)
-      const body: Record<string, unknown> = {
-        summary: event.title,
-        start: toGTime(event.start, event.allDay),
-        end: toGTime(event.end, event.allDay),
-        location: event.location ?? null,
-        description: event.description ?? null
+      const q = { sendUpdates: organizer ? 'all' : 'none' }
+      const series = event.recurringEventId
+      const before = rawOf(event)?.start
+      if (!series || scope === 'one' || !before) {
+        // A single event may start repeating here (the API refuses a rule change for one instance of a series).
+        const rule = !series ? event.recurrence : undefined
+        const time = (iso: string): Record<string, string | null> => (rule ? nulled(zoned(iso, event.allDay, localZone())) : toGTime(iso, event.allDay))
+        const body = {
+          ...fields(event, rawOf(event)?.attendees, organizer),
+          start: time(event.start),
+          end: time(event.end),
+          ...(rule ? { recurrence: rruleLines(rule, event.allDay) } : {})
+        }
+        return map(await api<GEvent>('PATCH', eventPath(event.calendarId, event.id), q, body), event.calendarId)
       }
-      // Only the organizer controls the guest list. Existing guests keep Google's fields (incl. their
-      // responseStatus, so a stale local copy can't reset replies); new guests are just an email.
-      if (organizer) {
-        const prev = new Map((rawOf(event)?.attendees ?? []).map((a) => [a.email.toLowerCase(), a]))
-        body.attendees = event.attendees.map((a) => prev.get(a.email.toLowerCase()) ?? { email: a.email, displayName: a.name })
+      const master = await api<GEvent>('GET', eventPath(event.calendarId, series))
+      // Recurring events need an explicit zone; keep the series' own.
+      const timeZone = master.start.timeZone ?? localZone()
+      const rule = event.recurrence
+      const slot = rawOf(event)?.originalStartTime ?? before
+      const first = master.start.dateTime ?? master.start.date!
+      const at = slot.dateTime ?? slot.date!
+      // "This and following" from the first instance is the whole series.
+      if (scope === 'all' || Date.parse(at) <= Date.parse(first)) {
+        // Stop repeating: the series becomes just the edited event.
+        const start = rule === null ? zoned(event.start, event.allDay, timeZone) : shiftAnchor(master.start, before, event.start, event.allDay, timeZone)
+        const body = {
+          ...fields(event, master.attendees, organizer),
+          start: nulled(start),
+          end: nulled(endFrom(start, event, timeZone)),
+          // A new RRULE replaces the old ones; EXDATE/RDATE lines stay.
+          ...(rule === undefined ? {} : { recurrence: rule ? [...rruleLines(rule, event.allDay), ...(master.recurrence ?? []).filter((l) => !l.startsWith('RRULE:'))] : [] })
+        }
+        await api<GEvent>('PATCH', eventPath(event.calendarId, series), q, body)
+        return event // its instance id may change with the time; the sync that follows brings the real ones
       }
-      const g = await api<GEvent>('PATCH', eventPath(event.calendarId, event.id), { sendUpdates: organizer ? 'all' : 'none' }, body)
-      return map(g, event.calendarId)
+      // Split: end the old series right before this instance, start a new one from it with the edit.
+      const recurrence =
+        rule === undefined ? await remainingRecurrence(event.calendarId, series, master.recurrence ?? [], slot) : rule ? rruleLines(rule, event.allDay) : undefined
+      await api('PATCH', eventPath(event.calendarId, series), q, { recurrence: truncateRecurrence(master.recurrence ?? [], slot) })
+      const start = shiftAnchor(slot, before, event.start, event.allDay, timeZone)
+      const created = await api<GEvent>('POST', eventPath(event.calendarId), q, {
+        ...fields(event, master.attendees, organizer),
+        start,
+        end: endFrom(start, event, timeZone),
+        ...(recurrence ? { recurrence } : {})
+      })
+      return { ...map(created, event.calendarId), start: event.start, end: event.end, recurringEventId: recurrence ? created.id : undefined }
     },
 
     async deleteEvent(event, scope: DeleteScope = 'one') {
@@ -218,6 +325,13 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
         }
       }
       await api('DELETE', eventPath(event.calendarId, series), q)
+    },
+
+    async getRecurrence(event) {
+      if (!event.recurringEventId) return null
+      const master = await api<GEvent>('GET', eventPath(event.calendarId, event.recurringEventId))
+      const line = master.recurrence?.find((l) => l.startsWith('RRULE:'))
+      return line ? fromRRule(line, master.start.dateTime ?? master.start.date) : null
     },
 
     async respond(event, status) {

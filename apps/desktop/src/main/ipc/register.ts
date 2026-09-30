@@ -22,5 +22,6 @@ export function registerApi(api: Impl): void {
   h(IPC.eventsUpdate, api.events.update)
   h(IPC.eventsDelete, api.events.delete)
   h(IPC.eventsRespond, api.events.respond)
+  h(IPC.eventsRecurrence, api.events.recurrence)
   h(IPC.syncNow, api.sync.now)
 }

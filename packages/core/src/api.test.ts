@@ -98,6 +98,44 @@ describe('createApi isolation', () => {
     expect(sent.organizer).toBeUndefined()
   })
 
+  it('update passes the scope for recurring events only, defaulting to one', async () => {
+    const { api, providers, invite } = setup()
+    await api.events.update({ ...invite, title: 'A' }, 'all')
+    expect(vi.mocked(providers.work.updateEvent).mock.calls[0][1]).toBe('one')
+    const run = { ...invite, id: 'run-1', recurringEventId: 'runs' }
+    providers.work.events.push(run, { ...run, id: 'run-2', start: '2026-09-24T10:00:00Z', end: '2026-09-24T10:15:00Z' })
+    await api.events.update({ ...run, title: 'B' })
+    expect(vi.mocked(providers.work.updateEvent).mock.calls[1][1]).toBe('one')
+    await api.events.update({ ...run, title: 'C' }, 'following')
+    expect(vi.mocked(providers.work.updateEvent).mock.calls[2][1]).toBe('following')
+    await expect(api.events.update({ ...run, title: 'D' }, 'bogus' as never)).rejects.toThrow()
+    await api.events.update({ ...run, title: 'E' }, null as never) // omitted argument over the JSON daemon protocol
+    expect(vi.mocked(providers.work.updateEvent).mock.calls[3][1]).toBe('one')
+  })
+
+  it('a new repeat rule needs a series scope; a single event can start repeating; bad rules are refused', async () => {
+    const { api, providers, invite } = setup()
+    const run = { ...invite, id: 'run-1', recurringEventId: 'runs' }
+    providers.work.events.push(run)
+    await expect(api.events.update({ ...run, recurrence: { freq: 'weekly' } }, 'one')).rejects.toThrow(/belongs to the series/)
+    await expect(api.events.update({ ...run, recurrence: { freq: 'hourly' } as never }, 'all')).rejects.toThrow()
+    await expect(api.events.update({ ...run, recurrence: { freq: 'daily', rule: 'FREQ=DAILY\r\nX' } }, 'all')).rejects.toThrow()
+    await api.events.update({ ...invite, recurrence: { freq: 'daily', count: 2 } })
+    expect(vi.mocked(providers.work.updateEvent).mock.calls.at(-1)![0].recurrence).toEqual({ freq: 'daily', count: 2 })
+    await api.events.update({ ...run, title: 'no rule change' }, 'one')
+    expect(vi.mocked(providers.work.updateEvent).mock.calls.at(-1)![0]).not.toHaveProperty('recurrence')
+  })
+
+  it('a series edit drops the affected cached instances until the sync refills them', async () => {
+    const { api, providers, invite, sync } = setup()
+    const run = { ...invite, id: 'run-1', recurringEventId: 'runs' }
+    providers.work.events.push(run, { ...run, id: 'run-2', start: '2026-09-24T10:00:00Z', end: '2026-09-24T10:15:00Z' })
+    vi.spyOn(providers.work, 'updateEvent').mockImplementation(async (e) => e)
+    await api.events.update({ ...run, title: 'All' }, 'all')
+    expect(providers.work.events.map((e) => `${e.id}:${e.title}`)).toEqual(['inv-1:Daily', 'run-1:All'])
+    expect(sync.syncNow).toHaveBeenCalledWith('work', { quiet: true, fresh: true })
+  })
+
   it('update/delete reject events of a readOnly calendar', async () => {
     const { api, providers } = setup()
     const holiday = await providers.personal.createEvent('p-holidays', { ...newEvent, accountId: 'personal', calendarId: 'p-holidays' })

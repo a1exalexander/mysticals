@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Account, Calendar, CalEvent } from '../shared/types'
-import { setAllDay, applyForm, emptyForm, errorText, formFromEvent, formToInput, fromLocalInput, moveStart, toLocalInput, writableCalendars } from './editor'
+import { setAllDay, applyForm, emptyForm, errorText, formFromEvent, formToInput, fromLocalInput, moveStart, repeatChanged, toLocalInput, withLoadedRepeat, writableCalendars } from './editor'
 
 const acc = (id: string): Account => ({ id, kind: 'caldav', label: id, email: `me@${id}.example`, color: '#000' })
 const cal = (id: string, accountId: string, readOnly = false): Calendar => ({ id, accountId, name: id, color: '#000', readOnly })
@@ -81,5 +81,18 @@ describe('event form', () => {
   it('moving the start keeps the duration, across days', () => {
     const f = { ...emptyForm(accounts, calendars), start: '2026-09-23T16:00', end: '2026-09-23T17:30' }
     expect(moveStart(f, '2026-09-15T09:30')).toMatchObject({ start: '2026-09-15T09:30', end: '2026-09-15T11:00' })
+  })
+
+  it('sends a repeat rule on create, and on edit only when it changed', () => {
+    const f = { ...emptyForm(accounts, calendars), accountId: 'a1', calendarId: 'c1', repeat: { freq: 'weekly' as const } }
+    expect(formToInput(f).recurrence).toEqual({ freq: 'weekly' })
+    const run: CalEvent = { id: 'r1', accountId: 'a1', calendarId: 'c1', title: 'Run', start: '2026-09-23T07:00:00.000Z', end: '2026-09-23T08:00:00.000Z', allDay: false, attendees: [], recurringEventId: 's' }
+    const loading = formFromEvent(run)
+    expect(loading.repeatWas).toBeUndefined()
+    expect(repeatChanged({ ...loading, repeat: { freq: 'daily' } })).toBe(false) // not loaded: never sent
+    const loaded = withLoadedRepeat(loading, { freq: 'daily', count: 7 })
+    expect(applyForm(run, loaded)).not.toHaveProperty('recurrence')
+    expect(applyForm(run, { ...loaded, repeat: null }).recurrence).toBeNull()
+    expect(formFromEvent({ ...run, recurringEventId: undefined }).repeatWas).toBeNull()
   })
 })

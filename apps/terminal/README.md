@@ -51,7 +51,7 @@ In an open event:
 | --- | --- |
 | `y` `n` `m` | Accept / decline / maybe (invitations only) |
 | `o` | Open the video-call link from the event's place |
-| `e` | Edit |
+| `e` | Edit (saving a repeating event asks `1` this, `2` this and following, `3` all; a changed repeat rule offers only `2` and `3`) |
 | `x` | Delete (confirm with `y`; for a repeating event `1` this, `2` this and following, `3` all) |
 | `a` | Show all / fewer attendees (long guest lists) |
 | `esc` `q` | Close |

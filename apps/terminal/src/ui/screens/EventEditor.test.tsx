@@ -43,7 +43,7 @@ describe('EventEditor', () => {
     await t.press(...clear(), '2026-09-23', KEY.tab, KEY.tab) // → end date
     await t.press(...clear(), '2026-09-22', '\u0013')
     await t.waitFor('End must be after start')
-    await t.press(...clear(), '2026-09-23', KEY.tab, KEY.tab, KEY.tab, KEY.tab) // → invitees
+    await t.press(...clear(), '2026-09-23', KEY.tab, KEY.tab, KEY.tab, KEY.tab, KEY.tab) // → end time, repeat, location, notes, invitees
     await t.press('bob@x.com, nope', '\u0013')
     await t.waitFor('Invalid email: nope')
     expect(t.client.events.create).not.toHaveBeenCalled()
@@ -77,8 +77,71 @@ describe('EventEditor', () => {
     await t.press(' 2', '\u0013')
     await t.waitFor(() => onClose.mock.calls.length > 0)
     expect(t.client.events.update).toHaveBeenCalledWith(
-      expect.objectContaining({ id: event.id, accountId: 'personal', calendarId: 'p-main', title: `${event.title} 2` })
+      expect.objectContaining({ id: event.id, accountId: 'personal', calendarId: 'p-main', title: `${event.title} 2` }),
+      undefined
     )
+  })
+
+  it('asks the scope when saving a recurring event', async () => {
+    const onClose = vi.fn()
+    const client = createTestClient()
+    const [run] = (await client.events.list({ start: new Date(0).toISOString(), end: new Date(2100, 0).toISOString() })).filter((e) => e.recurringEventId)
+    t = renderWith(<EventEditor event={run} onClose={onClose} />, client)
+    await t.waitFor('Edit event')
+    await t.press('!', '\u0013')
+    await t.waitFor('Save recurring event')
+    expect(t.client.events.update).not.toHaveBeenCalled()
+    await t.press(KEY.esc) // back to the form, still open
+    await t.waitFor(() => !t.lastFrame()!.includes('Save recurring event'))
+    expect(onClose).not.toHaveBeenCalled()
+    await t.press('\u0013')
+    await t.waitFor('Save recurring event')
+    await t.press('3')
+    await t.waitFor(() => onClose.mock.calls.length > 0)
+    expect(t.client.events.update).toHaveBeenCalledWith(expect.objectContaining({ id: run.id, title: `${run.title}!` }), 'all')
+  })
+
+  it('creates a repeating event from a preset, with an end', async () => {
+    const onClose = vi.fn()
+    t = renderWith(<EventEditor initialStart={new Date(2026, 8, 23, 9)} onClose={onClose} />)
+    await t.waitFor('New event')
+    await t.press(KEY.tab, KEY.right) // account work (calendar sole)
+    await t.press(...Array(7).fill(KEY.tab)) // → repeat
+    await t.press(KEY.right, KEY.right) // does not repeat → every day → every week
+    await t.waitFor('Every week on Wednesday')
+    await t.press(KEY.tab, ...clear(5), '4 times', '\u0013')
+    await t.waitFor(() => onClose.mock.calls.length > 0)
+    expect(t.client.events.create).toHaveBeenCalledWith(expect.objectContaining({ recurrence: { freq: 'weekly', count: 4 } }))
+  })
+
+  it('creates a custom rule: every 2 days, 3 times; bad text is reported', async () => {
+    const onClose = vi.fn()
+    t = renderWith(<EventEditor initialStart={new Date(2026, 8, 23, 9)} onClose={onClose} />)
+    await t.waitFor('New event')
+    await t.press(KEY.tab, KEY.right, ...Array(7).fill(KEY.tab), KEY.left) // repeat: none ← custom
+    await t.waitFor('Custom')
+    await t.press(KEY.tab, ...clear(), 'often', '\u0013')
+    await t.waitFor('Repeat every')
+    await t.press(...clear(), '2 days', KEY.tab, KEY.tab, ...clear(), '3', '\u0013')
+    await t.waitFor(() => onClose.mock.calls.length > 0)
+    expect(t.client.events.create).toHaveBeenCalledWith(expect.objectContaining({ recurrence: { freq: 'daily', interval: 2, count: 3 } }))
+  })
+
+  it('changing the rule of a series offers only this-and-following or all events', async () => {
+    const onClose = vi.fn()
+    const client = createTestClient()
+    const [run] = (await client.events.list({ start: new Date(0).toISOString(), end: new Date(2100, 0).toISOString() })).filter((e) => e.recurringEventId)
+    t = renderWith(<EventEditor event={run} onClose={onClose} />, client)
+    await t.waitFor('Every day') // the loaded rule: daily, 7 times
+    expect(t.lastFrame()).toContain('7 times')
+    await t.press(...Array(6).fill(KEY.tab), KEY.right, '\u0013') // repeat → every week, save
+    await t.waitFor('Change the repeat rule for')
+    expect(t.lastFrame()).not.toContain('this event')
+    await t.press('1')
+    expect(t.client.events.update).not.toHaveBeenCalled()
+    await t.press('3')
+    await t.waitFor(() => onClose.mock.calls.length > 0)
+    expect(t.client.events.update).toHaveBeenCalledWith(expect.objectContaining({ recurrence: { freq: 'weekly', count: 7 } }), 'all')
   })
 
   it('handles a burst of keys with no re-render in between', async () => {

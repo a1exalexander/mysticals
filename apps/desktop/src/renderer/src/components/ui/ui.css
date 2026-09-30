@@ -20,6 +20,10 @@
 @media (prefers-reduced-motion: reduce) { .mc-overlay, .mc-sheet, .mc-popover { animation: none; } }
 
 .mc-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.mc-scope { flex-direction: column; align-items: stretch; gap: 6px; }
+.mc-scope span { margin: 0 0 2px; }
+.scope-prompt { width: 280px; }
+.scope-prompt .mc-scope { margin-top: 0; }
 .mc-btn {
   font: 500 12px/1 var(--mono); color: var(--fg); background: var(--surface);
   border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 12px; height: 26px;
