@@ -236,7 +236,6 @@ function targetVevent(root: ICAL.Component, raw: CaldavRaw): ICAL.Component {
   if (!raw.recurrenceId) return masterOf(root)
   const existing = findOverride(root, raw.recurrenceId)
   if (existing) return existing
-  // ponytail: edits apply to this single instance only (new override); series-wide edits are not supported yet.
   const master = masterOf(root)
   const o = new ICAL.Component(structuredClone(master.toJSON()))
   for (const n of ['rrule', 'rdate', 'exdate', 'exrule']) o.removeAllProperties(n)
@@ -249,10 +248,15 @@ function targetVevent(root: ICAL.Component, raw: CaldavRaw): ICAL.Component {
 export function applyUpdate(event: CalEvent, email: string): string {
   const raw = event.raw as CaldavRaw
   const root = parse(raw.ics)
-  const v = targetVevent(root, raw)
-  setTime(v, 'dtstart', fromIso(event.start, event.allDay))
+  writeEdit(targetVevent(root, raw), event, email, fromIso(event.start, event.allDay), fromIso(event.end, event.allDay))
+  return root.toString()
+}
+
+/** Write the edited fields of `event` onto one VEVENT, with the given DTSTART/DTEND. */
+function writeEdit(v: ICAL.Component, event: CalEvent, email: string, start: ICAL.Time, end: ICAL.Time): void {
+  v.addProperty(replaceTime(v, 'dtstart', start))
   v.removeAllProperties('duration')
-  setTime(v, 'dtend', fromIso(event.end, event.allDay))
+  v.addProperty(replaceTime(v, 'dtend', end))
   setText(v, 'summary', event.title)
   setText(v, 'location', event.location)
   setText(v, 'description', event.description)
@@ -261,9 +265,203 @@ export function applyUpdate(event: CalEvent, email: string): string {
     event.attendees.map((a) => a.email),
     email
   )
+  bump(v)
+}
+
+function bump(v: ICAL.Component): void {
   v.updatePropertyWithValue('sequence', Number(v.getFirstPropertyValue('sequence') ?? 0) + 1)
   touch(v)
+}
+
+/** A DATE-TIME/DATE property for `t`, with TZID when `t` is in a named zone (not UTC or floating). */
+function timeProp(name: string, t: ICAL.Time): ICAL.Property {
+  const p = new ICAL.Property(name)
+  p.setValue(t)
+  const tzid = t.zone?.tzid
+  if (!t.isDate && tzid && tzid !== 'UTC' && tzid !== 'floating') p.setParameter('tzid', tzid)
+  return p
+}
+
+/** Drop every `name` property of `v` and return a fresh one for `t` (the caller adds it). */
+function replaceTime(v: ICAL.Component, name: string, t: ICAL.Time): ICAL.Property {
+  v.removeAllProperties(name)
+  return timeProp(name, t)
+}
+
+const dtstart = (v: ICAL.Component): ICAL.Time => v.getFirstPropertyValue('dtstart') as ICAL.Time
+const dateOf = (t: ICAL.Time): ICAL.Time => ICAL.Time.fromData({ year: t.year, month: t.month, day: t.day, isDate: true })
+const daysBetween = (a: ICAL.Time, b: ICAL.Time): number => Math.round(dateOf(b).subtractDate(dateOf(a)).toSeconds() / 86_400)
+function addDays(t: ICAL.Time, days: number): ICAL.Time {
+  const x = t.clone()
+  x.adjust(days, 0, 0, 0)
+  return x
+}
+
+/** DTSTART/DTEND for an occurrence starting at `start` with the edited event's duration. */
+function spanFrom(start: ICAL.Time, event: CalEvent): [ICAL.Time, ICAL.Time] {
+  if (event.allDay) return [start, addDays(start, daysBetween(fromIso(event.start, true), fromIso(event.end, true)))]
+  const end = start.clone()
+  end.adjust(0, 0, 0, (Date.parse(event.end) - Date.parse(event.start)) / 1000)
+  return [start, end]
+}
+
+/**
+ * How editing one instance (which started at `before`) moves every other slot of the series: by the same
+ * wall-clock offset in the series' zone, so "9:00 → 10:00" stays 10:00 across DST. Switching all-day on or
+ * off keeps each slot's day offset and takes the edited time of day.
+ */
+function slotShift(master: ICAL.Component, before: ICAL.Time, event: CalEvent): (t: ICAL.Time) => ICAL.Time {
+  const anchor = dtstart(master)
+  const zone = anchor.isDate ? undefined : anchor.zone
+  const local = (t: ICAL.Time): ICAL.Time => (zone && !t.isDate ? t.convertToZone(zone) : t.clone())
+  const after = fromIso(event.start, event.allDay)
+  if (event.allDay) {
+    const days = daysBetween(local(before), after)
+    return (t) => addDays(dateOf(local(t)), days)
+  }
+  if (!anchor.isDate) {
+    const seconds = (zone ? after.convertToZone(zone) : after).subtractDate(local(before)).toSeconds()
+    return (t) => {
+      const x = local(t)
+      x.adjust(0, 0, 0, seconds)
+      return x
+    }
+  }
+  // All-day series becomes timed: `after` is UTC, so the new slots are too.
+  const days = daysBetween(before, after)
+  return (t) => {
+    const d = addDays(dateOf(t), days)
+    return ICAL.Time.fromData({ year: d.year, month: d.month, day: d.day, hour: after.hour, minute: after.minute, second: after.second }, ICAL.Timezone.utcTimezone)
+  }
+}
+
+/** Replace every value of the multi-valued `name` (EXDATE/RDATE) by `map(value)`; null drops it. PERIOD values are kept. */
+function mapDates(v: ICAL.Component, name: 'exdate' | 'rdate', map: (t: ICAL.Time) => ICAL.Time | null): void {
+  const props = v.getAllProperties(name)
+  if (!props.length) return
+  const out: ICAL.Property[] = []
+  for (const p of props) {
+    for (const value of p.getValues()) {
+      if (!(value instanceof ICAL.Time)) {
+        const keep = new ICAL.Property(name)
+        keep.setValue(value as ICAL.Period)
+        out.push(keep)
+        continue
+      }
+      const t = map(value)
+      if (t) out.push(timeProp(name, t))
+    }
+  }
+  v.removeAllProperties(name)
+  for (const p of out) v.addProperty(p)
+}
+
+const attendeeKey = (v: ICAL.Component): string =>
+  v.getAllProperties('attendee').map((p) => cleanEmail(p.getFirstValue())).sort().join(',')
+
+/**
+ * Apply the edit of one instance to a whole series: the master takes the edited fields and its slots
+ * shift like the edited instance did (EXDATE/RDATE/RECURRENCE-ID follow, so overrides keep matching).
+ * The edited instance's own override takes the edit as-is; other overrides keep their customised fields
+ * but take the ones they shared with the old master.
+ */
+function rewriteSeries(
+  root: ICAL.Component,
+  master: ICAL.Component,
+  edited: ICAL.Component | undefined,
+  event: CalEvent,
+  email: string,
+  shift: (t: ICAL.Time) => ICAL.Time,
+  anchor: ICAL.Time
+): void {
+  const shared = ['summary', 'location', 'description'].map((n) => [n, master.getFirstPropertyValue(n)] as const)
+  const people = attendeeKey(master)
+  const retyped = dtstart(master).isDate !== event.allDay
+  const [start, end] = spanFrom(shift(anchor), event)
+  writeEdit(master, event, email, start, end)
+  mapDates(master, 'exdate', shift)
+  mapDates(master, 'rdate', shift)
+  for (const o of root.getAllSubcomponents('vevent')) {
+    const rid = o.getFirstPropertyValue('recurrence-id') as ICAL.Time | null
+    if (!rid) continue
+    o.addProperty(replaceTime(o, 'recurrence-id', shift(rid)))
+    if (o === edited) {
+      writeEdit(o, event, email, fromIso(event.start, event.allDay), fromIso(event.end, event.allDay))
+      continue
+    }
+    const [s, e] = retyped ? spanFrom(shift(dtstart(o)), event) : [shift(dtstart(o)), shift(new ICAL.Event(o).endDate)]
+    o.addProperty(replaceTime(o, 'dtstart', s))
+    o.removeAllProperties('duration')
+    o.addProperty(replaceTime(o, 'dtend', e))
+    for (const [name, old] of shared) {
+      if (String(o.getFirstPropertyValue(name) ?? '') === String(old ?? '')) setText(o, name, event[name === 'summary' ? 'title' : (name as 'location' | 'description')])
+    }
+    if (attendeeKey(o) === people) setAttendees(o, event.attendees.map((a) => a.email), email)
+    bump(o)
+  }
+}
+
+/** The instance's own DTSTART before the edit: its override's if it has one, else its series slot. */
+const instanceStart = (master: ICAL.Component, override: ICAL.Component | undefined, rid: string): ICAL.Time =>
+  override ? dtstart(override) : ridTime(master, rid).time
+
+/**
+ * Apply the edit of one recurring instance to its whole series ("All events").
+ * A non-recurring event, or an object without a master, gets a plain single edit.
+ */
+export function applyUpdateSeries(event: CalEvent, email: string): string {
+  const raw = event.raw as CaldavRaw
+  const root = parse(raw.ics)
+  const master = findMaster(root)
+  if (!raw.recurrenceId || !master) return applyUpdate(event, email)
+  const edited = findOverride(root, raw.recurrenceId)
+  const shift = slotShift(master, instanceStart(master, edited, raw.recurrenceId), event)
+  rewriteSeries(root, master, edited, event, email, shift, dtstart(master))
   return root.toString()
+}
+
+/**
+ * Apply the edit of one recurring instance to it and every later one ("This and following"):
+ * `rest` is the old object ended right before the instance, `next` a new series (new `uid`) from the
+ * instance on, carrying the later overrides/exceptions. COUNT is split between both.
+ * Returns null when the instance is the series' first: edit the whole series instead.
+ */
+export function applySplitFollowing(event: CalEvent, email: string, uid: string): { rest: string; next: string } | null {
+  const raw = event.raw as CaldavRaw
+  if (!raw.recurrenceId) throw new Error('Not a recurring instance')
+  const rest = applyDeleteFollowing(raw)
+  if (!rest) return null
+  const root = parse(raw.ics)
+  const master = masterOf(root)
+  const slot = ridTime(master, raw.recurrenceId).time
+  const cut = slot.toJSDate().getTime()
+  const edited = findOverride(root, raw.recurrenceId)
+  const shift = slotShift(master, instanceStart(master, edited, raw.recurrenceId), event)
+  for (const v of root.getAllSubcomponents('vevent')) {
+    const t = v.getFirstPropertyValue('recurrence-id') as ICAL.Time | null
+    if (t && t.toJSDate().getTime() < cut) root.removeSubcomponent(v)
+  }
+  const later = (t: ICAL.Time): ICAL.Time | null => (t.toJSDate().getTime() >= cut ? t : null)
+  mapDates(master, 'exdate', later)
+  mapDates(master, 'rdate', later)
+  // COUNT counts RRULE slots (EXDATEs included), so the new series gets what the old one had left.
+  const first = dtstart(master)
+  for (const p of master.getAllProperties('rrule')) {
+    const r = (p.getFirstValue() as ICAL.Recur).clone()
+    if (!r.count) continue
+    const it = r.iterator(first)
+    let passed = 0
+    for (let t = it.next(); t && t.toJSDate().getTime() < cut && passed < MAX_INSTANCES; t = it.next()) passed++
+    r.count = Math.max(1, r.count - passed)
+    p.setValue(r)
+  }
+  for (const v of root.getAllSubcomponents('vevent')) {
+    v.updatePropertyWithValue('uid', uid)
+    v.updatePropertyWithValue('sequence', -1) // rewriteSeries bumps every VEVENT to 0
+    v.updatePropertyWithValue('created', ICAL.Time.now())
+  }
+  rewriteSeries(root, master, edited, event, email, shift, slot)
+  return { rest, next: root.toString() }
 }
 
 /**

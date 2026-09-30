@@ -77,8 +77,28 @@ describe('EventEditor', () => {
     await t.press(' 2', '\u0013')
     await t.waitFor(() => onClose.mock.calls.length > 0)
     expect(t.client.events.update).toHaveBeenCalledWith(
-      expect.objectContaining({ id: event.id, accountId: 'personal', calendarId: 'p-main', title: `${event.title} 2` })
+      expect.objectContaining({ id: event.id, accountId: 'personal', calendarId: 'p-main', title: `${event.title} 2` }),
+      undefined
     )
+  })
+
+  it('asks the scope when saving a recurring event', async () => {
+    const onClose = vi.fn()
+    const client = createTestClient()
+    const [run] = (await client.events.list({ start: new Date(0).toISOString(), end: new Date(2100, 0).toISOString() })).filter((e) => e.recurringEventId)
+    t = renderWith(<EventEditor event={run} onClose={onClose} />, client)
+    await t.waitFor('Edit event')
+    await t.press('!', '\u0013')
+    await t.waitFor('Save recurring event')
+    expect(t.client.events.update).not.toHaveBeenCalled()
+    await t.press(KEY.esc) // back to the form, still open
+    await t.waitFor(() => !t.lastFrame()!.includes('Save recurring event'))
+    expect(onClose).not.toHaveBeenCalled()
+    await t.press('\u0013')
+    await t.waitFor('Save recurring event')
+    await t.press('3')
+    await t.waitFor(() => onClose.mock.calls.length > 0)
+    expect(t.client.events.update).toHaveBeenCalledWith(expect.objectContaining({ id: run.id, title: `${run.title}!` }), 'all')
   })
 
   it('handles a burst of keys with no re-render in between', async () => {

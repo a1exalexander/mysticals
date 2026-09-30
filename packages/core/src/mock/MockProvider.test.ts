@@ -36,4 +36,22 @@ describe('mock api isolation', () => {
     await api.events.delete((await runs())[1], 'all')
     expect(await runs()).toHaveLength(0)
   })
+
+  it('edits recurring instances by scope', async () => {
+    const api = createMockApi(() => {})
+    const range = { start: new Date(Date.now() - 7 * 864e5).toISOString(), end: new Date(Date.now() + 7 * 864e5).toISOString() }
+    const runs = async () => (await api.events.list(range)).filter((e) => e.recurringEventId === 'run-series').sort((a, b) => a.start.localeCompare(b.start))
+    const titles = async () => (await runs()).map((e) => e.title)
+    await api.events.update({ ...(await runs())[1], title: 'Jog' }, 'one')
+    expect(await titles()).toEqual(['Morning run', 'Jog', 'Morning run', 'Morning run', 'Morning run', 'Morning run', 'Morning run'])
+    const fourth = (await runs())[3]
+    const later = (iso: string) => new Date(Date.parse(iso) + 3600_000).toISOString()
+    await api.events.update({ ...fourth, title: 'Long run', start: later(fourth.start), end: later(fourth.end) }, 'following')
+    const after = await runs()
+    expect(after.map((e) => e.title)).toEqual(['Morning run', 'Jog', 'Morning run', 'Long run', 'Long run', 'Long run', 'Long run'])
+    expect(new Date(after[6].start).getHours()).toBe(8)
+    expect(new Date(after[0].start).getHours()).toBe(7)
+    await api.events.update({ ...after[0], title: 'Run' }, 'all')
+    expect(new Set(await titles())).toEqual(new Set(['Run']))
+  })
 })

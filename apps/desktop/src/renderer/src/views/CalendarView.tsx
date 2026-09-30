@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { format, getISOWeek } from 'date-fns'
-import type { CalEvent } from '@shared/types'
+import type { CalEvent, DeleteScope } from '@shared/types'
 import type { MenuCommand } from '@shared/ipc'
 import { useCalendarData } from '../hooks/useCalendarData'
 import { visibleEvents } from '@mysticals/core/logic/visible'
@@ -71,7 +71,7 @@ export function CalendarView(): React.JSX.Element {
     [accounts, calendars]
   )
 
-  const moveTo = useCallback<MoveTo>((e, start, end) => {
+  const move = useCallback((e: CalEvent, start: string, end: string, scope?: DeleteScope): void => {
     const k = keyOf(e)
     const drop = (): void =>
       setMoved((m) => {
@@ -80,19 +80,23 @@ export function CalendarView(): React.JSX.Element {
         return next
       })
     setMoved((m) => new Map(m).set(k, { start, end }))
-    window.api.events.update({ ...e, start, end }).then(
-      () =>
-        bus.emit('toast', {
-          text: `Moved “${e.title || 'Untitled'}”`,
-          // Undo is just the reverse move.
-          action: { label: 'Undo', run: () => moveTo({ ...e, start, end }, e.start, e.end) }
-        }),
-      (err) => {
-        drop()
-        bus.emit('toast', { text: `Couldn't move “${e.title || 'Untitled'}”: ${errorText(err)}`, error: true })
-      }
-    )
+    const send = (scope?: DeleteScope): void =>
+      void window.api.events.update({ ...e, start, end }, scope).then(
+        () =>
+          bus.emit('toast', {
+            text: `Moved “${e.title || 'Untitled'}”${scope === 'all' ? ' (all events)' : scope === 'following' ? ' and following' : ''}`,
+            // Undo is just the reverse move; a series change is not.
+            action: scope === 'all' || scope === 'following' ? undefined : { label: 'Undo', run: () => move({ ...e, start, end }, e.start, e.end, scope) }
+          }),
+        (err) => {
+          drop()
+          bus.emit('toast', { text: `Couldn't move “${e.title || 'Untitled'}”: ${errorText(err)}`, error: true })
+        }
+      )
+    if (!e.recurringEventId || scope) send(scope)
+    else bus.emit('scope:ask', { title: 'Move recurring event', onPick: send, onCancel: drop })
   }, [])
+  const moveTo = useCallback<MoveTo>((e, start, end) => move(e, start, end), [move])
   const firstSync = accounts.filter((a) => a.syncing && !a.synced)
 
   const colorOf = useMemo<ColorOf>(() => {

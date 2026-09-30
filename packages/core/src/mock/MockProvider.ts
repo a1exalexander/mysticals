@@ -46,9 +46,23 @@ export class MockProvider implements CalendarProvider {
     return structuredClone(ev)
   }
 
-  async updateEvent(event: CalEvent): Promise<CalEvent> {
+  async updateEvent(event: CalEvent, scope: DeleteScope = 'one'): Promise<CalEvent> {
     const i = this.events.findIndex((e) => e.id === event.id)
     if (i < 0) throw new Error('not found')
+    const old = this.events[i]
+    const series = old.recurringEventId
+    if (series && scope !== 'one') {
+      // Every selected instance takes the fields and the edited time offset and duration (timed series only).
+      const shift = Date.parse(event.start) - Date.parse(old.start)
+      const length = Date.parse(event.end) - Date.parse(event.start)
+      const at = (ms: number): string => new Date(ms).toISOString()
+      const { title, location, description, attendees } = event
+      this.events = this.events.map((e) => {
+        if (e.id === event.id || e.recurringEventId !== series || (scope === 'following' && e.start < old.start)) return e
+        const moved = old.allDay || event.allDay ? {} : { start: at(Date.parse(e.start) + shift), end: at(Date.parse(e.start) + shift + length) }
+        return { ...e, title, location, description, attendees, ...moved }
+      })
+    }
     this.events[i] = { ...event, accountId: this.accountId }
     return structuredClone(this.events[i])
   }

@@ -27,7 +27,7 @@ export interface Api {
     /** Cached events of all calendars in range, hidden ones included (the renderer filters by `visible`). Each event keeps its accountId. */
     list(range: TimeRange): Promise<CalEvent[]>
     create(input: NewEventInput): Promise<CalEvent>
-    update(event: CalEvent): Promise<CalEvent>
+    update(event: CalEvent, scope?: DeleteScope): Promise<CalEvent>
     delete(event: CalEvent, scope?: DeleteScope): Promise<void>
     respond(event: CalEvent, status: Exclude<PartStat, 'needsAction'>): Promise<CalEvent>
   }

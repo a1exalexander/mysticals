@@ -75,7 +75,8 @@ const CaldavInput = z.object({
 
 const AccountPatch = z.object({ label: text(200).min(1).optional(), color: color.optional() }).strict()
 const RsvpStatus = z.enum(['accepted', 'declined', 'tentative'])
-const Scope = z.enum(['one', 'following', 'all']).default('one')
+// null too: the terminal daemon's JSON line protocol turns an omitted argument into null.
+const Scope = z.enum(['one', 'following', 'all']).nullish().transform((s) => s ?? 'one')
 
 export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps): Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'> {
   const account = (accountId: unknown) => {
@@ -184,14 +185,20 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
         syncOne(a.id)
         return ev
       },
-      update: async (raw) => {
+      update: async (raw, scope) => {
         const edit = EventEdit.parse(raw)
         const cached = writable(cachedEvent(edit))
+        const how = cached.recurringEventId ? Scope.parse(scope) : 'one'
         const { title, start, end, allDay, location, description, attendees } = edit
         const ev = await store
           .getProvider(cached.accountId)
-          .updateEvent({ ...cached, title, start, end, allDay, location, description, attendees })
-        upsert(ev, cached.accountId, cached.calendarId)
+          .updateEvent({ ...cached, title, start, end, allDay, location, description, attendees }, how)
+        if (how === 'one') upsert(ev, cached.accountId, cached.calendarId)
+        else {
+          // The series' other instances moved or split; drop the stale ones until the sync below refills them.
+          const own = { ...ev, accountId: cached.accountId, calendarId: cached.calendarId }
+          applyLocal(cached.accountId, (events) => [...events.filter((e) => e.id !== own.id && !deletedBy(cached, how, e)), own])
+        }
         syncOne(cached.accountId)
         return ev
       },

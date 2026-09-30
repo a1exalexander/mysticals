@@ -5,6 +5,7 @@
  *
  * Keys (overlay owns all input): tab/shift-tab or ↓/↑ move between fields, typing edits text fields, ←/→ or space
  * cycle pickers / toggle all-day, enter moves on (saves on the last field), ctrl+s saves, esc cancels.
+ * Saving a recurring event asks 1 this event / 2 this and following / 3 all events (esc back to the form).
  * Mouse: click a field to focus it (a focused picker / all-day again to cycle / toggle it); Save and Cancel buttons.
  */
 import { useEffect, useRef, useState } from 'react'
@@ -14,7 +15,7 @@ import {
   applyForm, emptyForm, errorText, formFromEvent, formToInput, moveStart, setAllDay, soleId, splitEmails,
   writableAccounts, writableCalendars, type EventForm
 } from '@mysticals/core/logic/editor'
-import type { CalEvent } from '@mysticals/core/shared/types'
+import type { CalEvent, DeleteScope } from '@mysticals/core/shared/types'
 import { useApi, useDirectory } from '../hooks'
 import { Button, Clickable, useKeys } from '../mouse'
 import { C } from '../theme'
@@ -34,6 +35,7 @@ const LABELS: Record<Field, string> = {
   startTime: 'Start time', endDate: 'End date', endTime: 'End time', location: 'Location', description: 'Notes',
   attendees: 'Invitees'
 }
+const SCOPE_KEYS: Record<string, DeleteScope> = { '1': 'one', '2': 'following', '3': 'all' }
 const HINTS: Partial<Record<Field, string>> = {
   startDate: 'YYYY-MM-DD', startTime: 'HH:mm', endDate: 'YYYY-MM-DD', endTime: 'HH:mm',
   attendees: 'a@x.com, b@y.com', title: 'New Event'
@@ -88,6 +90,13 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const busy = useRef(false)
+  // Which part of a recurring series the save is for, asked on save.
+  const [askScope, setAskScopeState] = useState(false)
+  const asking = useRef(false)
+  const setAskScope = (on: boolean): void => {
+    asking.current = on
+    setAskScopeState(on)
+  }
   const alive = useRef(true)
   useEffect(() => () => void (alive.current = false), [])
 
@@ -101,7 +110,7 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
 
   const choices = writableAccounts(accounts, calendars)
 
-  const save = async (): Promise<void> => {
+  const save = async (scope?: DeleteScope): Promise<void> => {
     if (!latest.current || busy.current) return
     const { form, texts } = latest.current
     setError('')
@@ -117,10 +126,13 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
     let request: Promise<unknown>
     try {
       // Both throw a user-facing Error on invalid input, before any request is sent.
-      request = event ? api.events.update(applyForm(event, f)) : api.events.create(formToInput(f))
+      const edited = event && applyForm(event, f)
+      if (edited && event.recurringEventId && !scope) return setAskScope(true)
+      request = edited ? api.events.update(edited, scope) : api.events.create(formToInput(f))
     } catch (e) {
       return setError(errorText(e))
     }
+    setAskScope(false)
     busy.current = true
     setSaving(true)
     try {
@@ -180,9 +192,11 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
   }
 
   useKeys((input, key) => {
+    if (key.escape && asking.current && !busy.current) return setAskScope(false)
     if (key.escape) return onClose()
     const s = latest.current
     if (!s || busy.current) return
+    if (asking.current) return void (Object.hasOwn(SCOPE_KEYS, input) && save(SCOPE_KEYS[input]))
     if (key.ctrl && input === 's') return void save()
     const fields = fieldsFor(s.form, !!event)
     const i = Math.min(s.focus, fields.length - 1)
@@ -257,6 +271,14 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
       {error && <Text color={C.red}>{error}</Text>}
       {saving ? (
         <Text color={C.yellow}>Saving…</Text>
+      ) : askScope ? (
+        <Box flexWrap="wrap">
+          <Text color={C.yellow}>Save recurring event: </Text>
+          <Button k="1" label="this event" color={C.green} onPress={() => void save('one')} />
+          <Button k="2" label="this and following" color={C.green} onPress={() => void save('following')} />
+          <Button k="3" label="all events" color={C.green} onPress={() => void save('all')} />
+          <Button k="esc" label="back" onPress={() => setAskScope(false)} />
+        </Box>
       ) : (
         <Box flexWrap="wrap">
           <Box marginRight={2}>

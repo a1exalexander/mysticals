@@ -16,7 +16,9 @@ import {
   applyDeleteFollowing,
   applyDeleteInstance,
   applyRespond,
+  applySplitFollowing,
   applyUpdate,
+  applyUpdateSeries,
   buildIcs,
   cleanEmail,
   parseEvents,
@@ -108,15 +110,18 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
 
   const mapCtx = (calendarId: string) => ({ accountId: ctx.accountId, calendarId, email: ctx.email })
 
-  /** Re-read one object after a write to get fresh etag + server-normalized ICS. */
+  /**
+   * Re-read one object after a write to get fresh etag + server-normalized ICS.
+   * Returns the instance with `id`, else (a new or reshaped series) the one starting where `around` does.
+   */
   async function reload(calendarId: string, href: string, id: string | undefined, around: TimeRange): Promise<CalEvent> {
     const { headers } = await getConn()
     const [obj] = await fetchCalendarObjects({ calendar: { url: calendarId }, objectUrls: [href], headers, urlFilter: () => true, fetch: timedFetch })
     if (!obj?.data) throw new Error('Saved event could not be read back from the server')
     const range = { start: new Date(new Date(around.start).getTime() - DAY).toISOString(), end: new Date(new Date(around.end).getTime() + DAY).toISOString() }
     const events = parseEvents(obj.data, id === undefined ? obj.url : href, obj.etag, mapCtx(calendarId), range)
-    // A new object has one event; otherwise return exactly the edited instance.
-    const ev = id === undefined ? events[0] : events.find((e) => e.id === id)
+    const at = Date.parse(around.start)
+    const ev = id === undefined ? (events.find((e) => Date.parse(e.start) === at) ?? events[0]) : events.find((e) => e.id === id)
     if (!ev) throw new Error('Saved event not found on the server')
     return ev
   }
@@ -149,9 +154,26 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
       return reload(calendarId, href, undefined, input)
     },
 
-    async updateEvent(event) {
-      await put(event, applyUpdate(event, ctx.email), 'Update event')
-      return reload(event.calendarId, (event.raw as CaldavRaw).href, event.id, event)
+    async updateEvent(event, scope = 'one') {
+      const raw = event.raw as CaldavRaw
+      if (!raw.recurrenceId || scope === 'one') {
+        await put(event, applyUpdate(event, ctx.email), 'Update event')
+        return reload(event.calendarId, raw.href, event.id, event)
+      }
+      const uid = randomUUID()
+      const split = scope === 'following' ? applySplitFollowing(event, ctx.email, uid) : null
+      if (!split) {
+        // "All events", or "this and following" from the first instance: the edited slot may move, so find it by time.
+        await put(event, applyUpdateSeries(event, ctx.email), 'Update event')
+        return reload(event.calendarId, raw.href, undefined, event)
+      }
+      // End the old series first: its etag guards against a concurrent change before anything new is written.
+      await put(event, split.rest, 'Update event')
+      const { headers } = await getConn()
+      const filename = `${uid}.ics`
+      check(await createCalendarObject({ calendar: { url: event.calendarId }, filename, iCalString: split.next, headers, fetch: timedFetch }), 'Update event')
+      const href = new URL(filename, event.calendarId.endsWith('/') ? event.calendarId : `${event.calendarId}/`).href
+      return reload(event.calendarId, href, undefined, event)
     },
 
     async deleteEvent(event, scope = 'one') {

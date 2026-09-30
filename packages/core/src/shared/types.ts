@@ -59,7 +59,7 @@ export interface CalEvent {
   recurringEventId?: string
 }
 
-/** Which part of a recurring series a delete removes. Ignored for single events. */
+/** Which part of a recurring series a delete removes or an edit changes. Ignored for single events. */
 export type DeleteScope = 'one' | 'following' | 'all'
 
 export interface NewEventInput {

@@ -8,7 +8,7 @@ export interface CalendarProvider {
   listCalendars(): Promise<Calendar[]>
   listEvents(calendarId: string, range: TimeRange): Promise<CalEvent[]>
   createEvent(calendarId: string, input: NewEventInput): Promise<CalEvent>
-  updateEvent(event: CalEvent): Promise<CalEvent>
+  updateEvent(event: CalEvent, scope?: DeleteScope): Promise<CalEvent>
   deleteEvent(event: CalEvent, scope?: DeleteScope): Promise<void>
   respond(event: CalEvent, status: Exclude<PartStat, 'needsAction'>): Promise<CalEvent>
 }

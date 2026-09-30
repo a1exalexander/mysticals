@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { applyDeleteFollowing, applyDeleteInstance, applyRespond, applyUpdate, buildIcs, mapPartStat, parseEvents, type CaldavRaw } from './ics'
+import {
+  applyDeleteFollowing, applyDeleteInstance, applyRespond, applySplitFollowing, applyUpdate, applyUpdateSeries, buildIcs, mapPartStat, parseEvents,
+  type CaldavRaw
+} from './ics'
 
 const ctx = { accountId: 'work', calendarId: 'https://dav.example/cal/', email: 'Me@Work.example' }
 const HREF = 'https://dav.example/cal/ev.ics'
@@ -264,5 +267,95 @@ describe('applyDeleteFollowing', () => {
     const out = applyDeleteFollowing(third.raw as CaldavRaw)!
     expect(out).toMatch(/UNTIL=20260106(?!T)/)
     expect(parseEvents(out, HREF, undefined, ctx, JAN)).toHaveLength(2)
+  })
+})
+
+describe('applyUpdateSeries', () => {
+  const evs = parseEvents(DAILY, HREF, undefined, ctx, JAN)
+  const titles = (ics: string) => parseEvents(ics, HREF, undefined, ctx, JAN).map((e) => e.title)
+  const starts = (ics: string) => parseEvents(ics, HREF, undefined, ctx, JAN).map((e) => e.start)
+
+  it('renames every instance, keeping the customised override title and the times', () => {
+    const out = applyUpdateSeries({ ...evs[1], title: 'Sync' }, ctx.email)
+    expect(titles(out)).toEqual(['Sync', 'Sync', 'Standup (moved)', 'Sync'])
+    expect(starts(out)).toEqual(starts(DAILY))
+    expect(out).toMatch(/RRULE:FREQ=DAILY;COUNT=5/)
+  })
+
+  it('an edit made on an override applies to it and the series', () => {
+    const out = applyUpdateSeries({ ...evs[2], title: 'Sync', location: 'Room 1' }, ctx.email)
+    const all = parseEvents(out, HREF, undefined, ctx, JAN)
+    expect(all.map((e) => e.title)).toEqual(['Sync', 'Sync', 'Sync', 'Sync'])
+    expect(all.every((e) => e.location === 'Room 1')).toBe(true)
+    expect(all[2].start).toBe('2026-01-08T10:00:00.000Z')
+  })
+
+  it('moves every slot, EXDATE and override by the edited offset', () => {
+    // Jan 6 09:00 -> 11:30, 30 min long
+    const out = applyUpdateSeries({ ...evs[1], start: '2026-01-06T11:30:00.000Z', end: '2026-01-06T12:00:00.000Z' }, ctx.email)
+    const all = parseEvents(out, HREF, undefined, ctx, JAN)
+    expect(all.map((e) => e.start)).toEqual([
+      '2026-01-05T11:30:00.000Z',
+      '2026-01-06T11:30:00.000Z',
+      '2026-01-08T12:30:00.000Z', // the moved override moves too, and still matches its slot
+      '2026-01-09T11:30:00.000Z'
+    ])
+    expect(all[0].end).toBe('2026-01-05T12:00:00.000Z')
+    expect(out).toMatch(/EXDATE:20260107T113000Z/)
+    expect(out).toMatch(/RECURRENCE-ID:20260108T113000Z/)
+  })
+
+  it('shifts wall-clock time in the series TZID', () => {
+    const tz = wrap(
+      ['BEGIN:VTIMEZONE', 'TZID:Test/Plus2b', 'BEGIN:STANDARD', 'DTSTART:19700101T000000', 'TZOFFSETFROM:+0200', 'TZOFFSETTO:+0200', 'END:STANDARD', 'END:VTIMEZONE'].join('\r\n'),
+      ['BEGIN:VEVENT', 'UID:w', 'DTSTAMP:20251201T000000Z', 'DTSTART;TZID=Test/Plus2b:20260105T100000', 'DTEND;TZID=Test/Plus2b:20260105T110000', 'RRULE:FREQ=WEEKLY;COUNT=3', 'EXDATE;TZID=Test/Plus2b:20260119T100000', 'SUMMARY:Weekly', 'END:VEVENT'].join('\r\n')
+    )
+    const [, second] = parseEvents(tz, HREF, undefined, ctx, JAN)
+    const out = applyUpdateSeries({ ...second, start: '2026-01-12T07:00:00.000Z', end: '2026-01-12T08:00:00.000Z' }, ctx.email)
+    expect(out).toMatch(/DTSTART;TZID=Test\/Plus2b:20260105T090000/)
+    expect(out).toMatch(/EXDATE;TZID=Test\/Plus2b:20260119T090000/)
+    expect(parseEvents(out, HREF, undefined, ctx, JAN).map((e) => e.start)).toEqual(['2026-01-05T07:00:00.000Z', '2026-01-12T07:00:00.000Z'])
+  })
+
+  it('moves an all-day series by days', () => {
+    const allDay = wrap(['BEGIN:VEVENT', 'UID:a', 'DTSTAMP:20251201T000000Z', 'DTSTART;VALUE=DATE:20260105', 'DTEND;VALUE=DATE:20260106', 'RRULE:FREQ=WEEKLY;COUNT=2', 'SUMMARY:A', 'END:VEVENT'].join('\r\n'))
+    const [first] = parseEvents(allDay, HREF, undefined, ctx, JAN)
+    const out = applyUpdateSeries({ ...first, start: '2026-01-07', end: '2026-01-09' }, ctx.email)
+    expect(parseEvents(out, HREF, undefined, ctx, JAN).map((e) => [e.start, e.end])).toEqual([
+      ['2026-01-07', '2026-01-09'],
+      ['2026-01-14', '2026-01-16']
+    ])
+  })
+
+  it('turns a timed series all-day', () => {
+    const out = applyUpdateSeries({ ...evs[1], allDay: true, start: '2026-01-06', end: '2026-01-07' }, ctx.email)
+    const all = parseEvents(out, HREF, undefined, ctx, JAN)
+    expect(all.map((e) => e.start)).toEqual(['2026-01-05', '2026-01-06', '2026-01-08', '2026-01-09'])
+    expect(all.every((e) => e.allDay)).toBe(true)
+  })
+})
+
+describe('applySplitFollowing', () => {
+  const evs = parseEvents(DAILY, HREF, undefined, ctx, JAN)
+  const NEXT = 'https://dav.example/cal/next.ics'
+
+  it('ends the old series before the instance and starts a new one from it', () => {
+    const split = applySplitFollowing({ ...evs[1], title: 'Sync', start: '2026-01-06T10:00:00.000Z', end: '2026-01-06T10:30:00.000Z' }, ctx.email, 'new-uid')!
+    expect(parseEvents(split.rest, HREF, undefined, ctx, JAN).map((e) => [e.title, e.start])).toEqual([['Daily standup', '2026-01-05T09:00:00.000Z']])
+    expect(split.next).toMatch(/UID:new-uid/)
+    expect(split.next).not.toMatch(/UID:daily-1/)
+    // 5 slots, 1 used by the old series; the Jan 7 EXDATE and Jan 8 override move along.
+    expect(split.next).toMatch(/COUNT=4/)
+    const next = parseEvents(split.next, NEXT, undefined, ctx, JAN)
+    expect(next.map((e) => [e.title, e.start])).toEqual([
+      ['Sync', '2026-01-06T10:00:00.000Z'],
+      ['Standup (moved)', '2026-01-08T11:00:00.000Z'],
+      ['Sync', '2026-01-09T10:00:00.000Z']
+    ])
+    expect(next[0].end).toBe('2026-01-06T10:30:00.000Z')
+  })
+
+  it('returns null from the first instance so the whole series is edited', () => {
+    expect(applySplitFollowing({ ...evs[0], title: 'X' }, ctx.email, 'u')).toBeNull()
   })
 })

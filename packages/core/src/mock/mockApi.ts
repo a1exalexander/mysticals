@@ -106,8 +106,8 @@ export function createMockApi(onChanged: (accountId: string) => void): Omit<Api,
         onChanged(input.accountId)
         return ev
       },
-      update: async (ev) => {
-        const r = await own(ev.accountId, ev.calendarId).updateEvent(ev)
+      update: async (ev, scope) => {
+        const r = await own(ev.accountId, ev.calendarId).updateEvent(ev, scope)
         onChanged(ev.accountId)
         return r
       },

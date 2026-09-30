@@ -25,6 +25,68 @@ test('recurring delete: "This and following" keeps earlier instances only', asyn
   await app.close()
 })
 
+test('recurring edit: saving asks the scope; "All events" renames every instance', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 1200, height: 800 })
+  await page.getByTestId('view-switch-day').click()
+  const titles = async (): Promise<string[]> =>
+    (await page.evaluate((r) => window.api.events.list(r), range)).filter((e) => e.recurringEventId === 'run-series').map((e) => e.title)
+
+  await page.getByTestId('event-block').filter({ hasText: 'Morning run' }).first().click()
+  await page.getByTestId('details').getByRole('button', { name: 'Edit' }).click()
+  const editor = page.getByTestId('editor')
+  await editor.getByPlaceholder('Title').fill('Evening run')
+  await page.getByTestId('editor-save').click()
+  const scope = editor.getByRole('group', { name: 'Save recurring event' })
+  await expect(scope).toBeVisible()
+  await page.screenshot({ path: 'e2e/screens/recurring-edit.png' })
+  // Esc goes back to the form without saving.
+  await page.keyboard.press('Escape')
+  await expect(scope).toBeHidden()
+  await expect(editor).toBeVisible()
+  await page.getByTestId('editor-save').click()
+  await scope.getByRole('button', { name: 'All events' }).click()
+  await expect(editor).toBeHidden()
+  await expect.poll(titles).toEqual(Array(7).fill('Evening run'))
+  await app.close()
+})
+
+test('recurring drag: asks the scope; "This event" moves one instance, Cancel moves none', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 1200, height: 800 })
+  await page.getByTestId('view-switch-day').click()
+  const starts = async (): Promise<string[]> =>
+    (await page.evaluate((r) => window.api.events.list(r), range)).filter((e) => e.recurringEventId === 'run-series').map((e) => e.start).sort()
+  const before = await starts()
+  const drag = async (): Promise<void> => {
+    const run = page.getByTestId('event-block').filter({ hasText: 'Morning run' }).first()
+    await run.scrollIntoViewIfNeeded()
+    const box = (await run.boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + 8)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width / 2, box.y + 32, { steps: 4 })
+    await page.mouse.move(box.x + box.width / 2, box.y + 56, { steps: 4 })
+    await page.mouse.up()
+  }
+  const prompt = page.getByTestId('scope-prompt')
+
+  await drag()
+  await expect(prompt).toContainText('Move recurring event')
+  await page.waitForTimeout(250)
+  await page.screenshot({ path: 'e2e/screens/recurring-drag.png' })
+  await prompt.getByRole('button', { name: 'Cancel' }).click()
+  await expect(prompt).toBeHidden()
+  expect(await starts()).toEqual(before)
+
+  await drag()
+  await prompt.getByRole('button', { name: 'This event' }).click()
+  await expect(page.getByTestId('toast')).toContainText('Moved “Morning run”')
+  await expect.poll(async () => (await starts()).filter((s) => !before.includes(s))).toHaveLength(1)
+  await app.close()
+})
+
 test('toolbar "+ new" opens the editor; custom picker sets date and time', async () => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()
