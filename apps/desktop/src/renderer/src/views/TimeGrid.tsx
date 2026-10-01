@@ -7,7 +7,7 @@ import { meetingUrl, place } from '@mysticals/core/logic/meeting'
 import { nav } from './nav'
 import { dragRange, eventBounds, eventsOnDay, isPast, layoutDay, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
-import { moveRange, resizeEnd } from './drag'
+import { moveRange, resizeEnd, resizeStart } from './drag'
 
 const HOUR = 48 // px per hour
 const MIN_DUR = 22 // minutes; shorter events render (and pack) as if this long
@@ -52,7 +52,7 @@ interface Props {
 /** An event being dragged: where it would land (day index in `days`, minutes of that day). */
 interface Moving {
   key: string
-  mode: 'move' | 'resize'
+  mode: 'move' | 'resize' | 'resize-start'
   day: number
   start: number
   end: number
@@ -72,7 +72,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
     bus.emit('event:open', { event, anchor: e.currentTarget.getBoundingClientRect(), el: e.currentTarget })
   }
 
-  /** Drag an event to another time or day (`move`), or its bottom edge to change the end (`resize`); 15-min steps. */
+  /** Drag an event to another time or day (`move`), or its bottom/top edge to change the end (`resize`) / start (`resize-start`); 15-min steps. */
   const onEventDown = (e: CalEvent, dayIdx: number, mode: Moving['mode']) => (ev: React.MouseEvent<HTMLElement>) => {
     ev.stopPropagation()
     const span = sameDaySpan(e, days[dayIdx])
@@ -96,7 +96,12 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
         if (i >= 0) day = i
       }
       const pointer = minuteIn(m.clientY, cols[day])
-      const r = mode === 'move' ? moveRange(span.start, span.end, pointer - grab) : { start: span.start, end: resizeEnd(span.start, pointer) }
+      const r =
+        mode === 'move'
+          ? moveRange(span.start, span.end, pointer - grab)
+          : mode === 'resize'
+            ? { start: span.start, end: resizeEnd(span.start, pointer) }
+            : { start: resizeStart(span.end, pointer), end: span.end }
       to = { key: keyOf(e), mode, day, ...r }
       setMoving(to)
       document.body.dataset.dragging = mode
@@ -282,7 +287,10 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                     {e.location ? ` · ${place(e.location)}` : ''}
                   </span>
                   {draggable && (
-                    <span className="ev-resize" data-testid="event-resize" aria-hidden onMouseDown={onEventDown(e, dayIdx, 'resize')} onClick={stop} />
+                    <>
+                      <span className="ev-resize ev-resize-top" data-testid="event-resize-top" aria-hidden onMouseDown={onEventDown(e, dayIdx, 'resize-start')} onClick={stop} />
+                      <span className="ev-resize" data-testid="event-resize" aria-hidden onMouseDown={onEventDown(e, dayIdx, 'resize')} onClick={stop} />
+                    </>
                   )}
                 </div>
               )
