@@ -212,7 +212,7 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .sb-add:hover, .sb-gear:hover { background: var(--hover); color: var(--fg); }
 
 /* ---------- Calendar view ---------- */
-.calendar-view { position: relative; height: 100%; display: flex; flex-direction: column; }
+.calendar-view { position: relative; height: 100%; display: flex; flex-direction: column; container: view / inline-size; }
 .toolbar {
   flex: none; height: 52px; display: flex; align-items: center; gap: 14px; padding: 0 14px 0 20px;
 }
@@ -224,14 +224,35 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .toolbar-title { animation: fade-in 140ms ease-out; }
 .toolbar-sub { font: 500 12.5px/1 var(--mono); color: var(--muted); letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; }
 
-/* Segmented tabs: Day / 3 Days / Week / Month */
-.seg { display: flex; gap: 2px; }
+/* Segmented tabs: Agenda / Day / 3 Days / Week / Month, on a tinted track. One thumb slides under the active tab
+   (ViewSwitch sets its x/width); --spring is a damped spring (~8% overshoot, settles in ~420ms). */
+.seg {
+  --spring: linear(0, 0.053, 0.182, 0.346, 0.517, 0.676, 0.81, 0.916, 0.993, 1.043, 1.072, 1.083, 1.082, 1.073, 1.06,
+    1.046, 1.032, 1.02, 1.01, 1.003, 0.998, 0.995, 0.993, 0.993, 1);
+  position: relative; display: flex; gap: 4px; padding: 2px; border-radius: 6px;
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+}
 .seg button {
-  height: 26px; padding: 0 6px; border: 0; border-radius: 4px; background: none;
-  font: 12px/26px var(--mono); color: var(--muted);
+  position: relative; z-index: 1; height: 22px; padding: 0 10px; border: 0; border-radius: 4px; background: none;
+  font: 12px/22px var(--mono); color: var(--muted); transition: color 160ms ease;
 }
 .seg button:hover { color: var(--fg); }
-.seg button.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.seg button.active { color: var(--accent); }
+.seg-thumb {
+  position: absolute; top: 2px; left: 0; height: 22px; border-radius: 4px; pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg));
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25), inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.seg[data-ready='true'] .seg-thumb { transition: transform 420ms var(--spring), width 420ms var(--spring); }
+@media (prefers-reduced-motion: reduce) {
+  .seg[data-ready='true'] .seg-thumb { transition: none; }
+}
+/* Narrow main pane (small windows): the toolbar stays on one row; the subtitle goes first, then spacing. */
+@container view (max-width: 860px) {
+  .toolbar { gap: 10px; padding: 0 12px 0 16px; }
+  .toolbar-sub { display: none; }
+  .seg button { padding: 0 8px; }
+}
 
 /* All toolbar controls are 26px boxes; the nav's border must be visible (not --line-strong,
    which is near the bg) or it reads 2px shorter than the solid-filled .new-btn. */

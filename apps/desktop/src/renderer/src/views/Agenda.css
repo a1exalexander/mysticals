@@ -1,0 +1,89 @@
+/* Agenda: today's list (left) + focus card with the join button (right). Flat like the rest of the app:
+   colour lives in straight bars, dots and status text, never in gradients or glows. */
+.ag-wrap { flex: 1; min-height: 0; display: flex; container-type: inline-size; border-top: 1px solid var(--line); }
+.ag {
+  flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
+  gap: 24px; padding: 14px 20px 20px;
+}
+.ag-list { min-height: 0; overflow-y: auto; }
+.ag-empty { margin: 10px 8px; color: var(--muted); font: 12.5px/1.5 var(--mono); }
+
+.ag-allday { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.ag-chip {
+  max-width: 100%; height: 22px; padding: 0 8px; border: 0; border-radius: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; font: 11.5px/22px var(--mono); color: var(--fg);
+  background: color-mix(in srgb, var(--c) 18%, transparent); box-shadow: inset 2px 0 var(--c);
+}
+.ag-chip:hover { background: color-mix(in srgb, var(--c) 26%, transparent); }
+
+.ag-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ag-rows li { position: relative; animation: ag-in 200ms ease-out both; animation-delay: calc(var(--i) * 20ms); }
+.ag-row {
+  width: 100%; display: grid; grid-template-columns: 44px 3px minmax(0, 1fr); align-items: center; gap: 10px;
+  padding: 7px 64px 7px 8px; border: 0; border-radius: 4px; background: none; color: var(--fg); text-align: left;
+  transition: background 120ms ease;
+}
+.ag-row:hover { background: var(--hover); }
+.ag-row[aria-current='true'] { background: color-mix(in srgb, var(--c) 10%, transparent); }
+.ag-row[data-past='true'], .ag-row[data-declined='true'] { opacity: 0.45; }
+.ag-row[data-declined='true'] .ag-title { text-decoration: line-through; }
+.ag-time { font: 12px/1 var(--mono); color: var(--muted); }
+.ag-row[data-live='true'] .ag-time { color: var(--green); }
+.ag-bar { align-self: stretch; border-radius: 1px; background: var(--c); }
+.ag-main { min-width: 0; display: grid; gap: 3px; }
+.ag-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ag-meta { font: 11.5px/1.3 var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ag-live { color: var(--green); }
+.ag-join-pill {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%); height: 22px; padding: 0 10px;
+  border: 0; border-radius: 3px; background: var(--green); color: var(--bg); font: 700 11px/22px var(--mono);
+  animation: fade-in 160ms ease-out;
+}
+.ag-join-pill:hover { filter: brightness(1.1); }
+
+.ag-focus {
+  --bar: var(--c);
+  align-self: start; padding: 18px 20px 18px 22px; border: 1px solid var(--line-strong); border-radius: 6px;
+  background: linear-gradient(var(--bar), var(--bar)) 0 14px / 3px calc(100% - 28px) no-repeat, var(--surface);
+  user-select: text; animation: ag-in 180ms ease-out;
+}
+.ag-focus-empty { --bar: transparent; display: grid; place-items: center; min-height: 140px; color: var(--muted); font: 12.5px/1.5 var(--mono); }
+.ag-status { font: 600 11px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.ag-status.live { color: var(--green); }
+.ag-status.live::before {
+  content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%;
+  background: var(--green); vertical-align: 1px; animation: ag-pulse 1.6s ease-in-out infinite;
+}
+.ag-focus-title { margin: 10px 0 4px; font-size: 19px; font-weight: 700; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.ag-focus-when { font: 12.5px/1.4 var(--mono); }
+.ag-focus-when span { color: var(--muted); }
+.ag-facts { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 4px 10px; margin: 16px 0 0; }
+.ag-facts dt { font: 10.5px/19px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.ag-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; line-height: 19px; }
+.ag-dot { display: inline-block; width: 7px; height: 7px; border-radius: 2px; background: var(--c); }
+.ag-url { font: 12px/19px var(--mono); color: var(--cyan); }
+
+.ag-actions { display: flex; align-items: center; gap: 8px; margin-top: 18px; }
+.ag-join {
+  flex: 1; height: 34px; border: 0; border-radius: 4px; background: var(--green); color: var(--bg);
+  font: 700 13px/34px var(--mono); transition: filter 120ms ease;
+}
+.ag-join:hover { filter: brightness(1.08); }
+.ag-join kbd { margin-left: 8px; font: inherit; font-weight: 400; opacity: 0.6; }
+.ag-hint { flex: 1; font: 12px/1.4 var(--mono); color: var(--muted); }
+.ag-details {
+  height: 34px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 4px; background: none;
+  color: var(--fg); font: 12px/1 var(--mono);
+}
+.ag-details:hover { background: var(--hover); }
+
+@keyframes ag-in { from { opacity: 0; transform: translateY(3px); } }
+@keyframes ag-pulse { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) {
+  .ag-rows li, .ag-focus, .ag-join-pill, .ag-status.live::before { animation: none; }
+}
+/* Narrow: the list alone; rows keep their Join pill, so joining is still one click. */
+@container (max-width: 720px) {
+  .ag { grid-template-columns: minmax(0, 1fr); padding: 12px 14px 16px; }
+  .ag-focus { display: none; }
+}

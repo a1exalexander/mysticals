@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { format, getISOWeek } from 'date-fns'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { format, getISOWeek, startOfDay } from 'date-fns'
 import type { CalEvent, DeleteScope } from '@shared/types'
 import type { MenuCommand } from '@shared/ipc'
 import { useCalendarData } from '../hooks/useCalendarData'
@@ -7,15 +7,17 @@ import { visibleEvents } from '@mysticals/core/logic/visible'
 import { canEdit } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
 import { bus } from '../bus'
-import { nav, useNav } from './nav'
+import { nav, useNav, type DeskView } from './nav'
 import { rangeLabel, shiftDate, viewDays, viewRange, type View } from '@mysticals/core/logic/layout'
 import { TimeGrid } from './TimeGrid'
 import { MonthGrid } from './MonthGrid'
+import { Agenda } from './Agenda'
 
-const VIEWS: View[] = ['day', '3day', 'week', 'month']
-const LABEL: Record<View, string> = { day: 'Day', '3day': '3 Days', week: 'Week', month: 'Month' }
-const KEY_VIEW: Record<string, View> = { d: 'day', '3': '3day', w: 'week', m: 'month' }
-const MENU_VIEW: Partial<Record<MenuCommand, View>> = {
+const VIEWS: DeskView[] = ['agenda', 'day', '3day', 'week', 'month']
+const LABEL: Record<DeskView, string> = { agenda: 'Agenda', day: 'Day', '3day': '3 Days', week: 'Week', month: 'Month' }
+const KEY_VIEW: Record<string, DeskView> = { a: 'agenda', d: 'day', '3': '3day', w: 'week', m: 'month' }
+const MENU_VIEW: Partial<Record<MenuCommand, DeskView>> = {
+  'view-agenda': 'agenda',
   'view-day': 'day',
   'view-3day': '3day',
   'view-week': 'week',
@@ -32,14 +34,19 @@ const same = (a: string, b: string): boolean => Date.parse(a) === Date.parse(b) 
 
 const go = (dir: 1 | -1): void => {
   const { view, date } = nav.get()
+  if (view === 'agenda') return
   nav.set({ date: shiftDate(view, date, dir) })
 }
 const today = (): void => nav.set({ date: new Date() })
 
 export function CalendarView(): React.JSX.Element {
-  const { date, view } = useNav()
-  const range = useMemo(() => viewRange(view, date), [view, date])
-  const days = useMemo(() => viewDays(view, date), [view, date])
+  const { date: navDate, view: deskView } = useNav()
+  const agenda = deskView === 'agenda'
+  // The agenda is always today; underneath it loads like the day view.
+  const view: View = agenda ? 'day' : deskView
+  const date = agenda ? startOfDay(new Date()) : navDate
+  const range = useMemo(() => viewRange(view, date), [view, date.getTime()])
+  const days = useMemo(() => viewDays(view, date), [view, date.getTime()])
   const { accounts, calendars, events: all } = useCalendarData(range)
   // Dropped events show at their new time at once; an entry goes when the data has caught up or the save fails.
   const [moved, setMoved] = useState<Map<string, { start: string; end: string }>>(() => new Map())
@@ -141,47 +148,44 @@ export function CalendarView(): React.JSX.Element {
     <div className="calendar-view" data-testid="calendar-view">
       <header className="toolbar">
         {/* Keyed by the period so a step to the next one fades the new title in. */}
-        <h1 className="toolbar-title" key={`${view}/${format(days[0], 'yyyy-MM-dd')}`}>
-          {view === 'day' ? format(date, 'd MMMM') : view === '3day' ? rangeLabel(days[0], days[2]) : format(date, 'MMMM')}
+        <h1 className="toolbar-title" key={`${deskView}/${format(days[0], 'yyyy-MM-dd')}`}>
+          {agenda ? 'Today' : view === 'day' ? format(date, 'd MMMM') : view === '3day' ? rangeLabel(days[0], days[2]) : format(date, 'MMMM')}
           <span className="toolbar-sub">
-            {view !== '3day' && format(date, 'yyyy')}
-            {view === 'day' && ` · ${format(date, 'EEE')}`}
-            {view === '3day' &&
-              [...new Set(days.map((d) => `W${getISOWeek(d)}`))].join('–')}
-            {(view === 'day' || view === 'week') && ` · W${getISOWeek(date)}`}
+            {agenda ? (
+              format(date, 'EEEE, d MMMM')
+            ) : (
+              <>
+                {view !== '3day' && format(date, 'yyyy')}
+                {view === 'day' && ` · ${format(date, 'EEE')}`}
+                {view === '3day' &&
+                  [...new Set(days.map((d) => `W${getISOWeek(d)}`))].join('–')}
+                {(view === 'day' || view === 'week') && ` · W${getISOWeek(date)}`}
+              </>
+            )}
           </span>
         </h1>
-        <div className="seg" role="tablist">
-          {VIEWS.map((v) => (
-            <button
-              key={v}
-              role="tab"
-              aria-selected={v === view}
-              className={v === view ? 'active' : ''}
-              data-testid={`view-switch-${v}`}
-              onClick={() => nav.set({ view: v })}
-            >
-              {LABEL[v]}
+        <ViewSwitch view={deskView} />
+        {!agenda && (
+          <div className="toolbar-nav">
+            <button className="icon-btn" aria-label="Previous" onClick={() => go(-1)}>
+              ‹
             </button>
-          ))}
-        </div>
-        <div className="toolbar-nav">
-          <button className="icon-btn" aria-label="Previous" onClick={() => go(-1)}>
-            ‹
-          </button>
-          <button className="today-btn" onClick={today}>
-            today
-          </button>
-          <button className="icon-btn" aria-label="Next" onClick={() => go(1)}>
-            ›
-          </button>
-        </div>
+            <button className="today-btn" onClick={today}>
+              today
+            </button>
+            <button className="icon-btn" aria-label="Next" onClick={() => go(1)}>
+              ›
+            </button>
+          </div>
+        )}
         <button className="new-btn" data-testid="new-event" title="New event (N)" onClick={() => bus.emit('event:create', {})}>
           + new
         </button>
       </header>
       {firstSync.length > 0 && <div className="loadbar" role="progressbar" aria-label="Syncing" data-testid="loadbar" />}
-      {view === 'month' ? (
+      {agenda ? (
+        <Agenda events={events} colorOf={colorOf} />
+      ) : view === 'month' ? (
         <MonthGrid date={date} events={events} colorOf={colorOf} canDrag={canDrag} moveTo={moveTo} />
       ) : (
         <TimeGrid days={days} events={events} colorOf={colorOf} canDrag={canDrag} moveTo={moveTo} />
@@ -194,6 +198,50 @@ export function CalendarView(): React.JSX.Element {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/** Segmented view tabs; one thumb slides (spring easing, see .seg-thumb) under the active tab. */
+function ViewSwitch({ view }: { view: DeskView }): React.JSX.Element {
+  const tabs = useRef(new Map<DeskView, HTMLButtonElement>())
+  const thumb = useRef<HTMLSpanElement>(null)
+  const [ready, setReady] = useState(false)
+  useLayoutEffect(() => {
+    const b = tabs.current.get(view)
+    const t = thumb.current
+    if (!b || !t) return
+    const place = (): void => {
+      t.style.transform = `translateX(${b.offsetLeft}px)`
+      t.style.width = `${b.offsetWidth}px`
+    }
+    place()
+    // Tabs resize with the window (narrow toolbar padding): follow the active one.
+    const ro = new ResizeObserver(place)
+    ro.observe(b)
+    return () => ro.disconnect()
+  }, [view])
+  // Only animate moves after the first placement, so the thumb doesn't fly in on launch.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setReady(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
+  return (
+    <div className="seg" role="tablist" data-ready={ready}>
+      <span className="seg-thumb" ref={thumb} aria-hidden />
+      {VIEWS.map((v) => (
+        <button
+          key={v}
+          ref={(el) => void (el ? tabs.current.set(v, el) : tabs.current.delete(v))}
+          role="tab"
+          aria-selected={v === view}
+          className={v === view ? 'active' : ''}
+          data-testid={`view-switch-${v}`}
+          onClick={() => nav.set({ view: v })}
+        >
+          {LABEL[v]}
+        </button>
+      ))}
     </div>
   )
 }

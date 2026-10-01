@@ -117,9 +117,11 @@ function UpdateItem(): React.JSX.Element | null {
 export function StatusBar(): React.JSX.Element {
   const { view, date } = useNav()
   const { accounts } = useCalendarData()
-  const days = viewDays(view, date)
+  const days = viewDays(view === 'agenda' ? 'day' : view, date)
   const range =
-    view === 'day'
+    view === 'agenda'
+      ? format(new Date(), 'EEE d MMM yyyy')
+      : view === 'day'
       ? format(date, 'EEE d MMM yyyy')
       : view === 'month'
         ? format(date, 'MMMM yyyy')
@@ -152,7 +154,7 @@ export function StatusBar(): React.JSX.Element {
       <span className="sbar-grow" />
       <UpdateItem />
       <span className="sbar-keys" aria-hidden>
-        <kbd>n</kbd> new · <kbd>t</kbd> today · <kbd>h</kbd>/<kbd>l</kbd> · <kbd>d</kbd>/<kbd>3</kbd>/<kbd>w</kbd>/<kbd>m</kbd> · <kbd>i</kbd> invites
+        <kbd>n</kbd> new · <kbd>t</kbd> today · <kbd>h</kbd>/<kbd>l</kbd> · <kbd>a</kbd>/<kbd>d</kbd>/<kbd>3</kbd>/<kbd>w</kbd>/<kbd>m</kbd> · <kbd>i</kbd> invites
       </span>
       <InvitesPanel />
     </footer>

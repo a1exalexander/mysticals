@@ -17,9 +17,9 @@ test('calendar views: week/month/day, visibility toggle, screenshots', async () 
   await expect(page.getByTestId('sidebar-account-work')).not.toContainText('Holidays')
   await page.screenshot({ path: 'e2e/screens/unit6-week.png' })
 
-  // Toolbar controls (view tabs, ‹ today ›, + new) share one height and top edge.
+  // Toolbar controls (view tab track, ‹ today ›, + new) share one height and top edge.
   const boxes = await Promise.all(
-    ['.seg button.active', '.toolbar-nav .icon-btn >> nth=0', '.today-btn', '.new-btn'].map((s) => page.locator(s).boundingBox())
+    ['.seg', '.toolbar-nav .icon-btn >> nth=0', '.today-btn', '.new-btn'].map((s) => page.locator(s).boundingBox())
   )
   for (const b of boxes) expect([b?.y, b?.height]).toEqual([boxes[3]?.y, boxes[3]?.height])
 

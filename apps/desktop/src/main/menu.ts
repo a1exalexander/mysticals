@@ -22,6 +22,7 @@ export function buildMenu(): Menu {
       submenu: [
         { label: 'Today', accelerator: 'CmdOrCtrl+T', click: send('today') },
         { type: 'separator' },
+        { label: 'Agenda', accelerator: 'CmdOrCtrl+0', click: send('view-agenda') },
         { label: 'Day', accelerator: 'CmdOrCtrl+1', click: send('view-day') },
         { label: '3 Days', accelerator: 'CmdOrCtrl+2', click: send('view-3day') },
         { label: 'Week', accelerator: 'CmdOrCtrl+3', click: send('view-week') },

@@ -72,7 +72,7 @@ export interface TelemetryApi {
   setEnabled(on: boolean): Promise<void>
 }
 
-export type MenuCommand = 'new-event' | 'today' | 'view-day' | 'view-3day' | 'view-week' | 'view-month'
+export type MenuCommand = 'new-event' | 'today' | 'view-agenda' | 'view-day' | 'view-3day' | 'view-week' | 'view-month'
 
 export const IPC = {
   accountsList: 'accounts:list',

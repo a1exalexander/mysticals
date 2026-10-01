@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { meetingUrl, place } from './meeting'
+import type { CalEvent } from '../shared/types'
+import { joinable, meetingUrl, place } from './meeting'
 
 describe('meetingUrl', () => {
   it('extracts the first http(s) url', () => {
@@ -24,5 +25,24 @@ describe('place', () => {
   it('leaves no link behind when there are several', () => {
     expect(place('https://zoom.us/j/1?pwd=x, https://zoom.us/j/2')).toBe('video call')
     expect(place('Zoom https://zoom.us/j/1\nhttps://zoom.us/j/1?pwd=x')).toBe('Zoom')
+  })
+})
+
+describe('joinable', () => {
+  const e = (location?: string, allDay = false): CalEvent => ({
+    id: 'x', accountId: 'a', calendarId: 'c', title: 'Sync', start: '2026-10-02T10:00:00', end: '2026-10-02T10:30:00', allDay, location, attendees: []
+  })
+  const at = (hm: string): Date => new Date(`2026-10-02T${hm}:00`)
+  it('opens 5 minutes before the start and closes at the end', () => {
+    const z = e('Zoom https://zoom.us/j/1')
+    expect(joinable(z, at('09:54'))).toBeUndefined()
+    expect(joinable(z, at('09:55'))).toBe('https://zoom.us/j/1')
+    expect(joinable(z, at('10:29'))).toBe('https://zoom.us/j/1')
+    expect(joinable(z, at('10:30'))).toBeUndefined()
+  })
+  it('needs a link in the location and a timed event', () => {
+    expect(joinable(e('Room 3'), at('10:00'))).toBeUndefined()
+    expect(joinable(e(), at('10:00'))).toBeUndefined()
+    expect(joinable(e('https://meet.google.com/abc', true), at('10:00'))).toBeUndefined()
   })
 })
