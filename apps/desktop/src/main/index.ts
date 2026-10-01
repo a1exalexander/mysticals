@@ -1,7 +1,7 @@
 import { join } from 'path'
 import { mkdtempSync, readFileSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
-import { app, BrowserWindow, dialog, Menu, nativeTheme, Notification, safeStorage, shell } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, Menu, nativeTheme, Notification, safeStorage, shell, type MenuItemConstructorOptions } from 'electron'
 import { IPC } from '@shared/ipc'
 import { createMockApi } from '@mysticals/core/mock/mockApi'
 import { createApi } from '@mysticals/core/api'
@@ -111,8 +111,9 @@ function loadSize(): { width: number; height: number } {
 function createWindow(): void {
   const win = new BrowserWindow({
     ...loadSize(),
-    minWidth: 800,
-    minHeight: 500,
+    // Sidebar (240) + a main pane wide enough for the toolbar on one row and a readable week grid.
+    minWidth: 960,
+    minHeight: 600,
     show: false,
     // Inset traffic lights on macOS; Windows/Linux keep the native frame.
     ...(MAC ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 16, y: 18 } } : {}),
@@ -132,6 +133,33 @@ function createWindow(): void {
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
     return { action: 'deny' }
+  })
+
+  // Right-click: copy selected text and links, the usual edit actions in fields.
+  win.webContents.on('context-menu', (_e, p) => {
+    const web = /^https?:\/\//i.test(p.linkURL)
+    const items: MenuItemConstructorOptions[] = [
+      ...(web
+        ? [
+            { label: 'Open Link', click: () => void shell.openExternal(p.linkURL) },
+            { label: 'Copy Link', click: () => clipboard.writeText(p.linkURL) },
+            { type: 'separator' as const }
+          ]
+        : []),
+      ...(p.isEditable
+        ? [
+            { role: 'cut' as const, enabled: p.editFlags.canCut },
+            { role: 'copy' as const, enabled: p.editFlags.canCopy },
+            { role: 'paste' as const, enabled: p.editFlags.canPaste },
+            { type: 'separator' as const },
+            { role: 'selectAll' as const }
+          ]
+        : p.selectionText.trim()
+          ? [{ role: 'copy' as const }]
+          : [])
+    ]
+    while (items.at(-1)?.type === 'separator') items.pop()
+    if (items.length) Menu.buildFromTemplate(items).popup({ window: win })
   })
 
   // Mock runs (e2e) must not touch the real window state.
