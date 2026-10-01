@@ -236,9 +236,11 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .seg button.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .seg button.active::before, .seg button.active::after { opacity: 1; }
 
+/* All toolbar controls are 26px boxes; the nav's border must be visible (not --line-strong,
+   which is near the bg) or it reads 2px shorter than the solid-filled .new-btn. */
 .toolbar-nav { display: flex; }
 .icon-btn, .today-btn {
-  height: 26px; border: 1px solid var(--line-strong); background: none; color: var(--fg);
+  height: 26px; border: 1px solid color-mix(in srgb, var(--muted) 55%, transparent); background: none; color: var(--fg);
   font: 12px/1 var(--mono);
 }
 .icon-btn { width: 28px; color: var(--muted); }
