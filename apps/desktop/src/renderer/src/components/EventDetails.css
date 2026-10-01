@@ -1,4 +1,4 @@
-.details { border-left: 2px solid var(--accent); border-radius: 0; line-height: 1.45; }
+.details { border-radius: 0; line-height: 1.45; }
 .details-head { display: flex; align-items: center; gap: 8px; }
 .details-head h2 { margin: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
 .details-dot { width: 9px; height: 9px; }
@@ -63,6 +63,6 @@
 .details-gone b { display: block; font-size: 12.5px; font-weight: 600; color: var(--fg); }
 .details-gone div span { display: block; margin-top: 2px; font: 11px/1.4 var(--mono); color: var(--muted); }
 .details-gone .mc-btn { height: 22px; padding: 0 8px; }
-.details.is-gone { border-left-color: var(--red); }
+.details.is-gone { --bar: var(--red); }
 .details.is-gone > :not(.details-gone) { opacity: 0.45; transition: opacity 200ms ease; }
 .details.is-gone h2 { text-decoration: line-through; }

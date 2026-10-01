@@ -14,6 +14,12 @@
 }
 .mc-sheet { margin-top: 52px; width: 460px; max-width: calc(100vw - 32px); max-height: calc(100vh - 80px); overflow: auto; padding: 18px 20px; animation: mc-drop 160ms ease-out; }
 .mc-popover { position: fixed; z-index: 40; width: 320px; max-height: calc(100vh - 24px); overflow: auto; padding: 14px 16px; animation: mc-pop 130ms ease-out; }
+/* Event colour: a straight bar inset from the rounded corners (a coloured border would bend around them).
+   A background layer, not ::before, so it stays put while the box scrolls. */
+.details, .editor {
+  --bar: var(--accent);
+  background: linear-gradient(var(--bar), var(--bar)) 0 14px / 3px calc(100% - 28px) no-repeat, var(--surface-2);
+}
 @keyframes mc-fade { from { opacity: 0; } }
 @keyframes mc-pop { from { opacity: 0; transform: translateY(-3px) scale(0.985); } }
 @keyframes mc-drop { from { opacity: 0; transform: translateY(-6px); } }

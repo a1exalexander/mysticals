@@ -32,7 +32,7 @@
 .acc-note a { color: var(--cyan); }
 .acc-hint { margin: -4px 0 0 108px; color: var(--muted); font: 10.5px/1.4 var(--mono); }
 .acc-error {
-  margin: 0; padding: 7px 10px; border-radius: 4px; border-left: 2px solid var(--red);
+  margin: 0; padding: 7px 10px; border-radius: 0; border-left: 2px solid var(--red);
   background: color-mix(in srgb, var(--red) 10%, transparent); color: var(--red); line-height: 1.4;
 }
 

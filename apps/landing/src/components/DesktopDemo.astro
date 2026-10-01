@@ -333,8 +333,10 @@ const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" />
   /* ---------- event editor sheet (mc-overlay + mc-sheet + editor) ---------- */
   .overlay { position: absolute; inset: 0; z-index: 8; display: flex; justify-content: center; align-items: flex-start; background: color-mix(in srgb, var(--bg) 60%, transparent); opacity: 0; visibility: hidden; animation: ov var(--T) infinite both; }
   .sheet {
-    margin-top: 4em; width: min(33em, 92%); padding: 1.3em 1.5em; background: var(--surface-2);
-    border: 1px solid var(--line-strong); border-top: 2px solid var(--accent); border-radius: .6em; box-shadow: 0 1.4em 3.8em rgb(0 0 0 / .55);
+    margin-top: 4em; width: min(33em, 92%); padding: 1.3em 1.5em;
+    /* Event colour as a straight inset bar: a coloured border would bend around the rounded corners. */
+    background: linear-gradient(var(--accent), var(--accent)) 0 .9em / 2px calc(100% - 1.8em) no-repeat, var(--surface-2);
+    border: 1px solid var(--line-strong); border-radius: .6em; box-shadow: 0 1.4em 3.8em rgb(0 0 0 / .55);
     animation: drop var(--T) infinite both;
   }
   .shead { display: flex; align-items: center; gap: .75em; margin-bottom: 1.2em; }
@@ -355,7 +357,7 @@ const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" />
   @keyframes out1 { 0%, 39% { opacity: 1; } 40%, 100% { opacity: 0; } }
   @keyframes in2 { 0%, 44% { opacity: 0; } 45%, 100% { opacity: 1; } }
   @keyframes out2 { 0%, 44% { opacity: 1; } 45%, 100% { opacity: 0; } }
-  .ident { margin-top: 1.2em; padding: .6em .8em; font: .88em/1.6 var(--mono); background: color-mix(in srgb, var(--accent) 9%, transparent); border-left: 2px solid var(--accent); border-radius: .3em; animation: in1 var(--T) infinite both; }
+  .ident { margin-top: 1.2em; padding: .6em .8em; font: .88em/1.6 var(--mono); background: color-mix(in srgb, var(--accent) 9%, transparent); border-left: 2px solid var(--accent); border-radius: 0; animation: in1 var(--T) infinite both; }
   .sacts { display: flex; justify-content: flex-end; gap: .6em; margin-top: 1.2em; }
   .add { animation: add var(--T) infinite both; }
   @keyframes add {

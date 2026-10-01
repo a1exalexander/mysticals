@@ -1,4 +1,3 @@
-.editor { border-top: 2px solid var(--accent); }
 .editor-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 .editor-dot { width: 10px; height: 10px; border-radius: 3px; background: var(--accent); flex: none; }
 .editor-title {
@@ -35,10 +34,10 @@
 .chip button { font: inherit; border: 0; background: transparent; color: var(--muted); padding: 0 3px; }
 
 .editor-identity {
-  margin-top: 16px; padding: 8px 10px; border-radius: 4px; line-height: 1.5;
+  margin-top: 16px; padding: 8px 10px; border-radius: 0; line-height: 1.5;
   font: 11.5px/1.6 var(--mono);
   background: color-mix(in srgb, var(--accent) 9%, transparent);
-  border-left: 2px solid var(--accent);
+  box-shadow: inset 2px 0 var(--accent);
 }
 .editor-warn { color: var(--orange); }
 .editor-error { margin-top: 10px; color: var(--red); }
