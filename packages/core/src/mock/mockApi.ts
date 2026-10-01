@@ -53,6 +53,9 @@ export function createMockApi(onChanged: (accountId: string) => void): Omit<Api,
   // Local dates (toISOString() would be off by a day near midnight); all-day ends are exclusive, like Google and iCal.
   const day = (offset: number): string => format(addDays(new Date(), offset), 'yyyy-MM-dd')
   seed(personal, 'p-holidays', { title: 'Holiday', start: day(0), end: day(1), allDay: true })
+  // More than three all-day events on one day, so the all-day row collapses.
+  for (const title of ['Conference', 'Team offsite', 'Release freeze', 'Birthday'])
+    seed(personal, 'p-main', { title, start: day(3), end: day(4), allDay: true })
 
   const prov = (id: string): MockProvider => {
     const p = providers.get(id)
