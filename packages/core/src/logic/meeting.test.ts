@@ -21,4 +21,8 @@ describe('place', () => {
     expect(place('Kyiv')).toBe('Kyiv')
     expect(place(undefined)).toBe('')
   })
+  it('leaves no link behind when there are several', () => {
+    expect(place('https://zoom.us/j/1?pwd=x, https://zoom.us/j/2')).toBe('video call')
+    expect(place('Zoom https://zoom.us/j/1\nhttps://zoom.us/j/1?pwd=x')).toBe('Zoom')
+  })
 })

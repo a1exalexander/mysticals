@@ -44,6 +44,10 @@ export function createMockApi(onChanged: (accountId: string) => void): Omit<Api,
     organizer: { email: 'pm@work.example' }, myStatus: 'needsAction',
     attendees: [{ email: 'pm@work.example', status: 'accepted', organizer: true }, { email: 'me@work.example', status: 'needsAction', self: true }]
   })
+  // Short (30 min) with a long title and a link-only location: the title must win the one-line block.
+  seed(work, 'work-main', {
+    title: 'Quarterly roadmap sync with design', start: iso(0, 11, 30), end: iso(0, 12), location: 'Zoom https://zoom.us/j/1234567890?pwd=abc'
+  })
   seed(personal, 'p-main', { title: 'Gym', start: iso(0, 19), end: iso(0, 20) })
   for (let d = -2; d <= 4; d++) {
     seed(personal, 'p-main', { title: 'Morning run', start: iso(d, 7), end: iso(d, 7, 45), recurringEventId: 'run-series' })

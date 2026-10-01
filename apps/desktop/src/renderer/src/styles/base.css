@@ -315,7 +315,7 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .ev-timed:hover { z-index: 2; filter: brightness(1.15); }
 .ev-meta { font: 10px/14px var(--mono); opacity: 0.8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ev-timed.is-short { flex-direction: row; gap: 6px; align-items: center; padding-top: 0; padding-bottom: 0; }
-/* One row: the title wins the space; time and place get what is left. */
+/* One row: the title wins the space; the time gets what is left. */
 .ev-timed.is-short .ev-title { flex: 0 0 auto; max-width: 100%; }
 .ev-timed.is-short .ev-meta { flex: 1 1 0; min-width: 0; }
 .tg-ghost {
