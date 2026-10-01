@@ -13,7 +13,11 @@ const iso = (dayOffset: number, h: number, m = 0): string => {
 /** Two isolated fake accounts with seeded events. Used when MYSTICALS_MOCK=1. */
 export function createMockApi(onChanged: (accountId: string) => void): Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'> {
   const accounts: Account[] = [
-    { id: 'work', kind: 'caldav', label: 'Work', email: 'me@work.example', color: '#8be9fd' },
+    {
+      id: 'work', kind: 'caldav', label: 'Work', email: 'me@work.example', color: '#8be9fd',
+      // e2e: a revoked app password; accounts.reauth with any password fixes it.
+      ...(process.env.MYSTICALS_MOCK_AUTH_ERROR ? { error: 'CalDAV login failed: the password was changed or revoked', authError: true } : {})
+    },
     { id: 'personal', kind: 'google', label: 'Personal', email: 'me@gmail.example', color: '#50fa7b' }
   ]
   const providers = new Map<string, MockProvider>([
@@ -74,6 +78,14 @@ export function createMockApi(onChanged: (accountId: string) => void): Omit<Api,
         const a = accounts.find((x) => x.id === id)
         if (!a) throw new Error('unknown account')
         Object.assign(a, patch)
+        onChanged(id)
+        return structuredClone(a)
+      },
+      reauth: async (id) => {
+        const a = accounts.find((x) => x.id === id)
+        if (!a) throw new Error('unknown account')
+        delete a.error
+        delete a.authError
         onChanged(id)
         return structuredClone(a)
       },

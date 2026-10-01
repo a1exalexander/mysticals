@@ -37,7 +37,7 @@ export function Sidebar(): React.JSX.Element {
           const cals = calendars.filter((c) => c.accountId === a.id)
           // Before its first sync lands an account has no calendars yet: say so instead of showing nothing.
           const loading = !a.synced && !cals.length && !!a.syncing
-          const failed = !a.synced && !cals.length && !a.syncing && !!a.error
+          const failed = !a.synced && !cals.length && !a.syncing && !!a.error && !a.authError
           return (
             <section key={a.id} className="sb-account" data-testid={`sidebar-account-${a.id}`}>
               <button
@@ -72,6 +72,19 @@ export function Sidebar(): React.JSX.Element {
                     </span>
                   ))}
                   <span className="sb-loading-text">Loading calendars…</span>
+                </div>
+              )}
+              {a.authError && (
+                <div className="sb-loading sb-failed" role="alert">
+                  <span className="sb-loading-text">Disconnected</span>
+                  <button
+                    type="button"
+                    className="sb-retry"
+                    data-testid={`sidebar-reauth-${a.id}`}
+                    onClick={() => bus.emit('reauth:open', { accountId: a.id })}
+                  >
+                    reconnect
+                  </button>
                 </div>
               )}
               {open && failed && (

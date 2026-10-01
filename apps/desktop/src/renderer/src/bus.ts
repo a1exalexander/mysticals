@@ -10,6 +10,8 @@ export interface BusEvents {
   'event:edit': { event: CalEvent }
   'accounts:open': Record<string, never>
   'settings:open': Record<string, never>
+  /** Ask for new credentials of an account the server stopped accepting (`authError`). */
+  'reauth:open': { accountId: string }
   /** Toggle the invitations panel in the status bar. */
   'invites:open': Record<string, never>
   /** Short notice above the status bar (e.g. "Event moved · Undo"); replaces the one shown. */

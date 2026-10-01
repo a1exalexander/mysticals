@@ -87,7 +87,8 @@ export class AccountStore {
     await writeAtomic(join(dir, 'creds.bin'), data)
   }
 
-  private readCreds(id: string): Credentials {
+  /** Decrypted credentials; main/daemon only (accounts.reauth keeps the server and username), never to the renderer. */
+  readCreds(id: string): Credentials {
     return JSON.parse(this.crypto.decrypt(readFileSync(join(this.accountDir(id), 'creds.bin')))) as Credentials
   }
 
@@ -111,7 +112,7 @@ export class AccountStore {
   }
   async update(
     id: string,
-    patch: { label?: string; color?: string; error?: string; credentials?: Credentials }
+    patch: { label?: string; color?: string; error?: string; authError?: boolean; credentials?: Credentials }
   ): Promise<Account> {
     return this.serial(async () => {
       const acc = this.accounts.find((a) => a.id === id)
@@ -126,6 +127,10 @@ export class AccountStore {
       if ('error' in patch) {
         if (patch.error) acc.error = patch.error
         else delete acc.error
+      }
+      if ('authError' in patch) {
+        if (patch.authError) acc.authError = true
+        else delete acc.authError
       }
       await this.saveRegistry()
       return { ...acc }

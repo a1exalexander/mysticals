@@ -15,6 +15,7 @@ export function registerApi(api: Impl): void {
   h(IPC.accountsAddCaldav, api.accounts.addCaldav)
   h(IPC.accountsUpdate, api.accounts.update)
   h(IPC.accountsRemove, api.accounts.remove)
+  h(IPC.accountsReauth, api.accounts.reauth)
   h(IPC.calendarsList, api.calendars.list)
   h(IPC.calendarsSetVisible, api.calendars.setVisible)
   h(IPC.eventsList, api.events.list)

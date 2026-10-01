@@ -19,6 +19,8 @@ export interface Api {
     addCaldav(input: CaldavAccountInput): Promise<Account>
     update(id: string, patch: { label?: string; color?: string }): Promise<Account>
     remove(id: string): Promise<void>
+    /** Reconnects an account whose credentials were rejected (`authError`): a new CalDAV password, or Google sign-in again. */
+    reauth(id: string, input?: { password: string }): Promise<Account>
   }
   calendars: {
     list(): Promise<Calendar[]>
@@ -78,6 +80,7 @@ export const IPC = {
   accountsAddCaldav: 'accounts:addCaldav',
   accountsUpdate: 'accounts:update',
   accountsRemove: 'accounts:remove',
+  accountsReauth: 'accounts:reauth',
   calendarsList: 'calendars:list',
   calendarsSetVisible: 'calendars:setVisible',
   eventsList: 'events:list',
