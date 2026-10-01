@@ -3,6 +3,7 @@ import type { Account, CalEvent } from '../shared/types'
 import type { AccountCache } from '../accounts/store'
 import { MockProvider } from '../mock/MockProvider'
 import { queryEvents, SyncEngine } from './engine'
+import { AuthError } from '../providers/http'
 
 class FakeStore {
   accounts: Account[] = []
@@ -181,6 +182,41 @@ describe('SyncEngine', () => {
     expect(store.accounts[0].error).toBeUndefined()
     engine.stop()
     expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('rejected credentials: keeps cache, flags the account and stops retrying until synced on purpose', async () => {
+    const work = store.add('work')
+    const fail = vi.spyOn(work, 'listCalendars').mockRejectedValue(new AuthError('revoked'))
+    const cache = { calendars: [{ id: 'work-cal', accountId: 'work', name: 'C', color: '#1', readOnly: false }], events: [ev('old', 'work-cal', '2026-09-23T09:00:00Z', '2026-09-23T10:00:00Z')] }
+    store.caches.set('work', cache)
+    const changed = vi.fn()
+    const engine = new SyncEngine(store, changed, { intervalMs: 60_000, triggers: noTriggers })
+    engine.start()
+    await tick()
+    expect(store.accounts[0]).toMatchObject({ error: 'revoked', authError: true })
+    expect(store.caches.get('work')).toEqual(cache)
+    expect(changed).toHaveBeenCalledWith('work')
+
+    await vi.advanceTimersByTimeAsync(60 * 60_000)
+    await engine.syncNow() // e.g. window focus
+    expect(fail).toHaveBeenCalledTimes(1)
+
+    fail.mockRestore()
+    await engine.syncNow('work') // after accounts.reauth
+    expect(store.accounts[0]).toMatchObject({ error: undefined, authError: false })
+    engine.stop()
+  })
+
+  it('replaces cached calendars with an empty list only when the next pass confirms it', async () => {
+    const work = store.add('work')
+    vi.spyOn(work, 'listCalendars').mockResolvedValue([])
+    const cache = { calendars: [{ id: 'work-cal', accountId: 'work', name: 'C', color: '#1', readOnly: false }], events: [] }
+    store.caches.set('work', cache)
+    const engine = new SyncEngine(store, () => {}, { triggers: noTriggers })
+    await expect(engine.syncNow('work')).rejects.toThrow(/no calendars/)
+    expect(store.caches.get('work')).toEqual(cache)
+    await engine.syncNow('work')
+    expect(store.caches.get('work')!.calendars).toEqual([])
   })
 
   it('syncs on trigger and stops listening after stop()', async () => {

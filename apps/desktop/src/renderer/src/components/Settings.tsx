@@ -227,9 +227,15 @@ function SyncRow({ account: a, busy }: { account: Account; busy: boolean }): Rea
         <span className={failed ? 'set-status err' : 'set-status'}>
           {syncing || busy ? 'syncing' : failed ? 'error' : 'ok'}
         </span>
-        <button type="button" onClick={sync} disabled={syncing || busy}>
-          Sync now
-        </button>
+        {a.authError ? (
+          <button type="button" className="acc-primary" onClick={() => bus.emit('reauth:open', { accountId: a.id })}>
+            Reconnect
+          </button>
+        ) : (
+          <button type="button" onClick={sync} disabled={syncing || busy}>
+            Sync now
+          </button>
+        )}
       </div>
       {failed && (
         <p className="acc-error" role="alert">

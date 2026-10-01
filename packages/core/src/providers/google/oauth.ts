@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'crypto'
 import { createServer } from 'http'
 import type { AddressInfo } from 'net'
 import type { Credentials } from '../../shared/types'
-import { timedFetch } from '../http'
+import { AuthError, timedFetch } from '../http'
 
 export type GoogleCredentials = Extract<Credentials, { kind: 'google' }>
 
@@ -70,7 +70,11 @@ export interface TokenResult {
 
 export function parseTokenResponse(json: unknown, now = Date.now()): TokenResult {
   const j = (json ?? {}) as Record<string, unknown>
-  if (typeof j.error === 'string') throw new Error(`Google token error: ${j.error}${j.error_description ? ` (${j.error_description})` : ''}`)
+  if (typeof j.error === 'string') {
+    const msg = `Google token error: ${j.error}${j.error_description ? ` (${j.error_description})` : ''}`
+    // invalid_grant: the refresh token was revoked or expired.
+    throw j.error === 'invalid_grant' ? new AuthError(msg) : new Error(msg)
+  }
   if (typeof j.access_token !== 'string') throw new Error('Google token response has no access_token')
   const expiresIn = typeof j.expires_in === 'number' ? j.expires_in : 3600
   return {

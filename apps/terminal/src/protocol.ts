@@ -26,6 +26,7 @@ const methodSet: Record<Method, true> = {
   'accounts.addCaldav': true,
   'accounts.update': true,
   'accounts.remove': true,
+  'accounts.reauth': true,
   'calendars.list': true,
   'calendars.setVisible': true,
   'events.list': true,

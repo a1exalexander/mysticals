@@ -11,6 +11,8 @@ export interface Account {
   color: string
   /** Set by sync engine when the last sync for this account failed. */
   error?: string
+  /** The server rejected the stored credentials (password revoked, sign-in expired). Sync pauses until accounts.reauth. */
+  authError?: boolean
   /** A sync of this account is running (set by accounts.list). */
   syncing?: boolean
   /** The account has synced at least once (set by accounts.list). */

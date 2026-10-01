@@ -2,6 +2,7 @@ import { createHash } from 'crypto'
 import { get } from 'http'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildAuthUrl, createPkce, emailFromIdToken, getClientConfig, parseTokenResponse, runOAuthFlow, setClientConfig } from './oauth'
+import { AuthError } from '../http'
 
 const jwt = (payload: object): string => `h.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.s`
 
@@ -41,7 +42,9 @@ describe('oauth pure parts', () => {
     const r = parseTokenResponse({ access_token: 'a', expires_in: 100, refresh_token: 'r', id_token: jwt({ email: 'me@gmail.com' }) }, 1000)
     expect(r).toEqual({ accessToken: 'a', expiresAt: 101000, refreshToken: 'r', email: 'me@gmail.com' })
     expect(emailFromIdToken('garbage')).toBeUndefined()
+    expect(() => parseTokenResponse({ error: 'invalid_grant' })).toThrow(AuthError)
     expect(() => parseTokenResponse({ error: 'invalid_grant' })).toThrow(/invalid_grant/)
+    expect(() => parseTokenResponse({ error: 'server_error' })).not.toThrow(AuthError)
   })
 
   it('throws a clear error when client id is missing', () => {

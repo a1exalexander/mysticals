@@ -19,7 +19,8 @@ const api: Api = {
     addGoogle: call(IPC.accountsAddGoogle),
     addCaldav: call(IPC.accountsAddCaldav),
     update: call(IPC.accountsUpdate),
-    remove: call(IPC.accountsRemove)
+    remove: call(IPC.accountsRemove),
+    reauth: call(IPC.accountsReauth)
   },
   calendars: { list: call(IPC.calendarsList), setVisible: call(IPC.calendarsSetVisible) },
   events: {
