@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { moveRange, resizeEnd, shiftDays, snap } from './drag'
+import { moveRange, resizeEnd, resizeStart, shiftDays, snap } from './drag'
 
 describe('drag math', () => {
   it('snaps to 15 minutes', () => {
@@ -18,6 +18,12 @@ describe('drag math', () => {
     expect(resizeEnd(600, 700)).toBe(705)
     expect(resizeEnd(600, 560)).toBe(615)
     expect(resizeEnd(600, 2000)).toBe(1440)
+  })
+
+  it('resizes the start to at least one step, at earliest midnight', () => {
+    expect(resizeStart(660, 560)).toBe(555)
+    expect(resizeStart(660, 700)).toBe(645)
+    expect(resizeStart(660, -200)).toBe(0)
   })
 
   it('shifts by days keeping local times, all-day stays date-only', () => {

@@ -47,6 +47,19 @@ test('drag an event to move and resize it, undo, and move by day in the month', 
   await expect.poll(async () => hour((await gymStart(page)).end)).toBe('21:00')
   expect(hour((await gymStart(page)).start)).toBe('19:00')
 
+  // Drag the top edge: starts an hour earlier, the end stays.
+  box = (await gym.boundingBox())!
+  await gym.hover()
+  await page.mouse.move(box.x + box.width / 2, box.y + 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width / 2, box.y - 46, { steps: 8 })
+  await expect(page.getByTestId('drag-preview')).toContainText('18:00 – 21:00')
+  await page.screenshot({ path: 'e2e/screens/resize-top.png' })
+  await page.mouse.up()
+  await expect.poll(async () => hour((await gymStart(page)).start)).toBe('18:00')
+  expect(hour((await gymStart(page)).end)).toBe('21:00')
+  await expect(page.getByTestId('details')).toHaveCount(0)
+
   // Escape cancels a drag.
   box = (await gym.boundingBox())!
   await page.mouse.move(box.x + box.width / 2, box.y + 10)
@@ -56,7 +69,7 @@ test('drag an event to move and resize it, undo, and move by day in the month', 
   await page.keyboard.press('Escape')
   await page.mouse.up()
   await expect(page.getByTestId('drag-preview')).toHaveCount(0)
-  expect(hour((await gymStart(page)).start)).toBe('19:00')
+  expect(hour((await gymStart(page)).start)).toBe('18:00')
 
   // Month: drop on the next day keeps the time (Dinner is two days ahead; today's cell folds into "+N more").
   const dinner = (): Promise<{ start: string; end: string }> => gymStart(page, 'Dinner with friends')
