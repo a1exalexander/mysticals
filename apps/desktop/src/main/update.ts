@@ -1,5 +1,5 @@
 import { spawn, execFile } from 'child_process'
-import { accessSync, constants, createWriteStream, mkdtempSync, readdirSync } from 'fs'
+import { accessSync, constants, createWriteStream, mkdtempSync, readdirSync, rmSync } from 'fs'
 import { dirname, join, resolve } from 'path'
 import { tmpdir } from 'os'
 import { promisify } from 'util'
@@ -32,6 +32,13 @@ export function newer(a: string, b: string): boolean {
   const pb = b.split('.').map(Number)
   for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0)
   return false
+}
+
+/** Rejects unless `bundle` is signed by Developer ID `team`. */
+export async function verifyTeam(bundle: string, team: string): Promise<void> {
+  // The leading '=' marks inline requirement text; without it codesign reads the argument as a file path.
+  const req = `=anchor apple generic and certificate leaf[subject.OU] = "${team}"`
+  await run('codesign', ['--verify', '--deep', '--strict', '-R', req, bundle])
 }
 
 function set(next: UpdateState): void {
@@ -109,6 +116,7 @@ async function install(): Promise<void> {
   if ((state.status !== 'available' && state.status !== 'error') || !zipUrl) return
   const version = state.version
   set({ status: 'downloading', version, progress: 0 })
+  let dir = ''
   try {
     // .../Mysticals.app/Contents/MacOS/Mysticals → .../Mysticals.app
     const target = resolve(process.execPath, '../../..')
@@ -116,7 +124,7 @@ async function install(): Promise<void> {
       if (!target.endsWith('.app')) throw new Error(`not running from an app bundle: ${target}`)
       accessSync(dirname(target), constants.W_OK)
     }
-    const dir = mkdtempSync(join(tmpdir(), 'mysticals-update-'))
+    dir = mkdtempSync(join(tmpdir(), 'mysticals-update-'))
     const zip = join(dir, 'update.zip')
     await download(zipUrl, zip)
     const out = join(dir, 'out')
@@ -125,10 +133,7 @@ async function install(): Promise<void> {
     if (!name) throw new Error('no .app in update archive')
     const fresh = join(out, name)
     // Refuse a bundle not signed by our Developer ID team, so a tampered release asset never replaces the app.
-    if (TEAM) {
-      const req = `anchor apple generic and certificate leaf[subject.OU] = "${TEAM}"`
-      await run('codesign', ['--verify', '--deep', '--strict', '-R', req, fresh])
-    }
+    if (TEAM) await verifyTeam(fresh, TEAM)
     // Drop quarantine so Gatekeeper does not re-assess the relaunch.
     await run('xattr', ['-cr', fresh])
     set({ status: 'ready', version })
@@ -144,6 +149,8 @@ async function install(): Promise<void> {
     app.quit()
   } catch (e) {
     console.error('update failed', e)
+    // A failed attempt would otherwise leave the ~130MB download behind in $TMPDIR.
+    if (dir) rmSync(dir, { recursive: true, force: true })
     set({ status: 'error', version, error: e instanceof Error ? e.message : String(e) })
   }
 }
