@@ -10,6 +10,7 @@ import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
 import { moveRange, resizeEnd } from './drag'
 
 const HOUR = 48 // px per hour
+const MAX_ALLDAY = 3 // all-day events per day before the row collapses
 const MIN_DUR = 22 // minutes; shorter events render (and pack) as if this long
 const pxOf = (min: number): number => (min / 60) * HOUR
 
@@ -63,6 +64,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
   const [now, setNow] = useState(() => new Date())
   const [drag, setDrag] = useState<{ day: Date; a: number; b: number } | null>(null)
   const [moving, setMoving] = useState<Moving | null>(null)
+  const [allDayOpen, setAllDayOpen] = useState(false)
   // The click that ends a drag must not also open the event.
   const justDragged = useRef(false)
 
@@ -178,6 +180,8 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
   const nowMin = now.getHours() * 60 + now.getMinutes()
   const multi = days.length > 1
   const showsToday = days.some((d) => isToday(d))
+  const allDayOf = (d: Date): CalEvent[] => eventsOnDay(events, d).filter((e) => e.allDay)
+  const allDayOverflows = days.some((d) => allDayOf(d).length > MAX_ALLDAY)
 
   return (
     <div className={`tg${multi ? '' : ' tg-single'}`} ref={scroller}>
@@ -196,31 +200,52 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
           ))}
         </div>
         <div className="tg-row tg-allday">
-          <div className="tg-gutter">all-day</div>
-          {days.map((d) => (
-            <div
-              key={d.getTime()}
-              className="tg-allday-cell"
-              onDoubleClick={() => bus.emit('event:create', { start: ymd(d), end: ymd(addDays(d, 1)), allDay: true })}
-            >
-              {eventsOnDay(events, d)
-                .filter((e) => e.allDay)
-                .map((e) => (
-                  <div
-                    key={e.id}
-                    data-testid="event-block"
-                    data-account-id={e.accountId}
-                    className={`ev ev-allday${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}`}
-                    style={{ '--c': colorOf(e) } as React.CSSProperties}
-                    onClick={open(e)}
+          <div className="tg-gutter">
+            all-day
+            {allDayOpen && allDayOverflows && (
+              <button className="tg-allday-toggle" aria-label="Collapse all-day events" onClick={() => setAllDayOpen(false)}>
+                ▴
+              </button>
+            )}
+          </div>
+          {days.map((d) => {
+            const list = allDayOf(d)
+            const more = allDayOpen ? 0 : Math.max(0, list.length - MAX_ALLDAY)
+            return (
+              <div
+                key={d.getTime()}
+                className="tg-allday-cell"
+                onDoubleClick={() => bus.emit('event:create', { start: ymd(d), end: ymd(addDays(d, 1)), allDay: true })}
+              >
+                {list
+                  .slice(0, list.length - more)
+                  .map((e) => (
+                    <div
+                      key={e.id}
+                      data-testid="event-block"
+                      data-account-id={e.accountId}
+                      className={`ev ev-allday${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}`}
+                      style={{ '--c': colorOf(e) } as React.CSSProperties}
+                      onClick={open(e)}
+                      onDoubleClick={stop}
+                      {...tooltipHover(e)}
+                    >
+                      <span className="ev-title">{e.title}</span>
+                    </div>
+                  ))}
+                {more > 0 && (
+                  <button
+                    className="tg-allday-toggle"
+                    aria-label={`Show ${more} more all-day event${more > 1 ? 's' : ''}`}
+                    onClick={() => setAllDayOpen(true)}
                     onDoubleClick={stop}
-                    {...tooltipHover(e)}
                   >
-                    <span className="ev-title">{e.title}</span>
-                  </div>
-                ))}
-            </div>
-          ))}
+                    +{more}
+                  </button>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
 
