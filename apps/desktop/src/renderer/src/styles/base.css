@@ -224,17 +224,14 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .toolbar-title { animation: fade-in 140ms ease-out; }
 .toolbar-sub { font: 500 12.5px/1 var(--mono); color: var(--muted); letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; }
 
-/* Bracketed tabs: [ Week ] */
+/* Segmented tabs: Day / 3 Days / Week / Month */
 .seg { display: flex; gap: 2px; }
 .seg button {
   height: 26px; padding: 0 6px; border: 0; border-radius: 4px; background: none;
   font: 12px/26px var(--mono); color: var(--muted);
 }
-.seg button::before { content: '[ '; opacity: 0; }
-.seg button::after { content: ' ]'; opacity: 0; }
 .seg button:hover { color: var(--fg); }
 .seg button.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
-.seg button.active::before, .seg button.active::after { opacity: 1; }
 
 .toolbar-nav { display: flex; }
 .icon-btn, .today-btn {
