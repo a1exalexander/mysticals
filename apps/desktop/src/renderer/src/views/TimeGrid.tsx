@@ -253,6 +253,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
             {layoutDay(events, d, MIN_DUR).map(({ item: e, start, end, col, cols }) => {
               const b = eventBounds(e)
               const h = pxOf(Math.max(end - start, MIN_DUR))
+              const short = h < 34
               const draggable = !!moveTo && !!canDrag?.(e) && !!sameDaySpan(e, d)
               const dragged = moving?.key === keyOf(e)
               return (
@@ -260,7 +261,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                   key={e.id}
                   data-testid="event-block"
                   data-account-id={e.accountId}
-                  className={`ev ev-timed${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}${h < 34 ? ' is-short' : ''}${draggable ? ' is-draggable' : ''}${dragged ? ' is-dragged' : ''}`}
+                  className={`ev ev-timed${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}${short ? ' is-short' : ''}${draggable ? ' is-draggable' : ''}${dragged ? ' is-dragged' : ''}`}
                   style={
                     {
                       '--c': colorOf(e),
@@ -279,7 +280,8 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                   <span className="ev-title">{e.title}</span>
                   <span className="ev-meta">
                     {hhmm(b.start)}
-                    {e.location ? ` · ${place(e.location)}` : ''}
+                    {/* a one-line (is-short) block keeps its room for the title */}
+                    {e.location && !short ? ` · ${place(e.location)}` : ''}
                   </span>
                   {draggable && (
                     <span className="ev-resize" data-testid="event-resize" aria-hidden onMouseDown={onEventDown(e, dayIdx, 'resize')} onClick={stop} />
