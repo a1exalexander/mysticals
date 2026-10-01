@@ -121,7 +121,7 @@
 .theme-name .on { color: var(--accent); }
 .set-panel .theme-swatch { height: 44px; }
 
-/* Settings tabs: toolbar .seg bracket look ([ Accounts ]), squared. */
+/* Settings tabs: toolbar .seg look, squared. */
 .acc-sheet .set-tabs { margin: 4px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line-strong); }
 .acc-sheet .set-tabs button {
   height: 26px; padding: 0 8px; border: 0; border-radius: 0; background: none; color: var(--muted); font: 12px/26px var(--mono);
