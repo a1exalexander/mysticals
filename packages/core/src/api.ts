@@ -88,6 +88,7 @@ const CaldavInput = z.object({
   color: color.optional()
 })
 
+const ReauthInput = z.object({ password: text(2000).min(1) }).strict()
 const AccountPatch = z.object({ label: text(200).min(1).optional(), color: color.optional() }).strict()
 const RsvpStatus = z.enum(['accepted', 'declined', 'tentative'])
 // null too: the terminal daemon's JSON line protocol turns an omitted argument into null.
@@ -165,6 +166,26 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
         const a = await store.update(account(accountId).id, AccountPatch.parse(patch))
         deps.onChanged?.(a.id)
         return a
+      },
+      reauth: async (accountId, raw) => {
+        const a = account(accountId)
+        let credentials: Credentials
+        if (a.kind === 'google') {
+          const signed = await deps.googleSignIn()
+          if (signed.email.toLowerCase() !== a.email.toLowerCase())
+            throw new Error(`Signed in as ${signed.email}; sign in as ${a.email} to reconnect this account`)
+          credentials = signed.credentials
+        } else {
+          const { password } = ReauthInput.parse(raw)
+          const old = store.readCreds(a.id)
+          if (old.kind !== 'caldav') throw new Error('Credentials kind does not match account kind')
+          await deps.verifyCaldav({ label: a.label, serverUrl: old.serverUrl, username: old.username, password })
+          credentials = { ...old, password }
+        }
+        const updated = await store.update(a.id, { credentials, error: undefined, authError: false })
+        deps.onChanged?.(a.id)
+        syncOne(a.id)
+        return updated
       },
       remove: async (accountId) => {
         const a = account(accountId)

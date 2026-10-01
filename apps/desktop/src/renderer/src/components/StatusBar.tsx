@@ -140,9 +140,13 @@ export function StatusBar(): React.JSX.Element {
           type="button"
           className="sbar-seg sbar-err"
           title={accounts.filter((a) => a.error).map((a) => `${a.label}: ${a.error}`).join('\n')}
-          onClick={() => bus.emit('settings:open', {})}
+          onClick={() => {
+            const off = accounts.find((a) => a.authError)
+            if (off) bus.emit('reauth:open', { accountId: off.id })
+            else bus.emit('settings:open', {})
+          }}
         >
-          ✕ sync error
+          {accounts.some((a) => a.authError) ? '✕ disconnected' : '✕ sync error'}
         </button>
       )}
       <span className="sbar-grow" />

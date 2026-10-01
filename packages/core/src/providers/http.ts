@@ -14,3 +14,8 @@ export const timedFetch: typeof fetch = async (input, init) => {
     throw e
   }
 }
+
+/** The server rejected the stored credentials (revoked app password, expired Google grant): only a new sign-in helps. */
+export class AuthError extends Error {
+  override name = 'AuthError'
+}

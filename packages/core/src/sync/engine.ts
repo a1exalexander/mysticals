@@ -2,6 +2,7 @@ import { addMonths, parseISO, subMonths } from 'date-fns'
 import type { CalEvent, TimeRange } from '../shared/types'
 import type { AccountCache, AccountStore } from '../accounts/store'
 import { diffEvents, type Note } from './notify'
+import { AuthError } from '../providers/http'
 
 /** The slice of AccountStore the engine needs. Keeps tests free of disk. */
 export type SyncStore = Pick<AccountStore, 'list' | 'getProvider' | 'readCache' | 'writeCache' | 'update'>
@@ -34,6 +35,8 @@ export class SyncEngine {
   private queued = new Map<string, Promise<void>>()
   /** Bumped by `edited`: a pass that started before a local edit must not overwrite it. */
   private edits = new Map<string, number>()
+  /** Accounts whose last pass listed no calendars while the cache had some (see syncAccount). */
+  private emptied = new Set<string>()
   private running = false
   private unsubscribe?: () => void
 
@@ -65,6 +68,7 @@ export class SyncEngine {
   /**
    * Sync one account, or all accounts independently when id omitted.
    * A single-account call rejects with that account's error; the all-accounts call never rejects.
+   * The all-accounts call skips accounts whose credentials were rejected (`authError`): retrying can't help.
    */
   /**
    * `quiet`: the change came from this app (own edit/RSVP), so don't notify about it.
@@ -73,7 +77,7 @@ export class SyncEngine {
    */
   async syncNow(accountId?: string, opts: { quiet?: boolean; fresh?: boolean } = {}): Promise<void> {
     if (accountId === undefined) {
-      await Promise.allSettled(this.store.list().map((a) => this.syncNow(a.id)))
+      await Promise.allSettled(this.store.list().filter((a) => !a.authError).map((a) => this.syncNow(a.id)))
       return
     }
     const existing = this.inflight.get(accountId)
@@ -115,7 +119,9 @@ export class SyncEngine {
   private schedule(id: string): void {
     clearTimeout(this.timers.get(id))
     this.timers.delete(id)
-    if (!this.running || !this.store.list().some((a) => a.id === id)) {
+    // Rejected credentials: no timer until accounts.reauth saves new ones and syncs.
+    const acc = this.store.list().find((a) => a.id === id)
+    if (!this.running || !acc || acc.authError) {
       this.failures.delete(id)
       return
     }
@@ -129,7 +135,8 @@ export class SyncEngine {
 
   // ponytail: quiet silences the whole sync, so an external change landing in the same pass is not announced.
   private async syncAccount(id: string, quiet: boolean): Promise<void> {
-    const hadError = !!this.store.list().find((a) => a.id === id)?.error
+    const acc = this.store.list().find((a) => a.id === id)
+    const hadError = !!acc?.error
     const edits = this.edits.get(id) ?? 0
     try {
       const provider = this.store.getProvider(id)
@@ -155,22 +162,30 @@ export class SyncEngine {
       } catch {
         prev = undefined
       }
+      // A server that suddenly lists no calendars is more likely failing than emptied: keep the cache until the
+      // next pass confirms it.
+      if (!calendars.length && prev?.calendars.length && !this.emptied.has(id)) {
+        this.emptied.add(id)
+        throw new Error('The server returned no calendars; showing the last synced data')
+      }
+      this.emptied.delete(id)
       const changed =
         !prev || JSON.stringify([prev.calendars, prev.events]) !== JSON.stringify([next.calendars, next.events])
       await this.store.writeCache(id, next)
       this.failures.delete(id)
-      if (hadError) await this.store.update(id, { error: undefined })
+      if (hadError) await this.store.update(id, { error: undefined, authError: false })
       if (changed || hadError) this.onChanged(id)
       if (changed && !quiet && prev?.syncedAt && this.opts.onEvents) {
         const notes = diffEvents(prev.events, next.events, now)
         if (notes.length) this.opts.onEvents(id, notes)
       }
     } catch (e) {
-      // Cache is left untouched; only this account backs off.
+      // Cache is left untouched; only this account backs off (or, with rejected credentials, stops: see `schedule`).
       this.failures.set(id, (this.failures.get(id) ?? 0) + 1)
       const message = e instanceof Error ? e.message : String(e)
-      await this.store.update(id, { error: message }).catch(() => {})
-      if (!hadError) this.onChanged(id)
+      const auth = e instanceof AuthError
+      await this.store.update(id, { error: message, ...(auth ? { authError: true } : {}) }).catch(() => {})
+      if (!hadError || (auth && !acc?.authError)) this.onChanged(id)
       throw e
     }
   }

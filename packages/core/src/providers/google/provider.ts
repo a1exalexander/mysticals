@@ -1,7 +1,7 @@
 import type { Attendee, Calendar, CalEvent, DeleteScope, PartStat, Recurrence } from '../../shared/types'
 import type { CalendarProvider, ProviderContext } from '../types'
 import { fromRRule, toRRule } from '../../logic/recurrence'
-import { timedFetch } from '../http'
+import { AuthError, timedFetch } from '../http'
 import { getClientConfig, postToken, type GoogleCredentials } from './oauth'
 
 const API = 'https://www.googleapis.com/calendar/v3'
@@ -140,6 +140,7 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
       })
     let res = await send(await token())
     if (res.status === 401) res = await send(await refresh())
+    if (res.status === 401) throw new AuthError('Google rejected the sign-in; sign in again')
     if (res.status === 204 || (method === 'DELETE' && res.status === 410)) return undefined as T
     if (!res.ok) {
       const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
