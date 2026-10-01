@@ -33,6 +33,17 @@ describe('StatusLine', () => {
     expect(f).toContain('? help')
   })
 
+  it('says disconnected for accounts whose credentials were revoked', async () => {
+    const client = createTestClient()
+    client.accounts.list.mockResolvedValue([
+      { id: 'work', kind: 'caldav', label: 'Work', email: 'w@x', color: '#fff', error: 'revoked', authError: true }
+    ])
+    t = renderWith(<StatusLine nav={nav} events={[]} now={now} width={200} />, client)
+    const f = await t.waitFor('disconnected')
+    expect(f).toContain('⚠ Work disconnected (s)')
+    expect(f).not.toContain('sync failed')
+  })
+
   it('stays on two rows (info, actions) when narrow', async () => {
     t = renderWith(<StatusLine nav={nav} events={[]} now={now} message={'x'.repeat(100)} width={30} />)
     const f = await t.waitFor('x')

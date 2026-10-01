@@ -1,6 +1,7 @@
 /**
  * Accounts & calendars overlay (key `s`): list accounts with their calendars, toggle calendar visibility,
- * add Google / CalDAV account, rename/recolor, remove, sync, show per-account sync errors.
+ * add Google / CalDAV account, rename/recolor, remove, sync, show per-account sync errors,
+ * reconnect an account whose credentials were revoked (`p`).
  * Mirrors desktop components/Accounts.tsx + Settings.tsx (accounts + sync tabs).
  *
  * While open this overlay owns ALL input; esc/q closes (esc backs out of sub-forms first).
@@ -25,6 +26,7 @@ type Mode =
   | { kind: 'list' | 'google' | 'caldav' }
   | { kind: 'rename'; account: Account; value: string }
   | { kind: 'confirm'; account: Account }
+  | { kind: 'reauth'; account: Account; value: string }
 
 export function Accounts({ onClose }: AccountsProps) {
   const api = useApi()
@@ -68,13 +70,14 @@ export function Accounts({ onClose }: AccountsProps) {
     )
   }
 
-  const addGoogle = (): void => {
+  // Google sign-in (add, or reconnect a revoked account): waits on the browser, showing the auth URL meanwhile.
+  const googleSignIn = (fn: () => Promise<Account>, done: (a: Account) => string): void => {
     const s = ++googleSession.current
     setMode({ kind: 'google' })
     setMessage(undefined)
     setAuthUrl(undefined)
-    api.accounts.addGoogle().then(
-      (a) => s === googleSession.current && (setMode({ kind: 'list' }), say(`Added ${a.label}`)),
+    fn().then(
+      (a) => s === googleSession.current && (setMode({ kind: 'list' }), say(done(a))),
       (e: unknown) => s === googleSession.current && (setMode({ kind: 'list' }), say(errorText(e), true))
     )
   }
@@ -84,7 +87,7 @@ export function Accounts({ onClose }: AccountsProps) {
   const act = (input: string): void => {
     const { row } = current()
     if (input === 'R') return run('Syncing all…', 'Synced all', () => api.sync.now())
-    if (input === 'g') return addGoogle()
+    if (input === 'g') return googleSignIn(() => api.accounts.addGoogle(), (a) => `Added ${a.label}`)
     if (input === 'a') return setMode({ kind: 'caldav' })
     if (!row) return
     const a = row.account
@@ -101,6 +104,11 @@ export function Accounts({ onClose }: AccountsProps) {
       return run('Saving…', `${a.label} colour changed`, () => api.accounts.update(a.id, { color }))
     }
     if (input === 'x') return setMode({ kind: 'confirm', account: a })
+    if (input === 'p' && a.authError) {
+      if (a.kind === 'google') return googleSignIn(() => api.accounts.reauth(a.id), () => `${a.label} reconnected`)
+      setMessage(undefined)
+      return setMode({ kind: 'reauth', account: a, value: '' })
+    }
   }
   const confirmRemove = (yes: boolean): void => {
     const mode = getMode()
@@ -127,6 +135,19 @@ export function Accounts({ onClose }: AccountsProps) {
         return
       }
       if (mode.kind === 'confirm') return confirmRemove(input.toLowerCase() === 'y')
+      if (mode.kind === 'reauth') {
+        if (key.escape) return setMode({ kind: 'list' })
+        if (key.return) {
+          if (!mode.value) return
+          const { id, label } = mode.account
+          const password = mode.value
+          run('Reconnecting…', `${label} reconnected`, () => api.accounts.reauth(id, { password }))
+          return setMode({ kind: 'list' })
+        }
+        const value = editText(mode.value, input, key)
+        if (value !== undefined) setMode({ ...mode, value })
+        return
+      }
       if (mode.kind === 'rename') {
         if (key.escape) return setMode({ kind: 'list' })
         if (key.return) {
@@ -215,7 +236,17 @@ export function Accounts({ onClose }: AccountsProps) {
                 <Spinner /> Loading calendars…
               </Text>
             )}
-            {a.error && <Text color={C.red}>{`    Last sync failed: ${a.error}`}</Text>}
+            {a.authError ? (
+              <Text color={C.red}>{`    Disconnected: ${a.error ?? 'credentials rejected'} — p to reconnect`}</Text>
+            ) : (
+              a.error && <Text color={C.red}>{`    Last sync failed: ${a.error}`}</Text>
+            )}
+            {mode.kind === 'reauth' && mode.account.id === a.id && (
+              <Text>
+                {'    New app password: '}
+                <Text color={C.cyan}>{'•'.repeat(mode.value.length)}▏</Text>
+              </Text>
+            )}
           </Box>
         )
       })}
@@ -243,7 +274,7 @@ export function Accounts({ onClose }: AccountsProps) {
           )}
         </Box>
       )}
-      {mode.kind === 'rename' && <Text color={C.muted}>enter save  esc cancel</Text>}
+      {(mode.kind === 'rename' || mode.kind === 'reauth') && <Text color={C.muted}>enter save  esc cancel</Text>}
       {loadError && <Text color={C.red}>{loadError}</Text>}
       {message && <Text color={message.error ? C.red : C.green}>{message.text}</Text>}
       {mode.kind === 'list' && (
@@ -257,6 +288,7 @@ export function Accounts({ onClose }: AccountsProps) {
           {row && button('e', 'rename')}
           {row && button('c', 'colour')}
           {row && button('x', 'remove')}
+          {row?.account.authError && button('p', 'reconnect')}
           {button('g', 'add Google')}
           {button('a', 'add CalDAV')}
           <Button k="esc" label="close" onPress={onClose} />

@@ -132,4 +132,34 @@ describe('Accounts overlay', () => {
     await t.waitFor('clipboard')
     expect(t.frames.join('')).toContain(`\x1b]52;c;${Buffer.from(url).toString('base64')}\x07`)
   })
+
+  it('reconnects a revoked CalDAV account with a new masked password', async () => {
+    t = renderWith(<Accounts onClose={() => {}} />)
+    const list = t.client.accounts.list.getMockImplementation()!
+    t.client.accounts.list.mockImplementation(async () =>
+      (await list()).map((a) => (a.id === 'work' ? { ...a, error: 'password revoked', authError: true } : a))
+    )
+    t.client.emitChanged('work')
+    await t.waitFor('Disconnected: password revoked')
+    await t.press('p', ...'secret')
+    const f = t.lastFrame()!
+    expect(f).toContain('••••••')
+    expect(f).not.toContain('secret')
+    await t.press(KEY.enter)
+    expect(t.client.accounts.reauth).toHaveBeenCalledWith('work', { password: 'secret' })
+    await t.waitFor('Work reconnected')
+  })
+
+  it('reconnects a revoked Google account through sign-in', async () => {
+    t = renderWith(<Accounts onClose={() => {}} />)
+    const list = t.client.accounts.list.getMockImplementation()!
+    t.client.accounts.list.mockImplementation(async () =>
+      (await list()).map((a) => (a.id === 'personal' ? { ...a, error: 'sign-in expired', authError: true } : a))
+    )
+    t.client.emitChanged('personal')
+    await t.waitFor('Disconnected')
+    await t.press('j', 'j', 'p')
+    expect(t.client.accounts.reauth).toHaveBeenCalledWith('personal')
+    await t.waitFor('Personal reconnected')
+  })
 })
