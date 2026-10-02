@@ -47,6 +47,7 @@ describe('formatWhen', () => {
   it('formats all-day ranges inclusively', () => {
     expect(formatWhen(ev({ allDay: true, start: '2026-09-24', end: '2026-09-25' }))).toBe('Thu, 24 Sep · all day')
     expect(formatWhen(ev({ allDay: true, start: '2026-09-24', end: '2026-09-26' }))).toBe('Thu, 24 Sep – Fri, 25 Sep · all day')
+    expect(formatWhen(ev({ allDay: true, start: '2026-09-24', end: '2026-09-25' }), 'uk')).toBe('чт, 24 верес. · весь день')
   })
 })
 

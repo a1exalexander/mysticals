@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react'
 import type { Account } from '@shared/types'
 import { bus } from '../bus'
-import { THEMES, applyTheme, useTheme } from '../theme'
+import { THEMES, applyTheme, themeName, useTheme } from '../theme'
 import { KindIcon, Sheet, Swatches, errorText } from './AccountsShared'
+import { setLanguage, t, useLocale } from '../i18n'
+import { LOCALE_NAME, LOCALES, type Key, type LocaleSetting } from '@mysticals/core/i18n'
 
 const TABS = [
-  { id: 'accounts', name: 'Accounts' },
-  { id: 'themes', name: 'Themes' },
-  { id: 'sync', name: 'Sync' },
-  { id: 'privacy', name: 'Privacy' }
-] as const
+  { id: 'accounts', name: 'settings.tab.accounts' },
+  { id: 'themes', name: 'settings.tab.themes' },
+  { id: 'language', name: 'settings.tab.language' },
+  { id: 'sync', name: 'settings.tab.sync' },
+  { id: 'privacy', name: 'settings.tab.privacy' }
+] as const satisfies readonly { id: string; name: Key }[]
 type TabId = (typeof TABS)[number]['id']
 /** Last selected tab; survives closing the sheet while the app runs. */
 let lastTab: TabId = 'accounts'
@@ -19,6 +22,7 @@ export function SettingsHost(): React.JSX.Element | null {
   const [open, setOpen] = useState(false)
   const [tab, setTabState] = useState<TabId>(lastTab)
   const [accounts, setAccounts] = useState<Account[]>([])
+  useLocale()
   const setTab = (t: TabId): void => {
     lastTab = t
     setTabState(t)
@@ -33,7 +37,7 @@ export function SettingsHost(): React.JSX.Element | null {
   }, [open])
 
   const onTabKey = (e: React.KeyboardEvent<HTMLDivElement>): void => {
-    const i = TABS.findIndex((t) => t.id === tab)
+    const i = TABS.findIndex((tb) => tb.id === tab)
     const next =
       e.key === 'ArrowRight'
         ? (i + 1) % TABS.length
@@ -51,22 +55,22 @@ export function SettingsHost(): React.JSX.Element | null {
   }
 
   return (
-    <Sheet open={open} onClose={() => setOpen(false)} title="Settings" testId="settings-sheet">
-      <div className="seg set-tabs" role="tablist" aria-label="Settings sections" onKeyDown={onTabKey}>
-        {TABS.map((t) => (
+    <Sheet open={open} onClose={() => setOpen(false)} title={t('settings.title')} testId="settings-sheet">
+      <div className="seg set-tabs" role="tablist" aria-label={t('settings.sections')} onKeyDown={onTabKey}>
+        {TABS.map((tb) => (
           <button
-            key={t.id}
+            key={tb.id}
             type="button"
             role="tab"
-            id={`settings-tab-${t.id}`}
-            aria-selected={tab === t.id}
+            id={`settings-tab-${tb.id}`}
+            aria-selected={tab === tb.id}
             aria-controls="settings-panel"
-            tabIndex={tab === t.id ? 0 : -1}
-            className={tab === t.id ? 'active' : undefined}
-            data-testid={`settings-tab-${t.id}`}
-            onClick={() => setTab(t.id)}
+            tabIndex={tab === tb.id ? 0 : -1}
+            className={tab === tb.id ? 'active' : undefined}
+            data-testid={`settings-tab-${tb.id}`}
+            onClick={() => setTab(tb.id)}
           >
-            {t.name}
+            {t(tb.name)}
           </button>
         ))}
       </div>
@@ -74,7 +78,7 @@ export function SettingsHost(): React.JSX.Element | null {
         {tab === 'accounts' && (
           <>
             {accounts.length === 0 ? (
-              <p className="acc-note">No accounts yet.</p>
+              <p className="acc-note">{t('settings.noAccounts')}</p>
             ) : (
               <ul className="acc-list">
                 {accounts.map((a) => (
@@ -90,12 +94,13 @@ export function SettingsHost(): React.JSX.Element | null {
                   bus.emit('accounts:open', {})
                 }}
               >
-                Add account…
+                {t('settings.addAccount')}
               </button>
             </div>
           </>
         )}
         {tab === 'themes' && <ThemePicker />}
+        {tab === 'language' && <LanguagePicker />}
         {tab === 'sync' && <SyncPanel accounts={accounts} />}
         {tab === 'privacy' && <PrivacyPanel />}
       </div>
@@ -103,28 +108,56 @@ export function SettingsHost(): React.JSX.Element | null {
   )
 }
 
+/** Automatic (the OS language), or a fixed one; each language is named in itself. */
+function LanguagePicker(): React.JSX.Element {
+  const { setting, system } = useLocale()
+  const [error, setError] = useState('')
+  const pick = (next: LocaleSetting): void => {
+    setError('')
+    setLanguage(next).catch((e) => setError(errorText(e)))
+  }
+  const options: { id: LocaleSetting; name: string; hint?: string }[] = [
+    { id: 'auto', name: t('settings.language.auto'), hint: t('settings.language.system', { name: LOCALE_NAME[system] }) },
+    ...LOCALES.map((l) => ({ id: l, name: LOCALE_NAME[l] }))
+  ]
+  return (
+    <>
+      <div className="lang-list" role="radiogroup" aria-label={t('settings.tab.language')}>
+        {options.map((o) => (
+          <label key={o.id} className="set-check lang-opt" data-testid={`language-${o.id}`}>
+            <input type="radio" name="language" checked={setting === o.id} onChange={() => pick(o.id)} />
+            {o.name}
+            {o.hint && <span className="acc-email">{o.hint}</span>}
+          </label>
+        ))}
+      </div>
+      {error && <p className="acc-error" role="alert">{error}</p>}
+    </>
+  )
+}
+
 function ThemePicker(): React.JSX.Element {
   const theme = useTheme()
   return (
-    <div className="theme-grid" role="radiogroup" aria-label="Theme">
-      {THEMES.map((t) => (
+    <div className="theme-grid" role="radiogroup" aria-label={t('settings.theme')}>
+      {THEMES.map((th) => (
         <button
-          key={t.id}
+          key={th.id}
           type="button"
           role="radio"
-          aria-checked={theme === t.id}
+          aria-checked={theme === th.id}
           className="theme-opt"
-          data-testid={`theme-${t.id}`}
-          onClick={() => applyTheme(t.id)}
+          data-testid={`theme-${th.id}`}
+          onClick={() => applyTheme(th.id)}
         >
-          <span className="theme-swatch" style={{ background: t.preview[0] }} aria-hidden>
-            {t.preview.slice(1).map((c) => (
+          <span className="theme-swatch" style={{ background: th.preview[0] }} aria-hidden>
+            {th.preview.slice(1).map((c) => (
               <i key={c} style={{ background: c }} />
             ))}
           </span>
           <span className="theme-name">
-            {t.name}
-            {theme === t.id && <span className="on">●</span>}
+            {themeName(th)}
+            {theme === th.id && <span className="on">●</span>}
           </span>
         </button>
       ))}
@@ -142,9 +175,9 @@ function SyncPanel({ accounts }: { accounts: Account[] }): React.JSX.Element {
   }
   return (
     <>
-      <p className="acc-note">Accounts sync automatically every 2 minutes and when the app regains focus.</p>
+      <p className="acc-note">{t('settings.sync.note')}</p>
       {accounts.length === 0 ? (
-        <p className="acc-note">No accounts yet.</p>
+        <p className="acc-note">{t('settings.noAccounts')}</p>
       ) : (
         <ul className="acc-list">
           {accounts.map((a) => (
@@ -160,7 +193,7 @@ function SyncPanel({ accounts }: { accounts: Account[] }): React.JSX.Element {
           onClick={syncAll}
           disabled={all || accounts.length === 0}
         >
-          {all ? 'Syncing…' : 'Sync all'}
+          {all ? t('settings.sync.syncing') : t('settings.sync.all')}
         </button>
       </div>
     </>
@@ -177,10 +210,9 @@ function PrivacyPanel(): React.JSX.Element {
   return (
     <>
       <p className="acc-note">
-        Mysticals sends two anonymous events: when the app is first installed and when an account is added (provider
-        only). Never emails, server addresses, calendars or events.{' '}
+        {t('settings.privacy.note')}{' '}
         <a href="https://mysticals.sashkoratushnyi.com/privacy/" target="_blank" rel="noreferrer">
-          Privacy policy
+          {t('settings.privacy.policy')}
         </a>
       </p>
       <label className="set-check">
@@ -191,7 +223,7 @@ function PrivacyPanel(): React.JSX.Element {
           disabled={on === undefined}
           onChange={(e) => toggle(e.target.checked)}
         />
-        Share anonymous usage stats
+        {t('settings.privacy.share')}
       </label>
     </>
   )
@@ -225,21 +257,21 @@ function SyncRow({ account: a, busy }: { account: Account; busy: boolean }): Rea
           <span className="acc-email">{a.email}</span>
         </div>
         <span className={failed ? 'set-status err' : 'set-status'}>
-          {syncing || busy ? 'syncing' : failed ? 'error' : 'ok'}
+          {syncing || busy ? t('settings.sync.stateSyncing') : failed ? t('settings.sync.stateError') : t('settings.sync.stateOk')}
         </span>
         {a.authError ? (
           <button type="button" className="acc-primary" onClick={() => bus.emit('reauth:open', { accountId: a.id })}>
-            Reconnect
+            {t('settings.reconnect')}
           </button>
         ) : (
           <button type="button" onClick={sync} disabled={syncing || busy}>
-            Sync now
+            {t('settings.sync.now')}
           </button>
         )}
       </div>
       {failed && (
         <p className="acc-error" role="alert">
-          {error || `Last sync failed: ${a.error}`}
+          {error || t('settings.sync.lastFailed', { error: a.error ?? '' })}
         </p>
       )}
     </li>
@@ -275,7 +307,7 @@ function AccountRow({ account: a }: { account: Account }): React.JSX.Element {
         <div className="acc-item-id">
           <input
             className="acc-rename"
-            aria-label={`Label for ${a.email}`}
+            aria-label={t('settings.account.labelFor', { email: a.email })}
             data-testid={`account-label-${a.id}`}
             value={label}
             onChange={(e) => setLabel(e.target.value)}
@@ -291,26 +323,26 @@ function AccountRow({ account: a }: { account: Account }): React.JSX.Element {
           <span className="acc-email">{a.email}</span>
         </div>
         <button type="button" className="acc-danger" onClick={() => setConfirm(true)}>
-          Remove
+          {t('settings.account.remove')}
         </button>
       </div>
       <Swatches
         value={a.color}
-        name={`Colour for ${a.email}`}
+        name={t('settings.account.colourFor', { email: a.email })}
         onChange={(color) => void run(() => window.api.accounts.update(a.id, { color }))}
       />
       {error && <p className="acc-error" role="alert">{error}</p>}
       {confirm && (
         <div className="acc-confirm">
-          <p>Removes local data and credentials for {a.email}. Nothing is deleted on the server.</p>
-          <button type="button" onClick={() => setConfirm(false)}>Cancel</button>
+          <p>{t('settings.account.removeNote', { email: a.email })}</p>
+          <button type="button" onClick={() => setConfirm(false)}>{t('common.cancel')}</button>
           <button
             type="button"
             className="acc-danger acc-primary-danger"
             data-testid={`account-remove-${a.id}`}
             onClick={() => void run(() => window.api.accounts.remove(a.id))}
           >
-            Remove account
+            {t('settings.account.removeConfirm')}
           </button>
         </div>
       )}

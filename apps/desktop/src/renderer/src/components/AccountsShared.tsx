@@ -1,5 +1,8 @@
 import { useEffect, useRef } from 'react'
 import './Accounts.css'
+import { t as tr } from '@mysticals/core/i18n'
+import type { Locale } from '@mysticals/core/i18n'
+import { currentLocale, t } from '../i18n'
 
 /** Dracula accents: purple, green, cyan, pink, orange, yellow, red, comment. */
 export const SWATCHES = ['#bd93f9', '#50fa7b', '#8be9fd', '#ff79c6', '#ffb86c', '#f1fa8c', '#ff5555', '#6272a4']
@@ -14,10 +17,10 @@ export const PRESETS = [
 const PERSONAL_DOMAINS = /^(gmail|googlemail|icloud|me|mac|outlook|hotmail|live|yahoo|fastmail|proton|protonmail|aol|gmx|ukr)\./i
 
 /** "Personal" for well-known consumer mail domains, otherwise "Work". */
-export function suggestLabel(email: string): string {
+export function suggestLabel(email: string, locale: Locale = currentLocale()): string {
   const domain = email.split('@')[1] ?? ''
   if (!domain) return ''
-  return PERSONAL_DOMAINS.test(domain) ? 'Personal' : 'Work'
+  return tr(locale, PERSONAL_DOMAINS.test(domain) ? 'accounts.personal' : 'accounts.work')
 }
 
 /** Strips Electron's "Error invoking remote method 'x': Error: " prefix. */
@@ -52,7 +55,7 @@ export function Sheet(props: {
     >
       <header className="acc-sheet-head">
         <h2>{props.title}</h2>
-        <button type="button" className="acc-close" aria-label="Close" onClick={props.onClose}>
+        <button type="button" className="acc-close" aria-label={t('common.close')} onClick={props.onClose}>
           ×
         </button>
       </header>

@@ -61,6 +61,8 @@ pnpm dist                 # installers for the current OS in apps/desktop/dist/ 
 
 On Windows, set the mock flag first: `$env:MYSTICALS_MOCK=1` (PowerShell) or `set MYSTICALS_MOCK=1` (cmd).
 
+Desktop UI text lives in `packages/core/src/i18n/en.ts` and `uk.ts`: add a key to both (typecheck fails when `uk.ts` misses one), and use `t('key')` / `fmt(date, pattern)` from `apps/desktop/src/renderer/src/i18n.ts` instead of literals and bare date-fns `format`. Core text functions take an optional `locale` (default `'en'`, which the terminal app uses). Mock runs treat the OS language as English; `MYSTICALS_LANG=uk` forces Ukrainian.
+
 Run a single app with `pnpm --filter <name> <script>`, for example `pnpm --filter @mysticals/desktop dev` or `pnpm --filter @mysticals/landing dev`.
 
 Release macOS builds are signed with a Developer ID certificate, use the hardened runtime and are notarized by CI (see Releasing). Locally, `pnpm dist` signs with a Developer ID cert from your keychain if there is one; otherwise pass `-c.mac.identity=-` for an ad-hoc build (Apple Silicon refuses to run a fully unsigned one). Windows builds are unsigned.

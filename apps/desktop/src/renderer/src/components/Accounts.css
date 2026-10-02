@@ -134,6 +134,9 @@
 .set-status::before { content: '● '; }
 .set-status.err { color: var(--red); }
 .set-check { display: flex; align-items: center; gap: 8px; }
+/* Language picker: one radio row per choice, the OS language beside "Automatic". */
+.lang-list { display: grid; gap: 10px; }
+.lang-opt .acc-email { margin-left: auto; }
 
 .acc-hint-center { color: var(--muted); font: 11px/1.4 var(--mono); }
 /* Google sign-in progress once the browser is done. */

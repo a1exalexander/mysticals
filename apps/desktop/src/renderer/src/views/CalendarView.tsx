@@ -12,9 +12,11 @@ import { rangeLabel, shiftDate, viewDays, viewRange, type View } from '@mystical
 import { TimeGrid } from './TimeGrid'
 import { MonthGrid } from './MonthGrid'
 import { Agenda } from './Agenda'
+import { cap, currentLocale, fmt, t, useLocale } from '../i18n'
+import type { Key } from '@mysticals/core/i18n'
 
 const VIEWS: DeskView[] = ['agenda', 'day', '3day', 'week', 'month']
-const LABEL: Record<DeskView, string> = { agenda: 'Agenda', day: 'Day', '3day': '3 Days', week: 'Week', month: 'Month' }
+const LABEL: Record<DeskView, Key> = { agenda: 'view.agenda', day: 'view.day', '3day': 'view.3day', week: 'view.week', month: 'view.month' }
 const KEY_VIEW: Record<string, DeskView> = { a: 'agenda', d: 'day', '3': '3day', w: 'week', m: 'month' }
 const MENU_VIEW: Partial<Record<MenuCommand, DeskView>> = {
   'view-agenda': 'agenda',
@@ -41,6 +43,7 @@ const today = (): void => nav.set({ date: new Date() })
 
 export function CalendarView(): React.JSX.Element {
   const { date: navDate, view: deskView } = useNav()
+  useLocale()
   const agenda = deskView === 'agenda'
   // The agenda is always today; underneath it loads like the day view.
   const view: View = agenda ? 'day' : deskView
@@ -91,17 +94,17 @@ export function CalendarView(): React.JSX.Element {
       void window.api.events.update({ ...e, start, end }, scope).then(
         () =>
           bus.emit('toast', {
-            text: `Moved “${e.title || 'Untitled'}”${scope === 'all' ? ' (all events)' : scope === 'following' ? ' and following' : ''}`,
+            text: t(scope === 'all' ? 'toast.movedAll' : scope === 'following' ? 'toast.movedFollowing' : 'toast.moved', { title: e.title || t('common.untitled') }),
             // Undo is just the reverse move; a series change is not.
-            action: scope === 'all' || scope === 'following' ? undefined : { label: 'Undo', run: () => move({ ...e, start, end }, e.start, e.end, scope) }
+            action: scope === 'all' || scope === 'following' ? undefined : { label: t('common.undo'), run: () => move({ ...e, start, end }, e.start, e.end, scope) }
           }),
         (err) => {
           drop()
-          bus.emit('toast', { text: `Couldn't move “${e.title || 'Untitled'}”: ${errorText(err)}`, error: true })
+          bus.emit('toast', { text: t('toast.moveFailed', { title: e.title || t('common.untitled'), error: errorText(err) }), error: true })
         }
       )
     if (!e.recurringEventId || scope) send(scope)
-    else bus.emit('scope:ask', { title: 'Move recurring event', onPick: send, onCancel: drop })
+    else bus.emit('scope:ask', { title: t('scope.move'), onPick: send, onCancel: drop })
   }, [])
   const moveTo = useCallback<MoveTo>((e, start, end) => move(e, start, end), [move])
   const firstSync = accounts.filter((a) => a.syncing && !a.synced)
@@ -149,17 +152,17 @@ export function CalendarView(): React.JSX.Element {
       <header className="toolbar">
         {/* Keyed by the period so a step to the next one fades the new title in. */}
         <h1 className="toolbar-title" key={`${deskView}/${format(days[0], 'yyyy-MM-dd')}`}>
-          {agenda ? 'Today' : view === 'day' ? format(date, 'd MMMM') : view === '3day' ? rangeLabel(days[0], days[2]) : format(date, 'MMMM')}
+          {agenda ? t('common.today') : view === 'day' ? fmt(date, 'd MMMM') : view === '3day' ? rangeLabel(days[0], days[2], currentLocale()) : cap(fmt(date, 'LLLL'))}
           <span className="toolbar-sub">
             {agenda ? (
-              format(date, 'EEEE, d MMMM')
+              cap(fmt(date, 'EEEE, d MMMM'))
             ) : (
               <>
                 {view !== '3day' && format(date, 'yyyy')}
-                {view === 'day' && ` · ${format(date, 'EEE')}`}
+                {view === 'day' && ` · ${fmt(date, 'EEE')}`}
                 {view === '3day' &&
-                  [...new Set(days.map((d) => `W${getISOWeek(d)}`))].join('–')}
-                {(view === 'day' || view === 'week') && ` · W${getISOWeek(date)}`}
+                  [...new Set(days.map((d) => t('toolbar.weekNo', { n: getISOWeek(d) })))].join('–')}
+                {(view === 'day' || view === 'week') && ` · ${t('toolbar.weekNo', { n: getISOWeek(date) })}`}
               </>
             )}
           </span>
@@ -167,22 +170,22 @@ export function CalendarView(): React.JSX.Element {
         <ViewSwitch view={deskView} />
         {!agenda && (
           <div className="toolbar-nav">
-            <button className="icon-btn" aria-label="Previous" onClick={() => go(-1)}>
+            <button className="icon-btn" aria-label={t('toolbar.previous')} onClick={() => go(-1)}>
               ‹
             </button>
             <button className="today-btn" onClick={today}>
-              today
+              {t('toolbar.today')}
             </button>
-            <button className="icon-btn" aria-label="Next" onClick={() => go(1)}>
+            <button className="icon-btn" aria-label={t('toolbar.next')} onClick={() => go(1)}>
               ›
             </button>
           </div>
         )}
-        <button className="new-btn" data-testid="new-event" title="New event (N)" onClick={() => bus.emit('event:create', {})}>
-          + new
+        <button className="new-btn" data-testid="new-event" title={t('toolbar.newEventHint')} onClick={() => bus.emit('event:create', {})}>
+          {t('toolbar.new')}
         </button>
       </header>
-      {firstSync.length > 0 && <div className="loadbar" role="progressbar" aria-label="Syncing" data-testid="loadbar" />}
+      {firstSync.length > 0 && <div className="loadbar" role="progressbar" aria-label={t('toolbar.syncing')} data-testid="loadbar" />}
       {agenda ? (
         <Agenda events={events} colorOf={colorOf} />
       ) : view === 'month' ? (
@@ -194,7 +197,7 @@ export function CalendarView(): React.JSX.Element {
         <div className="first-sync" role="status" data-testid="first-sync">
           <div className="app-loader-term">
             <div><span className="app-loader-prompt">~ $</span> mysticals --sync</div>
-            <div className="app-loader-spin">first sync of {firstSync.map((a) => a.label).join(', ')}…</div>
+            <div className="app-loader-spin">{t('toolbar.firstSync', { names: firstSync.map((a) => a.label).join(', ') })}</div>
           </div>
         </div>
       )}
@@ -204,6 +207,7 @@ export function CalendarView(): React.JSX.Element {
 
 /** Segmented view tabs; one thumb slides (spring easing, see .seg-thumb) under the active tab. */
 function ViewSwitch({ view }: { view: DeskView }): React.JSX.Element {
+  const { locale } = useLocale()
   const tabs = useRef(new Map<DeskView, HTMLButtonElement>())
   const thumb = useRef<HTMLSpanElement>(null)
   const [ready, setReady] = useState(false)
@@ -220,7 +224,7 @@ function ViewSwitch({ view }: { view: DeskView }): React.JSX.Element {
     const ro = new ResizeObserver(place)
     ro.observe(b)
     return () => ro.disconnect()
-  }, [view])
+  }, [view, locale])
   // Only animate moves after the first placement, so the thumb doesn't fly in on launch.
   useEffect(() => {
     const id = requestAnimationFrame(() => setReady(true))
@@ -239,7 +243,7 @@ function ViewSwitch({ view }: { view: DeskView }): React.JSX.Element {
           data-testid={`view-switch-${v}`}
           onClick={() => nav.set({ view: v })}
         >
-          {LABEL[v]}
+          {t(LABEL[v])}
         </button>
       ))}
     </div>

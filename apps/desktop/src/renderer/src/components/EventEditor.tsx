@@ -11,12 +11,14 @@ import {
 } from '@mysticals/core/logic/editor'
 import './ui/ui.css'
 import './EventEditor.css'
+import { currentLocale, t, useLocale } from '../i18n'
 
 type Opened = { mode: 'create'; prefill: BusEvents['event:create'] } | { mode: 'edit'; event: CalEvent }
 
 // Create/edit sheet. Account + calendar are an explicit choice; editing never moves an event between accounts.
 export function EventEditorHost(): React.JSX.Element | null {
   const { accounts, calendars, loaded } = useDirectory()
+  useLocale()
   const [opened, setOpened] = useState<Opened | null>(null)
   const [form, setForm] = useState<EventForm | null>(null)
   const [draft, setDraft] = useState('')
@@ -83,8 +85,8 @@ export function EventEditorHost(): React.JSX.Element | null {
     setSaving(true)
     try {
       const f = { ...form, attendees: invitees }
-      if (editing) await window.api.events.update(applyForm(editing, f), scope)
-      else await window.api.events.create(formToInput(f))
+      if (editing) await window.api.events.update(applyForm(editing, f, currentLocale()), scope)
+      else await window.api.events.create(formToInput(f, currentLocale()))
       if (session.current === mine) close()
     } catch (e) {
       if (session.current === mine) {
@@ -140,26 +142,26 @@ export function EventEditorHost(): React.JSX.Element | null {
           <input
             ref={titleRef}
             className="editor-title"
-            placeholder={editing ? 'Title' : 'New Event'}
+            placeholder={editing ? t('editor.title') : t('common.newEvent')}
             value={form.title}
             onChange={(e) => set({ title: e.target.value })}
           />
         </div>
 
         <div className="editor-grid">
-          <label>Account</label>
+          <label>{t('editor.account')}</label>
           {editing ? (
             <div className="editor-static" data-testid="editor-account">{account?.label ?? editing.accountId}</div>
           ) : (
             <select data-testid="editor-account" value={form.accountId} onChange={(e) => chooseAccount(e.target.value)}>
-              {!form.accountId && <option value="" disabled>Choose account…</option>}
+              {!form.accountId && <option value="" disabled>{t('editor.chooseAccount')}</option>}
               {choices.map((a) => (
                 <option key={a.id} value={a.id}>{a.label} · {a.email}</option>
               ))}
             </select>
           )}
 
-          <label>Calendar</label>
+          <label>{t('editor.calendar')}</label>
           {editing ? (
             <div className="editor-static" data-testid="editor-calendar">{calendar?.name ?? editing.calendarId}</div>
           ) : (
@@ -169,23 +171,23 @@ export function EventEditorHost(): React.JSX.Element | null {
               disabled={!form.accountId}
               onChange={(e) => set({ calendarId: e.target.value })}
             >
-              <option value="" disabled>{form.accountId ? 'Choose calendar…' : 'Choose an account first'}</option>
+              <option value="" disabled>{form.accountId ? t('editor.chooseCalendar') : t('editor.accountFirst')}</option>
               {accountCals.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
           )}
 
-          <label>All-day</label>
+          <label>{t('editor.allDay')}</label>
           <label className="editor-switch">
             <input type="checkbox" checked={form.allDay} onChange={(e) => setForm(setAllDay(form, e.target.checked))} />
           </label>
 
-          <label>Starts</label>
-          <DateTimeField label="Starts" value={form.start} dateOnly={form.allDay} onChange={(start) => setForm(moveStart(form, start))} />
+          <label>{t('editor.starts')}</label>
+          <DateTimeField label={t('editor.starts')} value={form.start} dateOnly={form.allDay} onChange={(start) => setForm(moveStart(form, start))} />
 
-          <label>Ends</label>
-          <DateTimeField label="Ends" value={form.end} dateOnly={form.allDay} onChange={(end) => set({ end })} />
+          <label>{t('editor.ends')}</label>
+          <DateTimeField label={t('editor.ends')} value={form.end} dateOnly={form.allDay} onChange={(end) => set({ end })} />
 
           <RepeatField
             value={form.repeat}
@@ -194,19 +196,19 @@ export function EventEditorHost(): React.JSX.Element | null {
             onChange={(repeat) => set({ repeat })}
           />
 
-          <label>Location</label>
-          <input placeholder="Add location" value={form.location} onChange={(e) => set({ location: e.target.value })} />
+          <label>{t('editor.location')}</label>
+          <input placeholder={t('editor.addLocation')} value={form.location} onChange={(e) => set({ location: e.target.value })} />
 
-          <label>Invitees</label>
+          <label>{t('editor.invitees')}</label>
           <div className="editor-chips">
             {form.attendees.map((m) => (
               <span key={m} className={isEmail(m) ? 'chip' : 'chip bad'}>
                 {m}
-                <button type="button" aria-label={`Remove ${m}`} onClick={() => set({ attendees: form.attendees.filter((x) => x !== m) })}>×</button>
+                <button type="button" aria-label={t('editor.removeInvitee', { email: m })} onClick={() => set({ attendees: form.attendees.filter((x) => x !== m) })}>×</button>
               </span>
             ))}
             <input
-              placeholder={form.attendees.length ? '' : 'Add people (optional)'}
+              placeholder={form.attendees.length ? '' : t('editor.addPeople')}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onBlur={commitDraft}
@@ -221,18 +223,18 @@ export function EventEditorHost(): React.JSX.Element | null {
             />
           </div>
 
-          <label>Notes</label>
-          <textarea rows={3} placeholder="Add notes" value={form.description} onChange={(e) => set({ description: e.target.value })} />
+          <label>{t('editor.notes')}</label>
+          <textarea rows={3} placeholder={t('editor.addNotes')} value={form.description} onChange={(e) => set({ description: e.target.value })} />
         </div>
 
         <div className="editor-identity">
           {account ? (
             <>
-              <div>Created in <b>{account.label}</b> · {account.email}</div>
-              {invitees.length > 0 && <div className="editor-warn">Invitations will be sent from <b>{account.email}</b></div>}
+              <div>{t('editor.createdIn')} <b>{account.label}</b> · {account.email}</div>
+              {invitees.length > 0 && <div className="editor-warn">{t('editor.invitesFrom')} <b>{account.email}</b></div>}
             </>
           ) : (
-            <div>Choose which account this event belongs to.</div>
+            <div>{t('editor.chooseWhich')}</div>
           )}
         </div>
 
@@ -240,7 +242,7 @@ export function EventEditorHost(): React.JSX.Element | null {
 
         {askScope ? (
           <RecurringScope
-            title={repeatChanged(form) ? 'Change the repeat rule for' : 'Save recurring event'}
+            title={repeatChanged(form) ? t('scope.changeRule') : t('scope.save')}
             // The rule belongs to the series: no "this event only" for a rule change.
             scopes={repeatChanged(form) ? ['following', 'all'] : undefined}
             busy={saving}
@@ -249,9 +251,9 @@ export function EventEditorHost(): React.JSX.Element | null {
           />
         ) : (
           <div className="mc-actions">
-            <button type="button" className="mc-btn" onClick={close}>Cancel</button>
+            <button type="button" className="mc-btn" onClick={close}>{t('common.cancel')}</button>
             <button type="submit" className="mc-btn primary" data-testid="editor-save" disabled={!canSave}>
-              {saving ? 'Saving…' : editing ? 'Save' : 'Add Event'}
+              {saving ? t('editor.saving') : editing ? t('common.save') : t('editor.add')}
             </button>
           </div>
         )}

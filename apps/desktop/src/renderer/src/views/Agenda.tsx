@@ -8,6 +8,7 @@ import { bus } from '../bus'
 import { useDirectory } from '../components/ui/useDirectory'
 import type { ColorOf } from './CalendarView'
 import './Agenda.css'
+import { currentLocale, t } from '../i18n'
 
 const keyOf = (e: CalEvent): string => `${e.accountId}/${e.id}`
 // Goes through the main process's window-open handler: http(s) only, opened in the system browser / meeting app.
@@ -17,15 +18,15 @@ const open = (e: CalEvent, el: HTMLElement): void =>
 
 const dur = (e: CalEvent): string => {
   const m = differenceInMinutes(eventBounds(e).end, eventBounds(e).start)
-  return m < 60 ? `${m}m` : m % 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m / 60}h`
+  return m < 60 ? t('dur.m', { m }) : m % 60 ? t('dur.hm', { h: Math.floor(m / 60), m: m % 60 }) : t('dur.h', { h: m / 60 })
 }
 
 /** "now · ends in 25m" / "starts in 12m" / "ended 14:30". */
 function statusOf(e: CalEvent, now: Date): { text: string; live?: boolean } {
   const { start, end } = eventBounds(e)
-  if (end <= now) return { text: `ended ${format(end, 'HH:mm')}` }
-  if (start <= now) return { text: `now · ends in ${Math.max(differenceInMinutes(end, now, { roundingMethod: 'ceil' }), 1)}m`, live: true }
-  return { text: `starts ${startsLabel(e.start, now)}` }
+  if (end <= now) return { text: t('agenda.ended', { time: format(end, 'HH:mm') }) }
+  if (start <= now) return { text: t('agenda.endsIn', { n: Math.max(differenceInMinutes(end, now, { roundingMethod: 'ceil' }), 1) }), live: true }
+  return { text: t('agenda.starts', { when: startsLabel(e.start, now, currentLocale()) }) }
 }
 
 /** Ticks every 15s, so join buttons appear on time. */
@@ -78,18 +79,18 @@ export function Agenda({ events, colorOf }: { events: CalEvent[]; colorOf: Color
   return (
     <div className="ag-wrap">
       <div className="ag" data-testid="agenda">
-        <section className="ag-list" aria-label="Today">
+        <section className="ag-list" aria-label={t('common.today')}>
           {allDay.length > 0 && (
             <div className="ag-allday">
               {allDay.map((e) => (
                 <button key={keyOf(e)} type="button" className="ag-chip" style={{ '--c': colorOf(e) } as React.CSSProperties} onClick={(ev) => open(e, ev.currentTarget)}>
-                  {e.title || 'Untitled'}
+                  {e.title || t('common.untitled')}
                 </button>
               ))}
             </div>
           )}
-          {!timed.length && <p className="ag-empty">Nothing scheduled today.</p>}
-          {timed.length > 0 && !current.length && !next && <p className="ag-empty">All done for today.</p>}
+          {!timed.length && <p className="ag-empty">{t('agenda.nothing')}</p>}
+          {timed.length > 0 && !current.length && !next && <p className="ag-empty">{t('agenda.allDone')}</p>}
           <ol className="ag-rows">
             {timed.map((e, i) => {
               const k = keyOf(e)
@@ -112,16 +113,16 @@ export function Agenda({ events, colorOf }: { events: CalEvent[]; colorOf: Color
                     <span className="ag-time">{format(eventBounds(e).start, 'HH:mm')}</span>
                     <span className="ag-bar" />
                     <span className="ag-main">
-                      <span className="ag-title">{e.title || 'Untitled'}</span>
+                      <span className="ag-title">{e.title || t('common.untitled')}</span>
                       <span className="ag-meta">
-                        {st.live ? <span className="ag-live">● now</span> : !past && e === next ? startsLabel(e.start, now) : dur(e)}
-                        {place(e.location) && ` · ${place(e.location)}`}
+                        {st.live ? <span className="ag-live">{t('agenda.now')}</span> : !past && e === next ? startsLabel(e.start, now, currentLocale()) : dur(e)}
+                        {place(e.location, currentLocale()) && ` · ${place(e.location, currentLocale())}`}
                       </span>
                     </span>
                   </button>
                   {url && (
                     <button type="button" className="ag-join-pill" onClick={() => join(url)} title={url}>
-                      Join
+                      {t('agenda.joinShort')}
                     </button>
                   )}
                 </li>
@@ -133,7 +134,7 @@ export function Agenda({ events, colorOf }: { events: CalEvent[]; colorOf: Color
           <Focus key={keyOf(focus)} e={focus} now={now} color={colorOf(focus)} calendar={calendars.find((c) => c.accountId === focus.accountId && c.id === focus.calendarId)?.name} />
         ) : (
           <section className="ag-focus ag-focus-empty">
-            <p>No calls today. Enjoy the quiet.</p>
+            <p>{t('agenda.noCalls')}</p>
           </section>
         )}
       </div>
@@ -146,39 +147,39 @@ function Focus({ e, now, color, calendar }: { e: CalEvent; now: Date; color: str
   const st = statusOf(e, now)
   const url = meetingUrl(e.location)
   const ready = joinable(e, now)
-  const where = place(e.location)
+  const where = place(e.location, currentLocale())
   const people = e.attendees.length
   return (
     <section className="ag-focus" style={{ '--c': color } as React.CSSProperties} data-testid="agenda-focus" aria-live="polite">
       <div className={st.live ? 'ag-status live' : 'ag-status'}>{st.text}</div>
-      <h2 className="ag-focus-title">{e.title || 'Untitled'}</h2>
+      <h2 className="ag-focus-title">{e.title || t('common.untitled')}</h2>
       <div className="ag-focus-when">
         {format(start, 'HH:mm')} – {format(end, 'HH:mm')} <span>· {dur(e)}</span>
       </div>
       <dl className="ag-facts">
         {calendar && (
           <>
-            <dt>calendar</dt>
+            <dt>{t('agenda.fact.calendar')}</dt>
             <dd>
               <span className="ag-dot" /> {calendar}
             </dd>
           </>
         )}
-        {where && where !== 'video call' && (
+        {where && where !== t('meeting.videoCall') && (
           <>
-            <dt>where</dt>
+            <dt>{t('agenda.fact.where')}</dt>
             <dd>{where}</dd>
           </>
         )}
         {people > 0 && (
           <>
-            <dt>people</dt>
-            <dd>{people === 1 ? '1 person' : `${people} people`}</dd>
+            <dt>{t('agenda.fact.people')}</dt>
+            <dd>{t('agenda.people', { n: people })}</dd>
           </>
         )}
         {url && (
           <>
-            <dt>link</dt>
+            <dt>{t('agenda.fact.link')}</dt>
             <dd className="ag-url">{url}</dd>
           </>
         )}
@@ -186,13 +187,13 @@ function Focus({ e, now, color, calendar }: { e: CalEvent; now: Date; color: str
       <div className="ag-actions">
         {ready ? (
           <button type="button" className="ag-join" data-testid="agenda-join" onClick={() => join(ready)}>
-            Join call <kbd>↵</kbd>
+            {t('agenda.join')} <kbd>↵</kbd>
           </button>
         ) : (
-          url && !isPast(e, now) && <span className="ag-hint">Join opens {JOIN_EARLY_MIN} min before start</span>
+          url && !isPast(e, now) && <span className="ag-hint">{t('agenda.joinOpens', { n: JOIN_EARLY_MIN })}</span>
         )}
         <button type="button" className="ag-details" onClick={(ev) => open(e, ev.currentTarget)}>
-          Details
+          {t('agenda.details')}
         </button>
       </div>
     </section>
