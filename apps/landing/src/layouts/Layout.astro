@@ -44,6 +44,9 @@ const phKey = process.env.MYSTICALS_POSTHOG_KEY
     {phKey && <Analytics apiKey={phKey} />}
   </head>
   <body>
+    <div class="ua-bar">
+      <span class="ua-pill"><svg class="ua-flag" viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="1" fill="#0057B7" /><rect y="1" width="3" height="1" fill="#FFD700" /></svg>Made in Ukraine</span>
+    </div>
     <header>
       <div class="wrap nav">
         <a class="brand" href="/"><img src="/icon.svg" alt="" width="34" height="34" />mysticals</a>

@@ -99,6 +99,13 @@ export function SettingsHost(): React.JSX.Element | null {
         {tab === 'sync' && <SyncPanel accounts={accounts} />}
         {tab === 'privacy' && <PrivacyPanel />}
       </div>
+      <p className="set-made" data-testid="made-in-ukraine">
+        <svg viewBox="0 0 3 2" aria-hidden>
+          <rect width="3" height="1" fill="#0057B7" />
+          <rect y="1" width="3" height="1" fill="#FFD700" />
+        </svg>
+        Made in Ukraine
+      </p>
     </Sheet>
   )
 }

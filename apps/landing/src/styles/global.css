@@ -23,6 +23,11 @@ code { color: var(--soft); font-size: .95em; }
 .ul { text-decoration: underline; text-underline-offset: 3px; }
 .ul:hover { color: #fff; }
 
+/* "Made in Ukraine" strip above the header */
+.ua-bar { display: flex; justify-content: center; padding: 5px 16px; border-bottom: 1px solid var(--line); }
+.ua-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border: 1px solid var(--line-strong); border-radius: 999px; font: 500 11px/1.4 var(--mono); letter-spacing: .02em; color: var(--muted); }
+.ua-flag { width: 12px; height: 8px; border-radius: 1px; }
+
 /* header / footer */
 .nav { height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 body > header { border-bottom: 1px solid var(--line); }

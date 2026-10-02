@@ -294,6 +294,11 @@ export function Accounts({ onClose }: AccountsProps) {
           <Button k="esc" label="close" onPress={onClose} />
         </Box>
       )}
+      {mode.kind === 'list' && (
+        <Box marginTop={1}>
+          <Text color={C.muted}>Made in Ukraine</Text>
+        </Box>
+      )}
     </Clickable>
   )
 }

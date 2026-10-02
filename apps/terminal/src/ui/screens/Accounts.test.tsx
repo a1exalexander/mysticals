@@ -19,6 +19,7 @@ describe('Accounts overlay', () => {
     expect(f).toContain('me@work.example · CalDAV')
     expect(f).toContain('me@gmail.example · Google')
     expect(f).toContain('(read-only)')
+    expect(f).toContain('Made in Ukraine')
     await t.press('w') // overlay owns input: not a view switch
     expect(t.lastFrame()).toContain('Accounts & calendars')
     await t.press(KEY.esc)

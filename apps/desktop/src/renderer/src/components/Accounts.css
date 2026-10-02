@@ -129,6 +129,8 @@
 .acc-sheet .set-tabs button:hover { background: none; color: var(--fg); }
 .acc-sheet .set-tabs button.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .set-panel { min-height: 340px; }
+.set-made { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 12px 0 0; font-size: 11px; color: var(--muted); }
+.set-made svg { width: 12px; height: 8px; border-radius: 1px; }
 .set-sync-label { font-weight: 600; line-height: 24px; }
 .set-status { font: 11px/1 var(--mono); color: var(--green); white-space: nowrap; }
 .set-status::before { content: '● '; }
