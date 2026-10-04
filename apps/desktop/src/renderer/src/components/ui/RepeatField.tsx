@@ -4,9 +4,16 @@ import {
   describe, FREQS, presetOf, presets, shortDay, weekdayOf, withEnd, WEEKDAYS, type PresetId
 } from '@mysticals/core/logic/recurrence'
 import { DateTimeField } from './DateTimeField'
+import { NumberField } from './NumberField'
+import { Select, type SelectOption } from './Select'
 
 const UNITS: Record<Recurrence['freq'], string> = { daily: 'days', weekly: 'weeks', monthly: 'months', yearly: 'years' }
 type Ends = 'never' | 'until' | 'count'
+const ENDS: SelectOption<Ends>[] = [
+  { value: 'never', label: 'Never' },
+  { value: 'until', label: 'On date' },
+  { value: 'count', label: 'After' }
+]
 
 type Props = {
   value: Recurrence | null
@@ -52,31 +59,30 @@ export function RepeatField({ value, start, status, onChange }: Props): React.JS
   return (
     <>
       <label>Repeat</label>
-      <select data-testid="editor-repeat" value={showCustom ? 'custom' : preset} onChange={(e) => pick(e.target.value)}>
-        {presets(start).map((p) => (
-          <option key={p.id} value={p.id}>{p.label}</option>
-        ))}
-        <option value="custom">{preset === 'custom' && value ? describe(value, start) : 'Custom…'}</option>
-        {preset === 'rule' && value && <option value="rule">{describe(value, start)}</option>}
-      </select>
+      <Select
+        data-testid="editor-repeat"
+        aria-label="Repeat"
+        value={showCustom ? 'custom' : preset}
+        options={[
+          ...presets(start).map((p) => ({ value: p.id, label: p.label })),
+          { value: 'custom', label: preset === 'custom' && value ? describe(value, start) : 'Custom…' },
+          ...(preset === 'rule' && value ? [{ value: 'rule', label: describe(value, start) }] : [])
+        ]}
+        onChange={pick}
+      />
 
       {showCustom && value && (
         <>
           <label>Every</label>
           <div className="editor-repeat-row">
-            <input
-              type="number"
-              min={1}
-              max={999}
-              aria-label="Repeat every"
-              value={value.interval ?? 1}
-              onChange={(e) => set({ interval: Math.min(999, Math.max(1, Number(e.target.value) || 1)) })}
+            <NumberField aria-label="Repeat every" value={value.interval ?? 1} onChange={(interval) => set({ interval })} />
+            <Select
+              compact
+              aria-label="Repeat unit"
+              value={value.freq}
+              options={FREQS.map((f) => ({ value: f, label: UNITS[f] }))}
+              onChange={(freq) => set({ freq, byDay: undefined })}
             />
-            <select aria-label="Repeat unit" value={value.freq} onChange={(e) => set({ freq: e.target.value as Recurrence['freq'], byDay: undefined })}>
-              {FREQS.map((f) => (
-                <option key={f} value={f}>{UNITS[f]}</option>
-              ))}
-            </select>
           </div>
           {value.freq === 'weekly' && (
             <>
@@ -107,35 +113,25 @@ export function RepeatField({ value, start, status, onChange }: Props): React.JS
         <>
           <label>Stops</label>
           <div className="editor-repeat-row">
-            <select
+            <Select
+              compact
               aria-label="Repeat stops"
               value={ends}
-              onChange={(e) => {
-                const v = e.target.value as Ends
+              options={ENDS}
+              onChange={(v) =>
                 onChange({
                   ...value,
                   until: v === 'until' ? (value.until ?? start.slice(0, 10)) : undefined,
                   count: v === 'count' ? (value.count ?? 10) : undefined
                 })
-              }}
-            >
-              <option value="never">Never</option>
-              <option value="until">On date</option>
-              <option value="count">After</option>
-            </select>
+              }
+            />
             {ends === 'until' && (
               <DateTimeField label="Stops on" dateOnly value={`${value.until}T00:00`} onChange={(v) => set({ until: v.slice(0, 10) })} />
             )}
             {ends === 'count' && (
               <>
-                <input
-                  type="number"
-                  min={1}
-                  max={999}
-                  aria-label="Occurrences"
-                  value={value.count}
-                  onChange={(e) => set({ count: Math.min(999, Math.max(1, Number(e.target.value) || 1)) })}
-                />
+                <NumberField aria-label="Occurrences" value={value.count ?? 1} onChange={(count) => set({ count })} />
                 <span className="editor-muted">times</span>
               </>
             )}

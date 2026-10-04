@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { bus } from '../bus'
+import { Select } from './ui/Select'
 import { ConnectSteps, PRESETS, SWATCHES, Sheet, Swatches, errorText, hostOf, suggestLabel } from './AccountsShared'
 
 type Step = 'choose' | 'google' | 'connecting' | 'caldav'
@@ -147,21 +148,19 @@ function CaldavForm(props: { onBack: () => void; onDone: () => void }): React.JS
         />
       )}
       <div className="acc-form-fields" hidden={busy}>
-      <label>
+      <div className="acc-row">
         <span>Provider</span>
-        <select
+        <Select
+          aria-label="Provider"
           value={preset}
-          onChange={(e) => {
-            const p = PRESETS.find((x) => x.id === e.target.value)!
+          options={PRESETS.map((p) => ({ value: p.id, label: p.name }))}
+          onChange={(id) => {
+            const p = PRESETS.find((x) => x.id === id)!
             setPreset(p.id)
             setServerUrl(p.url)
           }}
-        >
-          {PRESETS.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-      </label>
+        />
+      </div>
       <label>
         <span>Server URL</span>
         <input

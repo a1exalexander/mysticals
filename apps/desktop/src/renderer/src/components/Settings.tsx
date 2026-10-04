@@ -3,6 +3,7 @@ import type { Account } from '@shared/types'
 import { bus } from '../bus'
 import { THEMES, applyTheme, useTheme } from '../theme'
 import { KindIcon, Sheet, Swatches, errorText } from './AccountsShared'
+import './ui/ui.css'
 
 const TABS = [
   { id: 'accounts', name: 'Accounts' },
@@ -193,6 +194,7 @@ function PrivacyPanel(): React.JSX.Element {
       <label className="set-check">
         <input
           type="checkbox"
+          className="mc-check"
           data-testid="telemetry-toggle"
           checked={on ?? false}
           disabled={on === undefined}

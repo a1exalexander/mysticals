@@ -10,17 +10,16 @@
 .editor-grid > label:not(.editor-switch) {
   color: var(--muted); text-align: right; font: 10.5px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase;
 }
-.editor-grid input:not([type='checkbox']), .editor-grid select, .editor-grid textarea, .editor-chips {
+.editor-grid input:not([type='checkbox'], .mnum-input), .editor-grid textarea, .editor-chips {
   font: inherit; color: var(--fg); background: var(--bg);
   border: 1px solid var(--line-strong); border-radius: 4px; padding: 4px 8px; min-height: 28px; width: 100%;
 }
-.editor-grid input:focus, .editor-grid select:focus, .editor-grid textarea:focus, .editor-chips:focus-within {
+.editor-grid input:not(.mnum-input):focus, .editor-grid textarea:focus, .editor-chips:focus-within {
   outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
-.editor-grid select:has(option[value='']:checked) { color: var(--muted); }
 .editor-grid textarea { resize: vertical; }
 .editor-static { padding: 4px 0; font-weight: 500; }
-.editor-switch input { accent-color: var(--accent); width: 14px; height: 14px; margin: 0; }
+.editor-switch { display: flex; align-items: center; min-height: 28px; }
 
 .editor-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 3px 4px; }
 .editor-grid .editor-chips input { flex: 1; min-width: 120px; border: 0; box-shadow: none; padding: 1px 4px; min-height: 20px; background: transparent; }
@@ -44,8 +43,6 @@
 
 .editor-muted { color: var(--muted); }
 .editor-repeat-row { display: flex; align-items: center; gap: 8px; }
-.editor-grid .editor-repeat-row input[type='number'] { width: 72px; }
-.editor-grid .editor-repeat-row select { width: auto; }
 .editor-days { display: flex; gap: 4px; }
 .editor-days button {
   flex: 1; height: 26px; font: 500 11px/1 var(--mono); color: var(--muted); background: var(--bg);
