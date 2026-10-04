@@ -80,8 +80,7 @@ pnpm --filter mysticals test
 
 A `v*` tag runs `.github/workflows/release.yml`. It builds the desktop app on macOS, Windows and Linux runners, attaches the `.dmg` and `.zip` (arm64 + x64), the Windows `-setup.exe` and the Linux `.AppImage` and `.deb` (x64 + arm64) to one GitHub Release, and publishes the terminal app to npm. Installer names carry no version (`Mysticals-arm64.dmg`, `Mysticals-x64-setup.exe`, …) because the website's download buttons link to `releases/latest/download/<name>`; keep them stable. The `-mac.zip` keeps its version: the in-app updater finds it by the `-<arch>-mac.zip` suffix.
 
-1. Bump `version` in `apps/desktop/package.json` and `apps/terminal/package.json`. Both must match the tag, or the job fails.
-2. Commit and push to `main`, then run `scripts/release.sh`. It checks the versions match, the tree is clean and `main` is pushed, then tags `v<version>` and pushes the tag.
+On an up-to-date, clean `main`, run `scripts/release.sh [patch|minor|major|X.Y.Z] ["what changed"]` (patch by default). It shows the new version and commit message and asks for confirmation (`y`); then it bumps `version` in `apps/desktop`, `apps/terminal` and `packages/core` `package.json`, commits `chore: release X.Y.Z (what changed)` to `main`, pushes it, tags `vX.Y.Z` and pushes the tag. Anything but `y` aborts with nothing changed. Passing the current version skips the bump and only tags it.
 
 Required repo secrets: `NPM_TOKEN`, `MYSTICALS_GOOGLE_CLIENT_ID`, `MYSTICALS_GOOGLE_CLIENT_SECRET` (one Desktop-app OAuth client shared by both apps). Optional: `MYSTICALS_POSTHOG_KEY` (no telemetry without it).
 
