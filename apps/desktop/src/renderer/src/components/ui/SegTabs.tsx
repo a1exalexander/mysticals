@@ -47,9 +47,9 @@ export function SegTabs<T extends string>({
       t.style.width = `${b.offsetWidth}px`
     }
     place()
-    // Tabs resize with the window (narrow toolbar padding): follow the active one.
+    // Any tab can resize (narrow toolbar padding, another language): follow the active one.
     const ro = new ResizeObserver(place)
-    ro.observe(b)
+    btns.current.forEach((el) => ro.observe(el))
     return () => ro.disconnect()
   }, [value])
   // Only animate moves after the first placement, so the thumb doesn't fly in on mount.

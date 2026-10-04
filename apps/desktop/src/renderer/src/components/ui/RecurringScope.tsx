@@ -1,6 +1,8 @@
 import type { DeleteScope } from '@shared/types'
+import type { Key } from '@mysticals/core/i18n'
+import { t } from '../../i18n'
 
-const SCOPES: [DeleteScope, string][] = [['one', 'This event'], ['following', 'This and following'], ['all', 'All events']]
+const SCOPES: [DeleteScope, Key][] = [['one', 'scope.one'], ['following', 'scope.following'], ['all', 'scope.all']]
 
 /** "This event / This and following / All events" choice for a change to a recurring event. */
 export function RecurringScope({
@@ -24,10 +26,10 @@ export function RecurringScope({
       <span>{title}</span>
       {SCOPES.filter(([scope]) => !scopes || scopes.includes(scope)).map(([scope, label]) => (
         <button key={scope} type="button" className={danger ? 'mc-btn danger' : 'mc-btn'} disabled={busy} onClick={() => onPick(scope)}>
-          {label}
+          {t(label)}
         </button>
       ))}
-      <button type="button" className="mc-btn" onClick={onCancel}>Cancel</button>
+      <button type="button" className="mc-btn" onClick={onCancel}>{t('common.cancel')}</button>
     </div>
   )
 }

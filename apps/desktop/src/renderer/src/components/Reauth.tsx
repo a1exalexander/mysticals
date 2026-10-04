@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { bus } from '../bus'
 import { useCalendarData } from '../hooks/useCalendarData'
 import { ConnectSteps, Sheet, errorText } from './AccountsShared'
+import { t, useLocale } from '../i18n'
 
 /**
  * "<account> is disconnected": the server rejected its credentials (`authError`).
@@ -9,6 +10,7 @@ import { ConnectSteps, Sheet, errorText } from './AccountsShared'
  */
 export function ReauthHost(): React.JSX.Element | null {
   const { accounts } = useCalendarData()
+  useLocale()
   const [id, setId] = useState<string>()
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -56,7 +58,7 @@ export function ReauthHost(): React.JSX.Element | null {
     setError('')
     try {
       await window.api.accounts.reauth(a.id, a.kind === 'caldav' ? { password } : undefined)
-      bus.emit('toast', { text: `${a.label} reconnected` })
+      bus.emit('toast', { text: t('reauth.done', { label: a.label }) })
       if (s === session.current) close()
     } catch (err) {
       if (s === session.current) setError(errorText(err))
@@ -67,18 +69,16 @@ export function ReauthHost(): React.JSX.Element | null {
 
   if (!a) return null
   return (
-    <Sheet open onClose={close} title={`${a.label} is disconnected`} testId="reauth-sheet">
+    <Sheet open onClose={close} title={t('reauth.title', { label: a.label })} testId="reauth-sheet">
       <p className="acc-note">
-        {a.kind === 'google'
-          ? `Google no longer accepts the sign-in for ${a.email}. Sign in again to reconnect.`
-          : `The password for ${a.email} was changed or revoked. Enter a new app password to reconnect.`}
+        {t(a.kind === 'google' ? 'reauth.google' : 'reauth.caldav', { email: a.email })}
         <br />
-        Your calendars stay visible from the last sync until then.
+        {t('reauth.stayVisible')}
       </p>
       {busy && (
         <ConnectSteps
           testId="reauth-connecting"
-          steps={[a.kind === 'google' ? 'Waiting for Google sign-in in your browser…' : 'Signing in…', 'Loading calendars']}
+          steps={[a.kind === 'google' ? t('accounts.google.waiting') : t('reauth.signingIn'), t('accounts.step.loadingCalendars')]}
           active={0}
         />
       )}
@@ -86,7 +86,7 @@ export function ReauthHost(): React.JSX.Element | null {
         {a.kind === 'caldav' && (
           <div className="acc-form-fields" hidden={busy}>
             <label>
-              <span>App password</span>
+              <span>{t('accounts.field.password')}</span>
               <input
                 type="password"
                 required
@@ -105,10 +105,10 @@ export function ReauthHost(): React.JSX.Element | null {
         )}
         <div className="acc-actions" hidden={busy}>
           <button type="button" onClick={close}>
-            Later
+            {t('reauth.later')}
           </button>
           <button type="submit" className="acc-primary" data-testid="reauth-submit">
-            {a.kind === 'google' ? 'Sign in again' : 'Reconnect'}
+            {a.kind === 'google' ? t('reauth.signInAgain') : t('settings.reconnect')}
           </button>
         </div>
       </form>

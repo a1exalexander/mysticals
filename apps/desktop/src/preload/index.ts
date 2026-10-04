@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { Api, MenuCommand, TelemetryApi, ThemeApi, UpdateApi, UpdateState } from '@shared/ipc'
+import type { Api, LocaleApi, LocaleState, MenuCommand, TelemetryApi, ThemeApi, UpdateApi, UpdateState } from '@shared/ipc'
 import { IPC } from '@shared/ipc'
 
 const call =
@@ -50,6 +50,13 @@ contextBridge.exposeInMainWorld('update', update)
 
 const telemetry: TelemetryApi = { enabled: call(IPC.telemetryGet), setEnabled: call(IPC.telemetrySet) } as TelemetryApi
 contextBridge.exposeInMainWorld('telemetry', telemetry)
+
+const locale: LocaleApi = {
+  get: call(IPC.localeGet),
+  set: call(IPC.localeSet),
+  onChange: (cb) => on<LocaleState>(IPC.locale, cb)
+} as LocaleApi
+contextBridge.exposeInMainWorld('locale', locale)
 
 const appTheme: ThemeApi = { set: call(IPC.themeSet) } as ThemeApi
 contextBridge.exposeInMainWorld('appTheme', appTheme)

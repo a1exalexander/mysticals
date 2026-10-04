@@ -32,5 +32,7 @@ describe('noteText', () => {
     expect(noteText([n], 'Work', now)).toHaveLength(1)
     expect(noteText([n], 'Work', now)[0].title).toBe('New invite: Standup')
     expect(noteText([n, n, n, n], 'Work', now)).toEqual([{ title: '4 calendar updates', body: 'Work' }])
+    expect(noteText([n], 'Work', now, 'uk')[0].title).toBe('Нове запрошення: Standup')
+    expect(noteText([n, n, n, n, n], 'Work', now, 'uk')).toEqual([{ title: '5 змін у календарі', body: 'Work' }])
   })
 })

@@ -11,10 +11,12 @@ import { ToastHost } from './components/Toast'
 import { ScopePromptHost } from './components/ScopePrompt'
 import { ReauthHost } from './components/Reauth'
 import { useDirectory } from './components/ui/useDirectory'
+import { t, useLocale } from './i18n'
 
 // Layout shell. Each child is owned by a different unit; communicate via ./bus.
 export function App(): React.JSX.Element {
   const { loaded } = useDirectory()
+  useLocale()
   // Never trap the UI behind the loader if the first load fails.
   const [timedOut, setTimedOut] = useState(false)
   useEffect(() => {
@@ -37,11 +39,11 @@ export function App(): React.JSX.Element {
       <ToastHost />
       <ScopePromptHost />
       <ReauthHost />
-      <div className="app-loader" data-done={done} aria-hidden={done} role="status" aria-label="Loading">
+      <div className="app-loader" data-done={done} aria-hidden={done} role="status" aria-label={t('app.loading')}>
         <div className="app-loader-term">
           <div><span className="app-loader-prompt">~ $</span> mysticals --sync</div>
           <div className="app-loader-spin">
-            loading accounts… <span className="app-loader-cursor" />
+            {t('app.loadingAccounts')} <span className="app-loader-cursor" />
           </div>
         </div>
       </div>

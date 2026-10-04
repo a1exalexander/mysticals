@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { addMonths, format, isSameDay, isSameMonth, isToday, startOfMonth } from 'date-fns'
 import { nav, useNav } from '../views/nav'
 import { monthGrid } from '@mysticals/core/logic/layout'
+import { fmt, t, useLocale } from '../i18n'
 
 /** Sidebar month picker; clicking a day navigates the main view. */
 export function MiniMonth(): React.JSX.Element {
   const { date } = useNav()
+  useLocale()
   const [shown, setShown] = useState(() => startOfMonth(date))
   const monthKey = startOfMonth(date).getTime()
   useEffect(() => setShown(new Date(monthKey)), [monthKey])
@@ -14,18 +16,18 @@ export function MiniMonth(): React.JSX.Element {
   return (
     <div className="mini">
       <div className="mini-head">
-        <span className="mini-title">{format(shown, 'MMMM yyyy')}</span>
-        <button className="mini-arrow" aria-label="Previous month" onClick={() => setShown(addMonths(shown, -1))}>
+        <span className="mini-title">{fmt(shown, 'LLLL yyyy')}</span>
+        <button className="mini-arrow" aria-label={t('mini.prev')} onClick={() => setShown(addMonths(shown, -1))}>
           ‹
         </button>
-        <button className="mini-arrow" aria-label="Next month" onClick={() => setShown(addMonths(shown, 1))}>
+        <button className="mini-arrow" aria-label={t('mini.next')} onClick={() => setShown(addMonths(shown, 1))}>
           ›
         </button>
       </div>
       <div className="mini-grid">
         {days.slice(0, 7).map((d) => (
           <span key={`h${d.getTime()}`} className="mini-dow">
-            {format(d, 'EEEEE')}
+            {fmt(d, 'EEEEE')}
           </span>
         ))}
         {days.map((d) => (

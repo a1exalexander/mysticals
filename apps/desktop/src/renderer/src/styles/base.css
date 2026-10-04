@@ -284,7 +284,7 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .sb-failed .sb-loading-text { color: var(--red); }
 .sb-retry { border: 0; background: none; padding: 0; font: 10.5px/1.4 var(--mono); color: var(--accent); }
 .sb-retry:hover { text-decoration: underline; }
-.sb-cal input { margin: 0; width: 13px; height: 13px; flex: none; }
+.sb-cal input { flex: none; }
 .sb-cal-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sb-ro { font: 10px/1 var(--mono); color: var(--muted); }
 

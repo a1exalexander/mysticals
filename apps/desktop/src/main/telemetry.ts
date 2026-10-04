@@ -1,19 +1,10 @@
-import { readFileSync, writeFileSync } from 'fs'
-import { join } from 'path'
 import { app, ipcMain } from 'electron'
 import { IPC } from '@shared/ipc'
 import { startTelemetry, type Track } from '@mysticals/core/telemetry'
-
-const prefsFile = (): string => join(app.getPath('userData'), 'prefs.json')
+import { readPrefs, writePrefs } from './prefs'
 
 /** Settings > Privacy toggle; on unless the user turned it off. */
-function allowed(): boolean {
-  try {
-    return JSON.parse(readFileSync(prefsFile(), 'utf8')).telemetry !== false
-  } catch {
-    return true
-  }
-}
+const allowed = (): boolean => readPrefs().telemetry !== false
 
 /**
  * Serves the Settings toggle and starts telemetry (sends `app_installed` on first launch).
@@ -21,7 +12,7 @@ function allowed(): boolean {
  */
 export function startDesktopTelemetry(): Track | undefined {
   ipcMain.handle(IPC.telemetryGet, allowed)
-  ipcMain.handle(IPC.telemetrySet, (_e, on: unknown) => writeFileSync(prefsFile(), JSON.stringify({ telemetry: on === true })))
+  ipcMain.handle(IPC.telemetrySet, (_e, on: unknown) => writePrefs({ telemetry: on === true }))
   return startTelemetry({
     key: app.isPackaged ? import.meta.env.MYSTICALS_POSTHOG_KEY : '',
     app: 'desktop',

@@ -47,7 +47,7 @@
 .acc-sheet button.acc-danger { color: var(--red); }
 .acc-sheet button.acc-primary-danger { background: var(--red); border-color: var(--red); color: var(--on-accent); }
 .acc-sheet button.acc-primary-danger:hover:not(:disabled) { background: var(--red); filter: brightness(1.1); }
-.acc-sheet button:focus-visible, .acc-sheet input:focus-visible, .acc-sheet select:focus-visible {
+.acc-sheet button:focus-visible, .acc-sheet input:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 1px;
 }
 
@@ -79,11 +79,11 @@
 .acc-form label > span, .acc-row > span {
   color: var(--muted); text-align: right; font: 10.5px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase;
 }
-.acc-sheet input, .acc-sheet select {
+.acc-sheet input {
   font: inherit; color: var(--fg); background: var(--bg); min-width: 0; height: 28px;
   padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 4px;
 }
-.acc-sheet input:focus, .acc-sheet select:focus { outline: none; border-color: var(--accent); }
+.acc-sheet input:focus { outline: none; border-color: var(--accent); }
 .acc-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .acc-waiting .acc-actions { margin-top: 8px; }
 
@@ -107,7 +107,7 @@
 .acc-sheet button.acc-link:hover { background: none; text-decoration: underline; }
 
 /* Theme picker */
-.theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.theme-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .acc-sheet button.theme-opt {
   height: auto; display: grid; gap: 8px; padding: 10px; text-align: left; border-radius: 6px; background: var(--bg);
 }
@@ -118,16 +118,19 @@
 }
 .theme-swatch i { flex: 1; border-radius: 2px; }
 .theme-name {
-  display: flex; justify-content: space-between; align-items: center; gap: 4px; font: 500 11.5px/1 var(--mono); white-space: nowrap;
+  display: flex; justify-content: space-between; align-items: center; gap: 4px; font: 500 11.5px/1.25 var(--mono);
 }
 .theme-name .on { color: var(--accent); }
 .set-panel .theme-swatch { height: 40px; }
 
 /* Settings tabs: the toolbar .seg (sliding thumb), a bit taller; undo the generic .acc-sheet button look. */
+/* Five tabs, some long in Ukrainian: the Settings sheet is a bit wider than the add-account one. */
+.acc-sheet:has(.set-tabs) { width: min(560px, calc(100vw - 32px)); }
 .acc-sheet .set-tabs { width: max-content; max-width: 100%; margin: 6px 0 16px; }
 .acc-sheet .set-tabs .seg-thumb { height: 26px; }
 .acc-sheet .set-tabs button {
-  height: 26px; padding: 0 12px; border: 0; border-radius: 4px; background: none; color: var(--muted); font: 12px/26px var(--mono);
+  height: 26px; padding: 0 9px; border: 0; border-radius: 4px; background: none; color: var(--muted); font: 12px/26px var(--mono);
+  white-space: nowrap;
 }
 .acc-sheet .set-tabs button:hover:not(:disabled) { background: none; color: var(--fg); }
 .acc-sheet .set-tabs button.active { color: var(--accent); }
@@ -139,6 +142,9 @@
 .set-status::before { content: '● '; }
 .set-status.err { color: var(--red); }
 .set-check { display: flex; align-items: center; gap: 8px; }
+/* Language picker: one radio row per choice, the OS language beside "Automatic". */
+.lang-list { display: grid; gap: 10px; }
+.lang-opt .acc-email { margin-left: auto; }
 
 .acc-hint-center { color: var(--muted); font: 11px/1.4 var(--mono); }
 /* Google sign-in progress once the browser is done. */

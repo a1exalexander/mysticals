@@ -9,6 +9,7 @@ import {
   startOfMonth,
   startOfWeek
 } from 'date-fns'
+import { fmt, type Locale } from '../i18n'
 import type { CalEvent, TimeRange } from '../shared/types'
 
 // ponytail: Monday week start is hardcoded; move to settings when someone needs Sunday.
@@ -127,9 +128,9 @@ export function shiftDate(view: View, date: Date, dir: 1 | -1): Date {
 }
 
 /** "23 – 25 Sep 2026", "30 Sep – 2 Oct 2026", "30 Dec 2026 – 1 Jan 2027". */
-export function rangeLabel(a: Date, b: Date): string {
+export function rangeLabel(a: Date, b: Date, locale: Locale = 'en'): string {
   const head = a.getFullYear() !== b.getFullYear() ? 'd MMM yyyy' : a.getMonth() !== b.getMonth() ? 'd MMM' : 'd'
-  return `${format(a, head)} – ${format(b, 'd MMM yyyy')}`
+  return `${fmt(locale, a, head)} – ${fmt(locale, b, 'd MMM yyyy')}`
 }
 
 /** Floor a minute offset to its slot, clamped to the day. */

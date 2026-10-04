@@ -87,6 +87,7 @@ describe('3day view', () => {
     expect(rangeLabel(new Date(2026, 8, 23), new Date(2026, 8, 25))).toBe('23 – 25 Sep 2026')
     expect(rangeLabel(new Date(2026, 8, 30), new Date(2026, 9, 2))).toBe('30 Sep – 2 Oct 2026')
     expect(rangeLabel(new Date(2026, 11, 31), new Date(2027, 0, 2))).toBe('31 Dec 2026 – 2 Jan 2027')
+    expect(rangeLabel(new Date(2026, 8, 30), new Date(2026, 9, 2), 'uk')).toBe('30 верес. – 2 жовт. 2026')
   })
 })
 

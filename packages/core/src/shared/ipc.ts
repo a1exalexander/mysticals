@@ -1,3 +1,4 @@
+import type { Locale, LocaleSetting } from '../i18n'
 import type {
   Account,
   Calendar,
@@ -72,6 +73,21 @@ export interface TelemetryApi {
   setEnabled(on: boolean): Promise<void>
 }
 
+/** UI language: the Settings choice, the language in use and what the OS asks for (shown next to "Automatic"). */
+export interface LocaleState {
+  setting: LocaleSetting
+  locale: Locale
+  system: Locale
+}
+
+/** Desktop-only Settings > Language, exposed as `window.locale`. */
+export interface LocaleApi {
+  get(): Promise<LocaleState>
+  set(setting: LocaleSetting): Promise<LocaleState>
+  /** Fires when the language changes. Returns unsubscribe. */
+  onChange(cb: (s: LocaleState) => void): () => void
+}
+
 /** Desktop-only: matches the native window (title bar, background) to the picked theme. Exposed as `window.appTheme`. */
 export interface ThemeApi {
   set(scheme: 'dark' | 'light', bg: string): Promise<void>
@@ -104,5 +120,8 @@ export const IPC = {
   update: 'update',
   telemetryGet: 'telemetry:get',
   telemetrySet: 'telemetry:set',
-  themeSet: 'theme:set'
+  themeSet: 'theme:set',
+  localeGet: 'locale:get',
+  localeSet: 'locale:set',
+  locale: 'locale'
 } as const
