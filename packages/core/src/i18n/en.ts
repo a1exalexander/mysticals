@@ -10,6 +10,11 @@ export const en = {
   'status.inMinutes': 'in {n}m',
   'status.at': 'at {time}',
   'meeting.videoCall': 'video call',
+  'link.meet': 'Join Google Meet',
+  'link.zoom': 'Join Zoom',
+  'link.teams': 'Join Teams',
+  'link.video': 'Join call · {host}',
+  'link.map': 'Open map',
 
   // ---- core: repeat rules ----
   'weekday.short.MO': 'Mon',

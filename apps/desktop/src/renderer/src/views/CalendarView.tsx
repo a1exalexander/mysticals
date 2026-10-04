@@ -168,19 +168,18 @@ export function CalendarView(): React.JSX.Element {
           </span>
         </h1>
         <ViewSwitch view={deskView} />
-        {!agenda && (
-          <div className="toolbar-nav">
-            <button className="icon-btn" aria-label={t('toolbar.previous')} onClick={() => go(-1)}>
-              ‹
-            </button>
-            <button className="today-btn" onClick={today}>
-              {t('toolbar.today')}
-            </button>
-            <button className="icon-btn" aria-label={t('toolbar.next')} onClick={() => go(1)}>
-              ›
-            </button>
-          </div>
-        )}
+        {/* Kept (disabled) in the agenda, which is always today: removing it made the toolbar jump. */}
+        <div className="toolbar-nav">
+          <button className="icon-btn" aria-label={t('toolbar.previous')} disabled={agenda} onClick={() => go(-1)}>
+            ‹
+          </button>
+          <button className="today-btn" disabled={agenda} onClick={today}>
+            {t('toolbar.today')}
+          </button>
+          <button className="icon-btn" aria-label={t('toolbar.next')} disabled={agenda} onClick={() => go(1)}>
+            ›
+          </button>
+        </div>
         <button className="new-btn" data-testid="new-event" title={t('toolbar.newEventHint')} onClick={() => bus.emit('event:create', {})}>
           {t('toolbar.new')}
         </button>

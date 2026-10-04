@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { differenceInMinutes, format } from 'date-fns'
 import type { CalEvent } from '@shared/types'
-import { JOIN_EARLY_MIN, joinable, meetingUrl, place } from '@mysticals/core/logic/meeting'
+import { eventMeetingUrl, eventPlace, JOIN_EARLY_MIN, joinable, linkKind, locationText } from '@mysticals/core/logic/meeting'
+import { LinkIcon } from '../components/LinkIcon'
 import { pickNowNext, startsLabel } from '@mysticals/core/logic/status'
 import { eventBounds, isPast, overlapsDay } from '@mysticals/core/logic/layout'
 import { bus } from '../bus'
@@ -116,7 +117,7 @@ export function Agenda({ events, colorOf }: { events: CalEvent[]; colorOf: Color
                       <span className="ag-title">{e.title || t('common.untitled')}</span>
                       <span className="ag-meta">
                         {st.live ? <span className="ag-live">{t('agenda.now')}</span> : !past && e === next ? startsLabel(e.start, now, currentLocale()) : dur(e)}
-                        {place(e.location, currentLocale()) && ` · ${place(e.location, currentLocale())}`}
+                        {eventPlace(e, currentLocale()) && ` · ${eventPlace(e, currentLocale())}`}
                       </span>
                     </span>
                   </button>
@@ -145,9 +146,9 @@ export function Agenda({ events, colorOf }: { events: CalEvent[]; colorOf: Color
 function Focus({ e, now, color, calendar }: { e: CalEvent; now: Date; color: string; calendar?: string }): React.JSX.Element {
   const { start, end } = eventBounds(e)
   const st = statusOf(e, now)
-  const url = meetingUrl(e.location)
+  const url = eventMeetingUrl(e)
   const ready = joinable(e, now)
-  const where = place(e.location, currentLocale())
+  const where = locationText(e.location)
   const people = e.attendees.length
   return (
     <section className="ag-focus" style={{ '--c': color } as React.CSSProperties} data-testid="agenda-focus" aria-live="polite">
@@ -165,7 +166,7 @@ function Focus({ e, now, color, calendar }: { e: CalEvent; now: Date; color: str
             </dd>
           </>
         )}
-        {where && where !== t('meeting.videoCall') && (
+        {where && (
           <>
             <dt>{t('agenda.fact.where')}</dt>
             <dd>{where}</dd>
@@ -187,7 +188,7 @@ function Focus({ e, now, color, calendar }: { e: CalEvent; now: Date; color: str
       <div className="ag-actions">
         {ready ? (
           <button type="button" className="ag-join" data-testid="agenda-join" onClick={() => join(ready)}>
-            {t('agenda.join')} <kbd>↵</kbd>
+            <LinkIcon kind={linkKind(ready)} /> {t('agenda.join')} <kbd>↵</kbd>
           </button>
         ) : (
           url && !isPast(e, now) && <span className="ag-hint">{t('agenda.joinOpens', { n: JOIN_EARLY_MIN })}</span>

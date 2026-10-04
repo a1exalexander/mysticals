@@ -24,7 +24,7 @@ import { eventKey, type ViewProps } from '../hooks'
 import { Clickable } from '../mouse'
 import { duration } from '../screens/EventDetails'
 import { C } from '../theme'
-import { clickEvent, place, rsvpMark, useColorOf, useScroll } from './Agenda'
+import { clickEvent, eventPlace, rsvpMark, useColorOf, useScroll } from './Agenda'
 import { fit } from './Month'
 
 const GUTTER = 6 // "09:00 "
@@ -125,7 +125,7 @@ export function TimeGrid({ days, events, now, cursor, selectedKey, width, height
       const { start, end } = eventBounds(e)
       const from = isSameDay(start, day) ? format(start, 'HH:mm') : '…'
       const title = `${rsvpMark(e)}${e.title || '(no title)'}`
-      const where = place(e.location)
+      const where = eventPlace(e)
       // narrow columns (week) put the title first and the times below; wide ones fit time + title on one row
       // (the row already names the hour, so a one-row block only adds its minutes when they aren't :00)
       const lines =

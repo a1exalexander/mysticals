@@ -4,6 +4,7 @@ import type { CaldavAccountInput, CalEvent, Credentials } from './shared/types'
 import type { AccountStore } from './accounts/store'
 import { queryEvents, type SyncEngine } from './sync/engine'
 import { caldavPreset, type AccountAdded } from './telemetry'
+import { conferenceUrlOf, type GEvent } from './providers/google/provider'
 
 export interface ApiDeps {
   verifyCaldav(input: CaldavAccountInput): Promise<{ email: string }>
@@ -209,7 +210,11 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
     },
     events: {
       // `raw` stays in the daemon/main process: it can be huge (CalDAV series ICS) and writes re-read it from the cache.
-      list: async (raw) => queryEvents(store, Range.parse(raw), false).map(({ raw: _raw, ...e }) => e),
+      // Caches synced before `conferenceUrl` existed still hold the Meet link in the Google resource.
+      list: async (raw) =>
+        queryEvents(store, Range.parse(raw), false).map(({ raw: r, ...e }) =>
+          e.conferenceUrl || !r || typeof r !== 'object' ? e : { ...e, conferenceUrl: conferenceUrlOf(r as GEvent) }
+        ),
       create: async (raw) => {
         const input = NewEvent.parse(raw)
         const a = account(input.accountId)

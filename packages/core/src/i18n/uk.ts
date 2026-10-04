@@ -11,6 +11,11 @@ export const uk: Record<Key, Msg> = {
   'status.inMinutes': 'за {n} хв',
   'status.at': 'о {time}',
   'meeting.videoCall': 'відеодзвінок',
+  'link.meet': 'Приєднатися до Google Meet',
+  'link.zoom': 'Приєднатися до Zoom',
+  'link.teams': 'Приєднатися до Teams',
+  'link.video': 'Дзвінок · {host}',
+  'link.map': 'Відкрити карту',
 
   // ---- core: repeat rules ----
   'weekday.short.MO': 'пн',

@@ -3,7 +3,7 @@ import { addDays, format, isSameDay, isToday, startOfDay } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
-import { meetingUrl, place } from '@mysticals/core/logic/meeting'
+import { eventMeetingUrl, eventPlace } from '@mysticals/core/logic/meeting'
 import { nav } from './nav'
 import { dragRange, eventBounds, eventsOnDay, isPast, layoutDay, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
@@ -302,7 +302,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                       width: `calc(${100 / cols}% - 3px)`
                     } as React.CSSProperties
                   }
-                  title={meetingUrl(e.location) ? undefined : `${e.title}\n${hhmm(b.start)} – ${hhmm(b.end)}`}
+                  title={eventMeetingUrl(e) ? undefined : `${e.title}\n${hhmm(b.start)} – ${hhmm(b.end)}`}
                   onMouseDown={onEventDown(e, dayIdx, 'move')}
                   onDoubleClick={stop}
                   onClick={open(e)}
@@ -312,7 +312,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                   <span className="ev-meta">
                     {hhmm(b.start)}
                     {/* a one-line (is-short) block keeps its room for the title */}
-                    {e.location && !short ? ` · ${place(e.location, currentLocale())}` : ''}
+                    {!short && eventPlace(e, currentLocale()) ? ` · ${eventPlace(e, currentLocale())}` : ''}
                   </span>
                   {draggable && (
                     <>

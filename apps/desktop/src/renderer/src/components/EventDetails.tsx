@@ -7,6 +7,8 @@ import { RecurringScope } from './ui/RecurringScope'
 import { canEdit, cleanNotes, formatWhen, linkify, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
 import { eventBounds } from '@mysticals/core/logic/layout'
+import { eventLinks, linkLabel, locationText } from '@mysticals/core/logic/meeting'
+import { LinkIcon } from './LinkIcon'
 import './ui/ui.css'
 import './EventDetails.css'
 import type { Key } from '@mysticals/core/i18n'
@@ -129,6 +131,8 @@ export function EventDetailsHost(): React.JSX.Element | null {
   const calendar = calendars.find((c) => c.accountId === event.accountId && c.id === event.calendarId)
   const editable = canEdit(event, account, calendar)
   const notes = cleanNotes(event.description)
+  const links = eventLinks(event)
+  const where = locationText(event.location)
   const owner = ownerLine(calendar?.name ?? t('editor.calendar'), account?.label ?? event.accountId, account?.email)
 
   const key = `${event.accountId}/${event.id}`
@@ -190,7 +194,25 @@ export function EventDetailsHost(): React.JSX.Element | null {
           {owner.email && <> · {owner.email}</>}
         </div>
 
-        {event.location && <Row label={t('editor.location')}><Linkified text={event.location} /></Row>}
+        {where && <Row label={t('editor.location')}>{where}</Row>}
+        {links.length > 0 && (
+          <div className="details-links">
+            {links.map((l) => (
+              <a
+                key={l.url}
+                className={`mc-btn details-linkbtn${l.kind === 'map' || l.kind === 'link' ? '' : ' call'}`}
+                href={l.url}
+                target="_blank"
+                rel="noreferrer"
+                title={l.url}
+                data-kind={l.kind}
+              >
+                <LinkIcon kind={l.kind} />
+                <span>{linkLabel(l.url, l.kind, currentLocale())}</span>
+              </a>
+            ))}
+          </div>
+        )}
         {event.organizer && (
           <Row label={t('details.organizer')}>{event.organizer.name ? `${event.organizer.name} <${event.organizer.email}>` : event.organizer.email}</Row>
         )}

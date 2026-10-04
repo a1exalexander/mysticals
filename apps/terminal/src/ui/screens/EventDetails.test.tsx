@@ -27,7 +27,8 @@ describe('EventDetails', () => {
   it('shows invite details and replies through the owning account', async () => {
     const { event, client } = await open('Sprint planning')
     const frame = t.lastFrame()!
-    expect(frame).toContain('Room 3 / https://meet.example.com/sprint-planning')
+    expect(frame).toContain('Location: Room 3')
+    expect(frame).toContain('▶ https://meet.example.com/sprint-planning')
     expect(frame).toContain('https://meet.example.com/sprint-planning')
     expect(frame).toContain('Work')
     expect(frame).toContain('pm@work.example (organizer)')
@@ -39,6 +40,23 @@ describe('EventDetails', () => {
     await t.waitFor('✓ accepted')
     await t.press('o')
     expect(execFile).toHaveBeenCalledWith(...openCommand('https://meet.example.com/sprint-planning'), expect.any(Function))
+  })
+
+  it('shows a Google Meet that is only in the conference data, and opens it with "o"', async () => {
+    await open('Ukraine - Portugal')
+    const frame = t.lastFrame()!
+    expect(frame).toContain('▶ Join Google Meet https://meet.google.com/zon-fdwf-hnk')
+    expect(frame).not.toContain('Location:')
+    expect(frame).toContain('o open link')
+  })
+
+  it('shows map and self-hosted call links with their glyphs', async () => {
+    await open('Coffee')
+    expect(t.lastFrame()).toContain('Location: Podil')
+    expect(t.lastFrame()).toContain('⌖ https://maps.app.goo.gl/kyiv-coffee')
+    t.unmount()
+    await open('Catch-up')
+    expect(t.lastFrame()).toContain('▶ https://meet.namechip.net/catch-up')
   })
 
   it('shows reply errors and ignores RSVP keys on non-invites', async () => {

@@ -24,6 +24,16 @@ export interface GEvent {
   originalStartTime?: GTime
   /** Series master only: RRULE/EXDATE/RDATE lines. */
   recurrence?: string[]
+  /** Google Meet link. */
+  hangoutLink?: string
+  /** Any conference (Meet, or Zoom/Teams add-ons); its `video` entry point is the join link. */
+  conferenceData?: { entryPoints?: { entryPointType?: string; uri?: string }[] }
+}
+
+/** The event's video-call link: Meet's hangoutLink, else the conference's video entry point. */
+export function conferenceUrlOf(g: Pick<GEvent, 'hangoutLink' | 'conferenceData'>): string | undefined {
+  const uri = g.hangoutLink ?? g.conferenceData?.entryPoints?.find((p) => p.entryPointType === 'video')?.uri
+  return uri && /^https?:\/\//i.test(uri) ? uri : undefined
 }
 
 const STATUSES: PartStat[] = ['accepted', 'declined', 'tentative', 'needsAction']
@@ -49,6 +59,7 @@ export function mapEvent(g: GEvent, accountId: string, calendarId: string): CalE
     end: time(g.end),
     allDay,
     location: g.location,
+    conferenceUrl: conferenceUrlOf(g),
     description: g.description,
     organizer: g.organizer?.email ? { email: g.organizer.email, name: g.organizer.displayName } : undefined,
     attendees,
