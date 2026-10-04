@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { format, getISOWeek, startOfDay } from 'date-fns'
 import type { CalEvent, DeleteScope } from '@shared/types'
 import type { MenuCommand } from '@shared/ipc'
@@ -12,6 +12,7 @@ import { rangeLabel, shiftDate, viewDays, viewRange, type View } from '@mystical
 import { TimeGrid } from './TimeGrid'
 import { MonthGrid } from './MonthGrid'
 import { Agenda } from './Agenda'
+import { SegTabs } from '../components/ui/SegTabs'
 
 const VIEWS: DeskView[] = ['agenda', 'day', '3day', 'week', 'month']
 const LABEL: Record<DeskView, string> = { agenda: 'Agenda', day: 'Day', '3day': '3 Days', week: 'Week', month: 'Month' }
@@ -202,46 +203,18 @@ export function CalendarView(): React.JSX.Element {
   )
 }
 
-/** Segmented view tabs; one thumb slides (spring easing, see .seg-thumb) under the active tab. */
+const VIEW_TABS = VIEWS.map((v) => ({ id: v, label: LABEL[v] }))
+
 function ViewSwitch({ view }: { view: DeskView }): React.JSX.Element {
-  const tabs = useRef(new Map<DeskView, HTMLButtonElement>())
-  const thumb = useRef<HTMLSpanElement>(null)
-  const [ready, setReady] = useState(false)
-  useLayoutEffect(() => {
-    const b = tabs.current.get(view)
-    const t = thumb.current
-    if (!b || !t) return
-    const place = (): void => {
-      t.style.transform = `translateX(${b.offsetLeft}px)`
-      t.style.width = `${b.offsetWidth}px`
-    }
-    place()
-    // Tabs resize with the window (narrow toolbar padding): follow the active one.
-    const ro = new ResizeObserver(place)
-    ro.observe(b)
-    return () => ro.disconnect()
-  }, [view])
-  // Only animate moves after the first placement, so the thumb doesn't fly in on launch.
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setReady(true))
-    return () => cancelAnimationFrame(id)
-  }, [])
   return (
-    <div className="seg" role="tablist" data-ready={ready}>
-      <span className="seg-thumb" ref={thumb} aria-hidden />
-      {VIEWS.map((v) => (
-        <button
-          key={v}
-          ref={(el) => void (el ? tabs.current.set(v, el) : tabs.current.delete(v))}
-          role="tab"
-          aria-selected={v === view}
-          className={v === view ? 'active' : ''}
-          data-testid={`view-switch-${v}`}
-          onClick={() => nav.set({ view: v })}
-        >
-          {LABEL[v]}
-        </button>
-      ))}
-    </div>
+    <SegTabs
+      tabs={VIEW_TABS}
+      value={view}
+      onChange={(v) => nav.set({ view: v })}
+      ariaLabel="Calendar view"
+      testId={(v) => `view-switch-${v}`}
+      // ←/→ step the date range app-wide, even with a view tab focused.
+      arrowKeys={false}
+    />
   )
 }

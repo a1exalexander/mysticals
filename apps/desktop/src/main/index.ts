@@ -1,7 +1,7 @@
 import { join } from 'path'
 import { mkdtempSync, readFileSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
-import { app, BrowserWindow, clipboard, dialog, Menu, nativeTheme, Notification, safeStorage, shell, type MenuItemConstructorOptions } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeTheme, Notification, safeStorage, shell, type MenuItemConstructorOptions } from 'electron'
 import { IPC } from '@shared/ipc'
 import { createMockApi } from '@mysticals/core/mock/mockApi'
 import { createApi } from '@mysticals/core/api'
@@ -182,6 +182,11 @@ app.whenReady().then(() => {
   // Must match appId in electron-builder.yml, or Windows toasts show the wrong name/icon.
   if (process.platform === 'win32') app.setAppUserModelId('com.a1exalexander.mysticals')
   nativeTheme.themeSource = 'dark'
+  // Settings > Themes: light palettes get a light native frame; the window bg follows --bg (no flash on resize).
+  ipcMain.handle(IPC.themeSet, (e, scheme: unknown, bg: unknown) => {
+    nativeTheme.themeSource = scheme === 'light' ? 'light' : 'dark'
+    if (typeof bg === 'string' && /^#[0-9a-f]{6}$/i.test(bg)) BrowserWindow.fromWebContents(e.sender)?.setBackgroundColor(bg)
+  })
   // Packaged builds get the icon from electron-builder; in dev the dock would show Electron's.
   if (!app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'build/icon.png'))
   Menu.setApplicationMenu(buildMenu())

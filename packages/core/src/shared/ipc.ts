@@ -72,6 +72,11 @@ export interface TelemetryApi {
   setEnabled(on: boolean): Promise<void>
 }
 
+/** Desktop-only: matches the native window (title bar, background) to the picked theme. Exposed as `window.appTheme`. */
+export interface ThemeApi {
+  set(scheme: 'dark' | 'light', bg: string): Promise<void>
+}
+
 export type MenuCommand = 'new-event' | 'today' | 'view-agenda' | 'view-day' | 'view-3day' | 'view-week' | 'view-month'
 
 export const IPC = {
@@ -98,5 +103,6 @@ export const IPC = {
   updateInstall: 'update:install',
   update: 'update',
   telemetryGet: 'telemetry:get',
-  telemetrySet: 'telemetry:set'
+  telemetrySet: 'telemetry:set',
+  themeSet: 'theme:set'
 } as const
