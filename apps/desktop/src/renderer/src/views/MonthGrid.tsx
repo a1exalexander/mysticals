@@ -7,6 +7,7 @@ import { nav } from './nav'
 import { eventBounds, eventsOnDay, isPast, monthGrid, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
 import { shiftDays } from './drag'
+import { fmt, t } from '../i18n'
 
 const MAX_PER_DAY = 3
 
@@ -74,7 +75,7 @@ export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): Re
     <div className="mg">
       <div className="mg-dows">
         {days.slice(0, 7).map((d) => (
-          <div key={d.getTime()}>{format(d, 'EEE')}</div>
+          <div key={d.getTime()}>{fmt(d, 'EEE')}</div>
         ))}
       </div>
       <div className="mg-grid">
@@ -90,7 +91,7 @@ export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): Re
               onDoubleClick={() => bus.emit('event:create', { start: ymd(d), end: ymd(addDays(d, 1)), allDay: true })}
             >
               <div className="mg-num">
-                <span>{format(d, 'd') === '1' ? format(d, 'd MMM') : format(d, 'd')}</span>
+                <span>{format(d, 'd') === '1' ? fmt(d, 'd MMM') : format(d, 'd')}</span>
               </div>
               {shown.map((e) => (
                 <div
@@ -120,7 +121,7 @@ export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): Re
               )}
               {more > 0 && (
                 <button className="mg-more" onClick={() => nav.set({ view: 'day', date: d })}>
-                  +{more} more
+                  {t('month.more', { n: more })}
                 </button>
               )}
             </div>

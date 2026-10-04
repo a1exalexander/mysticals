@@ -11,10 +11,12 @@ import type { UpdateState } from '@shared/ipc'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
 import { pickNowNext, startsLabel } from '@mysticals/core/logic/status'
+import { currentLocale, fmt, t, useLocale } from '../i18n'
 
 /** Events happening now (max 2, then +N) and the next one within 24h; click opens details. */
 function NowNext(): React.JSX.Element {
   const { accounts, calendars, loaded } = useDirectory()
+  useLocale()
   const [events, setEvents] = useState<CalEvent[]>([])
   const [now, setNow] = useState(() => new Date())
 
@@ -23,10 +25,10 @@ function NowNext(): React.JSX.Element {
     let seq = 0
     const load = (): void => {
       const my = ++seq
-      const t = new Date()
-      setNow(t)
+      const at = new Date()
+      setNow(at)
       window.api.events
-        .list({ start: t.toISOString(), end: addHours(t, 24).toISOString() })
+        .list({ start: at.toISOString(), end: addHours(at, 24).toISOString() })
         .then((evs) => live && my === seq && setEvents(evs))
         .catch(console.error)
     }
@@ -64,7 +66,7 @@ function NowNext(): React.JSX.Element {
           e,
           <>
             <span className="sbar-dot" aria-hidden>●</span>
-            <span className="sbar-title">{e.title}</span>· until {format(new Date(e.end), 'HH:mm')}
+            <span className="sbar-title">{e.title}</span>· {t('sbar.until', { time: format(new Date(e.end), 'HH:mm') })}
           </>
         )
       )}
@@ -73,11 +75,11 @@ function NowNext(): React.JSX.Element {
         item(
           next,
           <>
-            <span className="sbar-dim">next:</span>
-            <span className="sbar-title">{next.title}</span>· {startsLabel(next.start, now)}
+            <span className="sbar-dim">{t('sbar.next')}</span>
+            <span className="sbar-title">{next.title}</span>· {startsLabel(next.start, now, currentLocale())}
           </>
         )}
-      {!current.length && !next && <span className="sbar-seg sbar-dim">no upcoming events</span>}
+      {!current.length && !next && <span className="sbar-seg sbar-dim">{t('sbar.noUpcoming')}</span>}
     </div>
   )
 }
@@ -85,6 +87,7 @@ function NowNext(): React.JSX.Element {
 /** Self-update: offer → download progress → restart; errors keep a retry. */
 function UpdateItem(): React.JSX.Element | null {
   const [s, setS] = useState<UpdateState>({ status: 'idle' })
+  useLocale()
   useEffect(() => {
     void window.update.state().then(setS, () => {})
     return window.update.onUpdate(setS)
@@ -95,17 +98,17 @@ function UpdateItem(): React.JSX.Element | null {
       return (
         <button type="button" className="sbar-seg sbar-upd" data-testid="sbar-update" onClick={install}>
           {/* Off macOS install just opens the release page (main/update.ts SWAP). */}
-          {document.documentElement.dataset.platform === 'darwin' ? '↑ Update to' : '↓ Download'} {s.version}
+          {t(document.documentElement.dataset.platform === 'darwin' ? 'sbar.updateTo' : 'sbar.download', { version: s.version ?? '' })}
         </button>
       )
     case 'downloading':
-      return <span className="sbar-seg" data-testid="sbar-update">Downloading {s.progress ?? 0}%</span>
+      return <span className="sbar-seg" data-testid="sbar-update">{t('sbar.downloading', { n: s.progress ?? 0 })}</span>
     case 'ready':
-      return <span className="sbar-seg" data-testid="sbar-update">Restarting…</span>
+      return <span className="sbar-seg" data-testid="sbar-update">{t('sbar.restarting')}</span>
     case 'error':
       return (
         <button type="button" className="sbar-seg sbar-err" data-testid="sbar-update" title={s.error} onClick={install}>
-          ✕ update failed · retry
+          {t('sbar.updateFailed')}
         </button>
       )
     default:
@@ -117,24 +120,25 @@ function UpdateItem(): React.JSX.Element | null {
 export function StatusBar(): React.JSX.Element {
   const { view, date } = useNav()
   const { accounts } = useCalendarData()
+  const { locale } = useLocale()
   const days = viewDays(view === 'agenda' ? 'day' : view, date)
   const range =
     view === 'agenda'
-      ? format(new Date(), 'EEE d MMM yyyy')
+      ? fmt(new Date(), 'EEE d MMM yyyy')
       : view === 'day'
-      ? format(date, 'EEE d MMM yyyy')
+      ? fmt(date, 'EEE d MMM yyyy')
       : view === 'month'
-        ? format(date, 'MMMM yyyy')
-        : rangeLabel(days[0], days[days.length - 1])
+        ? fmt(date, 'LLLL yyyy')
+        : rangeLabel(days[0], days[days.length - 1], locale)
 
   return (
     <footer className="statusbar" data-testid="statusbar">
-      <span className="sbar-mode">{view}</span>
+      <span className="sbar-mode">{t(`sbar.mode.${view}`)}</span>
       <span className="sbar-seg">{range}</span>
       <NowNext />
       {accounts.some((a) => a.syncing) && (
         <span className="sbar-seg sbar-sync" data-testid="sbar-sync" role="status">
-          syncing {accounts.filter((a) => a.syncing).map((a) => a.label).join(', ')}
+          {t('sbar.syncing', { names: accounts.filter((a) => a.syncing).map((a) => a.label).join(', ') })}
         </span>
       )}
       {accounts.some((a) => a.error) && (
@@ -148,13 +152,13 @@ export function StatusBar(): React.JSX.Element {
             else bus.emit('settings:open', {})
           }}
         >
-          {accounts.some((a) => a.authError) ? '✕ disconnected' : '✕ sync error'}
+          {accounts.some((a) => a.authError) ? t('sbar.disconnected') : t('sbar.syncError')}
         </button>
       )}
       <span className="sbar-grow" />
       <UpdateItem />
       <span className="sbar-keys" aria-hidden>
-        <kbd>n</kbd> new · <kbd>t</kbd> today · <kbd>h</kbd>/<kbd>l</kbd> · <kbd>a</kbd>/<kbd>d</kbd>/<kbd>3</kbd>/<kbd>w</kbd>/<kbd>m</kbd> · <kbd>i</kbd> invites
+        <kbd>n</kbd> {t('sbar.key.new')} · <kbd>t</kbd> {t('sbar.key.today')} · <kbd>h</kbd>/<kbd>l</kbd> · <kbd>a</kbd>/<kbd>d</kbd>/<kbd>3</kbd>/<kbd>w</kbd>/<kbd>m</kbd> · <kbd>i</kbd> {t('sbar.key.invites')}
       </span>
       <InvitesPanel />
     </footer>

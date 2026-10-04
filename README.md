@@ -44,6 +44,8 @@ Download the latest build from [GitHub Releases](https://github.com/a1exalexande
 - **Windows**: `-setup.exe`. SmartScreen warns about an unknown publisher: **More info → Run anyway**.
 - **Linux**: `.AppImage` or `.deb`, for Intel/AMD `x64` or ARM `arm64`. Storing credentials needs a running keyring (GNOME Keyring, KWallet).
 
+The desktop app is in English and Ukrainian. It follows the system language; pick another in **Settings → Language**, or start it with `MYSTICALS_LANG=en` or `MYSTICALS_LANG=uk`. The terminal app is English only.
+
 ### Terminal
 
 Needs Node.js 20.3 or newer.

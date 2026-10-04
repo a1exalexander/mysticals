@@ -1,3 +1,5 @@
+import { t } from '../../i18n'
+
 type Props = {
   value: number
   onChange: (v: number) => void
@@ -11,7 +13,7 @@ export function NumberField({ value, onChange, min = 1, max = 999, ...rest }: Pr
   const clamp = (n: number): number => Math.min(max, Math.max(min, Math.round(n) || min))
   return (
     <div className="mnum">
-      <button type="button" tabIndex={-1} aria-label="Decrease" disabled={value <= min} onClick={() => onChange(clamp(value - 1))}>
+      <button type="button" tabIndex={-1} aria-label={t('common.decrease')} disabled={value <= min} onClick={() => onChange(clamp(value - 1))}>
         −
       </button>
       <input
@@ -28,7 +30,7 @@ export function NumberField({ value, onChange, min = 1, max = 999, ...rest }: Pr
         }}
         onFocus={(e) => e.currentTarget.select()}
       />
-      <button type="button" tabIndex={-1} aria-label="Increase" disabled={value >= max} onClick={() => onChange(clamp(value + 1))}>
+      <button type="button" tabIndex={-1} aria-label={t('common.increase')} disabled={value >= max} onClick={() => onChange(clamp(value + 1))}>
         +
       </button>
     </div>

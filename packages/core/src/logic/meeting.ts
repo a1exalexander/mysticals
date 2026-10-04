@@ -1,3 +1,4 @@
+import { t, type Locale } from '../i18n'
 import type { CalEvent } from '../shared/types'
 import { eventBounds } from './layout'
 
@@ -7,9 +8,9 @@ export function meetingUrl(location?: string): string | undefined {
 }
 
 /** Location without its meeting links ("Room 3 / https://…" → "Room 3"); "video call" when it is only links. */
-export function place(location = ''): string {
+export function place(location = '', locale: Locale = 'en'): string {
   const rest = location.replace(/https?:\/\/[^\s<>"]+/gi, '').replace(/^[\s/|,·-]+|[\s/|,·-]+$/g, '')
-  return rest || (meetingUrl(location) ? 'video call' : '')
+  return rest || (meetingUrl(location) ? t(locale, 'meeting.videoCall') : '')
 }
 
 /** A call can be joined from this many minutes before its start. */

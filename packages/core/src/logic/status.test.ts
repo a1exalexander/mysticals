@@ -44,6 +44,7 @@ describe('pickNowNext', () => {
 describe('startsLabel', () => {
   it('uses relative minutes within the hour, clock time beyond', () => {
     expect(startsLabel('2026-09-23T12:25:00Z', now)).toBe('in 25m')
+    expect(startsLabel('2026-09-23T12:25:00Z', now, 'uk')).toBe('за 25 хв')
     expect(startsLabel('2026-09-23T13:00:00Z', now)).toBe('in 60m')
     expect(startsLabel('2026-09-23T14:00:00Z', now)).toMatch(/^at \d\d:00$/)
   })

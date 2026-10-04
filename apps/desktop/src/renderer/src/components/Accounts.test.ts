@@ -8,6 +8,10 @@ describe('suggestLabel', () => {
     expect(suggestLabel('me@acme.io')).toBe('Work')
     expect(suggestLabel('me')).toBe('')
   })
+  it('suggests in the UI language', () => {
+    expect(suggestLabel('me@ukr.net', 'uk')).toBe('Особистий')
+    expect(suggestLabel('me@acme.io', 'uk')).toBe('Робочий')
+  })
 })
 
 describe('errorText', () => {

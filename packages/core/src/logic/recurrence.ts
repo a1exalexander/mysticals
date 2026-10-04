@@ -1,10 +1,10 @@
 // Repeat rules: RRULE <-> Recurrence, presets and text for the editors. Pure; no provider code here.
 import { format, isValid, parseISO } from 'date-fns'
+import { fmt, t, type Locale } from '../i18n'
 import type { Recurrence, Weekday } from '../shared/types'
 
 export const WEEKDAYS: Weekday[] = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']
 const JS_DAY: Weekday[] = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA']
-const SHORT: Record<Weekday, string> = { MO: 'Mon', TU: 'Tue', WE: 'Wed', TH: 'Thu', FR: 'Fri', SA: 'Sat', SU: 'Sun' }
 const WORKWEEK: Weekday[] = ['MO', 'TU', 'WE', 'TH', 'FR']
 export const FREQS: Recurrence['freq'][] = ['daily', 'weekly', 'monthly', 'yearly']
 const UNIT: Record<Recurrence['freq'], string> = { daily: 'day', weekly: 'week', monthly: 'month', yearly: 'year' }
@@ -12,7 +12,7 @@ const UNIT: Record<Recurrence['freq'], string> = { daily: 'day', weekly: 'week',
 /** A form start ('YYYY-MM-DDTHH:mm' local), a 'YYYY-MM-DD' date or an ISO instant, as a local Date. */
 const asDate = (start: string): Date => (start.length === 10 ? parseISO(start) : new Date(start))
 export const weekdayOf = (start: string): Weekday => JS_DAY[asDate(start).getDay()]
-export const shortDay = (d: Weekday): string => SHORT[d]
+export const shortDay = (d: Weekday, locale: Locale = 'en'): string => t(locale, `weekday.short.${d}`)
 
 /**
  * The canonical form of `r` for an event starting at `start`: defaults dropped, days sorted, the
@@ -105,15 +105,15 @@ export interface Preset {
 }
 
 /** The quick choices for an event starting at `start`. */
-export function presets(start: string): Preset[] {
+export function presets(start: string, locale: Locale = 'en'): Preset[] {
   const d = asDate(start)
   return [
-    { id: 'none', label: 'Does not repeat', recurrence: null },
-    { id: 'daily', label: 'Every day', recurrence: { freq: 'daily' } },
-    { id: 'weekly', label: `Every week on ${format(d, 'EEEE')}`, recurrence: { freq: 'weekly' } },
-    { id: 'monthly', label: `Every month on day ${d.getDate()}`, recurrence: { freq: 'monthly' } },
-    { id: 'yearly', label: `Every year on ${format(d, 'd MMMM')}`, recurrence: { freq: 'yearly' } },
-    { id: 'weekdays', label: 'Every weekday (Mon–Fri)', recurrence: { freq: 'weekly', byDay: WORKWEEK } }
+    { id: 'none', label: t(locale, 'repeat.none'), recurrence: null },
+    { id: 'daily', label: t(locale, 'repeat.every.daily'), recurrence: { freq: 'daily' } },
+    { id: 'weekly', label: t(locale, 'repeat.weeklyOn', { day: t(locale, `weekday.on.${weekdayOf(start)}`) }), recurrence: { freq: 'weekly' } },
+    { id: 'monthly', label: t(locale, 'repeat.monthlyOn', { d: d.getDate() }), recurrence: { freq: 'monthly' } },
+    { id: 'yearly', label: t(locale, 'repeat.yearlyOn', { date: fmt(locale, d, 'd MMMM') }), recurrence: { freq: 'yearly' } },
+    { id: 'weekdays', label: t(locale, 'repeat.weekdays'), recurrence: { freq: 'weekly', byDay: WORKWEEK } }
   ]
 }
 
@@ -131,24 +131,27 @@ export const withEnd = (r: Recurrence, from: Recurrence | null): Recurrence =>
   from?.until ? { ...r, until: from.until, count: undefined } : from?.count ? { ...r, count: from.count, until: undefined } : r
 
 /** "Every 2 weeks on Mon, Thu · until 31 Dec 2026". */
-export function describe(r: Recurrence | null, start: string): string {
-  if (!r) return 'Does not repeat'
-  if (r.rule) return `Custom rule (${r.rule})`
+export function describe(r: Recurrence | null, start: string, locale: Locale = 'en'): string {
+  if (!r) return t(locale, 'repeat.none')
+  if (r.rule) return t(locale, 'repeat.custom', { rule: r.rule })
   const n = normalize(r, start)
   const d = asDate(start)
-  const every = n.interval ? `Every ${n.interval} ${UNIT[n.freq]}s` : `Every ${UNIT[n.freq]}`
-  const on =
+  const every = n.interval ? t(locale, `repeat.everyN.${n.freq}`, { n: n.interval }) : t(locale, `repeat.every.${n.freq}`)
+  const head =
     n.freq === 'weekly'
       ? !n.interval && n.byDay?.join() === WORKWEEK.join()
-        ? ''
-        : ` on ${(n.byDay ?? [weekdayOf(start)]).map(shortDay).join(', ')}`
+        ? t(locale, 'repeat.weekdays')
+        : t(locale, 'repeat.onDays', { every, days: (n.byDay ?? [weekdayOf(start)]).map((x) => shortDay(x, locale)).join(', ') })
       : n.freq === 'monthly'
-        ? ` on day ${d.getDate()}`
+        ? t(locale, 'repeat.onDay', { every, d: d.getDate() })
         : n.freq === 'yearly'
-          ? ` on ${format(d, 'd MMMM')}`
-          : ''
-  const head = n.freq === 'weekly' && !n.interval && n.byDay?.join() === WORKWEEK.join() ? 'Every weekday (Mon–Fri)' : `${every}${on}`
-  const end = n.until ? ` · until ${format(parseISO(n.until), 'd MMM yyyy')}` : n.count ? ` · ${n.count} time${n.count > 1 ? 's' : ''}` : ''
+          ? t(locale, 'repeat.onDate', { every, date: fmt(locale, d, 'd MMMM') })
+          : every
+  const end = n.until
+    ? ` · ${t(locale, 'repeat.until', { date: fmt(locale, parseISO(n.until), 'd MMM yyyy') })}`
+    : n.count
+      ? ` · ${t(locale, 'repeat.count', { n: n.count })}`
+      : ''
   return head + end
 }
 

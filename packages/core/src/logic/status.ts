@@ -1,4 +1,5 @@
 import { differenceInMinutes, format } from 'date-fns'
+import { t, type Locale } from '../i18n'
 import type { CalEvent } from '../shared/types'
 
 /** Timed, non-declined events happening now (sorted by start) and the earliest one starting later. */
@@ -14,8 +15,8 @@ export function pickNowNext(events: CalEvent[], now: Date): { current: CalEvent[
 }
 
 /** "in 25m" within the hour, otherwise "at 14:00". */
-export function startsLabel(start: string, now: Date): string {
+export function startsLabel(start: string, now: Date, locale: Locale = 'en'): string {
   const s = new Date(start)
   const m = differenceInMinutes(s, now, { roundingMethod: 'ceil' })
-  return m <= 60 ? `in ${m}m` : `at ${format(s, 'HH:mm')}`
+  return m <= 60 ? t(locale, 'status.inMinutes', { n: m }) : t(locale, 'status.at', { time: format(s, 'HH:mm') })
 }

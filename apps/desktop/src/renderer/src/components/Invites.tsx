@@ -8,10 +8,12 @@ import { formatWhen, ownerLine, pendingInvites } from '@mysticals/core/logic/det
 import { errorText } from '@mysticals/core/logic/editor'
 import './ui/ui.css'
 import './Invites.css'
+import { currentLocale, t, useLocale } from '../i18n'
 
 // Status-bar inbox of unanswered invites (next 60 days). Each reply goes through the invite's own account.
 export function InvitesPanel(): React.JSX.Element {
   const { accounts, calendars, loaded } = useDirectory()
+  useLocale()
   const [all, setInvites] = useState<CalEvent[]>([])
   // Hidden calendars are only known once calendars load; show nothing until then.
   const invites = loaded ? visibleEvents(all, calendars) : []
@@ -71,8 +73,8 @@ export function InvitesPanel(): React.JSX.Element {
     <div className="invites" ref={ref}>
       {open && (
         <div className="mc-popover invites-panel">
-          <div className="invites-title">Invitations</div>
-          {invites.length === 0 && <div className="mc-muted invites-empty">No pending invitations</div>}
+          <div className="invites-title">{t('invites.title')}</div>
+          {invites.length === 0 && <div className="mc-muted invites-empty">{t('invites.empty')}</div>}
           <ul>
             {invites.map((e) => {
               const a = accounts.find((x) => x.id === e.accountId)
@@ -84,13 +86,13 @@ export function InvitesPanel(): React.JSX.Element {
                     className="invites-open"
                     onClick={(ev) => bus.emit('event:open', { event: e, anchor: ev.currentTarget.getBoundingClientRect(), el: ev.currentTarget })}
                   >
-                    <span className="invites-name">{e.title || 'Untitled'}</span>
-                    <span className="mc-muted">{formatWhen(e)}</span>
+                    <span className="invites-name">{e.title || t('common.untitled')}</span>
+                    <span className="mc-muted">{formatWhen(e, currentLocale())}</span>
                     <span className="invites-acc"><span className="mc-dot" /> {o.label}{o.email && <> · {o.email}</>}</span>
                   </button>
                   <div className="invites-actions">
-                    <button type="button" className="mc-btn primary" disabled={sending.has(keyOf(e))} onClick={() => reply(e, 'accepted')}>Accept</button>
-                    <button type="button" className="mc-btn" disabled={sending.has(keyOf(e))} onClick={() => reply(e, 'declined')}>Decline</button>
+                    <button type="button" className="mc-btn primary" disabled={sending.has(keyOf(e))} onClick={() => reply(e, 'accepted')}>{t('rsvp.accept')}</button>
+                    <button type="button" className="mc-btn" disabled={sending.has(keyOf(e))} onClick={() => reply(e, 'declined')}>{t('rsvp.decline')}</button>
                   </div>
                 </li>
               )
@@ -103,12 +105,12 @@ export function InvitesPanel(): React.JSX.Element {
         type="button"
         className={`invites-button${invites.length ? ' has-pending' : ''}`}
         data-testid="invites-button"
-        aria-label={`Invitations (${invites.length})`}
+        aria-label={t('invites.aria', { n: invites.length })}
         aria-expanded={open}
-        title="Invitations (i)"
+        title={t('invites.hint')}
         onClick={() => setOpen(!open)}
       >
-        {invites.length === 1 ? '1 invite' : `${invites.length} invites`}
+        {t('invites.count', { n: invites.length })}
       </button>
     </div>
   )
