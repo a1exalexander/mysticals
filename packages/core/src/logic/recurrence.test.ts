@@ -66,6 +66,15 @@ describe('describe', () => {
     expect(text({ freq: 'weekly', byDay: ['MO', 'TU', 'WE', 'TH', 'FR'] }, WED)).toBe('Every weekday (Mon–Fri)')
     expect(text({ freq: 'monthly' }, WED)).toBe('Every month on day 30')
   })
+  it('reads in Ukrainian', () => {
+    expect(text({ freq: 'weekly', interval: 2, byDay: ['MO', 'TH'], until: '2026-12-31' }, WED, 'uk')).toBe('Кожні 2 тижні у пн, чт · до 31 груд. 2026')
+    expect(text({ freq: 'daily', count: 5 }, WED, 'uk')).toBe('Щодня · 5 разів')
+    expect(text({ freq: 'weekly', byDay: ['MO', 'TU', 'WE', 'TH', 'FR'] }, WED, 'uk')).toBe('У будні (пн–пт)')
+    expect(text({ freq: 'yearly' }, WED, 'uk')).toBe('Щороку 30 вересня')
+    expect(presets(WED, 'uk').map((p) => p.label)).toEqual([
+      'Не повторюється', 'Щодня', 'Щотижня у середу', 'Щомісяця 30-го числа', 'Щороку 30 вересня', 'У будні (пн–пт)'
+    ])
+  })
 })
 
 describe('terminal text fields', () => {

@@ -8,6 +8,7 @@ import { nav } from './nav'
 import { dragRange, eventBounds, eventsOnDay, isPast, layoutDay, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
 import { moveRange, resizeEnd, resizeStart } from './drag'
+import { currentLocale, fmt, t } from '../i18n'
 
 const HOUR = 48 // px per hour
 const MAX_ALLDAY = 3 // all-day events per day before the row collapses
@@ -199,16 +200,16 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
               className={`tg-dayhead${isToday(d) ? ' is-today' : ''}`}
               onClick={() => multi && nav.set({ view: 'day', date: d })}
             >
-              <span className="dow">{format(d, 'EEE')}</span>
+              <span className="dow">{fmt(d, 'EEE')}</span>
               <span className="num">{format(d, 'd')}</span>
             </div>
           ))}
         </div>
         <div className="tg-row tg-allday">
           <div className="tg-gutter">
-            all-day
+            {t('grid.allDay')}
             {allDayOpen && allDayOverflows && (
-              <button className="tg-allday-toggle" aria-label="Collapse all-day events" onClick={() => setAllDayOpen(false)}>
+              <button className="tg-allday-toggle" aria-label={t('grid.collapseAllDay')} onClick={() => setAllDayOpen(false)}>
                 ▴
               </button>
             )}
@@ -241,7 +242,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                 {more > 0 && (
                   <button
                     className="tg-allday-toggle"
-                    aria-label={`Show ${more} more all-day event${more > 1 ? 's' : ''}`}
+                    aria-label={t('grid.showMoreAllDay', { n: more })}
                     onClick={() => setAllDayOpen(true)}
                     onDoubleClick={stop}
                   >
@@ -311,7 +312,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                   <span className="ev-meta">
                     {hhmm(b.start)}
                     {/* a one-line (is-short) block keeps its room for the title */}
-                    {!short && eventPlace(e) ? ` · ${eventPlace(e)}` : ''}
+                    {!short && eventPlace(e, currentLocale()) ? ` · ${eventPlace(e, currentLocale())}` : ''}
                   </span>
                   {draggable && (
                     <>

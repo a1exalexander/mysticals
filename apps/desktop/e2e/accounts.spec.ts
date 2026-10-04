@@ -13,7 +13,7 @@ test('add-account sheet shows inline errors; settings renames an account', async
   await expect(sheet.getByRole('alert')).toHaveText('Not available in mock mode')
 
   await page.getByTestId('add-caldav').click()
-  await expect(sheet.getByRole('combobox')).toHaveValue('privateemail')
+  await expect(sheet.getByRole('combobox', { name: 'Provider' })).toHaveAttribute('data-value', 'privateemail')
   await expect(sheet.getByLabel('Server URL')).toHaveValue('https://dav.privateemail.com/dav.php/')
   await sheet.getByLabel('Email', { exact: true }).fill('me@acme.io')
   await expect(sheet.getByLabel('Label', { exact: true })).toHaveValue('Work')

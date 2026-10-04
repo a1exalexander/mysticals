@@ -1,4 +1,5 @@
-import { addDays, format, isSameDay, parseISO } from 'date-fns'
+import { addDays, isSameDay, parseISO } from 'date-fns'
+import { fmt, t, type Locale } from '../i18n'
 import type { Account, Calendar, CalEvent, PartStat } from '../shared/types'
 
 const same = (a?: string, b?: string): boolean => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase()
@@ -22,17 +23,19 @@ export const pendingInvites = (events: CalEvent[], now = new Date()): CalEvent[]
     .filter((e) => e.myStatus === 'needsAction' && at(e.end, e.allDay) > now.getTime())
     .sort((a, b) => at(a.start, a.allDay) - at(b.start, b.allDay))
 
-export function formatWhen(e: CalEvent): string {
+export function formatWhen(e: CalEvent, locale: Locale = 'en'): string {
+  const f = (d: Date, p: string): string => fmt(locale, d, p)
   if (e.allDay) {
     const s = parseISO(e.start)
     const last = addDays(parseISO(e.end), -1)
-    return last > s ? `${format(s, 'EEE, d MMM')} – ${format(last, 'EEE, d MMM')} · all day` : `${format(s, 'EEE, d MMM')} · all day`
+    const allDay = t(locale, 'when.allDay')
+    return last > s ? `${f(s, 'EEE, d MMM')} – ${f(last, 'EEE, d MMM')} · ${allDay}` : `${f(s, 'EEE, d MMM')} · ${allDay}`
   }
   const s = new Date(e.start)
-  const t = new Date(e.end)
-  return isSameDay(s, t)
-    ? `${format(s, 'EEE, d MMM')} · ${format(s, 'HH:mm')} – ${format(t, 'HH:mm')}`
-    : `${format(s, 'EEE, d MMM HH:mm')} – ${format(t, 'EEE, d MMM HH:mm')}`
+  const end = new Date(e.end)
+  return isSameDay(s, end)
+    ? `${f(s, 'EEE, d MMM')} · ${f(s, 'HH:mm')} – ${f(end, 'HH:mm')}`
+    : `${f(s, 'EEE, d MMM HH:mm')} – ${f(end, 'EEE, d MMM HH:mm')}`
 }
 
 export const STATUS_ICON: Record<PartStat, string> = {

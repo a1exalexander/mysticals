@@ -1,4 +1,5 @@
 import { test, expect, _electron as electron } from '@playwright/test'
+import { choose } from './choose'
 
 const range = { start: new Date(Date.now() - 864e5 * 30).toISOString(), end: new Date(Date.now() + 864e5 * 30).toISOString() }
 
@@ -97,14 +98,14 @@ test('repeat rule: create "every 2 days, 3 times", then make "Morning run" weekl
 
   await page.getByTestId('new-event').click()
   const editor = page.getByTestId('editor')
-  await page.getByTestId('editor-account').selectOption('personal')
+  await choose(page.getByTestId('editor-account'), 'personal')
   await editor.getByPlaceholder('New Event').fill('Stretch')
-  await page.getByTestId('editor-repeat').selectOption('custom')
+  await choose(page.getByTestId('editor-repeat'), 'custom')
   await editor.getByLabel('Repeat every').fill('2')
-  await editor.getByLabel('Repeat unit').selectOption('daily')
-  await editor.getByLabel('Repeat stops').selectOption('count')
+  await choose(editor.getByLabel('Repeat unit'), 'daily')
+  await choose(editor.getByLabel('Repeat stops'), 'count')
   await editor.getByLabel('Occurrences').fill('3')
-  await expect(page.getByTestId('editor-repeat').locator('option:checked')).toHaveText('Every 2 days · 3 times')
+  await expect(page.getByTestId('editor-repeat')).toHaveText('Every 2 days · 3 times')
   await page.screenshot({ path: 'e2e/screens/repeat-custom.png' })
   await page.getByTestId('editor-save').click()
   await expect(editor).toBeHidden()
@@ -115,10 +116,10 @@ test('repeat rule: create "every 2 days, 3 times", then make "Morning run" weekl
   await page.getByTestId('view-switch-day').click()
   await page.getByTestId('event-block').filter({ hasText: 'Morning run' }).first().click()
   await page.getByTestId('details').getByRole('button', { name: 'Edit' }).click()
-  await expect(page.getByTestId('editor-repeat')).toHaveValue('daily')
-  await expect(editor.getByLabel('Repeat stops')).toHaveValue('count')
+  await expect(page.getByTestId('editor-repeat')).toHaveAttribute('data-value', 'daily')
+  await expect(editor.getByLabel('Repeat stops')).toHaveAttribute('data-value', 'count')
   await expect(editor.getByLabel('Occurrences')).toHaveValue('7')
-  await page.getByTestId('editor-repeat').selectOption('weekly')
+  await choose(page.getByTestId('editor-repeat'), 'weekly')
   await page.getByTestId('editor-save').click()
   const scope = editor.getByRole('group', { name: 'Change the repeat rule for' })
   await expect(scope.getByRole('button', { name: 'This event' })).toHaveCount(0)
@@ -140,7 +141,7 @@ test('toolbar "+ new" opens the editor; custom picker sets date and time', async
   await page.getByTestId('new-event').click()
   const editor = page.getByTestId('editor')
   await expect(editor).toBeVisible()
-  await page.getByTestId('editor-account').selectOption('personal')
+  await choose(page.getByTestId('editor-account'), 'personal')
   await editor.getByPlaceholder('New Event').fill('Picked')
 
   await editor.getByRole('button', { name: 'Starts date' }).click()

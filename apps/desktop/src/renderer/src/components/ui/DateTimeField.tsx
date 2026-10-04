@@ -1,9 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { DayPicker } from 'react-day-picker'
 import { format } from 'date-fns'
 import { WEEK_STARTS_ON } from '@mysticals/core/logic/layout'
 import 'react-day-picker/style.css'
+import { usePopover } from './usePopover'
 import './DateTimeField.css'
+import { dateLocale, fmt, t } from '../../i18n'
 
 const SLOTS = Array.from({ length: 96 }, (_, i) => `${String(Math.floor(i / 4)).padStart(2, '0')}:${String((i % 4) * 15).padStart(2, '0')}`)
 const HHMM = /^([01]?\d|2[0-3]):?([0-5]\d)$/
@@ -27,7 +29,6 @@ type Props = {
 // Date + time triggers, each opening a small themed popover. Replaces native datetime inputs.
 export function DateTimeField({ value, onChange, dateOnly, label }: Props): React.JSX.Element {
   const [open, setOpen] = useState<{ kind: 'date' | 'time'; rect: DOMRect } | null>(null)
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   const [typed, setTyped] = useState('')
   const root = useRef<HTMLDivElement>(null)
   const pop = useRef<HTMLDivElement>(null)
@@ -36,51 +37,17 @@ export function DateTimeField({ value, onChange, dateOnly, label }: Props): Reac
   const day = new Date(`${date}T00:00`)
 
   const toggle = (kind: 'date' | 'time', el: HTMLElement): void => {
-    setPos(null)
     setTyped(time)
     setOpen(open?.kind === kind ? null : { kind, rect: el.getBoundingClientRect() })
   }
-  const setTime = (t: string): void => {
-    onChange(`${date}T${t}`)
+  const setTime = (hhmm: string): void => {
+    onChange(`${date}T${hhmm}`)
     setOpen(null)
   }
 
-  // Place below the trigger, or above when it would overflow; keep inside the window.
+  const style = usePopover(open?.rect ?? null, root, pop, () => setOpen(null))
   useLayoutEffect(() => {
-    if (!open || !pop.current) return
-    const { width, height } = pop.current.getBoundingClientRect()
-    const below = open.rect.bottom + 4
-    const top = below + height <= innerHeight - 8 ? below : Math.max(8, open.rect.top - height - 4)
-    setPos({ left: Math.min(open.rect.left, innerWidth - width - 8), top })
-    if (open.kind === 'time') pop.current.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'center' })
-  }, [open])
-
-  useEffect(() => {
-    if (!open) return
-    const close = (): void => setOpen(null)
-    const onDown = (e: MouseEvent): void => {
-      // Triggers toggle on their own click.
-      if (!root.current?.contains(e.target as Node)) close()
-    }
-    // Capture + stop so Esc closes only the picker, not the editor sheet behind it.
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key !== 'Escape') return
-      e.stopImmediatePropagation()
-      close()
-    }
-    const onScroll = (e: Event): void => {
-      if (!pop.current?.contains(e.target as Node)) close()
-    }
-    window.addEventListener('mousedown', onDown, true)
-    window.addEventListener('keydown', onKey, true)
-    window.addEventListener('scroll', onScroll, true)
-    window.addEventListener('resize', close)
-    return () => {
-      window.removeEventListener('mousedown', onDown, true)
-      window.removeEventListener('keydown', onKey, true)
-      window.removeEventListener('scroll', onScroll, true)
-      window.removeEventListener('resize', close)
-    }
+    if (open?.kind === 'time') pop.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'center' })
   }, [open])
 
   return (
@@ -88,17 +55,17 @@ export function DateTimeField({ value, onChange, dateOnly, label }: Props): Reac
       <button
         type="button"
         className="dtf-trigger"
-        aria-label={`${label} date`}
+        aria-label={t('dtf.date', { label })}
         aria-expanded={open?.kind === 'date'}
         onClick={(e) => toggle('date', e.currentTarget)}
       >
-        {format(day, 'EEE, d MMM yyyy')}
+        {fmt(day, 'EEE, d MMM yyyy')}
       </button>
       {!dateOnly && (
         <button
           type="button"
           className="dtf-trigger dtf-time"
-          aria-label={`${label} time`}
+          aria-label={t('dtf.time', { label })}
           aria-expanded={open?.kind === 'time'}
           onClick={(e) => toggle('time', e.currentTarget)}
         >
@@ -110,8 +77,8 @@ export function DateTimeField({ value, onChange, dateOnly, label }: Props): Reac
           ref={pop}
           className={`dtf-pop dtf-pop-${open.kind}`}
           role="dialog"
-          aria-label={`${label} ${open.kind}`}
-          style={pos ?? { visibility: 'hidden', left: 0, top: 0 }}
+          aria-label={t(open.kind === 'date' ? 'dtf.date' : 'dtf.time', { label })}
+          style={style}
         >
           {open.kind === 'date' ? (
             <DayPicker
@@ -120,6 +87,7 @@ export function DateTimeField({ value, onChange, dateOnly, label }: Props): Reac
               autoFocus
               showOutsideDays
               weekStartsOn={WEEK_STARTS_ON}
+              locale={dateLocale()}
               defaultMonth={day}
               selected={day}
               onSelect={(d) => {
@@ -131,15 +99,15 @@ export function DateTimeField({ value, onChange, dateOnly, label }: Props): Reac
             <>
               <input
                 className="dtf-typed"
-                aria-label={`${label} time, HH:mm`}
+                aria-label={t('dtf.typed', { label })}
                 autoFocus
                 value={typed}
                 onChange={(e) => setTyped(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key !== 'Enter' || e.metaKey || e.ctrlKey) return
                   e.preventDefault()
-                  const t = parseTime(typed)
-                  if (t) setTime(t)
+                  const hhmm = parseTime(typed)
+                  if (hhmm) setTime(hhmm)
                 }}
               />
               <div className="dtf-slots" role="listbox">

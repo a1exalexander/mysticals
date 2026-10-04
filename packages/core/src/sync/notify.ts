@@ -1,4 +1,5 @@
 import { format, isSameDay, parseISO } from 'date-fns'
+import { fmt, t, type Key, type Locale } from '../i18n'
 import type { CalEvent } from '../shared/types'
 
 export type NoteKind = 'invite' | 'changed' | 'cancelled'
@@ -28,16 +29,19 @@ export function diffEvents(prev: CalEvent[], next: CalEvent[], now = new Date())
   return notes
 }
 
-const TITLE: Record<NoteKind, string> = { invite: 'New invite', changed: 'Event changed', cancelled: 'Event cancelled' }
+const TITLE: Record<NoteKind, Key> = { invite: 'notify.invite', changed: 'notify.changed', cancelled: 'notify.cancelled' }
 
 /** Banner text: one per note, or a single summary when there are too many to be useful. */
-export function noteText(notes: Note[], account: string, now = new Date()): { title: string; body: string }[] {
-  if (notes.length > 3) return [{ title: `${notes.length} calendar updates`, body: account }]
-  return notes.map(({ kind, event: e }) => ({ title: `${TITLE[kind]}: ${e.title || 'Untitled'}`, body: `${when(e, now)} · ${account}` }))
+export function noteText(notes: Note[], account: string, now = new Date(), locale: Locale = 'en'): { title: string; body: string }[] {
+  if (notes.length > 3) return [{ title: t(locale, 'notify.many', { n: notes.length }), body: account }]
+  return notes.map(({ kind, event: e }) => ({
+    title: `${t(locale, TITLE[kind])}: ${e.title || t(locale, 'common.untitled')}`,
+    body: `${when(e, now, locale)} · ${account}`
+  }))
 }
 
-function when(e: CalEvent, now: Date): string {
+function when(e: CalEvent, now: Date, locale: Locale): string {
   const s = e.allDay ? parseISO(e.start) : new Date(e.start)
-  if (e.allDay) return `${format(s, 'EEE, d MMM')} · all day`
-  return `${isSameDay(s, now) ? 'Today' : format(s, 'EEE, d MMM')} · ${format(s, 'HH:mm')}`
+  if (e.allDay) return `${fmt(locale, s, 'EEE, d MMM')} · ${t(locale, 'when.allDay')}`
+  return `${isSameDay(s, now) ? t(locale, 'common.today') : fmt(locale, s, 'EEE, d MMM')} · ${format(s, 'HH:mm')}`
 }

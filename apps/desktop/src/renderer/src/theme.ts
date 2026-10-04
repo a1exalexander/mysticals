@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { t } from './i18n'
 
 /** Dark palettes defined in styles/base.css as :root[data-theme=…]. Preview colours: bg, accent, pink, cyan, green. */
 export const THEMES = [
@@ -9,6 +10,9 @@ export const THEMES = [
 ] as const
 
 export type ThemeId = (typeof THEMES)[number]['id']
+
+/** Proper names stay as they are; only the descriptive one is translated. */
+export const themeName = (th: (typeof THEMES)[number]): string => (th.id === 'amber' ? t('theme.amber') : th.name)
 
 const KEY = 'mysticals-theme'
 const isTheme = (v: unknown): v is ThemeId => THEMES.some((t) => t.id === v)

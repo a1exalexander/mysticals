@@ -19,6 +19,7 @@ describe('place', () => {
   it('drops the meeting link from a location', () => {
     expect(place('Room 3 / https://meet.example.com/x')).toBe('Room 3')
     expect(place('https://meet.google.com/abc-defg-hij')).toBe('video call')
+    expect(place('https://meet.google.com/abc-defg-hij', 'uk')).toBe('відеодзвінок')
     expect(place('Kyiv')).toBe('Kyiv')
     expect(place(undefined)).toBe('')
   })
@@ -82,6 +83,8 @@ describe('linkKind', () => {
     expect(linkLabel('https://meet.google.com/a')).toBe('Join Google Meet')
     expect(linkLabel('https://meet.namechip.net/r')).toBe('Join call · meet.namechip.net')
     expect(linkLabel('https://www.example.com/a')).toBe('example.com')
+    expect(linkLabel('https://meet.google.com/a', 'meet', 'uk')).toBe('Приєднатися до Google Meet')
+    expect(linkLabel('https://meet.namechip.net/r', 'video', 'uk')).toBe('Дзвінок · meet.namechip.net')
   })
 })
 

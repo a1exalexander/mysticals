@@ -54,3 +54,48 @@
 
 .mc-dot { display: inline-block; width: 7px; height: 7px; border-radius: 2px; background: var(--accent); flex: none; }
 .mc-muted { color: var(--muted); }
+
+/* Switch and checkbox: native inputs (keyboard, labels, a11y) drawn in the app's style. */
+.mc-switch, .mc-check { appearance: none; -webkit-appearance: none; margin: 0; flex: none; }
+.mc-switch {
+  position: relative; width: 28px; height: 16px; border-radius: 8px;
+  background: var(--line-strong); transition: background-color 120ms ease;
+}
+.mc-switch::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--fg); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); transition: transform 140ms ease;
+}
+.mc-switch:checked { background: var(--accent); }
+.mc-switch:checked::after { transform: translateX(12px); background: var(--on-accent); }
+.mc-check {
+  --c: var(--accent);
+  width: 13px; height: 13px; border-radius: 3px;
+  border: 1.5px solid var(--line-strong); background: transparent;
+  display: inline-grid; place-content: center; transition: background-color 90ms ease, border-color 90ms ease;
+}
+.mc-check:hover:not(:disabled) { border-color: var(--muted); }
+.mc-check::after {
+  content: ''; width: 7px; height: 4px; margin-top: -2px;
+  border: solid var(--on-accent); border-width: 0 0 1.6px 1.6px; transform: rotate(-45deg) scale(0);
+  transition: transform 90ms ease;
+}
+.mc-check:checked { background: var(--c); border-color: var(--c); }
+.mc-check:checked::after { transform: rotate(-45deg) scale(1); }
+.mc-check:disabled { opacity: 0.5; }
+@media (prefers-reduced-motion: reduce) { .mc-switch, .mc-switch::after, .mc-check, .mc-check::after { transition: none; } }
+
+/* Integer field with −/+ steppers (no native spinners). */
+.mnum {
+  display: inline-flex; align-items: stretch; height: 28px; flex: none;
+  background: var(--bg); border: 1px solid var(--line-strong); border-radius: 4px; overflow: hidden;
+}
+.mnum:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.mnum button {
+  width: 22px; padding: 0; border: 0; border-radius: 0; background: none; color: var(--muted); font: 13px/1 var(--mono);
+}
+.mnum button:hover:not(:disabled) { background: var(--hover); color: var(--fg); }
+.mnum button:disabled { opacity: 0.35; }
+.mnum-input {
+  width: 36px; min-height: 0; height: auto; padding: 0; text-align: center;
+  font: 12px/1 var(--mono); color: var(--fg); background: none; border: 0; border-radius: 0; box-shadow: none; outline: none;
+}

@@ -8,6 +8,8 @@ import { pipeline } from 'stream/promises'
 import type { ReadableStream as WebReadableStream } from 'stream/web'
 import { app, BrowserWindow, ipcMain, net, Notification, shell } from 'electron'
 import { IPC, type UpdateState } from '@shared/ipc'
+import { t } from '@mysticals/core/i18n'
+import { currentLocale } from './locale'
 
 const run = promisify(execFile)
 const FEED = process.env.MYSTICALS_UPDATE_FEED || 'https://api.github.com/repos/a1exalexander/mysticals/releases/latest'
@@ -49,7 +51,7 @@ function set(next: UpdateState): void {
 function banner(version: string): void {
   if (notified.has(version) || !Notification.isSupported()) return
   notified.add(version)
-  const n = new Notification({ title: `Mysticals ${version} is available`, body: SWAP ? 'Click to update' : 'Click to download' })
+  const n = new Notification({ title: t(currentLocale(), 'update.available', { version }), body: t(currentLocale(), SWAP ? 'update.clickToUpdate' : 'update.clickToDownload') })
   banners.add(n)
   n.on('close', () => banners.delete(n))
   n.on('failed', (_, error) => {

@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { bus } from '../bus'
 import { setCalendarVisible, useCalendarData } from '../hooks/useCalendarData'
 import { MiniMonth } from './MiniMonth'
+import { t, useLocale } from '../i18n'
+import './ui/ui.css'
 
 const COLLAPSED_KEY = 'mysticals-collapsed-accounts'
 
@@ -18,6 +20,7 @@ function readCollapsed(): string[] {
 /** Mini-month + one section per account listing ONLY that account's calendars. */
 export function Sidebar(): React.JSX.Element {
   const { accounts, calendars } = useCalendarData()
+  useLocale()
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const toggleAccount = (id: string): void => {
     const next = collapsed.includes(id) ? collapsed.filter((x) => x !== id) : [...collapsed, id]
@@ -56,7 +59,7 @@ export function Sidebar(): React.JSX.Element {
                   <span className="sb-spin" aria-hidden />
                 ) : (
                   a.error && (
-                    <span className="sb-error" title={a.error} aria-label={`Sync error: ${a.error}`}>
+                    <span className="sb-error" title={a.error} aria-label={t('sidebar.syncError', { error: a.error })}>
                       !
                     </span>
                   )
@@ -71,27 +74,27 @@ export function Sidebar(): React.JSX.Element {
                       <i className="sb-skel" style={{ width: `${w}%` }} />
                     </span>
                   ))}
-                  <span className="sb-loading-text">Loading calendars…</span>
+                  <span className="sb-loading-text">{t('sidebar.loading')}</span>
                 </div>
               )}
               {a.authError && (
                 <div className="sb-loading sb-failed" role="alert">
-                  <span className="sb-loading-text">Disconnected</span>
+                  <span className="sb-loading-text">{t('sidebar.disconnected')}</span>
                   <button
                     type="button"
                     className="sb-retry"
                     data-testid={`sidebar-reauth-${a.id}`}
                     onClick={() => bus.emit('reauth:open', { accountId: a.id })}
                   >
-                    reconnect
+                    {t('sidebar.reconnect')}
                   </button>
                 </div>
               )}
               {open && failed && (
                 <div className="sb-loading sb-failed" role="alert">
-                  <span className="sb-loading-text">Couldn&apos;t load calendars</span>
+                  <span className="sb-loading-text">{t('sidebar.loadFailed')}</span>
                   <button type="button" className="sb-retry" onClick={() => void window.api.sync.now(a.id).catch(() => {})}>
-                    retry
+                    {t('sidebar.retry')}
                   </button>
                 </div>
               )}
@@ -100,13 +103,14 @@ export function Sidebar(): React.JSX.Element {
                   <label key={c.id} className="sb-cal">
                     <input
                       type="checkbox"
+                      className="mc-check"
                       data-testid={`sidebar-calendar-${a.id}-${c.id}`}
                       checked={c.visible !== false}
-                      style={{ accentColor: c.color }}
+                      style={{ '--c': c.color } as React.CSSProperties}
                       onChange={(e) => setCalendarVisible(a.id, c.id, e.target.checked)}
                     />
                     <span className="sb-cal-name">{c.name}</span>
-                    {c.readOnly && <span className="sb-ro" title="Read-only">read-only</span>}
+                    {c.readOnly && <span className="sb-ro" title={t('sidebar.readOnlyTitle')}>{t('sidebar.readOnly')}</span>}
                   </label>
                 ))}
             </section>
@@ -115,9 +119,9 @@ export function Sidebar(): React.JSX.Element {
       </div>
       <footer className="sb-foot">
         <button className="sb-add" onClick={() => bus.emit('accounts:open', {})}>
-          <span aria-hidden>＋</span> Add calendar
+          <span aria-hidden>＋</span> {t('sidebar.add')}
         </button>
-        <button className="sb-gear" aria-label="Settings" title="Settings" onClick={() => bus.emit('settings:open', {})}>
+        <button className="sb-gear" aria-label={t('settings.title')} title={t('settings.title')} onClick={() => bus.emit('settings:open', {})}>
           <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden>
             <path
               fill="currentColor"

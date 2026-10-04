@@ -11,15 +11,24 @@ import { eventLinks, linkLabel, locationText } from '@mysticals/core/logic/meeti
 import { LinkIcon } from './LinkIcon'
 import './ui/ui.css'
 import './EventDetails.css'
+import type { Key } from '@mysticals/core/i18n'
+import { currentLocale, t, useLocale } from '../i18n'
 
 type Reply = Exclude<PartStat, 'needsAction'>
-const REPLIES: [Reply, string][] = [['accepted', 'Accept'], ['tentative', 'Maybe'], ['declined', 'Decline']]
+const REPLIES: [Reply, Key][] = [['accepted', 'rsvp.accept'], ['tentative', 'rsvp.maybe'], ['declined', 'rsvp.decline']]
+const PARTSTAT: Record<PartStat, Key> = {
+  accepted: 'partstat.accepted',
+  tentative: 'partstat.tentative',
+  declined: 'partstat.declined',
+  needsAction: 'partstat.needsAction'
+}
 const W = 320
 const GAP = 8
 
 // Details popover + RSVP. Replies go only through the account that owns the event.
 export function EventDetailsHost(): React.JSX.Element | null {
   const { accounts, calendars } = useDirectory()
+  useLocale()
   const [opened, setOpened] = useState<{ event: CalEvent; anchor?: DOMRect; el?: HTMLElement } | null>(null)
   // Deleted elsewhere (another device, the web) while shown: kept open with a notice instead of vanishing.
   const [gone, setGone] = useState(false)
@@ -124,7 +133,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
   const notes = cleanNotes(event.description)
   const links = eventLinks(event)
   const where = locationText(event.location)
-  const owner = ownerLine(calendar?.name ?? 'Calendar', account?.label ?? event.accountId, account?.email)
+  const owner = ownerLine(calendar?.name ?? t('editor.calendar'), account?.label ?? event.accountId, account?.email)
 
   const key = `${event.accountId}/${event.id}`
   const still = (): boolean => current.current === key
@@ -169,23 +178,23 @@ export function EventDetailsHost(): React.JSX.Element | null {
           <div className="details-gone" role="alert" data-testid="details-gone">
             <span className="details-gone-icon" aria-hidden>✕</span>
             <div>
-              <b>This event was deleted</b>
-              <span>It was removed from {owner.calendar || 'the calendar'}, possibly on another device.</span>
+              <b>{t('details.deleted')}</b>
+              <span>{owner.calendar ? t('details.deletedFrom', { calendar: owner.calendar }) : t('details.deletedFromCalendar')}</span>
             </div>
-            <button type="button" className="mc-btn" onClick={() => setOpened(null)}>Close</button>
+            <button type="button" className="mc-btn" onClick={() => setOpened(null)}>{t('common.close')}</button>
           </div>
         )}
         <div className="details-head">
           <span className="mc-dot details-dot" />
-          <h2>{event.title || 'Untitled'}</h2>
+          <h2>{event.title || t('common.untitled')}</h2>
         </div>
-        <div className="details-when">{formatWhen(event)}</div>
+        <div className="details-when">{formatWhen(event, currentLocale())}</div>
         <div className="details-owner mc-muted">
-          {owner.calendar && <>{owner.calendar} in </>}<b>{owner.label}</b>
+          {owner.calendar && <>{t('details.calendarIn', { calendar: owner.calendar })} </>}<b>{owner.label}</b>
           {owner.email && <> · {owner.email}</>}
         </div>
 
-        {where && <Row label="Location">{where}</Row>}
+        {where && <Row label={t('editor.location')}>{where}</Row>}
         {links.length > 0 && (
           <div className="details-links">
             {links.map((l) => (
@@ -199,13 +208,13 @@ export function EventDetailsHost(): React.JSX.Element | null {
                 data-kind={l.kind}
               >
                 <LinkIcon kind={l.kind} />
-                <span>{linkLabel(l.url, l.kind)}</span>
+                <span>{linkLabel(l.url, l.kind, currentLocale())}</span>
               </a>
             ))}
           </div>
         )}
         {event.organizer && (
-          <Row label="Organizer">{event.organizer.name ? `${event.organizer.name} <${event.organizer.email}>` : event.organizer.email}</Row>
+          <Row label={t('details.organizer')}>{event.organizer.name ? `${event.organizer.name} <${event.organizer.email}>` : event.organizer.email}</Row>
         )}
         {event.attendees.length > 0 && (
           <div className="details-invitees">
@@ -216,15 +225,15 @@ export function EventDetailsHost(): React.JSX.Element | null {
               aria-expanded={showPeople}
               onClick={() => setShowPeople((v) => !v)}
             >
-              {showPeople ? '▾' : '▸'} Invitees ({event.attendees.length})
+              {showPeople ? '▾' : '▸'} {t('details.invitees', { n: event.attendees.length })}
             </button>
             {showPeople && <ul className="details-people">
               {event.attendees.map((a) => (
-                <li key={a.email} title={a.status}>
-                  <span className={`status ${a.status}`} aria-label={a.status}>{STATUS_ICON[a.status]}</span>
+                <li key={a.email} title={t(PARTSTAT[a.status])}>
+                  <span className={`status ${a.status}`} aria-label={t(PARTSTAT[a.status])}>{STATUS_ICON[a.status]}</span>
                   <span className="who">{a.name ?? a.email}</span>
-                  {a.self && <span className="tag">you</span>}
-                  {a.organizer && <span className="tag">organizer</span>}
+                  {a.self && <span className="tag">{t('details.you')}</span>}
+                  {a.organizer && <span className="tag">{t('details.organizerTag')}</span>}
                 </li>
               ))}
             </ul>}
@@ -234,7 +243,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
 
         {!gone && event.myStatus && (
           <div className="details-rsvp">
-            <div className="mc-seg" role="group" aria-label="Reply">
+            <div className="mc-seg" role="group" aria-label={t('rsvp.reply')}>
               {REPLIES.map(([s, label]) => (
                 <button
                   key={s}
@@ -246,11 +255,11 @@ export function EventDetailsHost(): React.JSX.Element | null {
                   disabled={busy}
                   onClick={() => respond(s)}
                 >
-                  {label}
+                  {t(label)}
                 </button>
               ))}
             </div>
-            <div className="mc-muted details-replyas">Reply as {account?.email ?? event.accountId}</div>
+            <div className="mc-muted details-replyas">{t('rsvp.replyAs', { email: account?.email ?? event.accountId })}</div>
           </div>
         )}
 
@@ -258,16 +267,16 @@ export function EventDetailsHost(): React.JSX.Element | null {
 
         {editable && !gone &&
           (confirmDelete && event.recurringEventId ? (
-            <RecurringScope title="Delete recurring event" danger busy={busy} onPick={remove} onCancel={() => setConfirmDelete(false)} />
+            <RecurringScope title={t('scope.delete')} danger busy={busy} onPick={remove} onCancel={() => setConfirmDelete(false)} />
           ) : confirmDelete ? (
             <div className="mc-actions details-confirm">
-              <span>Delete this event?</span>
-              <button type="button" className="mc-btn" onClick={() => setConfirmDelete(false)}>Cancel</button>
-              <button type="button" className="mc-btn danger primary" disabled={busy} onClick={() => remove()}>Delete</button>
+              <span>{t('details.confirmDelete')}</span>
+              <button type="button" className="mc-btn" onClick={() => setConfirmDelete(false)}>{t('common.cancel')}</button>
+              <button type="button" className="mc-btn danger primary" disabled={busy} onClick={() => remove()}>{t('common.delete')}</button>
             </div>
           ) : (
             <div className="mc-actions">
-              <button type="button" className="mc-btn danger" onClick={() => setConfirmDelete(true)}>Delete</button>
+              <button type="button" className="mc-btn danger" onClick={() => setConfirmDelete(true)}>{t('common.delete')}</button>
               <button
                 type="button"
                 className="mc-btn"
@@ -276,7 +285,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
                   bus.emit('event:edit', { event })
                 }}
               >
-                Edit
+                {t('common.edit')}
               </button>
             </div>
           ))}

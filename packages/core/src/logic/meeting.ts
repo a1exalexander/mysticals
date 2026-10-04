@@ -1,3 +1,4 @@
+import { t, type Locale } from '../i18n'
 import type { CalEvent } from '../shared/types'
 import { linkify } from './details'
 import { eventBounds } from './layout'
@@ -18,13 +19,13 @@ export function locationText(location = ''): string {
 }
 
 /** Location without its meeting links ("Room 3 / https://…" → "Room 3"); "video call" when it is only links. */
-export function place(location = ''): string {
-  return locationText(location) || (meetingUrl(location) ? 'video call' : '')
+export function place(location = '', locale: Locale = 'en'): string {
+  return locationText(location) || (meetingUrl(location) ? t(locale, 'meeting.videoCall') : '')
 }
 
 /** `place` of an event: also "video call" when the only call link is the provider's conference. */
-export function eventPlace(e: Pick<CalEvent, 'conferenceUrl' | 'location'>): string {
-  return place(e.location) || (e.conferenceUrl ? 'video call' : '')
+export function eventPlace(e: Pick<CalEvent, 'conferenceUrl' | 'location'>, locale: Locale = 'en'): string {
+  return place(e.location, locale) || (e.conferenceUrl ? t(locale, 'meeting.videoCall') : '')
 }
 
 /** A call can be joined from this many minutes before its start. */
@@ -77,22 +78,9 @@ export function linkKind(url: string): LinkKind {
 }
 
 /** Short button text for a link of `kind`. */
-export function linkLabel(url: string, kind = linkKind(url)): string {
-  const h = host(url)
-  switch (kind) {
-    case 'meet':
-      return 'Join Google Meet'
-    case 'zoom':
-      return 'Join Zoom'
-    case 'teams':
-      return 'Join Teams'
-    case 'video':
-      return `Join call · ${h}`
-    case 'map':
-      return 'Open map'
-    default:
-      return h || url
-  }
+export function linkLabel(url: string, kind = linkKind(url), locale: Locale = 'en'): string {
+  if (kind === 'link') return host(url) || url
+  return t(locale, `link.${kind}`, kind === 'video' ? { host: host(url) } : undefined)
 }
 
 export type EventLink = { url: string; kind: LinkKind }

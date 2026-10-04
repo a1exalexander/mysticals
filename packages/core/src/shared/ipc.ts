@@ -1,3 +1,4 @@
+import type { Locale, LocaleSetting } from '../i18n'
 import type {
   Account,
   Calendar,
@@ -72,6 +73,21 @@ export interface TelemetryApi {
   setEnabled(on: boolean): Promise<void>
 }
 
+/** UI language: the Settings choice, the language in use and what the OS asks for (shown next to "Automatic"). */
+export interface LocaleState {
+  setting: LocaleSetting
+  locale: Locale
+  system: Locale
+}
+
+/** Desktop-only Settings > Language, exposed as `window.locale`. */
+export interface LocaleApi {
+  get(): Promise<LocaleState>
+  set(setting: LocaleSetting): Promise<LocaleState>
+  /** Fires when the language changes. Returns unsubscribe. */
+  onChange(cb: (s: LocaleState) => void): () => void
+}
+
 export type MenuCommand = 'new-event' | 'today' | 'view-agenda' | 'view-day' | 'view-3day' | 'view-week' | 'view-month'
 
 export const IPC = {
@@ -98,5 +114,8 @@ export const IPC = {
   updateInstall: 'update:install',
   update: 'update',
   telemetryGet: 'telemetry:get',
-  telemetrySet: 'telemetry:set'
+  telemetrySet: 'telemetry:set',
+  localeGet: 'locale:get',
+  localeSet: 'locale:set',
+  locale: 'locale'
 } as const

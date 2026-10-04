@@ -1,5 +1,6 @@
 import { addDays, addHours, format, parseISO, startOfHour } from 'date-fns'
 import type { Account, Attendee, Calendar, CalEvent, NewEventInput, Recurrence } from '../shared/types'
+import { t, type Locale } from '../i18n'
 import { sameRecurrence } from './recurrence'
 
 /** Form state. start/end are always 'YYYY-MM-DDTHH:mm' (local); all-day uses the date part, end inclusive. */
@@ -113,35 +114,35 @@ export function moveStart(f: EventForm, start: string): EventForm {
 
 type Times = Pick<NewEventInput, 'start' | 'end' | 'allDay'>
 
-function times(f: EventForm): Times {
+function times(f: EventForm, locale: Locale): Times {
   if (f.allDay) {
     const start = f.start.slice(0, 10)
     const endIncl = f.end.slice(0, 10)
-    if (endIncl < start) throw new Error('End date is before start date')
+    if (endIncl < start) throw new Error(t(locale, 'form.endBeforeStartDate'))
     return { allDay: true, start, end: format(addDays(parseISO(endIncl), 1), 'yyyy-MM-dd') }
   }
   const start = fromLocalInput(f.start)
   const end = fromLocalInput(f.end)
-  if (end <= start) throw new Error('End must be after start')
+  if (end <= start) throw new Error(t(locale, 'form.endAfterStart'))
   return { allDay: false, start, end }
 }
 
-function checkEmails(list: string[]): string[] {
+function checkEmails(list: string[], locale: Locale): string[] {
   const bad = list.filter((e) => !isEmail(e))
-  if (bad.length) throw new Error(`Invalid email: ${bad.join(', ')}`)
+  if (bad.length) throw new Error(t(locale, 'form.invalidEmail', { list: bad.join(', ') }))
   return [...new Set(list.map((e) => e.toLowerCase()))]
 }
 
 /** Throws a user-facing Error when the form is not valid. */
-export function formToInput(f: EventForm): NewEventInput {
-  if (!f.accountId) throw new Error('Choose an account')
-  if (!f.calendarId) throw new Error('Choose a calendar')
-  const attendees = checkEmails(f.attendees)
+export function formToInput(f: EventForm, locale: Locale = 'en'): NewEventInput {
+  if (!f.accountId) throw new Error(t(locale, 'form.chooseAccount'))
+  if (!f.calendarId) throw new Error(t(locale, 'form.chooseCalendar'))
+  const attendees = checkEmails(f.attendees, locale)
   return {
     accountId: f.accountId,
     calendarId: f.calendarId,
-    title: f.title.trim() || 'New Event',
-    ...times(f),
+    title: f.title.trim() || t(locale, 'common.newEvent'),
+    ...times(f, locale),
     location: f.location.trim() || undefined,
     description: f.description.trim() || undefined,
     ...(attendees.length ? { attendees } : {}),
@@ -150,8 +151,8 @@ export function formToInput(f: EventForm): NewEventInput {
 }
 
 /** Apply edits to an existing event. Account and calendar never change. */
-export function applyForm(e: CalEvent, f: EventForm): CalEvent {
-  const emails = checkEmails(f.attendees)
+export function applyForm(e: CalEvent, f: EventForm, locale: Locale = 'en'): CalEvent {
+  const emails = checkEmails(f.attendees, locale)
   const keep = e.attendees.filter((a) => a.self || a.organizer)
   const byEmail = new Map(e.attendees.map((a) => [a.email.toLowerCase(), a]))
   const invited: Attendee[] = emails
@@ -159,8 +160,8 @@ export function applyForm(e: CalEvent, f: EventForm): CalEvent {
     .map((m) => byEmail.get(m) ?? { email: m, status: 'needsAction' })
   return {
     ...e,
-    title: f.title.trim() || 'New Event',
-    ...times(f),
+    title: f.title.trim() || t(locale, 'common.newEvent'),
+    ...times(f, locale),
     location: f.location.trim() || undefined,
     description: f.description.trim() || undefined,
     attendees: [...keep, ...invited],
