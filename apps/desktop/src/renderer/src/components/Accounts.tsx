@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { bus } from '../bus'
+import { Select } from './ui/Select'
 import { ConnectSteps, PRESETS, SWATCHES, Sheet, Swatches, errorText, hostOf, suggestLabel } from './AccountsShared'
 import { t, useLocale } from '../i18n'
 
@@ -147,21 +148,19 @@ function CaldavForm(props: { onBack: () => void; onDone: () => void }): React.JS
         />
       )}
       <div className="acc-form-fields" hidden={busy}>
-      <label>
+      <div className="acc-row">
         <span>{t('accounts.field.provider')}</span>
-        <select
+        <Select
+          aria-label={t('accounts.field.provider')}
           value={preset}
-          onChange={(e) => {
-            const p = PRESETS.find((x) => x.id === e.target.value)!
+          options={PRESETS.map((p) => ({ value: p.id, label: p.id === 'custom' ? t('accounts.provider.custom') : p.name }))}
+          onChange={(id) => {
+            const p = PRESETS.find((x) => x.id === id)!
             setPreset(p.id)
             setServerUrl(p.url)
           }}
-        >
-          {PRESETS.map((p) => (
-            <option key={p.id} value={p.id}>{p.id === 'custom' ? t('accounts.provider.custom') : p.name}</option>
-          ))}
-        </select>
-      </label>
+        />
+      </div>
       <label>
         <span>{t('accounts.field.server')}</span>
         <input

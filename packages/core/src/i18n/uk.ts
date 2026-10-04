@@ -153,6 +153,8 @@ export const uk: Record<Key, Msg> = {
 
   // ---- desktop: accounts ----
   'common.back': 'Назад',
+  'common.decrease': 'Зменшити',
+  'common.increase': 'Збільшити',
   'accounts.personal': 'Особистий',
   'accounts.work': 'Робочий',
   'accounts.title': 'Додати обліковий запис календаря',

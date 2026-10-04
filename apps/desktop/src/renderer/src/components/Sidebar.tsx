@@ -3,6 +3,7 @@ import { bus } from '../bus'
 import { setCalendarVisible, useCalendarData } from '../hooks/useCalendarData'
 import { MiniMonth } from './MiniMonth'
 import { t, useLocale } from '../i18n'
+import './ui/ui.css'
 
 const COLLAPSED_KEY = 'mysticals-collapsed-accounts'
 
@@ -102,9 +103,10 @@ export function Sidebar(): React.JSX.Element {
                   <label key={c.id} className="sb-cal">
                     <input
                       type="checkbox"
+                      className="mc-check"
                       data-testid={`sidebar-calendar-${a.id}-${c.id}`}
                       checked={c.visible !== false}
-                      style={{ accentColor: c.color }}
+                      style={{ '--c': c.color } as React.CSSProperties}
                       onChange={(e) => setCalendarVisible(a.id, c.id, e.target.checked)}
                     />
                     <span className="sb-cal-name">{c.name}</span>

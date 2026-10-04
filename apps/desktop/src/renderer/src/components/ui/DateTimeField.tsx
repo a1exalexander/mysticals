@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { DayPicker } from 'react-day-picker'
 import { format } from 'date-fns'
 import { WEEK_STARTS_ON } from '@mysticals/core/logic/layout'
 import 'react-day-picker/style.css'
+import { usePopover } from './usePopover'
 import './DateTimeField.css'
 import { dateLocale, fmt, t } from '../../i18n'
 
@@ -28,7 +29,6 @@ type Props = {
 // Date + time triggers, each opening a small themed popover. Replaces native datetime inputs.
 export function DateTimeField({ value, onChange, dateOnly, label }: Props): React.JSX.Element {
   const [open, setOpen] = useState<{ kind: 'date' | 'time'; rect: DOMRect } | null>(null)
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   const [typed, setTyped] = useState('')
   const root = useRef<HTMLDivElement>(null)
   const pop = useRef<HTMLDivElement>(null)
@@ -37,7 +37,6 @@ export function DateTimeField({ value, onChange, dateOnly, label }: Props): Reac
   const day = new Date(`${date}T00:00`)
 
   const toggle = (kind: 'date' | 'time', el: HTMLElement): void => {
-    setPos(null)
     setTyped(time)
     setOpen(open?.kind === kind ? null : { kind, rect: el.getBoundingClientRect() })
   }
@@ -46,42 +45,9 @@ export function DateTimeField({ value, onChange, dateOnly, label }: Props): Reac
     setOpen(null)
   }
 
-  // Place below the trigger, or above when it would overflow; keep inside the window.
+  const style = usePopover(open?.rect ?? null, root, pop, () => setOpen(null))
   useLayoutEffect(() => {
-    if (!open || !pop.current) return
-    const { width, height } = pop.current.getBoundingClientRect()
-    const below = open.rect.bottom + 4
-    const top = below + height <= innerHeight - 8 ? below : Math.max(8, open.rect.top - height - 4)
-    setPos({ left: Math.min(open.rect.left, innerWidth - width - 8), top })
-    if (open.kind === 'time') pop.current.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'center' })
-  }, [open])
-
-  useEffect(() => {
-    if (!open) return
-    const close = (): void => setOpen(null)
-    const onDown = (e: MouseEvent): void => {
-      // Triggers toggle on their own click.
-      if (!root.current?.contains(e.target as Node)) close()
-    }
-    // Capture + stop so Esc closes only the picker, not the editor sheet behind it.
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key !== 'Escape') return
-      e.stopImmediatePropagation()
-      close()
-    }
-    const onScroll = (e: Event): void => {
-      if (!pop.current?.contains(e.target as Node)) close()
-    }
-    window.addEventListener('mousedown', onDown, true)
-    window.addEventListener('keydown', onKey, true)
-    window.addEventListener('scroll', onScroll, true)
-    window.addEventListener('resize', close)
-    return () => {
-      window.removeEventListener('mousedown', onDown, true)
-      window.removeEventListener('keydown', onKey, true)
-      window.removeEventListener('scroll', onScroll, true)
-      window.removeEventListener('resize', close)
-    }
+    if (open?.kind === 'time') pop.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'center' })
   }, [open])
 
   return (
@@ -112,7 +78,7 @@ export function DateTimeField({ value, onChange, dateOnly, label }: Props): Reac
           className={`dtf-pop dtf-pop-${open.kind}`}
           role="dialog"
           aria-label={t(open.kind === 'date' ? 'dtf.date' : 'dtf.time', { label })}
-          style={pos ?? { visibility: 'hidden', left: 0, top: 0 }}
+          style={style}
         >
           {open.kind === 'date' ? (
             <DayPicker

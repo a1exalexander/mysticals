@@ -5,6 +5,7 @@ import { THEMES, applyTheme, themeName, useTheme } from '../theme'
 import { KindIcon, Sheet, Swatches, errorText } from './AccountsShared'
 import { setLanguage, t, useLocale } from '../i18n'
 import { LOCALE_NAME, LOCALES, type Key, type LocaleSetting } from '@mysticals/core/i18n'
+import './ui/ui.css'
 
 const TABS = [
   { id: 'accounts', name: 'settings.tab.accounts' },
@@ -225,6 +226,7 @@ function PrivacyPanel(): React.JSX.Element {
       <label className="set-check">
         <input
           type="checkbox"
+          className="mc-check"
           data-testid="telemetry-toggle"
           checked={on ?? false}
           disabled={on === undefined}

@@ -5,6 +5,7 @@ import { useDirectory } from './ui/useDirectory'
 import { DateTimeField } from './ui/DateTimeField'
 import { RecurringScope } from './ui/RecurringScope'
 import { RepeatField } from './ui/RepeatField'
+import { Select } from './ui/Select'
 import {
   applyForm, emptyForm, setAllDay, errorText, formFromEvent, formToInput, isEmail, moveStart, repeatChanged, soleId, splitEmails,
   withLoadedRepeat, writableAccounts, writableCalendars, type EventForm
@@ -153,34 +154,41 @@ export function EventEditorHost(): React.JSX.Element | null {
           {editing ? (
             <div className="editor-static" data-testid="editor-account">{account?.label ?? editing.accountId}</div>
           ) : (
-            <select data-testid="editor-account" value={form.accountId} onChange={(e) => chooseAccount(e.target.value)}>
-              {!form.accountId && <option value="" disabled>{t('editor.chooseAccount')}</option>}
-              {choices.map((a) => (
-                <option key={a.id} value={a.id}>{a.label} · {a.email}</option>
-              ))}
-            </select>
+            <Select
+              data-testid="editor-account"
+              aria-label={t('editor.account')}
+              placeholder={t('editor.chooseAccount')}
+              value={form.accountId}
+              options={choices.map((a) => ({ value: a.id, label: a.label, hint: a.email, color: a.color }))}
+              onChange={chooseAccount}
+            />
           )}
 
           <label>{t('editor.calendar')}</label>
           {editing ? (
             <div className="editor-static" data-testid="editor-calendar">{calendar?.name ?? editing.calendarId}</div>
           ) : (
-            <select
+            <Select
               data-testid="editor-calendar"
-              value={form.calendarId}
+              aria-label={t('editor.calendar')}
+              placeholder={form.accountId ? t('editor.chooseCalendar') : t('editor.accountFirst')}
               disabled={!form.accountId}
-              onChange={(e) => set({ calendarId: e.target.value })}
-            >
-              <option value="" disabled>{form.accountId ? t('editor.chooseCalendar') : t('editor.accountFirst')}</option>
-              {accountCals.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+              value={form.calendarId}
+              options={accountCals.map((c) => ({ value: c.id, label: c.name, color: c.color }))}
+              onChange={(calendarId) => set({ calendarId })}
+            />
           )}
 
           <label>{t('editor.allDay')}</label>
           <label className="editor-switch">
-            <input type="checkbox" checked={form.allDay} onChange={(e) => setForm(setAllDay(form, e.target.checked))} />
+            <input
+              type="checkbox"
+              role="switch"
+              className="mc-switch"
+              aria-label={t('editor.allDay')}
+              checked={form.allDay}
+              onChange={(e) => setForm(setAllDay(form, e.target.checked))}
+            />
           </label>
 
           <label>{t('editor.starts')}</label>

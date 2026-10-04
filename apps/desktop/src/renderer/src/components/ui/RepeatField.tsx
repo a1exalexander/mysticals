@@ -4,6 +4,8 @@ import {
   describe, FREQS, presetOf, presets, shortDay, weekdayOf, withEnd, WEEKDAYS, type PresetId
 } from '@mysticals/core/logic/recurrence'
 import { DateTimeField } from './DateTimeField'
+import { NumberField } from './NumberField'
+import { Select } from './Select'
 import { currentLocale, t } from '../../i18n'
 
 type Ends = 'never' | 'until' | 'count'
@@ -53,31 +55,30 @@ export function RepeatField({ value, start, status, onChange }: Props): React.JS
   return (
     <>
       <label>{t('repeat.label')}</label>
-      <select data-testid="editor-repeat" value={showCustom ? 'custom' : preset} onChange={(e) => pick(e.target.value)}>
-        {presets(start, locale).map((p) => (
-          <option key={p.id} value={p.id}>{p.label}</option>
-        ))}
-        <option value="custom">{preset === 'custom' && value ? describe(value, start, locale) : t('repeat.customOption')}</option>
-        {preset === 'rule' && value && <option value="rule">{describe(value, start, locale)}</option>}
-      </select>
+      <Select
+        data-testid="editor-repeat"
+        aria-label={t('repeat.label')}
+        value={showCustom ? 'custom' : preset}
+        options={[
+          ...presets(start, locale).map((p) => ({ value: p.id, label: p.label })),
+          { value: 'custom', label: preset === 'custom' && value ? describe(value, start, locale) : t('repeat.customOption') },
+          ...(preset === 'rule' && value ? [{ value: 'rule', label: describe(value, start, locale) }] : [])
+        ]}
+        onChange={pick}
+      />
 
       {showCustom && value && (
         <>
           <label>{t('repeat.every')}</label>
           <div className="editor-repeat-row">
-            <input
-              type="number"
-              min={1}
-              max={999}
-              aria-label={t('repeat.everyAria')}
-              value={value.interval ?? 1}
-              onChange={(e) => set({ interval: Math.min(999, Math.max(1, Number(e.target.value) || 1)) })}
+            <NumberField aria-label={t('repeat.everyAria')} value={value.interval ?? 1} onChange={(interval) => set({ interval })} />
+            <Select
+              compact
+              aria-label={t('repeat.unitAria')}
+              value={value.freq}
+              options={FREQS.map((f) => ({ value: f, label: t(`repeat.unit.${f}`, { n: value.interval ?? 1 }) }))}
+              onChange={(freq) => set({ freq, byDay: undefined })}
             />
-            <select aria-label={t('repeat.unitAria')} value={value.freq} onChange={(e) => set({ freq: e.target.value as Recurrence['freq'], byDay: undefined })}>
-              {FREQS.map((f) => (
-                <option key={f} value={f}>{t(`repeat.unit.${f}`, { n: value.interval ?? 1 })}</option>
-              ))}
-            </select>
           </div>
           {value.freq === 'weekly' && (
             <>
@@ -108,35 +109,29 @@ export function RepeatField({ value, start, status, onChange }: Props): React.JS
         <>
           <label>{t('repeat.stops')}</label>
           <div className="editor-repeat-row">
-            <select
+            <Select
+              compact
               aria-label={t('repeat.stopsAria')}
               value={ends}
-              onChange={(e) => {
-                const v = e.target.value as Ends
+              options={[
+                { value: 'never', label: t('repeat.never') },
+                { value: 'until', label: t('repeat.endOnDate') },
+                { value: 'count', label: t('repeat.after') }
+              ]}
+              onChange={(v) =>
                 onChange({
                   ...value,
                   until: v === 'until' ? (value.until ?? start.slice(0, 10)) : undefined,
                   count: v === 'count' ? (value.count ?? 10) : undefined
                 })
-              }}
-            >
-              <option value="never">{t('repeat.never')}</option>
-              <option value="until">{t('repeat.endOnDate')}</option>
-              <option value="count">{t('repeat.after')}</option>
-            </select>
+              }
+            />
             {ends === 'until' && (
               <DateTimeField label={t('repeat.stopsOn')} dateOnly value={`${value.until}T00:00`} onChange={(v) => set({ until: v.slice(0, 10) })} />
             )}
             {ends === 'count' && (
               <>
-                <input
-                  type="number"
-                  min={1}
-                  max={999}
-                  aria-label={t('repeat.occurrences')}
-                  value={value.count}
-                  onChange={(e) => set({ count: Math.min(999, Math.max(1, Number(e.target.value) || 1)) })}
-                />
+                <NumberField aria-label={t('repeat.occurrences')} value={value.count ?? 1} onChange={(count) => set({ count })} />
                 <span className="editor-muted">{t('repeat.times', { n: value.count ?? 1 })}</span>
               </>
             )}

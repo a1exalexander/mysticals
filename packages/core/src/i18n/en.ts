@@ -152,6 +152,8 @@ export const en = {
 
   // ---- desktop: accounts ----
   'common.back': 'Back',
+  'common.decrease': 'Decrease',
+  'common.increase': 'Increase',
   'accounts.personal': 'Personal',
   'accounts.work': 'Work',
   'accounts.title': 'Add calendar account',

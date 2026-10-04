@@ -47,7 +47,7 @@
 .acc-sheet button.acc-danger { color: var(--red); }
 .acc-sheet button.acc-primary-danger { background: var(--red); border-color: var(--red); color: var(--on-accent); }
 .acc-sheet button.acc-primary-danger:hover:not(:disabled) { background: var(--red); filter: brightness(1.1); }
-.acc-sheet button:focus-visible, .acc-sheet input:focus-visible, .acc-sheet select:focus-visible {
+.acc-sheet button:focus-visible, .acc-sheet input:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 1px;
 }
 
@@ -79,11 +79,11 @@
 .acc-form label > span, .acc-row > span {
   color: var(--muted); text-align: right; font: 10.5px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase;
 }
-.acc-sheet input, .acc-sheet select {
+.acc-sheet input {
   font: inherit; color: var(--fg); background: var(--bg); min-width: 0; height: 28px;
   padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 4px;
 }
-.acc-sheet input:focus, .acc-sheet select:focus { outline: none; border-color: var(--accent); }
+.acc-sheet input:focus { outline: none; border-color: var(--accent); }
 .acc-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .acc-waiting .acc-actions { margin-top: 8px; }
 
