@@ -50,6 +50,7 @@ describe('event form', () => {
     const f = { ...emptyForm(accounts, calendars), accountId: 'work', calendarId: 'w' }
     expect(formToInput({ ...f, attendees: ['A@x.io', 'a@x.io'] }).attendees).toEqual(['a@x.io'])
     expect(() => formToInput({ ...f, attendees: ['nope'] })).toThrow('Invalid email: nope')
+    expect(() => formToInput({ ...f, attendees: ['nope'] }, 'uk')).toThrow('Неправильна адреса: nope')
   })
 
   it('edits keep account, calendar, organizer and known statuses', () => {

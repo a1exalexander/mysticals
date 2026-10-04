@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { bus } from '../bus'
 import { ConnectSteps, PRESETS, SWATCHES, Sheet, Swatches, errorText, hostOf, suggestLabel } from './AccountsShared'
+import { t, useLocale } from '../i18n'
 
 type Step = 'choose' | 'google' | 'connecting' | 'caldav'
 
@@ -9,6 +10,7 @@ export function AccountsHost(): React.JSX.Element | null {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<Step>('choose')
   const [error, setError] = useState('')
+  useLocale()
   // Bumped on every open/close so a late Google result can't touch a closed sheet.
   const session = useRef(0)
 
@@ -51,22 +53,20 @@ export function AccountsHost(): React.JSX.Element | null {
   }
 
   return (
-    <Sheet open={open} onClose={close} title="Add calendar account" testId="accounts-sheet">
-      <p className="acc-note">
-        Each account is isolated: events and invitations are only sent from the account they belong to.
-      </p>
+    <Sheet open={open} onClose={close} title={t('accounts.title')} testId="accounts-sheet">
+      <p className="acc-note">{t('accounts.isolated')}</p>
       {step === 'choose' && (
         <>
           <div className="acc-choices">
             <button type="button" className="acc-choice" data-testid="add-google" onClick={addGoogle}>
               <span className="acc-choice-icon acc-kind-google">G</span>
               <strong>Google</strong>
-              <span>Sign in with your browser</span>
+              <span>{t('accounts.google.hint')}</span>
             </button>
             <button type="button" className="acc-choice" data-testid="add-caldav" onClick={() => setStep('caldav')}>
               <span className="acc-choice-icon acc-kind-caldav">DAV</span>
               <strong>CalDAV</strong>
-              <span>Private Email, iCloud, Fastmail…</span>
+              <span>{t('accounts.caldav.hint')}</span>
             </button>
           </div>
           {error && <p className="acc-error" role="alert">{error}</p>}
@@ -79,24 +79,24 @@ export function AccountsHost(): React.JSX.Element | null {
               bus.emit('settings:open', {})
             }}
           >
-            Manage existing accounts…
+            {t('accounts.manage')}
           </button>
         </>
       )}
       {step === 'google' && (
         <div className="acc-waiting">
           <span className="acc-spinner" aria-hidden />
-          <p>Waiting for Google sign-in in your browser…</p>
-          <p className="acc-hint-center">Finish signing in there; Mysticals comes back on its own.</p>
+          <p>{t('accounts.google.waiting')}</p>
+          <p className="acc-hint-center">{t('accounts.google.finish')}</p>
           <div className="acc-actions">
-            <button type="button" onClick={close}>Cancel</button>
+            <button type="button" onClick={close}>{t('common.cancel')}</button>
           </div>
         </div>
       )}
       {step === 'connecting' && (
         <ConnectSteps
           testId="google-connecting"
-          steps={['Signed in with Google', 'Connecting your account…', 'Loading calendars']}
+          steps={[t('accounts.step.signedInGoogle'), t('accounts.step.connecting'), t('accounts.step.loadingCalendars')]}
           active={1}
         />
       )}
@@ -142,13 +142,13 @@ function CaldavForm(props: { onBack: () => void; onDone: () => void }): React.JS
       {busy && (
         <ConnectSteps
           testId="caldav-connecting"
-          steps={[`Signing in to ${hostOf(serverUrl.trim())}…`, 'Loading calendars']}
+          steps={[t('accounts.step.signingIn', { host: hostOf(serverUrl.trim()) }), t('accounts.step.loadingCalendars')]}
           active={0}
         />
       )}
       <div className="acc-form-fields" hidden={busy}>
       <label>
-        <span>Provider</span>
+        <span>{t('accounts.field.provider')}</span>
         <select
           value={preset}
           onChange={(e) => {
@@ -158,12 +158,12 @@ function CaldavForm(props: { onBack: () => void; onDone: () => void }): React.JS
           }}
         >
           {PRESETS.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
+            <option key={p.id} value={p.id}>{p.id === 'custom' ? t('accounts.provider.custom') : p.name}</option>
           ))}
         </select>
       </label>
       <label>
-        <span>Server URL</span>
+        <span>{t('accounts.field.server')}</span>
         <input
           type="url"
           required
@@ -175,9 +175,9 @@ function CaldavForm(props: { onBack: () => void; onDone: () => void }): React.JS
           }}
         />
       </label>
-      <p className="acc-hint">Check your provider's docs if connection fails.</p>
+      <p className="acc-hint">{t('accounts.field.serverHint')}</p>
       <label>
-        <span>Email</span>
+        <span>{t('accounts.field.email')}</span>
         <input
           type="text"
           required
@@ -191,7 +191,7 @@ function CaldavForm(props: { onBack: () => void; onDone: () => void }): React.JS
         />
       </label>
       <label>
-        <span>App password</span>
+        <span>{t('accounts.field.password')}</span>
         <input
           type="password"
           required
@@ -201,10 +201,10 @@ function CaldavForm(props: { onBack: () => void; onDone: () => void }): React.JS
         />
       </label>
       <label>
-        <span>Label</span>
+        <span>{t('accounts.field.label')}</span>
         <input
           type="text"
-          placeholder="Work"
+          placeholder={t('accounts.work')}
           value={label}
           onChange={(e) => {
             setLabel(e.target.value)
@@ -213,15 +213,15 @@ function CaldavForm(props: { onBack: () => void; onDone: () => void }): React.JS
         />
       </label>
       <div className="acc-row">
-        <span>Colour</span>
-        <Swatches value={color} onChange={setColor} name="Account colour" />
+        <span>{t('accounts.field.colour')}</span>
+        <Swatches value={color} onChange={setColor} name={t('accounts.field.accountColour')} />
       </div>
       </div>
       {error && <p className="acc-error" role="alert">{error}</p>}
       <div className="acc-actions" hidden={busy}>
-        <button type="button" onClick={props.onBack} disabled={busy}>Back</button>
+        <button type="button" onClick={props.onBack} disabled={busy}>{t('common.back')}</button>
         <button type="submit" className="acc-primary" data-testid="add-caldav-submit" disabled={busy}>
-          Add account
+          {t('accounts.add')}
         </button>
       </div>
     </form>

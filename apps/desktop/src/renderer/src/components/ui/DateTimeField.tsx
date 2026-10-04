@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { WEEK_STARTS_ON } from '@mysticals/core/logic/layout'
 import 'react-day-picker/style.css'
 import './DateTimeField.css'
+import { dateLocale, fmt, t } from '../../i18n'
 
 const SLOTS = Array.from({ length: 96 }, (_, i) => `${String(Math.floor(i / 4)).padStart(2, '0')}:${String((i % 4) * 15).padStart(2, '0')}`)
 const HHMM = /^([01]?\d|2[0-3]):?([0-5]\d)$/
@@ -40,8 +41,8 @@ export function DateTimeField({ value, onChange, dateOnly, label }: Props): Reac
     setTyped(time)
     setOpen(open?.kind === kind ? null : { kind, rect: el.getBoundingClientRect() })
   }
-  const setTime = (t: string): void => {
-    onChange(`${date}T${t}`)
+  const setTime = (hhmm: string): void => {
+    onChange(`${date}T${hhmm}`)
     setOpen(null)
   }
 
@@ -88,17 +89,17 @@ export function DateTimeField({ value, onChange, dateOnly, label }: Props): Reac
       <button
         type="button"
         className="dtf-trigger"
-        aria-label={`${label} date`}
+        aria-label={t('dtf.date', { label })}
         aria-expanded={open?.kind === 'date'}
         onClick={(e) => toggle('date', e.currentTarget)}
       >
-        {format(day, 'EEE, d MMM yyyy')}
+        {fmt(day, 'EEE, d MMM yyyy')}
       </button>
       {!dateOnly && (
         <button
           type="button"
           className="dtf-trigger dtf-time"
-          aria-label={`${label} time`}
+          aria-label={t('dtf.time', { label })}
           aria-expanded={open?.kind === 'time'}
           onClick={(e) => toggle('time', e.currentTarget)}
         >
@@ -110,7 +111,7 @@ export function DateTimeField({ value, onChange, dateOnly, label }: Props): Reac
           ref={pop}
           className={`dtf-pop dtf-pop-${open.kind}`}
           role="dialog"
-          aria-label={`${label} ${open.kind}`}
+          aria-label={t(open.kind === 'date' ? 'dtf.date' : 'dtf.time', { label })}
           style={pos ?? { visibility: 'hidden', left: 0, top: 0 }}
         >
           {open.kind === 'date' ? (
@@ -120,6 +121,7 @@ export function DateTimeField({ value, onChange, dateOnly, label }: Props): Reac
               autoFocus
               showOutsideDays
               weekStartsOn={WEEK_STARTS_ON}
+              locale={dateLocale()}
               defaultMonth={day}
               selected={day}
               onSelect={(d) => {
@@ -131,15 +133,15 @@ export function DateTimeField({ value, onChange, dateOnly, label }: Props): Reac
             <>
               <input
                 className="dtf-typed"
-                aria-label={`${label} time, HH:mm`}
+                aria-label={t('dtf.typed', { label })}
                 autoFocus
                 value={typed}
                 onChange={(e) => setTyped(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key !== 'Enter' || e.metaKey || e.ctrlKey) return
                   e.preventDefault()
-                  const t = parseTime(typed)
-                  if (t) setTime(t)
+                  const hhmm = parseTime(typed)
+                  if (hhmm) setTime(hhmm)
                 }}
               />
               <div className="dtf-slots" role="listbox">

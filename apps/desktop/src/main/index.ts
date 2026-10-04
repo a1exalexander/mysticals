@@ -8,11 +8,12 @@ import { createApi } from '@mysticals/core/api'
 import { AccountStore, type SecretCrypto } from '@mysticals/core/accounts/store'
 import { SyncEngine } from '@mysticals/core/sync/engine'
 import { noteText, type Note } from '@mysticals/core/sync/notify'
+import { t } from '@mysticals/core/i18n'
 import type { AccountAdded } from '@mysticals/core/telemetry'
 import { createCaldavProvider, verifyCaldav } from '@mysticals/core/providers/caldav'
 import { createGoogleProvider, googleSignIn, setClientConfig } from '@mysticals/core/providers/google'
 import { registerApi } from './ipc/register'
-import { buildMenu } from './menu'
+import { currentLocale, startLocale } from './locale'
 import { startUpdater } from './update'
 import { startDesktopTelemetry } from './telemetry'
 import { electronTriggers } from './sync/electronTriggers'
@@ -58,7 +59,7 @@ function notify(store: AccountStore, accountId: string, notes: Note[]): void {
   if (!account || !Notification.isSupported()) return
   const hidden = new Set(store.hiddenCalendars(accountId))
   const shown = notes.filter((n) => !hidden.has(n.event.calendarId))
-  for (const { title, body } of noteText(shown, account.label)) {
+  for (const { title, body } of noteText(shown, account.label, new Date(), currentLocale())) {
     const n = new Notification({ title, body })
     banners.add(n)
     n.on('close', () => banners.delete(n))
@@ -82,15 +83,12 @@ function notify(store: AccountStore, accountId: string, notes: Note[]): void {
 const secureStorageReady = (): boolean =>
   safeStorage.isEncryptionAvailable() && (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text')
 
-const NO_SECURE_STORAGE =
-  'Secure storage is unavailable; refusing to store credentials' +
-  (process.platform === 'linux'
-    ? '. Install and unlock a Secret Service keyring (GNOME Keyring or KWallet), then restart Mysticals.'
-    : '')
+const noSecureStorage = (): string =>
+  t(currentLocale(), process.platform === 'linux' ? 'error.noSecureStorageLinux' : 'error.noSecureStorage')
 
 const safeStorageCrypto: SecretCrypto = {
   encrypt(plain) {
-    if (!secureStorageReady()) throw new Error(NO_SECURE_STORAGE)
+    if (!secureStorageReady()) throw new Error(noSecureStorage())
     return safeStorage.encryptString(plain)
   },
   decrypt: (data) => safeStorage.decryptString(data)
@@ -141,21 +139,21 @@ function createWindow(): void {
     const items: MenuItemConstructorOptions[] = [
       ...(web
         ? [
-            { label: 'Open Link', click: () => void shell.openExternal(p.linkURL) },
-            { label: 'Copy Link', click: () => clipboard.writeText(p.linkURL) },
+            { label: t(currentLocale(), 'menu.openLink'), click: () => void shell.openExternal(p.linkURL) },
+            { label: t(currentLocale(), 'menu.copyLink'), click: () => clipboard.writeText(p.linkURL) },
             { type: 'separator' as const }
           ]
         : []),
       ...(p.isEditable
         ? [
-            { role: 'cut' as const, enabled: p.editFlags.canCut },
-            { role: 'copy' as const, enabled: p.editFlags.canCopy },
-            { role: 'paste' as const, enabled: p.editFlags.canPaste },
+            { role: 'cut' as const, label: t(currentLocale(), 'menu.cut'), enabled: p.editFlags.canCut },
+            { role: 'copy' as const, label: t(currentLocale(), 'menu.copy'), enabled: p.editFlags.canCopy },
+            { role: 'paste' as const, label: t(currentLocale(), 'menu.paste'), enabled: p.editFlags.canPaste },
             { type: 'separator' as const },
-            { role: 'selectAll' as const }
+            { role: 'selectAll' as const, label: t(currentLocale(), 'menu.selectAll') }
           ]
         : p.selectionText.trim()
-          ? [{ role: 'copy' as const }]
+          ? [{ role: 'copy' as const, label: t(currentLocale(), 'menu.copy') }]
           : [])
     ]
     while (items.at(-1)?.type === 'separator') items.pop()
@@ -184,7 +182,7 @@ app.whenReady().then(() => {
   nativeTheme.themeSource = 'dark'
   // Packaged builds get the icon from electron-builder; in dev the dock would show Electron's.
   if (!app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'build/icon.png'))
-  Menu.setApplicationMenu(buildMenu())
+  startLocale()
   // Dev runs would register the bare Electron binary; electron-builder's `protocols` covers installed builds too.
   if (app.isPackaged && !MOCK) app.setAsDefaultProtocolClient(PROTOCOL)
   const track = startDesktopTelemetry()
@@ -204,8 +202,8 @@ app.whenReady().then(() => {
       const file = join(app.getPath('userData'), 'accounts.json')
       console.error('failed to load accounts', file, e)
       dialog.showErrorBox(
-        'Mysticals could not load your accounts',
-        `${file} could not be read:\n${e instanceof Error ? e.message : String(e)}\n\nThe file was not changed. Fix it or move it aside (Mysticals then starts with no accounts), and reopen the app.`
+        t(currentLocale(), 'error.accountsTitle'),
+        t(currentLocale(), 'error.accountsBody', { file, error: e instanceof Error ? e.message : String(e) })
       )
       return app.quit()
     }
