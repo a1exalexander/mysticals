@@ -1,6 +1,8 @@
 // UI language: message lookup, plurals and date formatting. Pure; the apps decide which locale is active.
 import { format } from 'date-fns'
-import { enUS, uk as ukDates } from 'date-fns/locale'
+// Deep imports: the `date-fns/locale` barrel loads every locale (~1.5 s in the unbundled terminal app).
+import { enUS } from 'date-fns/locale/en-US'
+import { uk as ukDates } from 'date-fns/locale/uk'
 import { en, type Key } from './i18n/en'
 import { uk } from './i18n/uk'
 
