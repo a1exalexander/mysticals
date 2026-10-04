@@ -69,6 +69,7 @@
   font: 700 13px/34px var(--mono); transition: filter 120ms ease;
 }
 .ag-join:hover { filter: brightness(1.08); }
+.ag-join .link-icon { margin-right: 6px; vertical-align: -2px; }
 .ag-join kbd { margin-left: 8px; font: inherit; font-weight: 400; opacity: 0.6; }
 .ag-hint { flex: 1; font: 12px/1.4 var(--mono); color: var(--muted); }
 .ag-details {

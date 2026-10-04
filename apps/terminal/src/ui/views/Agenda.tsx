@@ -13,14 +13,14 @@
  * Props: ViewProps (ui/hooks.ts). Keys: the App shell owns them all; the view keeps the selected card scrolled into
  * view within `height` lines.
  *
- * Also exports the row helpers (useOwnerOf, useColorOf, useScroll, clickEvent, rsvpMark, place) the other views reuse.
+ * Also exports the row helpers (useOwnerOf, useColorOf, useScroll, clickEvent, rsvpMark, eventPlace) the other views reuse.
  */
 import { useMemo, useReducer, useRef, type ReactNode } from 'react'
 import { Box, Text } from 'ink'
 import { addDays, differenceInCalendarDays, differenceInMinutes, format, isSameDay, startOfDay } from 'date-fns'
 import { eventBounds, eventsOnDay, isPast, ymd } from '@mysticals/core/logic/layout'
 import { STATUS_ICON } from '@mysticals/core/logic/details'
-import { place } from '@mysticals/core/logic/meeting'
+import { eventPlace } from '@mysticals/core/logic/meeting'
 import { startsLabel } from '@mysticals/core/logic/status'
 import type { CalEvent } from '@mysticals/core/shared/types'
 import { AGENDA_DAYS, eventKey, useDirectory, type ViewProps } from '../hooks'
@@ -82,7 +82,7 @@ export const WHEEL_STEP = 3
 export const rsvpMark = (e: CalEvent): string =>
   e.myStatus && e.myStatus !== 'accepted' ? `${STATUS_ICON[e.myStatus]} ` : ''
 
-export { place } // shared with the desktop app (core logic/meeting)
+export { eventPlace } // shared with the desktop app (core logic/meeting)
 
 /** Minutes as "45m", "1h", "1h 5m". */
 const span = (m: number): string => {
@@ -283,7 +283,7 @@ export function Agenda({ events, date, now, selectedKey, width, height, onSelect
     const details: Part[] = [{ text: who, color: C.muted }]
     if (e.recurringEventId) details.push({ text: '  ↻ repeats', color: C.muted })
     if (overlaps(e, eventsOnDay(events, r.day))) details.push({ text: '  ⚠ overlaps', color: C.yellow })
-    const where = place(e.location)
+    const where = eventPlace(e)
     if (where) details.push({ text: `  ${where}`, color: C.cyan })
     if (e.attendees.length) details.push({ text: `  ${e.attendees.length} ${e.attendees.length === 1 ? 'person' : 'people'}`, color: C.muted })
     const row2 = [

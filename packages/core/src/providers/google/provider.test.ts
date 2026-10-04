@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Credentials } from '../../shared/types'
-import { createGoogleProviderImpl, mapEvent, shiftAnchor, truncateRecurrence, type GEvent } from './provider'
+import { conferenceUrlOf, createGoogleProviderImpl, mapEvent, shiftAnchor, truncateRecurrence, type GEvent } from './provider'
 import { setClientConfig } from './oauth'
 import { http } from '../http'
 
@@ -76,6 +76,16 @@ describe('mapEvent', () => {
     const e = mapEvent(own, 'acc1', 'primary')
     expect(e).toMatchObject({ allDay: true, start: '2026-09-23', end: '2026-09-24', attendees: [] })
     expect(e.myStatus).toBeUndefined()
+  })
+
+  it('maps the Meet link that lives outside the location', () => {
+    expect(mapEvent({ ...own, hangoutLink: 'https://meet.google.com/zon-fdwf-hnk' }, 'acc1', 'primary').conferenceUrl).toBe(
+      'https://meet.google.com/zon-fdwf-hnk'
+    )
+    const zoom = { entryPoints: [{ entryPointType: 'phone', uri: 'tel:+1' }, { entryPointType: 'video', uri: 'https://zoom.us/j/1' }] }
+    expect(conferenceUrlOf({ conferenceData: zoom })).toBe('https://zoom.us/j/1')
+    expect(conferenceUrlOf({ conferenceData: { entryPoints: [{ entryPointType: 'video', uri: 'javascript:x' }] } })).toBeUndefined()
+    expect(mapEvent(own, 'acc1', 'primary').conferenceUrl).toBeUndefined()
   })
 })
 

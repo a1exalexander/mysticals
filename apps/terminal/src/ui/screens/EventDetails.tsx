@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { Box, Text } from 'ink'
 import { canEdit, cleanNotes, formatWhen, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
-import { meetingUrl } from '@mysticals/core/logic/meeting'
+import { eventLinks, eventMeetingUrl, linkLabel, locationText, type LinkKind } from '@mysticals/core/logic/meeting'
 import { eventBounds } from '@mysticals/core/logic/layout'
 import { startsLabel } from '@mysticals/core/logic/status'
 import type { Account, Calendar, CalEvent, DeleteScope, PartStat } from '@mysticals/core/shared/types'
@@ -45,7 +45,7 @@ export function EventDetails({ event: initial, onClose, onEdit }: EventDetailsPr
   const calendar = calendars.find((c) => c.accountId === event.accountId && c.id === event.calendarId)
   const editable = canEdit(event, account, calendar)
   const recurring = !!event.recurringEventId
-  const url = meetingUrl(event.location)
+  const url = eventMeetingUrl(event)
   const now = useNow()
 
   const run = (label: string, fn: () => Promise<void>): void => {
@@ -147,6 +147,11 @@ const tally = (attendees: CalEvent['attendees']): string =>
     .join(', ')
 
 /** Read-only event body shared by the details overlay and the preview pane. */
+/** Prefix per link kind: calls get a camera, maps a pin. */
+const LINK_GLYPH: Record<LinkKind, string> = { meet: '▶', zoom: '▶', teams: '▶', video: '▶', map: '⌖', link: '↗' }
+/** Kinds whose service name is worth printing next to the URL. */
+const NAMED = new Set<LinkKind>(['meet', 'zoom', 'teams'])
+
 /** Attendees listed before "show more". */
 export const ATTENDEES_SHOWN = 5
 
@@ -159,7 +164,8 @@ export function EventInfo({ event, account, calendar, now, showAll, onToggleAll 
   showAll?: boolean
   onToggleAll?(): void
 }) {
-  const url = meetingUrl(event.location)
+  const links = eventLinks(event)
+  const where = locationText(event.location)
   const notes = cleanNotes(event.description)
   const owner = ownerLine(calendar?.name ?? 'Calendar', account?.label ?? event.accountId, account?.email)
   const when = [duration(event), relative(event, now)].filter(Boolean).join(' · ')
@@ -177,12 +183,17 @@ export function EventInfo({ event, account, calendar, now, showAll, onToggleAll 
         {owner.email && ` · ${owner.email}`}
         {calendar?.readOnly && ' · read-only'}
       </Text>
-      {event.location && <Text>Location: {event.location}</Text>}
-      {url && url !== event.location && (
-        <Clickable onClick={() => openUrl(url)}>
-          <Text color={C.cyan} underline>{url}</Text>
+      {where && <Text>Location: {where}</Text>}
+      {links.map((l) => (
+        <Clickable key={l.url} onClick={() => openUrl(l.url)}>
+          <Text wrap="truncate">
+            <Text color={l.kind === 'map' || l.kind === 'link' ? C.muted : C.green}>
+              {LINK_GLYPH[l.kind]} {NAMED.has(l.kind) ? `${linkLabel(l.url, l.kind)} ` : ''}
+            </Text>
+            <Text color={C.cyan} underline>{l.url}</Text>
+          </Text>
         </Clickable>
-      )}
+      ))}
       {event.organizer && (
         <Text>Organizer: {event.organizer.name ? `${event.organizer.name} <${event.organizer.email}>` : event.organizer.email}</Text>
       )}

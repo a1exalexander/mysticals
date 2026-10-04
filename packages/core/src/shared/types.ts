@@ -49,6 +49,8 @@ export interface CalEvent {
   end: string
   allDay: boolean
   location?: string
+  /** Video call attached by the provider (Google Meet / conferenceData), separate from `location`. */
+  conferenceUrl?: string
   description?: string
   organizer?: { email: string; name?: string }
   attendees: Attendee[]

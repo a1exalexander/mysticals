@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CalEvent } from '../shared/types'
-import { joinable, meetingUrl, place } from './meeting'
+import { eventLinks, eventMeetingUrl, eventPlace, joinable, linkKind, linkLabel, meetingUrl, place } from './meeting'
 
 describe('meetingUrl', () => {
   it('extracts the first http(s) url', () => {
@@ -44,5 +44,58 @@ describe('joinable', () => {
     expect(joinable(e('Room 3'), at('10:00'))).toBeUndefined()
     expect(joinable(e(), at('10:00'))).toBeUndefined()
     expect(joinable(e('https://meet.google.com/abc', true), at('10:00'))).toBeUndefined()
+  })
+  it('uses the provider conference when the location has no link', () => {
+    const m = { ...e('Room 3'), conferenceUrl: 'https://meet.google.com/zon-fdwf-hnk' }
+    expect(joinable(m, at('10:00'))).toBe('https://meet.google.com/zon-fdwf-hnk')
+  })
+})
+
+describe('eventMeetingUrl / eventPlace', () => {
+  it('prefers the conference over location links', () => {
+    expect(eventMeetingUrl({ conferenceUrl: 'https://meet.google.com/a', location: 'https://zoom.us/j/1' })).toBe('https://meet.google.com/a')
+    expect(eventMeetingUrl({ location: 'https://zoom.us/j/1' })).toBe('https://zoom.us/j/1')
+    expect(eventMeetingUrl({})).toBeUndefined()
+  })
+  it('calls a conference-only event a video call', () => {
+    expect(eventPlace({ conferenceUrl: 'https://meet.google.com/a' })).toBe('video call')
+    expect(eventPlace({ conferenceUrl: 'https://meet.google.com/a', location: 'Kyiv' })).toBe('Kyiv')
+    expect(eventPlace({})).toBe('')
+  })
+})
+
+describe('linkKind', () => {
+  it('recognises call services, other video calls, maps and plain links', () => {
+    expect(linkKind('https://meet.google.com/zon-fdwf-hnk')).toBe('meet')
+    expect(linkKind('https://us02web.zoom.us/j/1?pwd=x')).toBe('zoom')
+    expect(linkKind('https://teams.microsoft.com/l/meetup-join/x')).toBe('teams')
+    expect(linkKind('https://meet.namechip.net/room')).toBe('video')
+    expect(linkKind('https://meet.jit.si/x')).toBe('video')
+    expect(linkKind('https://maps.app.goo.gl/abc')).toBe('map')
+    expect(linkKind('https://www.google.com/maps/place/Kyiv')).toBe('map')
+    expect(linkKind('https://maps.google.com/?q=Kyiv')).toBe('map')
+    expect(linkKind('https://maps.apple.com/?q=Kyiv')).toBe('map')
+    expect(linkKind('https://www.google.com/search?q=x')).toBe('link')
+    expect(linkKind('https://example.com/a')).toBe('link')
+  })
+  it('labels by kind', () => {
+    expect(linkLabel('https://meet.google.com/a')).toBe('Join Google Meet')
+    expect(linkLabel('https://meet.namechip.net/r')).toBe('Join call · meet.namechip.net')
+    expect(linkLabel('https://www.example.com/a')).toBe('example.com')
+  })
+})
+
+describe('eventLinks', () => {
+  it('lists the conference then location links, deduped', () => {
+    expect(
+      eventLinks({
+        conferenceUrl: 'https://meet.google.com/a',
+        location: 'Office https://maps.app.goo.gl/x, https://meet.google.com/a'
+      })
+    ).toEqual([
+      { url: 'https://meet.google.com/a', kind: 'meet' },
+      { url: 'https://maps.app.goo.gl/x', kind: 'map' }
+    ])
+    expect(eventLinks({ location: 'Kyiv' })).toEqual([])
   })
 })

@@ -57,6 +57,10 @@ export function createMockApi(onChanged: (accountId: string) => void): Omit<Api,
     seed(personal, 'p-main', { title: 'Morning run', start: iso(d, 7), end: iso(d, 7, 45), recurringEventId: 'run-series' })
   }
   personal.rules.set('run-series', { freq: 'daily', count: 7 })
+  // A Google Meet attached as conference data only (empty location), a self-hosted call and a map link.
+  seed(personal, 'p-main', { title: 'Ukraine - Portugal', start: iso(5, 12, 30), end: iso(5, 13), conferenceUrl: 'https://meet.google.com/zon-fdwf-hnk' })
+  seed(personal, 'p-main', { title: 'Catch-up', start: iso(5, 16), end: iso(5, 16, 30), location: 'https://meet.namechip.net/catch-up' })
+  seed(personal, 'p-main', { title: 'Coffee', start: iso(5, 9), end: iso(5, 9, 30), location: 'Podil https://maps.app.goo.gl/kyiv-coffee' })
   seed(personal, 'p-main', { title: 'Dinner with friends', start: iso(2, 20), end: iso(2, 22), location: 'Kyiv' })
   // Local dates (toISOString() would be off by a day near midnight); all-day ends are exclusive, like Google and iCal.
   const day = (offset: number): string => format(addDays(new Date(), offset), 'yyyy-MM-dd')

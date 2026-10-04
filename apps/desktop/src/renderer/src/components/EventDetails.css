@@ -34,6 +34,17 @@
 .details-confirm { align-items: center; }
 .details-confirm span { margin-right: auto; }
 
+/* Meet / video / map / other links from the conference and the location, as buttons. */
+.details-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.details-linkbtn {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: 28px; padding: 0 10px;
+  text-decoration: none; cursor: pointer;
+}
+.details-linkbtn span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.details-linkbtn .link-icon { flex: none; }
+.details-linkbtn.call { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line-strong)); }
+.details-linkbtn[data-kind='map'], .details-linkbtn[data-kind='link'] { color: var(--muted); }
+.details-linkbtn:hover { color: var(--fg); }
 .details-link { color: var(--cyan); text-decoration: none; overflow-wrap: anywhere; }
 .details-link:hover { text-decoration: underline; }
 .details-invitees { margin-top: 10px; }

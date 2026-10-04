@@ -5,13 +5,20 @@ test('event details: location link, collapsible invitees, RSVP colors', async ()
   const page = await app.firstWindow()
   await page.setViewportSize({ width: 1200, height: 800 })
 
+  // Sprint planning is tomorrow, outside the week view on a Sunday: go to its day.
+  await page.getByTestId('view-switch-day').click()
+  await page.keyboard.press('ArrowRight')
   await page.getByTestId('event-block').filter({ hasText: 'Sprint planning' }).first().click()
   const details = page.getByTestId('details')
   await expect(details).toBeVisible()
 
-  const link = details.locator('a.details-link')
+  // The location's link is a call button; the row keeps only the place.
+  const link = details.locator('a.details-linkbtn')
   await expect(link).toHaveAttribute('href', 'https://meet.example.com/sprint-planning')
   await expect(link).toHaveAttribute('target', '_blank')
+  await expect(link).toHaveAttribute('data-kind', 'video')
+  await expect(link).toHaveText('Join call · meet.example.com')
+  await expect(details.locator('.details-row').first()).toHaveText(/Location\s*Room 3$/)
 
   const toggle = page.getByTestId('invitees-toggle')
   await expect(toggle).toHaveText('▸ Invitees (2)')
@@ -40,5 +47,41 @@ test('event details: location link, collapsible invitees, RSVP colors', async ()
 
   await page.waitForTimeout(300) // let the popover fade-in finish
   await page.screenshot({ path: 'e2e/screens/details.png' })
+  await app.close()
+})
+
+test('event details: Meet from conference data, map and self-hosted call buttons', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 1200, height: 800 })
+  await page.getByTestId('view-switch-day').click()
+  for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight') // the mock puts these five days ahead
+  const details = page.getByTestId('details')
+  const block = (title: string) => page.getByTestId('event-block').filter({ hasText: title }).first()
+
+  // Google keeps this Meet in hangoutLink/conferenceData, not in the location.
+  await block('Ukraine - Portugal').click()
+  const meet = details.locator('a.details-linkbtn')
+  await expect(meet).toHaveCount(1)
+  await expect(meet).toHaveAttribute('href', 'https://meet.google.com/zon-fdwf-hnk')
+  await expect(meet).toHaveAttribute('data-kind', 'meet')
+  await expect(meet).toHaveText('Join Google Meet')
+  await expect(details.getByText('Location')).toHaveCount(0)
+  await page.waitForTimeout(300)
+  await page.screenshot({ path: 'e2e/screens/details-meet.png' })
+  await page.keyboard.press('Escape')
+
+  await block('Coffee').click()
+  await expect(details.locator('a.details-linkbtn')).toHaveAttribute('data-kind', 'map')
+  await expect(details.locator('.details-row').first()).toHaveText(/Location\s*Podil$/)
+  await page.waitForTimeout(300)
+  await page.screenshot({ path: 'e2e/screens/details-map.png' })
+  await page.keyboard.press('Escape')
+
+  await block('Catch-up').click()
+  await expect(details.locator('a.details-linkbtn')).toHaveAttribute('data-kind', 'video')
+  await expect(details.locator('a.details-linkbtn')).toHaveText('Join call · meet.namechip.net')
+  await page.waitForTimeout(300)
+  await page.screenshot({ path: 'e2e/screens/details-video.png' })
   await app.close()
 })

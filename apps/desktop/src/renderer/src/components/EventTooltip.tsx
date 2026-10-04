@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
-import { meetingUrl } from '@mysticals/core/logic/meeting'
+import { eventMeetingUrl } from '@mysticals/core/logic/meeting'
 import { placeTip } from './EventTooltip.logic'
 import './EventTooltip.css'
 
@@ -32,7 +32,7 @@ const hideSoon = (): void => {
 
 /** Spread onto an event pill: shows its meeting link after a 1s hover. No URL → no handlers. */
 export function tooltipHover(event: CalEvent): Pick<React.HTMLAttributes<HTMLElement>, 'onMouseEnter' | 'onMouseLeave'> {
-  const url = meetingUrl(event.location)
+  const url = eventMeetingUrl(event)
   if (!url) return {}
   return {
     onMouseEnter: (e) => {
