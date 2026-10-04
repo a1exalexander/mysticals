@@ -108,23 +108,24 @@
   --red: #f14c4c;
   --yellow: #dcdcaa;
 }
-:root[data-theme='rose'] {
-  --bg: #fff7fa;
-  --surface: #fdeef4;
+/* Bubblegum: pastel marshmallow pinks. */
+:root[data-theme='bubble'] {
+  --bg: #fff5fa;
+  --surface: #ffeaf4;
   --surface-2: #ffffff;
-  --hover: #fbe3ec;
-  --line: #f5dbe6;
-  --line-strong: #ebc3d3;
-  --fg: #3f2433;
-  --muted: #93667c;
-  --faint: #d9b6c6;
-  --accent: #d63a72;
-  --pink: #e8508a;
-  --green: #2f9a6e;
-  --cyan: #2f8fb8;
-  --orange: #e0743f;
-  --red: #d02f4e;
-  --yellow: #c99312;
+  --hover: #ffdeee;
+  --line: #fcd6e8;
+  --line-strong: #f6bdd9;
+  --fg: #4a2a40;
+  --muted: #9a6487;
+  --faint: #eabfd5;
+  --accent: #e0458f;
+  --pink: #ff7ab8;
+  --green: #3fb68a;
+  --cyan: #5aa7dc;
+  --orange: #f28a6b;
+  --red: #e04468;
+  --yellow: #e6ae3a;
 }
 /* Cartoon: cream paper, bold ink outlines, candy colours. */
 :root[data-theme='toon'] {
@@ -168,6 +169,7 @@
   --ev-mix: 22%;
   --ev-text-mix: 40%;
 }
+:root[data-theme='bubble'] { --shadow: 230 90 160; --shadow-k: 0.3; }
 :root[data-theme='toon'] { --shadow: 43 33 64; --shadow-k: 0.5; }
 
 * { box-sizing: border-box; }

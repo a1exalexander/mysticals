@@ -8,7 +8,7 @@ export const THEMES = [
   { id: 'amber', name: 'Phosphor amber', scheme: 'dark', preview: ['#0a0806', '#ffb000', '#ff6a00', '#d4a24c', '#9fd67a'] },
   { id: 'mono', name: 'Black & White', scheme: 'dark', preview: ['#000000', '#ffffff', '#a3a3a3', '#5c5c5c', '#2e2e2e'] },
   { id: 'vscode', name: 'VS Code Dark', scheme: 'dark', preview: ['#1f1f1f', '#3794ff', '#c586c0', '#4ec9b0', '#6a9955'] },
-  { id: 'rose', name: 'Rosé', scheme: 'light', preview: ['#fff7fa', '#d63a72', '#ff8fb8', '#b48ce8', '#f2b8a0'] },
+  { id: 'bubble', name: 'Bubblegum', scheme: 'light', preview: ['#fff5fa', '#e0458f', '#ffa3d1', '#b9a6ff', '#9fe3c9'] },
   { id: 'toon', name: 'Cartoon', scheme: 'light', preview: ['#fffbea', '#7b3ff2', '#ff3d7f', '#18b6f6', '#ffd60a'] }
 ] as const
 
