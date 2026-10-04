@@ -135,6 +135,8 @@ export const en = {
   'settings.addAccount': 'Add account…',
   'settings.theme': 'Theme',
   'theme.amber': 'Phosphor amber',
+  'theme.mono': 'Black & White',
+  'theme.toon': 'Cartoon',
   'settings.language.auto': 'Automatic',
   'settings.language.system': 'system: {name}',
   'settings.sync.note': 'Accounts sync automatically every 2 minutes and when the app regains focus.',

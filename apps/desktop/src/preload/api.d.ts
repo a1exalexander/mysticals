@@ -1,4 +1,4 @@
-import type { Api, LocaleApi, TelemetryApi, UpdateApi } from '@mysticals/core/shared/ipc'
+import type { Api, LocaleApi, TelemetryApi, ThemeApi, UpdateApi } from '@mysticals/core/shared/ipc'
 
 declare global {
   interface Window {
@@ -6,5 +6,6 @@ declare global {
     update: UpdateApi
     telemetry: TelemetryApi
     locale: LocaleApi
+    appTheme: ThemeApi
   }
 }

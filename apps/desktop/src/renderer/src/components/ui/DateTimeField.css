@@ -13,7 +13,7 @@
 .dtf-pop {
   position: fixed; z-index: 60; padding: 8px;
   background: var(--surface-2); color: var(--fg);
-  border: 1px solid var(--line-strong); border-radius: 6px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--line-strong); border-radius: 6px; box-shadow: 0 12px 32px rgb(var(--shadow) / calc(0.5 * var(--shadow-k)));
   animation: mc-fade 100ms ease-out;
 }
 

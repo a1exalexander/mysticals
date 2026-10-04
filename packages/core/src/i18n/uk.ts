@@ -136,6 +136,8 @@ export const uk: Record<Key, Msg> = {
   'settings.addAccount': 'Додати обліковий запис…',
   'settings.theme': 'Тема',
   'theme.amber': 'Бурштиновий люмінофор',
+  'theme.mono': 'Чорно-біла',
+  'theme.toon': 'Мультяшна',
   'settings.language.auto': 'Автоматично',
   'settings.language.system': 'системна: {name}',
   'settings.sync.note': 'Облікові записи синхронізуються автоматично кожні 2 хвилини та коли застосунок знову стає активним.',

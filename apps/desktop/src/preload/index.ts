@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { Api, LocaleApi, LocaleState, MenuCommand, TelemetryApi, UpdateApi, UpdateState } from '@shared/ipc'
+import type { Api, LocaleApi, LocaleState, MenuCommand, TelemetryApi, ThemeApi, UpdateApi, UpdateState } from '@shared/ipc'
 import { IPC } from '@shared/ipc'
 
 const call =
@@ -57,6 +57,9 @@ const locale: LocaleApi = {
   onChange: (cb) => on<LocaleState>(IPC.locale, cb)
 } as LocaleApi
 contextBridge.exposeInMainWorld('locale', locale)
+
+const appTheme: ThemeApi = { set: call(IPC.themeSet) } as ThemeApi
+contextBridge.exposeInMainWorld('appTheme', appTheme)
 
 // Lets CSS drop the macOS traffic-light inset on Windows/Linux.
 window.addEventListener('DOMContentLoaded', () => {

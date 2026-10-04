@@ -8,7 +8,7 @@
   border-radius: 8px;
   background: var(--surface-2);
   color: var(--fg);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 24px 60px rgb(var(--shadow) / calc(0.6 * var(--shadow-k)));
   user-select: text;
   -webkit-app-region: no-drag;
   animation: acc-drop 0.16s ease-out;
@@ -107,7 +107,7 @@
 .acc-sheet button.acc-link:hover { background: none; text-decoration: underline; }
 
 /* Theme picker */
-.theme-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.theme-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .acc-sheet button.theme-opt {
   height: auto; display: grid; gap: 8px; padding: 10px; text-align: left; border-radius: 6px; background: var(--bg);
 }
@@ -117,17 +117,23 @@
   display: flex; gap: 4px; height: 28px; padding: 6px 8px; border-radius: 4px; border: 1px solid var(--line-strong);
 }
 .theme-swatch i { flex: 1; border-radius: 2px; }
-.theme-name { display: flex; justify-content: space-between; align-items: center; font: 500 11.5px/1 var(--mono); }
-.theme-name .on { color: var(--accent); }
-.set-panel .theme-swatch { height: 44px; }
-
-/* Settings tabs: toolbar .seg look, squared. */
-.acc-sheet .set-tabs { margin: 4px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line-strong); }
-.acc-sheet .set-tabs button {
-  height: 26px; padding: 0 8px; border: 0; border-radius: 0; background: none; color: var(--muted); font: 12px/26px var(--mono);
+.theme-name {
+  display: flex; justify-content: space-between; align-items: center; gap: 4px; font: 500 11.5px/1.25 var(--mono);
 }
-.acc-sheet .set-tabs button:hover { background: none; color: var(--fg); }
-.acc-sheet .set-tabs button.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.theme-name .on { color: var(--accent); }
+.set-panel .theme-swatch { height: 40px; }
+
+/* Settings tabs: the toolbar .seg (sliding thumb), a bit taller; undo the generic .acc-sheet button look. */
+/* Five tabs, some long in Ukrainian: the Settings sheet is a bit wider than the add-account one. */
+.acc-sheet:has(.set-tabs) { width: min(560px, calc(100vw - 32px)); }
+.acc-sheet .set-tabs { width: max-content; max-width: 100%; margin: 6px 0 16px; }
+.acc-sheet .set-tabs .seg-thumb { height: 26px; }
+.acc-sheet .set-tabs button {
+  height: 26px; padding: 0 9px; border: 0; border-radius: 4px; background: none; color: var(--muted); font: 12px/26px var(--mono);
+  white-space: nowrap;
+}
+.acc-sheet .set-tabs button:hover:not(:disabled) { background: none; color: var(--fg); }
+.acc-sheet .set-tabs button.active { color: var(--accent); }
 .set-panel { min-height: 340px; }
 .set-made { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 12px 0 0; font-size: 11px; color: var(--muted); }
 .set-made svg { width: 12px; height: 8px; border-radius: 1px; }

@@ -3,6 +3,7 @@ import type { Account } from '@shared/types'
 import { bus } from '../bus'
 import { THEMES, applyTheme, themeName, useTheme } from '../theme'
 import { KindIcon, Sheet, Swatches, errorText } from './AccountsShared'
+import { SegTabs } from './ui/SegTabs'
 import { setLanguage, t, useLocale } from '../i18n'
 import { LOCALE_NAME, LOCALES, type Key, type LocaleSetting } from '@mysticals/core/i18n'
 import './ui/ui.css'
@@ -37,44 +38,18 @@ export function SettingsHost(): React.JSX.Element | null {
     return window.api.onChanged(load)
   }, [open])
 
-  const onTabKey = (e: React.KeyboardEvent<HTMLDivElement>): void => {
-    const i = TABS.findIndex((tb) => tb.id === tab)
-    const next =
-      e.key === 'ArrowRight'
-        ? (i + 1) % TABS.length
-        : e.key === 'ArrowLeft'
-          ? (i - 1 + TABS.length) % TABS.length
-          : e.key === 'Home'
-            ? 0
-            : e.key === 'End'
-              ? TABS.length - 1
-              : -1
-    if (next < 0) return
-    e.preventDefault()
-    setTab(TABS[next].id)
-    e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus()
-  }
-
   return (
     <Sheet open={open} onClose={() => setOpen(false)} title={t('settings.title')} testId="settings-sheet">
-      <div className="seg set-tabs" role="tablist" aria-label={t('settings.sections')} onKeyDown={onTabKey}>
-        {TABS.map((tb) => (
-          <button
-            key={tb.id}
-            type="button"
-            role="tab"
-            id={`settings-tab-${tb.id}`}
-            aria-selected={tab === tb.id}
-            aria-controls="settings-panel"
-            tabIndex={tab === tb.id ? 0 : -1}
-            className={tab === tb.id ? 'active' : undefined}
-            data-testid={`settings-tab-${tb.id}`}
-            onClick={() => setTab(tb.id)}
-          >
-            {t(tb.name)}
-          </button>
-        ))}
-      </div>
+      <SegTabs
+        tabs={TABS.map((tb) => ({ id: tb.id, label: t(tb.name) }))}
+        value={tab}
+        onChange={setTab}
+        ariaLabel={t('settings.sections')}
+        className="set-tabs"
+        testId={(id) => `settings-tab-${id}`}
+        tabId={(id) => `settings-tab-${id}`}
+        controls="settings-panel"
+      />
       <div className="set-panel" role="tabpanel" id="settings-panel" aria-labelledby={`settings-tab-${tab}`}>
         {tab === 'accounts' && (
           <>

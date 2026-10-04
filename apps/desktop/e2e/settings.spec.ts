@@ -22,11 +22,29 @@ test('settings tabs: accounts, themes, sync', async () => {
   await expect(page.getByTestId('settings-tab-themes')).toBeFocused()
   await page.getByTestId('theme-catppuccin').click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'catppuccin')
+  await expect(page.locator('html')).toHaveAttribute('data-scheme', 'dark')
   expect((await settings.boundingBox())?.height).toBeCloseTo(box?.height ?? 0, 0)
   await page.screenshot({ path: 'e2e/screens/settings-themes.png' })
+  // Light palettes switch the colour scheme too.
+  for (const id of ['mono', 'vscode', 'bubble', 'toon'] as const) {
+    await page.getByTestId(`theme-${id}`).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', id)
+    await expect(page.locator('html')).toHaveAttribute('data-scheme', id === 'bubble' || id === 'toon' ? 'light' : 'dark')
+    await page.waitForTimeout(150)
+    await page.screenshot({ path: `e2e/screens/settings-theme-${id}.png` })
+  }
+  await page.getByTestId('theme-dracula').click()
 
   await page.getByTestId('settings-tab-sync').click()
   await expect(page.getByTestId('sync-work')).toContainText('ok')
+  // The thumb slides under the active tab; no extra space under the tabs inside the track.
+  await page.waitForTimeout(500)
+  const tabBox = await page.getByTestId('settings-tab-sync').boundingBox()
+  const thumbBox = await settings.locator('.set-tabs .seg-thumb').boundingBox()
+  expect(thumbBox?.x).toBeCloseTo(tabBox?.x ?? 0, 0)
+  expect(thumbBox?.width).toBeCloseTo(tabBox?.width ?? 0, 0)
+  const trackBox = await settings.locator('.set-tabs').boundingBox()
+  expect((trackBox?.height ?? 0) - (tabBox?.height ?? 0)).toBeLessThanOrEqual(4)
   await page.getByTestId('sync-all').click()
   await expect(page.getByTestId('sync-all')).toHaveText('Sync all')
   await expect(page.getByTestId('sync-work')).toContainText('ok')

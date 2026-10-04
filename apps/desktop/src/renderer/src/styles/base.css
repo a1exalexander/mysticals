@@ -1,4 +1,4 @@
-/* Dark-only theme. Palette picked in Settings, stored per device, applied as <html data-theme>. */
+/* Palette picked in Settings, stored per device, applied as <html data-theme> (+ data-scheme dark|light, from theme.ts). */
 :root,
 :root[data-theme='dracula'] {
   --bg: #0b0b10;
@@ -72,9 +72,86 @@
   --red: #ff4d2e;
   --yellow: #ffe08a;
 }
+:root[data-theme='mono'] {
+  --bg: #000000;
+  --surface: #0a0a0a;
+  --surface-2: #111111;
+  --hover: #1a1a1a;
+  --line: #1a1a1a;
+  --line-strong: #2e2e2e;
+  --fg: #fafafa;
+  --muted: #8a8a8a;
+  --faint: #404040;
+  --accent: #ffffff;
+  --pink: #ffffff;
+  --green: #e5e5e5;
+  --cyan: #d4d4d4;
+  --orange: #bdbdbd;
+  --red: #ff5c5c;
+  --yellow: #fafafa;
+}
+:root[data-theme='vscode'] {
+  --bg: #1f1f1f;
+  --surface: #181818;
+  --surface-2: #252526;
+  --hover: #2a2d2e;
+  --line: #2b2b2b;
+  --line-strong: #3c3c3c;
+  --fg: #cccccc;
+  --muted: #9d9d9d;
+  --faint: #5a5a5a;
+  --accent: #3794ff;
+  --pink: #c586c0;
+  --green: #89d185;
+  --cyan: #4ec9b0;
+  --orange: #ce9178;
+  --red: #f14c4c;
+  --yellow: #dcdcaa;
+}
+/* Bubblegum: pastel marshmallow pinks. */
+:root[data-theme='bubble'] {
+  --bg: #fff5fa;
+  --surface: #ffeaf4;
+  --surface-2: #ffffff;
+  --hover: #ffdeee;
+  --line: #fcd6e8;
+  --line-strong: #f6bdd9;
+  --fg: #4a2a40;
+  --muted: #9a6487;
+  --faint: #eabfd5;
+  --accent: #e0458f;
+  --pink: #ff7ab8;
+  --green: #3fb68a;
+  --cyan: #5aa7dc;
+  --orange: #f28a6b;
+  --red: #e04468;
+  --yellow: #e6ae3a;
+}
+/* Cartoon: cream paper, bold ink outlines, candy colours. */
+:root[data-theme='toon'] {
+  --bg: #fffbea;
+  --surface: #fff1bf;
+  --surface-2: #ffffff;
+  --hover: #ffe8a0;
+  --line: #f1e1a4;
+  --line-strong: #2b2140;
+  --fg: #2b2140;
+  --muted: #6e5f8f;
+  --faint: #cbb98a;
+  --accent: #7b3ff2;
+  --pink: #ff3d7f;
+  --green: #17b45a;
+  --cyan: #0ea5e9;
+  --orange: #ff8a00;
+  --red: #f0263c;
+  --yellow: #f5c400;
+}
 :root {
   color-scheme: dark;
   --on-accent: var(--bg);
+  /* Drop shadows: rgb triplet + strength, so light palettes get softer, tinted shadows. */
+  --shadow: 0 0 0;
+  --shadow-k: 1;
   --today: var(--pink);
   --ev-mix: 15%;
   --ev-text-mix: 60%;
@@ -83,6 +160,17 @@
   font-size: 13px;
   -webkit-font-smoothing: antialiased;
 }
+:root[data-scheme='light'] {
+  color-scheme: light;
+  --on-accent: #ffffff;
+  --shadow: 90 40 70;
+  --shadow-k: 0.35;
+  /* Account colours are picked for dark bgs: a stronger tint, text pulled towards the dark --fg. */
+  --ev-mix: 22%;
+  --ev-text-mix: 40%;
+}
+:root[data-theme='bubble'] { --shadow: 230 90 160; --shadow-k: 0.3; }
+:root[data-theme='toon'] { --shadow: 43 33 64; --shadow-k: 0.5; }
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
@@ -241,7 +329,7 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .seg-thumb {
   position: absolute; top: 2px; left: 0; height: 22px; border-radius: 4px; pointer-events: none;
   background: color-mix(in srgb, var(--accent) 16%, var(--bg));
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25), inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+  box-shadow: 0 1px 2px rgb(var(--shadow) / calc(0.25 * var(--shadow-k))), inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .seg[data-ready='true'] .seg-thumb { transition: transform 420ms var(--spring), width 420ms var(--spring); }
 @media (prefers-reduced-motion: reduce) {
@@ -475,7 +563,7 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
   position: fixed; left: 50%; bottom: 40px; z-index: 70; transform: translateX(-50%);
   display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 14px; max-width: min(520px, calc(100vw - 32px));
   background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 8px;
-  box-shadow: 0 12px 32px rgb(0 0 0 / 0.5); font: 12px/1.4 var(--mono); color: var(--fg);
+  box-shadow: 0 12px 32px rgb(var(--shadow) / calc(0.5 * var(--shadow-k))); font: 12px/1.4 var(--mono); color: var(--fg);
   animation: toast-in 180ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
 .toast.is-error { border-color: color-mix(in srgb, var(--red) 50%, transparent); color: var(--red); }
@@ -500,7 +588,7 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .ev.is-dragged { opacity: 0.35; }
 .ev-preview {
   z-index: 5; pointer-events: none; animation: none;
-  box-shadow: 0 6px 18px rgb(0 0 0 / 0.45), 0 0 0 1px color-mix(in srgb, var(--c) 60%, transparent);
+  box-shadow: 0 6px 18px rgb(var(--shadow) / calc(0.45 * var(--shadow-k))), 0 0 0 1px color-mix(in srgb, var(--c) 60%, transparent);
   background: color-mix(in srgb, var(--c) 28%, var(--bg));
 }
 .ev-preview .ev-meta { font-weight: 700; opacity: 1; }

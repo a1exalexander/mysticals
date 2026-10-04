@@ -9,7 +9,7 @@
 .mc-sheet, .mc-popover {
   background: var(--surface-2); color: var(--fg);
   border: 1px solid var(--line-strong); border-radius: 8px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 18px 50px rgb(var(--shadow) / calc(0.55 * var(--shadow-k)));
   user-select: text;
 }
 .mc-sheet { margin-top: 52px; width: 460px; max-width: calc(100vw - 32px); max-height: calc(100vh - 80px); overflow: auto; padding: 18px 20px; animation: mc-drop 160ms ease-out; }
@@ -63,7 +63,7 @@
 }
 .mc-switch::after {
   content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%;
-  background: var(--fg); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); transition: transform 140ms ease;
+  background: var(--fg); box-shadow: 0 1px 2px rgb(var(--shadow) / calc(0.35 * var(--shadow-k))); transition: transform 140ms ease;
 }
 .mc-switch:checked { background: var(--accent); }
 .mc-switch:checked::after { transform: translateX(12px); background: var(--on-accent); }
