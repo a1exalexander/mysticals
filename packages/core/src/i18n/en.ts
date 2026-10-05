@@ -331,6 +331,12 @@ export const en = {
   'agenda.join': 'Join call',
   'agenda.joinOpens': 'Join opens {n} min before start',
   'agenda.details': 'Details',
+  'agenda.otherDay': '{date} · not today',
+  'agenda.backToday': 'Back to today',
+  'agenda.nothingDay': 'Nothing scheduled this day.',
+  'agenda.pickHint': 'Pick an event to see it here.',
+  'agenda.showPeople': 'Show people',
+  'agenda.hidePeople': 'Hide people',
 } as const
 
 export type Key = keyof typeof en

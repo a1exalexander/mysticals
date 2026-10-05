@@ -78,10 +78,38 @@
 }
 .ag-details:hover { background: var(--hover); }
 
+/* Another day than today: a small notice with the way back, and the whole day greyed out. */
+.ag-other {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 10px; padding: 6px 6px 6px 10px;
+  border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface);
+  font: 11.5px/1.3 var(--mono); color: var(--muted); animation: ag-in 160ms ease-out;
+}
+.ag-today-btn {
+  flex: none; height: 22px; padding: 0 9px; border: 1px solid var(--line-strong); border-radius: 3px; background: none;
+  color: var(--fg); font: 11px/1 var(--mono);
+}
+.ag-today-btn:hover { background: var(--hover); }
+.ag[data-other-day] .ag-rows, .ag[data-other-day] .ag-allday, .ag[data-other-day] .ag-focus { opacity: 0.55; filter: saturate(0.4); }
+.ag[data-other-day] .ag-row[data-past='true'] { opacity: 1; }
+
+/* Now line between the events that have started and the ones still to come (the time grid's .tg-now look). */
+.ag-rows .ag-now { position: relative; height: 0; margin: 5px 0 5px 52px; border-top: 2px solid var(--pink); animation: none; }
+.ag-now::before {
+  content: ''; position: absolute; left: -4px; top: -5px; width: 8px; height: 8px; border-radius: 50%; background: var(--pink);
+}
+.ag-now-clock {
+  position: absolute; right: 0; top: 0; transform: translateY(-50%); padding: 1px 4px; border-radius: 3px;
+  background: var(--pink); color: var(--on-accent); font: 700 10px/1.2 var(--mono);
+}
+
+.ag-people-toggle { padding: 0; border: 0; background: none; color: var(--fg); font: inherit; text-align: left; }
+.ag-people-toggle:hover { color: var(--accent); }
+.ag-people { margin-top: 6px; max-height: 180px; overflow-y: auto; }
+
 @keyframes ag-in { from { opacity: 0; transform: translateY(3px); } }
 @keyframes ag-pulse { 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) {
-  .ag-rows li, .ag-focus, .ag-join-pill, .ag-status.live::before { animation: none; }
+  .ag-rows li, .ag-focus, .ag-other, .ag-join-pill, .ag-status.live::before { animation: none; }
 }
 /* Narrow: the list alone; rows keep their Join pill, so joining is still one click. */
 @container (max-width: 720px) {

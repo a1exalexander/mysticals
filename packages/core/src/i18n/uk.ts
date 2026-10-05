@@ -332,4 +332,10 @@ export const uk: Record<Key, Msg> = {
   'agenda.join': 'Приєднатися до дзвінка',
   'agenda.joinOpens': 'Приєднатися можна за {n} хв до початку',
   'agenda.details': 'Докладніше',
+  'agenda.otherDay': '{date} · не сьогодні',
+  'agenda.backToday': 'Повернутись на сьогодні',
+  'agenda.nothingDay': 'Цього дня нічого не заплановано.',
+  'agenda.pickHint': 'Виберіть подію, щоб побачити її тут.',
+  'agenda.showPeople': 'Показати учасників',
+  'agenda.hidePeople': 'Сховати учасників',
 }

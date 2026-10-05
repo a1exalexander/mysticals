@@ -23,17 +23,16 @@ test('calendar views: week/month/day, visibility toggle, screenshots', async () 
   )
   for (const b of boxes) expect([b?.y, b?.height]).toEqual([boxes[3]?.y, boxes[3]?.height])
 
-  // Switching to the agenda must not move the toolbar: ‹ today › stay in place, disabled.
+  // Switching to the agenda must not move the toolbar: ‹ today › stay in place and step day by day.
   const xs = (): Promise<(number | undefined)[]> =>
     Promise.all(['.seg', '.today-btn', '.new-btn'].map(async (s) => (await page.locator(s).boundingBox())?.x))
   const weekXs = await xs()
   await page.getByTestId('view-switch-agenda').click()
   await expect(page.getByTestId('agenda')).toBeVisible()
   expect(await xs()).toEqual(weekXs)
-  await expect(page.locator('.today-btn')).toBeDisabled()
+  await expect(page.locator('.today-btn')).toBeEnabled()
   await expect(page.locator('.toolbar-nav .icon-btn')).toHaveCount(2)
   await page.getByTestId('view-switch-week').click()
-  await expect(page.locator('.today-btn')).toBeEnabled()
 
   await page.getByTestId('view-switch-month').click()
   await expect(page.locator('.mg-cell')).toHaveCount(42)

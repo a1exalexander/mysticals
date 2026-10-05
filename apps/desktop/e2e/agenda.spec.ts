@@ -62,3 +62,44 @@ test('reads well from the minimum window size up; narrow agenda drops the focus 
   }
   await app.close()
 })
+
+test('agenda: no stale card after the day, a now line, people toggle, and other days greyed with a way back', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 1200, height: 800 })
+  await expect(page.locator('.app-loader')).toBeHidden()
+  // After the mock's last event today (Gym 19:00–20:00).
+  const today = new Date()
+  await page.clock.setFixedTime(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 21, 0))
+
+  await page.keyboard.press('a')
+  await expect(page.getByTestId('agenda')).toBeVisible()
+  await expect(page.getByTestId('agenda-focus')).toHaveCount(0)
+  await expect(page.getByTestId('agenda-focus-empty')).toBeVisible()
+  await expect(page.getByTestId('agenda-now')).toBeVisible()
+  await expect(page.getByTestId('agenda-other-day')).toHaveCount(0)
+
+  // Picking an ended event shows it; clicking it again hides the card.
+  const standup = page.locator('.ag-row').filter({ hasText: 'Daily standup' })
+  await standup.click()
+  await expect(page.getByTestId('agenda-focus')).toContainText('Daily standup')
+  await page.getByTestId('agenda-people-toggle').click()
+  await expect(page.getByTestId('agenda-people')).toContainText('lead@work.example')
+  await page.screenshot({ path: 'e2e/screens/agenda-people.png' })
+  await page.getByTestId('agenda-people-toggle').click()
+  await expect(page.getByTestId('agenda-people')).toHaveCount(0)
+  await standup.click()
+  await expect(page.getByTestId('agenda-focus')).toHaveCount(0)
+
+  // Tomorrow: greyed, a notice, no now line; the notice's button comes back to today.
+  await page.locator('.toolbar-nav').getByRole('button', { name: 'Next' }).click()
+  await expect(page.getByTestId('agenda-other-day')).toBeVisible()
+  await expect(page.locator('.ag[data-other-day]')).toHaveCount(1)
+  await expect(page.getByTestId('agenda-now')).toHaveCount(0)
+  await expect(page.locator('.ag-row').filter({ hasText: 'Sprint planning' })).toBeVisible()
+  await page.screenshot({ path: 'e2e/screens/agenda-other-day.png' })
+  await page.getByTestId('agenda-back-today').click()
+  await expect(page.getByTestId('agenda-other-day')).toHaveCount(0)
+  await expect(page.getByTestId('agenda-now')).toBeVisible()
+  await app.close()
+})
