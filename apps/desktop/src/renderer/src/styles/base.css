@@ -108,6 +108,25 @@
   --red: #f14c4c;
   --yellow: #dcdcaa;
 }
+/* Matrix: phosphor green on black, CRT glow and scanlines (extras below). */
+:root[data-theme='matrix'] {
+  --bg: #020a04;
+  --surface: #04110a;
+  --surface-2: #071a0e;
+  --hover: #0a2414;
+  --line: #0b2414;
+  --line-strong: #12391f;
+  --fg: #b6ffc8;
+  --muted: #2f8a4a;
+  --faint: #164a26;
+  --accent: #00ff41;
+  --pink: #9dff00;
+  --green: #00d936;
+  --cyan: #5cffb0;
+  --orange: #c8ff3d;
+  --red: #ff3b3b;
+  --yellow: #e4ff7a;
+}
 /* Bubblegum: pastel marshmallow pinks. */
 :root[data-theme='bubble'] {
   --bg: #fff5fa;
@@ -171,6 +190,14 @@
 }
 :root[data-theme='bubble'] { --shadow: 230 90 160; --shadow-k: 0.3; }
 :root[data-theme='toon'] { --shadow: 43 33 64; --shadow-k: 0.5; }
+/* Matrix: everything in mono, a faint phosphor glow and CRT scanlines over the whole window. */
+:root[data-theme='matrix'] { --shadow: 0 40 10; font-family: var(--mono); }
+:root[data-theme='matrix'] :is(input, textarea, .invites-panel) { font-family: var(--mono); }
+:root[data-theme='matrix'] body { text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 35%, transparent); }
+:root[data-theme='matrix'] body::after {
+  content: ''; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgb(0 0 0 / 0.18) 0 1px, transparent 1px 3px);
+}
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
@@ -197,8 +224,20 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 
 .app {
   height: 100%; display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto;
+  transition: grid-template-columns 180ms ease;
 }
 .main { background: var(--bg); min-width: 0; min-height: 0; border-left: 1px solid var(--line); }
+/* Collapsed sidebar (sidebar.ts): the column folds to nothing; on macOS the toolbar clears the traffic lights. */
+.app[data-sidebar='collapsed'] { grid-template-columns: 0 minmax(0, 1fr); }
+.app[data-sidebar='collapsed'] .sidebar { visibility: hidden; }
+.app[data-sidebar='collapsed'] .main { border-left: 0; }
+:root[data-platform='darwin'] .app[data-sidebar='collapsed'] .toolbar { padding-left: 84px; }
+.sidebar-toggle {
+  flex: none; width: 26px; height: 26px; margin-right: -6px; display: grid; place-items: center; padding: 0;
+  border: 0; border-radius: 4px; background: none; color: var(--muted);
+}
+.sidebar-toggle:hover { background: var(--hover); color: var(--fg); }
+@media (prefers-reduced-motion: reduce) { .app { transition: none; } }
 
 /* ---------- Sidebar ---------- */
 .sidebar {

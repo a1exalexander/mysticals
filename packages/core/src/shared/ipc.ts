@@ -93,7 +93,7 @@ export interface ThemeApi {
   set(scheme: 'dark' | 'light', bg: string): Promise<void>
 }
 
-export type MenuCommand = 'new-event' | 'today' | 'view-agenda' | 'view-day' | 'view-3day' | 'view-week' | 'view-month'
+export type MenuCommand = 'new-event' | 'today' | 'toggle-sidebar' | 'view-agenda' | 'view-day' | 'view-3day' | 'view-week' | 'view-month'
 
 export const IPC = {
   accountsList: 'accounts:list',

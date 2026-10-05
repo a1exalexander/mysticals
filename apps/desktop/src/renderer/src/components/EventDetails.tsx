@@ -17,7 +17,7 @@ import { currentLocale, t, useLocale } from '../i18n'
 
 type Reply = Exclude<PartStat, 'needsAction'>
 const REPLIES: [Reply, Key][] = [['accepted', 'rsvp.accept'], ['tentative', 'rsvp.maybe'], ['declined', 'rsvp.decline']]
-const PARTSTAT: Record<PartStat, Key> = {
+export const PARTSTAT: Record<PartStat, Key> = {
   accepted: 'partstat.accepted',
   tentative: 'partstat.tentative',
   declined: 'partstat.declined',

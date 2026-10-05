@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { format, getISOWeek, startOfDay } from 'date-fns'
+import { addDays, format, getISOWeek, isToday, startOfDay } from 'date-fns'
 import type { CalEvent, DeleteScope } from '@shared/types'
 import type { MenuCommand } from '@shared/ipc'
 import { useCalendarData } from '../hooks/useCalendarData'
@@ -11,10 +11,11 @@ import { nav, useNav, type DeskView } from './nav'
 import { rangeLabel, shiftDate, viewDays, viewRange, type View } from '@mysticals/core/logic/layout'
 import { TimeGrid } from './TimeGrid'
 import { MonthGrid } from './MonthGrid'
-import { Agenda } from './Agenda'
+import { AHEAD_DAYS, Agenda } from './Agenda'
 import { cap, currentLocale, fmt, t, useLocale } from '../i18n'
 import type { Key } from '@mysticals/core/i18n'
 import { SegTabs } from '../components/ui/SegTabs'
+import { toggleSidebar, useSidebarCollapsed } from '../sidebar'
 
 const VIEWS: DeskView[] = ['agenda', 'day', '3day', 'week', 'month']
 const LABEL: Record<DeskView, Key> = { agenda: 'view.agenda', day: 'view.day', '3day': 'view.3day', week: 'view.week', month: 'view.month' }
@@ -37,19 +38,43 @@ const same = (a: string, b: string): boolean => Date.parse(a) === Date.parse(b) 
 
 const go = (dir: 1 | -1): void => {
   const { view, date } = nav.get()
-  if (view === 'agenda') return
-  nav.set({ date: shiftDate(view, date, dir) })
+  // The agenda steps one day at a time.
+  nav.set({ date: shiftDate(view === 'agenda' ? 'day' : view, date, dir) })
 }
 const today = (): void => nav.set({ date: new Date() })
+
+// Whether the agenda shows the next days too: a per-device preference.
+const AHEAD_KEY = 'mysticals-agenda-ahead'
+const readAhead = (): boolean => {
+  try {
+    return localStorage.getItem(AHEAD_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 export function CalendarView(): React.JSX.Element {
   const { date: navDate, view: deskView } = useNav()
   useLocale()
+  const sidebarHidden = useSidebarCollapsed()
   const agenda = deskView === 'agenda'
-  // The agenda is always today; underneath it loads like the day view.
+  // The agenda shows one day (today unless stepped away); underneath it loads like the day view.
   const view: View = agenda ? 'day' : deskView
-  const date = agenda ? startOfDay(new Date()) : navDate
-  const range = useMemo(() => viewRange(view, date), [view, date.getTime()])
+  const date = agenda ? startOfDay(navDate) : navDate
+  const [ahead, setAhead] = useState(readAhead)
+  const showAhead = useCallback((open: boolean): void => {
+    setAhead(open)
+    try {
+      localStorage.setItem(AHEAD_KEY, open ? '1' : '0')
+    } catch {
+      // per-device preference only; ignore
+    }
+  }, [])
+  const range = useMemo(
+    () =>
+      agenda && ahead ? { start: date.toISOString(), end: addDays(date, AHEAD_DAYS + 1).toISOString() } : viewRange(view, date),
+    [view, date.getTime(), agenda, ahead]
+  )
   const days = useMemo(() => viewDays(view, date), [view, date.getTime()])
   const { accounts, calendars, events: all } = useCalendarData(range)
   // Dropped events show at their new time at once; an entry goes when the data has caught up or the save fails.
@@ -139,6 +164,7 @@ export function CalendarView(): React.JSX.Element {
     window.addEventListener('keydown', onKey)
     const offMenu = window.api.onMenu((cmd) => {
       if (cmd === 'today') today()
+      if (cmd === 'toggle-sidebar') toggleSidebar()
       const v = MENU_VIEW[cmd]
       if (v) nav.set({ view: v })
     })
@@ -151,9 +177,24 @@ export function CalendarView(): React.JSX.Element {
   return (
     <div className="calendar-view" data-testid="calendar-view">
       <header className="toolbar">
+        <button
+          type="button"
+          className="sidebar-toggle"
+          data-testid="sidebar-toggle"
+          aria-pressed={!sidebarHidden}
+          aria-label={t(sidebarHidden ? 'toolbar.showSidebar' : 'toolbar.hideSidebar')}
+          title={`${t(sidebarHidden ? 'toolbar.showSidebar' : 'toolbar.hideSidebar')} (${document.documentElement.dataset.platform === 'darwin' ? '⌘' : 'Ctrl+'}\\)`}
+          onClick={toggleSidebar}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <path d="M9 4v16" />
+            {!sidebarHidden && <path d="M5.5 8h1M5.5 11h1" />}
+          </svg>
+        </button>
         {/* Keyed by the period so a step to the next one fades the new title in. */}
         <h1 className="toolbar-title" key={`${deskView}/${format(days[0], 'yyyy-MM-dd')}`}>
-          {agenda ? t('common.today') : view === 'day' ? fmt(date, 'd MMMM') : view === '3day' ? rangeLabel(days[0], days[2], currentLocale()) : cap(fmt(date, 'LLLL'))}
+          {agenda && isToday(date) ? t('common.today') : view === 'day' ? fmt(date, 'd MMMM') : view === '3day' ? rangeLabel(days[0], days[2], currentLocale()) : cap(fmt(date, 'LLLL'))}
           <span className="toolbar-sub">
             {agenda ? (
               cap(fmt(date, 'EEEE, d MMMM'))
@@ -169,15 +210,14 @@ export function CalendarView(): React.JSX.Element {
           </span>
         </h1>
         <ViewSwitch view={deskView} />
-        {/* Kept (disabled) in the agenda, which is always today: removing it made the toolbar jump. */}
         <div className="toolbar-nav">
-          <button className="icon-btn" aria-label={t('toolbar.previous')} disabled={agenda} onClick={() => go(-1)}>
+          <button className="icon-btn" aria-label={t('toolbar.previous')} onClick={() => go(-1)}>
             ‹
           </button>
-          <button className="today-btn" disabled={agenda} onClick={today}>
+          <button className="today-btn" onClick={today}>
             {t('toolbar.today')}
           </button>
-          <button className="icon-btn" aria-label={t('toolbar.next')} disabled={agenda} onClick={() => go(1)}>
+          <button className="icon-btn" aria-label={t('toolbar.next')} onClick={() => go(1)}>
             ›
           </button>
         </div>
@@ -187,7 +227,7 @@ export function CalendarView(): React.JSX.Element {
       </header>
       {firstSync.length > 0 && <div className="loadbar" role="progressbar" aria-label={t('toolbar.syncing')} data-testid="loadbar" />}
       {agenda ? (
-        <Agenda events={events} colorOf={colorOf} />
+        <Agenda key={date.getTime()} day={date} events={events} colorOf={colorOf} ahead={ahead} onAhead={showAhead} />
       ) : view === 'month' ? (
         <MonthGrid date={date} events={events} colorOf={colorOf} canDrag={canDrag} moveTo={moveTo} />
       ) : (

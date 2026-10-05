@@ -35,6 +35,8 @@ export function buildMenu(locale: Locale = 'en'): Menu {
       label: l('menu.view'),
       submenu: [
         { label: l('menu.today'), accelerator: 'CmdOrCtrl+T', click: send('today') },
+        // The renderer handles the key itself (so it also works with the menu bar hidden); the menu only shows it.
+        { label: l('menu.toggleSidebar'), accelerator: 'CmdOrCtrl+\\', registerAccelerator: false, click: send('toggle-sidebar') },
         { type: 'separator' },
         { label: l('view.agenda'), accelerator: 'CmdOrCtrl+0', click: send('view-agenda') },
         { label: l('view.day'), accelerator: 'CmdOrCtrl+1', click: send('view-day') },

@@ -1,0 +1,147 @@
+---
+/**
+ * Every desktop palette at once: a full animated DesktopDemo with a theme switcher above it, and a grid of small
+ * static windows, one per theme, that switch the demo too. Palettes come from src/themes.ts.
+ * The script cycles through the themes while the section is on screen, until the viewer picks one.
+ */
+import DesktopDemo from './DesktopDemo.astro'
+import { THEMES, themeVars } from '../themes'
+const vars = Object.fromEntries(THEMES.map((th) => [th.id, themeVars(th)]))
+// Mini window: [day column 0-4, start row 0-7, rows, account colour]
+const evs: [number, number, number, string][] = [
+  [0, 1, 1, 'accent'], [0, 3, 2, 'green'], [1, 0, 2, 'cyan'], [1, 4, 1, 'accent'],
+  [2, 2, 3, 'accent'], [3, 1, 1, 'green'], [3, 5, 2, 'cyan'], [4, 0, 1, 'orange'], [4, 3, 2, 'green'],
+]
+---
+<div class="themes" data-vars={JSON.stringify(vars)}>
+  <div class="show">
+    <div class="chips" role="radiogroup" aria-label="Preview theme">
+      {THEMES.map((th, i) => (
+        <button type="button" role="radio" aria-checked={i === 0 ? 'true' : 'false'} class="chip" data-theme={th.id} data-track="theme_preview" data-props={JSON.stringify({ theme: th.id })}>
+          <i style={`background:${th.tokens.accent};box-shadow:0 0 0 2px ${th.tokens.bg}, 0 0 0 3px ${th.tokens['line-strong']}`} />{th.name}
+        </button>
+      ))}
+    </div>
+    <DesktopDemo theme={THEMES[0].id} />
+  </div>
+  <ul class="minis" role="list">
+    {THEMES.map((th, i) => (
+      <li>
+        <button type="button" class="mini" data-theme={th.id} aria-pressed={i === 0 ? 'true' : 'false'} aria-label={`Preview ${th.name}`} data-track="theme_preview" data-props={JSON.stringify({ theme: th.id })}>
+          <span class="mwin" data-theme={th.id} style={vars[th.id]} aria-hidden="true">
+            <span class="mside"><span class="dots"><i /><i /><i /></span><b /><b /><b /></span>
+            <span class="mmain">
+              <span class="mbar"><b /><em>+ new</em></span>
+              <span class="mgrid">
+                <span class="mtoday" />
+                {evs.map(([c, s, n, k]) => <span class="mev" style={`--c:${c};--s:${s};--n:${n};--k:var(--${k})`} />)}
+              </span>
+            </span>
+          </span>
+          <span class="mname">{th.name}<small>{th.scheme}</small></span>
+        </button>
+      </li>
+    ))}
+  </ul>
+</div>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('.themes')) {
+    const vars: Record<string, string> = JSON.parse(root.dataset.vars!)
+    const ids = Object.keys(vars)
+    const win = root.querySelector<HTMLElement>('.dwin')!
+    let current = ids[0]
+    const show = (id: string) => {
+      current = id
+      win.dataset.theme = id
+      win.setAttribute('style', vars[id])
+      root.querySelectorAll<HTMLElement>('.chip').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.theme === id)))
+      root.querySelectorAll<HTMLElement>('.mini').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.theme === id)))
+    }
+    // Cycle while on screen; the first pick by the viewer stops it for good.
+    let timer = 0
+    let picked = matchMedia('(prefers-reduced-motion: reduce)').matches
+    const stop = () => clearInterval(timer)
+    const start = () => {
+      stop()
+      if (!picked) timer = window.setInterval(() => show(ids[(ids.indexOf(current) + 1) % ids.length]), 4000)
+    }
+    root.addEventListener('click', (e) => {
+      const b = e.target instanceof Element && e.target.closest<HTMLElement>('.chip, .mini')
+      if (!b) return
+      picked = true
+      stop()
+      show(b.dataset.theme!)
+    })
+    // Arrow keys move between the switcher's radios.
+    root.querySelector('.chips')!.addEventListener('keydown', (e) => {
+      const k = (e as KeyboardEvent).key
+      const d = k === 'ArrowRight' || k === 'ArrowDown' ? 1 : k === 'ArrowLeft' || k === 'ArrowUp' ? -1 : 0
+      if (!d) return
+      e.preventDefault()
+      const id = ids[(ids.indexOf(current) + d + ids.length) % ids.length]
+      picked = true
+      stop()
+      show(id)
+      root.querySelector<HTMLElement>(`.chip[data-theme="${id}"]`)!.focus()
+    })
+    new IntersectionObserver(([e]) => (e.isIntersecting ? start() : stop())).observe(root)
+  }
+</script>
+
+<style>
+  .themes { display: grid; gap: 40px 48px; align-items: start; }
+  @media (min-width: 1100px) { .themes { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); } }
+  .show { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+  .show :global(.dwin) { box-shadow: 0 50px 140px -40px rgb(0 0 0 / .95); }
+
+  /* switcher */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    min-height: 34px; padding: 0 12px 0 10px; display: inline-flex; align-items: center; gap: 9px;
+    border: 1px solid var(--line-strong); border-radius: 999px; background: transparent; color: var(--muted);
+    font: 13px var(--mono); cursor: pointer; transition: color .15s, border-color .15s, background-color .15s;
+  }
+  .chip i { width: 9px; height: 9px; border-radius: 50%; }
+  .chip:hover { color: var(--fg); border-color: var(--muted); }
+  .chip[aria-checked='true'] { color: var(--fg); border-color: var(--fg); background: var(--surface); }
+
+  /* mini windows */
+  .minis { margin: 0; padding: 0; list-style: none; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr)); }
+  @media (min-width: 1100px) { .minis { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; } }
+  .mini { width: 100%; padding: 0; display: flex; flex-direction: column; gap: 10px; border: 0; background: none; color: var(--muted); font: inherit; text-align: left; cursor: pointer; }
+  .mname { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font: 13px var(--mono); }
+  .mname small { font-size: 11px; color: var(--faint); }
+  .mini:hover .mname, .mini[aria-pressed='true'] .mname { color: var(--fg); }
+  .mwin {
+    position: relative; display: grid; grid-template-columns: 26% 1fr; aspect-ratio: 16 / 10.5; overflow: hidden;
+    background: var(--bg); border: 1px solid var(--line-strong); border-radius: 8px;
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .mini:hover .mwin { transform: translateY(-2px); }
+  .mini[aria-pressed='true'] .mwin { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--accent); }
+  .mside { display: flex; flex-direction: column; gap: 7%; padding: 10% 10% 0; background: var(--surface); border-right: 1px solid var(--line); }
+  .dots { display: flex; gap: 4px; margin-bottom: 14%; }
+  .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--red); }
+  .dots i:nth-child(2) { background: #f1c84b; }
+  .dots i:nth-child(3) { background: #3fc55a; }
+  .mside b { height: 5px; border-radius: 1px; background: var(--muted); opacity: .55; }
+  .mside b:nth-of-type(1) { width: 80%; }
+  .mside b:nth-of-type(2) { width: 60%; }
+  .mside b:nth-of-type(3) { width: 70%; }
+  .mmain { display: flex; flex-direction: column; min-width: 0; }
+  .mbar { display: flex; align-items: center; justify-content: space-between; gap: 6px; height: 22%; padding: 0 7%; border-bottom: 1px solid var(--line); }
+  .mbar b { width: 38%; height: 6px; border-radius: 1px; background: var(--fg); }
+  .mbar em { padding: 1px 5px; border-radius: 3px; background: var(--accent); color: var(--on-accent); font: 700 8px/1.4 var(--mono); font-style: normal; white-space: nowrap; }
+  .mgrid { position: relative; flex: 1; background: repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 20%); }
+  .mtoday { position: absolute; inset: 0 auto 0 40%; width: 20%; background: color-mix(in srgb, var(--pink) 7%, transparent); border-top: 2px solid var(--pink); }
+  /* square corners, so the 2px calendar bar stays straight */
+  .mev {
+    position: absolute; left: calc(var(--c) * 20% + 2px); width: calc(20% - 4px);
+    top: calc(var(--s) * 100% / 8 + 2px); height: calc(var(--n) * 100% / 8 - 4px);
+    background: color-mix(in srgb, var(--k) var(--ev-mix), var(--bg)); border-left: 2px solid var(--k);
+  }
+  .mwin[data-theme='matrix'] { box-shadow: inset 0 0 18px color-mix(in srgb, var(--accent) 12%, transparent); }
+  .mwin[data-theme='matrix'] .mbar em { text-shadow: none; box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent); }
+  .mini[aria-pressed='true'] .mwin[data-theme='matrix'] { box-shadow: inset 0 0 18px color-mix(in srgb, var(--accent) 12%, transparent), 0 0 0 2px var(--bg), 0 0 0 3px var(--accent); }
+</style>

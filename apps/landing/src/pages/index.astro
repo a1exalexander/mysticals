@@ -2,6 +2,8 @@
 import Layout from '../layouts/Layout.astro'
 import TermDemo from '../components/TermDemo.astro'
 import DesktopDemo from '../components/DesktopDemo.astro'
+import ThemeShowcase from '../components/ThemeShowcase.astro'
+import { THEMES } from '../themes'
 import desktop from '../../../desktop/package.json'
 import { PREVIEW } from '../preview'
 const gh = 'https://github.com/a1exalexander/mysticals'
@@ -91,7 +93,7 @@ const boxes = [
         <p class="lead">A desktop window with a mini month, your accounts and invites in a sidebar, and the week at a glance.</p>
         <ul class="plus">
           <li>Day, 2 days, week and month views</li>
-          <li>Dark themes: Dracula, Tokyo Night, Catppuccin, Phosphor amber</li>
+          <li>{THEMES.length} themes, dark and light — <a class="ul" href="#themes">see them all</a></li>
           <li>Credentials encrypted per account with the system keychain</li>
           <li>Update notices from GitHub Releases (self-updates on macOS)</li>
         </ul>
@@ -132,9 +134,20 @@ const boxes = [
     </div>
   </section>
 
+  <section id="themes" class="wrap band">
+    <div class="split end">
+      <div class="stack">
+        <span class="eyebrow">03 — themes</span>
+        <h2>Pick a palette.<br />Every window follows.</h2>
+      </div>
+      <p class="lead">{THEMES.length} themes in Settings, from Dracula to a green-on-black Matrix with a phosphor glow. Light ones too. Tap one to try it on the demo.</p>
+    </div>
+    <ThemeShowcase />
+  </section>
+
   <section id="why" class="wrap band why">
     <div class="stack">
-      <span class="eyebrow">03 — why it exists</span>
+      <span class="eyebrow">04 — why it exists</span>
       <h2>The invite that should never have been sent.</h2>
     </div>
     <div class="story">
@@ -217,7 +230,7 @@ const boxes = [
   .rules b { font-size: 18px; font-weight: 600; }
   .rules div span { color: var(--muted); line-height: 1.5; }
 
-  #apps { display: flex; flex-direction: column; gap: 56px; }
+  #apps, #themes { display: flex; flex-direction: column; gap: 56px; }
   .narrow { max-width: 760px; }
   .narrow .lead, .card .lead { max-width: none; font-size: 17px; }
   .push { margin-top: auto; }

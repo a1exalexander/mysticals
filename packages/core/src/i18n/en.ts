@@ -78,6 +78,9 @@ export const en = {
   'menu.selectAll': 'Select All',
   'menu.view': 'View',
   'menu.today': 'Today',
+  'menu.toggleSidebar': 'Toggle Sidebar',
+  'toolbar.hideSidebar': 'Hide sidebar',
+  'toolbar.showSidebar': 'Show sidebar',
   'menu.reload': 'Reload',
   'menu.devTools': 'Toggle Developer Tools',
   'menu.fullScreen': 'Toggle Full Screen',
@@ -331,6 +334,16 @@ export const en = {
   'agenda.join': 'Join call',
   'agenda.joinOpens': 'Join opens {n} min before start',
   'agenda.details': 'Details',
+  'agenda.otherDay': '{date} · not today',
+  'agenda.backToday': 'Back to today',
+  'agenda.nothingDay': 'Nothing scheduled this day.',
+  'agenda.pickHint': 'Pick an event to see it here.',
+  'agenda.showPeople': 'Show people',
+  'agenda.break': 'Break · {d}',
+  'agenda.showAhead': 'Next {n} days',
+  'agenda.hideAhead': 'Hide upcoming',
+  'agenda.nothingAhead': 'Nothing in the next {n} days.',
+  'agenda.hidePeople': 'Hide people',
 } as const
 
 export type Key = keyof typeof en

@@ -16,6 +16,8 @@ const subs = new Set<() => void>()
 export const nav = {
   get: (): NavState => state,
   set(patch: Partial<NavState>): void {
+    // The agenda always opens on today; ‹ › then step through other days.
+    if (patch.view === 'agenda' && state.view !== 'agenda' && !patch.date) patch = { ...patch, date: new Date() }
     state = { ...state, ...patch }
     subs.forEach((f) => f())
   }
