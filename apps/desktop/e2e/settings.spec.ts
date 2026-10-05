@@ -26,7 +26,7 @@ test('settings tabs: accounts, themes, sync', async () => {
   expect((await settings.boundingBox())?.height).toBeCloseTo(box?.height ?? 0, 0)
   await page.screenshot({ path: 'e2e/screens/settings-themes.png' })
   // Light palettes switch the colour scheme too.
-  for (const id of ['mono', 'vscode', 'bubble', 'toon'] as const) {
+  for (const id of ['mono', 'vscode', 'matrix', 'bubble', 'toon'] as const) {
     await page.getByTestId(`theme-${id}`).click()
     await expect(page.locator('html')).toHaveAttribute('data-theme', id)
     await expect(page.locator('html')).toHaveAttribute('data-scheme', id === 'bubble' || id === 'toon' ? 'light' : 'dark')
