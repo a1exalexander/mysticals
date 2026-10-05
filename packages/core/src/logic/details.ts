@@ -66,3 +66,36 @@ export function linkify(text: string): TextPart[] {
 
 /** Description minus `@color:N` / `@colorHex:#RRGGBB` lines other clients store there as metadata. */
 export const cleanNotes = (s = ''): string => s.replace(/^@color(hex)?:.*$\n?/gim, '').trim()
+
+const HTML_TAG = /<\/?(a|b|br|p|div|span|i|u|s|em|strong|del|ul|ol|li|h[1-6]|blockquote|pre|code|hr|table|thead|tbody|tr|td|th|font|img|sub|sup)\b[^>]*>/i
+
+/** Google (and some CalDAV clients) store descriptions as HTML fragments; plain notes stay plain. */
+export const isHtml = (s: string): boolean => HTML_TAG.test(s)
+
+const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }
+const decode = (s: string): string =>
+  s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
+    if (e[0] !== '#') return ENTITIES[e.toLowerCase()] ?? m
+    const n = e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10)
+    return n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : m
+  })
+
+/** HTML description as readable plain text (no DOM): line breaks kept, tags dropped, a link's url kept when its text differs. */
+export function htmlToText(html: string): string {
+  return decode(
+    html
+      .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, '')
+      .replace(/<a\b[^>]*?\bhref\s*=\s*["']?([^"'\s>]+)[^>]*>([\s\S]*?)<\/a\s*>/gi, (_, href: string, inner: string) => {
+        const text = inner.replace(/<[^>]*>/g, '').trim()
+        const url = decode(href)
+        return !text || decode(text) === url ? url : `${text} (${url})`
+      })
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<li\b[^>]*>/gi, '\n• ')
+      .replace(/<\/(p|div|h[1-6]|tr|blockquote|pre|ul|ol)\s*>/gi, '\n')
+      .replace(/<[^>]*>/g, '')
+  )
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}

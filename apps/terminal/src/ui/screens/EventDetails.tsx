@@ -5,7 +5,7 @@
  */
 import { useState } from 'react'
 import { Box, Text } from 'ink'
-import { canEdit, cleanNotes, formatWhen, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
+import { canEdit, cleanNotes, formatWhen, htmlToText, isHtml, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
 import { eventLinks, eventMeetingUrl, linkLabel, locationText, type LinkKind } from '@mysticals/core/logic/meeting'
 import { eventBounds } from '@mysticals/core/logic/layout'
@@ -166,7 +166,8 @@ export function EventInfo({ event, account, calendar, now, showAll, onToggleAll 
 }) {
   const links = eventLinks(event)
   const where = locationText(event.location)
-  const notes = cleanNotes(event.description)
+  const raw = cleanNotes(event.description)
+  const notes = isHtml(raw) ? htmlToText(raw) : raw
   const owner = ownerLine(calendar?.name ?? 'Calendar', account?.label ?? event.accountId, account?.email)
   const when = [duration(event), relative(event, now)].filter(Boolean).join(' · ')
   return (
