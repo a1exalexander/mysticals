@@ -102,6 +102,9 @@
   background: var(--pink); color: var(--on-accent); font: 700 10px/1.2 var(--mono);
 }
 
+/* Free time between two events, tiny and grey, under the title column. */
+.ag-rows .ag-gap { margin: 0 0 0 62px; padding: 1px 0; font: 10px/12px var(--mono); color: color-mix(in srgb, var(--muted) 70%, transparent); animation: none; }
+
 /* "Next 7 days" / "Hide upcoming": stays at the end of the day, the next days open below it. */
 .ag-ahead {
   width: 100%; display: flex; align-items: center; gap: 7px; margin: 10px 0 0; padding: 8px; border: 0;

@@ -12,6 +12,7 @@ import { ScopePromptHost } from './components/ScopePrompt'
 import { ReauthHost } from './components/Reauth'
 import { useDirectory } from './components/ui/useDirectory'
 import { t, useLocale } from './i18n'
+import { toggleSidebar, useSidebarCollapsed } from './sidebar'
 
 // Layout shell. Each child is owned by a different unit; communicate via ./bus.
 export function App(): React.JSX.Element {
@@ -24,9 +25,20 @@ export function App(): React.JSX.Element {
     return () => clearTimeout(t)
   }, [])
   const done = loaded || timedOut
+  const collapsed = useSidebarCollapsed()
+  // ⌘\ / Ctrl+\ shows or hides the sidebar (the View menu only displays the shortcut).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || e.key !== '\\') return
+      e.preventDefault()
+      toggleSidebar()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   return (
-    <div className="app">
-      <Sidebar />
+    <div className="app" data-sidebar={collapsed ? 'collapsed' : 'expanded'}>
+      <Sidebar collapsed={collapsed} />
       <main className="main">
         <CalendarView />
       </main>

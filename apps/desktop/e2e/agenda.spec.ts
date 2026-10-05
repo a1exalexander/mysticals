@@ -78,6 +78,8 @@ test('agenda: no stale card after the day, a now line, people toggle, and other 
   await expect(page.getByTestId('agenda-focus-empty')).toBeVisible()
   await expect(page.getByTestId('agenda-now')).toBeVisible()
   await expect(page.getByTestId('agenda-other-day')).toHaveCount(0)
+  // Free time between events: run 07:00–07:45, standup 10:00–10:15, sync 11:30–12:00, gym 19:00.
+  await expect(page.getByTestId('agenda-gap')).toHaveText(['Break · 2h 15m', 'Break · 1h 15m', 'Break · 7h'])
 
   // Picking an ended event shows it; clicking it again hides the card.
   const standup = page.locator('.ag-row').filter({ hasText: 'Daily standup' })

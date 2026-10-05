@@ -18,7 +18,7 @@ function readCollapsed(): string[] {
 }
 
 /** Mini-month + one section per account listing ONLY that account's calendars. */
-export function Sidebar(): React.JSX.Element {
+export function Sidebar({ collapsed: hidden = false }: { collapsed?: boolean }): React.JSX.Element {
   const { accounts, calendars } = useCalendarData()
   useLocale()
   const [collapsed, setCollapsed] = useState(readCollapsed)
@@ -32,7 +32,7 @@ export function Sidebar(): React.JSX.Element {
     }
   }
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" data-testid="sidebar" aria-hidden={hidden || undefined} inert={hidden || undefined}>
       <MiniMonth />
       <div className="sb-accounts">
         {accounts.map((a) => {

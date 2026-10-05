@@ -23,10 +23,25 @@ const join = (url: string): void => void window.open(url, '_blank')
 const open = (e: CalEvent, el: HTMLElement): void =>
   bus.emit('event:open', { event: e, anchor: el.getBoundingClientRect(), el })
 
-const dur = (e: CalEvent): string => {
-  const m = differenceInMinutes(eventBounds(e).end, eventBounds(e).start)
-  return m < 60 ? t('dur.m', { m }) : m % 60 ? t('dur.hm', { h: Math.floor(m / 60), m: m % 60 }) : t('dur.h', { h: m / 60 })
+const span = (m: number): string =>
+  m < 60 ? t('dur.m', { m }) : m % 60 ? t('dur.hm', { h: Math.floor(m / 60), m: m % 60 }) : t('dur.h', { h: m / 60 })
+const dur = (e: CalEvent): string => span(differenceInMinutes(eventBounds(e).end, eventBounds(e).start))
+
+/** Free time before each event of a sorted list, counted from the latest end so far; under 5 minutes is no break. */
+function breaksBefore(timed: CalEvent[]): (number | undefined)[] {
+  let end = 0
+  return timed.map((e, i) => {
+    const b = eventBounds(e)
+    const gap = i ? differenceInMinutes(b.start, end) : 0
+    end = Math.max(end, +b.end)
+    return gap >= 5 ? gap : undefined
+  })
 }
+const Gap = ({ m }: { m: number }): React.JSX.Element => (
+  <li className="ag-gap" data-testid="agenda-gap">
+    {t('agenda.break', { d: span(m) })}
+  </li>
+)
 
 /** "now · ends in 25m" / "starts in 12m" / "ended 14:30". */
 function statusOf(e: CalEvent, now: Date): { text: string; live?: boolean } {
@@ -83,6 +98,7 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
   // The now line goes before the first event still to start (after the running ones).
   const nowAt = isToday ? timed.findIndex((e) => eventBounds(e).start > now) : -2
   const nowIndex = nowAt === -1 ? timed.length : nowAt
+  const gaps = useMemo(() => breaksBefore(timed), [timed])
   const pick = (e: CalEvent): void => setPicked(focus === e ? undefined : keyOf(e))
 
   useEffect(() => {
@@ -131,8 +147,12 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
           {isToday && timed.length > 0 && !current.length && !next && <p className="ag-empty">{t('agenda.allDone')}</p>}
           <ol className="ag-rows">
             {timed.flatMap((e, i) => {
-              const row = <Row key={keyOf(e)} e={e} i={i} now={now} color={colorOf(e)} focused={focus === e} next={e === next} onPick={pick} />
-              return i === nowIndex ? [<NowLine key="now" now={now} />, row] : [row]
+              const gap = gaps[i]
+              return [
+                gap && <Gap key={`gap-${i}`} m={gap} />,
+                i === nowIndex && <NowLine key="now" now={now} />,
+                <Row key={keyOf(e)} e={e} i={i} now={now} color={colorOf(e)} focused={focus === e} next={e === next} onPick={pick} />
+              ]
             })}
             {timed.length > 0 && nowIndex === timed.length && <NowLine now={now} />}
           </ol>
@@ -151,11 +171,14 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
                   <h3 className="ag-dayhead">{fmt(d, 'EEE, d MMM')}</h3>
                   {chips(evs.filter((e) => e.allDay))}
                   <ol className="ag-rows">
-                    {evs
-                      .filter((e) => !e.allDay)
-                      .map((e, i) => (
+                    {(() => {
+                      const dayTimed = evs.filter((e) => !e.allDay)
+                      const dayGaps = breaksBefore(dayTimed)
+                      return dayTimed.flatMap((e, i) => [
+                        dayGaps[i] && <Gap key={`gap-${i}`} m={dayGaps[i]} />,
                         <Row key={keyOf(e)} e={e} i={i} now={now} color={colorOf(e)} focused={focus === e} onPick={pick} />
-                      ))}
+                      ])
+                    })()}
                   </ol>
                 </section>
               ))}
