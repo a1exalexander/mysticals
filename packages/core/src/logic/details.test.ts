@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Account, Calendar, CalEvent } from '../shared/types'
-import { canEdit, cleanNotes, formatWhen, linkify, ownerLine, pendingInvites } from './details'
+import { canEdit, cleanNotes, formatWhen, htmlToText, isHtml, linkify, ownerLine, pendingInvites } from './details'
 
 const account: Account = { id: 'work', kind: 'caldav', label: 'Work', email: 'me@work.example', color: '#000' }
 const cal: Calendar = { id: 'w', accountId: 'work', name: 'Work', color: '#000', readOnly: false }
@@ -97,5 +97,29 @@ describe('cleanNotes', () => {
     expect(cleanNotes('Agenda\n@color:5\n@colorHex:#FFDB17\nBring laptop')).toBe('Agenda\nBring laptop')
     expect(cleanNotes('mail me @color: not at line start')).toBe('mail me @color: not at line start')
     expect(cleanNotes(undefined)).toBe('')
+  })
+})
+
+describe('isHtml', () => {
+  it('detects html fragments, not plain notes', () => {
+    expect(isHtml('<a href="https://x.io">x</a><br>hi')).toBe(true)
+    expect(isHtml('Line<BR/>next')).toBe(true)
+    expect(isHtml('a < b and c > d')).toBe(false)
+    expect(isHtml('mail <me@x.io>')).toBe(false)
+  })
+})
+
+describe('htmlToText', () => {
+  it('turns a Google description into readable text', () => {
+    const html = '<a href="https://track.example.com/browse/PH-1" rel="noopener noreferrer" target="_blank">https://track.example.com/browse/PH-1</a><br>AI run 2.0 &amp; more.<br>'
+    expect(htmlToText(html)).toBe('https://track.example.com/browse/PH-1\nAI run 2.0 & more.')
+  })
+  it('keeps the url of a named link, lists and paragraphs', () => {
+    expect(htmlToText('<p>See <a href="https://x.io/a?b=1&amp;c=2">docs</a></p><ul><li>one</li><li><b>two</b></li></ul>')).toBe(
+      'See docs (https://x.io/a?b=1&c=2)\n\n• one\n• two'
+    )
+  })
+  it('drops scripts and styles and decodes entities', () => {
+    expect(htmlToText('<script>alert(1)</script><style>p{}</style>a&nbsp;&lt;b&gt; &#39;c&#x27;')).toBe("a <b> 'c'")
   })
 })

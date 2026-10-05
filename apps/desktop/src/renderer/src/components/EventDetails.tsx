@@ -4,11 +4,12 @@ import type { CalEvent, DeleteScope, PartStat } from '@shared/types'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
 import { RecurringScope } from './ui/RecurringScope'
-import { canEdit, cleanNotes, formatWhen, linkify, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
+import { canEdit, cleanNotes, formatWhen, isHtml, linkify, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
 import { eventBounds } from '@mysticals/core/logic/layout'
 import { eventLinks, linkLabel, locationText } from '@mysticals/core/logic/meeting'
 import { LinkIcon } from './LinkIcon'
+import { notesFragment } from './notesHtml'
 import './ui/ui.css'
 import './EventDetails.css'
 import type { Key } from '@mysticals/core/i18n'
@@ -239,7 +240,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
             </ul>}
           </div>
         )}
-        {notes && <p className="details-notes"><Linkified text={notes} /></p>}
+        {notes && (isHtml(notes) ? <HtmlNotes html={notes} /> : <p className="details-notes"><Linkified text={notes} /></p>)}
 
         {!gone && event.myStatus && (
           <div className="details-rsvp">
@@ -301,6 +302,15 @@ function Row({ label, children }: { label: string; children: React.ReactNode }):
       <div>{children}</div>
     </div>
   )
+}
+
+/** HTML descriptions (Google) render formatted, only after sanitizing to inert tags and http(s) links. */
+function HtmlNotes({ html }: { html: string }): React.JSX.Element {
+  const ref = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    ref.current?.replaceChildren(notesFragment(html))
+  }, [html])
+  return <div ref={ref} className="details-notes is-html" />
 }
 
 function Linkified({ text }: { text: string }): React.JSX.Element {
