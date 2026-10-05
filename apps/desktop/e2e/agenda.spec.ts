@@ -91,6 +91,23 @@ test('agenda: no stale card after the day, a now line, people toggle, and other 
   await standup.click()
   await expect(page.getByTestId('agenda-focus')).toHaveCount(0)
 
+  // The next 7 days open below the day; the toggle stays after today's rows and hides them again.
+  const toggle = page.getByTestId('agenda-ahead-toggle')
+  await expect(toggle).toContainText('Next 7 days')
+  await toggle.click()
+  const upcoming = page.getByTestId('agenda-upcoming')
+  await expect(upcoming).toContainText('Sprint planning')
+  await expect(upcoming).toContainText('Dinner with friends')
+  await expect(toggle).toContainText('Hide upcoming')
+  expect((await toggle.boundingBox())!.y).toBeGreaterThan((await page.locator('.ag-row').filter({ hasText: 'Gym' }).boundingBox())!.y)
+  expect((await toggle.boundingBox())!.y).toBeLessThan((await upcoming.boundingBox())!.y)
+  await upcoming.locator('.ag-row').filter({ hasText: 'Sprint planning' }).click()
+  await expect(page.getByTestId('agenda-focus')).toContainText('Sprint planning')
+  await page.screenshot({ path: 'e2e/screens/agenda-ahead.png' })
+  await toggle.click()
+  await expect(upcoming).toHaveCount(0)
+  await expect(toggle).toContainText('Next 7 days')
+
   // Tomorrow: greyed, a notice, no now line; the notice's button comes back to today.
   await page.locator('.toolbar-nav').getByRole('button', { name: 'Next' }).click()
   await expect(page.getByTestId('agenda-other-day')).toBeVisible()

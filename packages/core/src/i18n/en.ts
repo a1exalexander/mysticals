@@ -336,6 +336,9 @@ export const en = {
   'agenda.nothingDay': 'Nothing scheduled this day.',
   'agenda.pickHint': 'Pick an event to see it here.',
   'agenda.showPeople': 'Show people',
+  'agenda.showAhead': 'Next {n} days',
+  'agenda.hideAhead': 'Hide upcoming',
+  'agenda.nothingAhead': 'Nothing in the next {n} days.',
   'agenda.hidePeople': 'Hide people',
 } as const
 

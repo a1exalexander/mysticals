@@ -337,5 +337,8 @@ export const uk: Record<Key, Msg> = {
   'agenda.nothingDay': 'Цього дня нічого не заплановано.',
   'agenda.pickHint': 'Виберіть подію, щоб побачити її тут.',
   'agenda.showPeople': 'Показати учасників',
+  'agenda.showAhead': 'Наступні {n} днів',
+  'agenda.hideAhead': 'Сховати наступні',
+  'agenda.nothingAhead': 'Найближчі {n} днів нічого немає.',
   'agenda.hidePeople': 'Сховати учасників',
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { format, getISOWeek, isToday, startOfDay } from 'date-fns'
+import { addDays, format, getISOWeek, isToday, startOfDay } from 'date-fns'
 import type { CalEvent, DeleteScope } from '@shared/types'
 import type { MenuCommand } from '@shared/ipc'
 import { useCalendarData } from '../hooks/useCalendarData'
@@ -11,7 +11,7 @@ import { nav, useNav, type DeskView } from './nav'
 import { rangeLabel, shiftDate, viewDays, viewRange, type View } from '@mysticals/core/logic/layout'
 import { TimeGrid } from './TimeGrid'
 import { MonthGrid } from './MonthGrid'
-import { Agenda } from './Agenda'
+import { AHEAD_DAYS, Agenda } from './Agenda'
 import { cap, currentLocale, fmt, t, useLocale } from '../i18n'
 import type { Key } from '@mysticals/core/i18n'
 import { SegTabs } from '../components/ui/SegTabs'
@@ -42,6 +42,16 @@ const go = (dir: 1 | -1): void => {
 }
 const today = (): void => nav.set({ date: new Date() })
 
+// Whether the agenda shows the next days too: a per-device preference.
+const AHEAD_KEY = 'mysticals-agenda-ahead'
+const readAhead = (): boolean => {
+  try {
+    return localStorage.getItem(AHEAD_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 export function CalendarView(): React.JSX.Element {
   const { date: navDate, view: deskView } = useNav()
   useLocale()
@@ -49,7 +59,20 @@ export function CalendarView(): React.JSX.Element {
   // The agenda shows one day (today unless stepped away); underneath it loads like the day view.
   const view: View = agenda ? 'day' : deskView
   const date = agenda ? startOfDay(navDate) : navDate
-  const range = useMemo(() => viewRange(view, date), [view, date.getTime()])
+  const [ahead, setAhead] = useState(readAhead)
+  const showAhead = useCallback((open: boolean): void => {
+    setAhead(open)
+    try {
+      localStorage.setItem(AHEAD_KEY, open ? '1' : '0')
+    } catch {
+      // per-device preference only; ignore
+    }
+  }, [])
+  const range = useMemo(
+    () =>
+      agenda && ahead ? { start: date.toISOString(), end: addDays(date, AHEAD_DAYS + 1).toISOString() } : viewRange(view, date),
+    [view, date.getTime(), agenda, ahead]
+  )
   const days = useMemo(() => viewDays(view, date), [view, date.getTime()])
   const { accounts, calendars, events: all } = useCalendarData(range)
   // Dropped events show at their new time at once; an entry goes when the data has caught up or the save fails.
@@ -186,7 +209,7 @@ export function CalendarView(): React.JSX.Element {
       </header>
       {firstSync.length > 0 && <div className="loadbar" role="progressbar" aria-label={t('toolbar.syncing')} data-testid="loadbar" />}
       {agenda ? (
-        <Agenda key={date.getTime()} day={date} events={events} colorOf={colorOf} />
+        <Agenda key={date.getTime()} day={date} events={events} colorOf={colorOf} ahead={ahead} onAhead={showAhead} />
       ) : view === 'month' ? (
         <MonthGrid date={date} events={events} colorOf={colorOf} canDrag={canDrag} moveTo={moveTo} />
       ) : (

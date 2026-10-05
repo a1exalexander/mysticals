@@ -102,6 +102,20 @@
   background: var(--pink); color: var(--on-accent); font: 700 10px/1.2 var(--mono);
 }
 
+/* "Next 7 days" / "Hide upcoming": stays at the end of the day, the next days open below it. */
+.ag-ahead {
+  width: 100%; display: flex; align-items: center; gap: 7px; margin: 10px 0 0; padding: 8px; border: 0;
+  border-top: 1px dashed var(--line-strong); border-radius: 0; background: none; color: var(--muted);
+  font: 11.5px/1 var(--mono); text-align: left;
+}
+.ag-ahead:hover { color: var(--fg); background: var(--hover); }
+.ag-ahead[aria-expanded='true'] { color: var(--fg); }
+.ag-upcoming { display: grid; gap: 14px; margin-top: 6px; animation: ag-in 180ms ease-out; }
+.ag-dayhead {
+  margin: 0 0 6px 8px; font: 600 10.5px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+.ag-day .ag-allday { margin-left: 8px; }
+
 .ag-people-toggle { padding: 0; border: 0; background: none; color: var(--fg); font: inherit; text-align: left; }
 .ag-people-toggle:hover { color: var(--accent); }
 .ag-people { margin-top: 6px; max-height: 180px; overflow-y: auto; }
@@ -109,7 +123,7 @@
 @keyframes ag-in { from { opacity: 0; transform: translateY(3px); } }
 @keyframes ag-pulse { 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) {
-  .ag-rows li, .ag-focus, .ag-other, .ag-join-pill, .ag-status.live::before { animation: none; }
+  .ag-rows li, .ag-focus, .ag-other, .ag-upcoming, .ag-join-pill, .ag-status.live::before { animation: none; }
 }
 /* Narrow: the list alone; rows keep their Join pill, so joining is still one click. */
 @container (max-width: 720px) {
