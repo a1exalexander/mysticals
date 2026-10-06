@@ -7,7 +7,7 @@ import { pickNowNext, startsLabel } from '@mysticals/core/logic/status'
 import { eventBounds, isPast, overlapsDay } from '@mysticals/core/logic/layout'
 import { bus } from '../bus'
 import { useDirectory } from '../components/ui/useDirectory'
-import { PARTSTAT } from '../components/EventDetails'
+import { Notes, PARTSTAT } from '../components/EventDetails'
 import { STATUS_ICON } from '@mysticals/core/logic/details'
 import { nav } from './nav'
 import '../components/EventDetails.css'
@@ -287,6 +287,12 @@ function Focus({ e, now, color, calendar }: { e: CalEvent; now: Date; color: str
             </dd>
           </>
         )}
+        {e.organizer && (
+          <>
+            <dt>{t('agenda.fact.organizer')}</dt>
+            <dd title={e.organizer.email} data-testid="agenda-organizer">{e.organizer.name || e.organizer.email}</dd>
+          </>
+        )}
         {where && (
           <>
             <dt>{t('agenda.fact.where')}</dt>
@@ -325,10 +331,13 @@ function Focus({ e, now, color, calendar }: { e: CalEvent; now: Date; color: str
         {url && (
           <>
             <dt>{t('agenda.fact.link')}</dt>
-            <dd className="ag-url">{url}</dd>
+            <dd className="ag-url">
+              <a href={url} target="_blank" rel="noreferrer" data-testid="agenda-link">{url}</a>
+            </dd>
           </>
         )}
       </dl>
+      <Notes text={e.description} className="ag-notes" />
       <div className="ag-actions">
         {ready ? (
           <button type="button" className="ag-join" data-testid="agenda-join" onClick={() => join(ready)}>

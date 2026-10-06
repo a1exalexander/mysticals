@@ -340,6 +340,7 @@ export const en = {
   'agenda.joinShort': 'Join',
   'agenda.noCalls': 'No calls today. Enjoy the quiet.',
   'agenda.fact.calendar': 'calendar',
+  'agenda.fact.organizer': 'organizer',
   'agenda.fact.where': 'where',
   'agenda.fact.people': 'people',
   'agenda.fact.link': 'link',

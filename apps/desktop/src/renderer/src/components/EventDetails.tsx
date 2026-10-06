@@ -131,7 +131,6 @@ export function EventDetailsHost(): React.JSX.Element | null {
   const account = accounts.find((a) => a.id === event.accountId)
   const calendar = calendars.find((c) => c.accountId === event.accountId && c.id === event.calendarId)
   const editable = canEdit(event, account, calendar)
-  const notes = cleanNotes(event.description)
   const links = eventLinks(event)
   const where = locationText(event.location)
   const owner = ownerLine(calendar?.name ?? t('editor.calendar'), account?.label ?? event.accountId, account?.email)
@@ -240,7 +239,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
             </ul>}
           </div>
         )}
-        {notes && (isHtml(notes) ? <HtmlNotes html={notes} /> : <p className="details-notes"><Linkified text={notes} /></p>)}
+        <Notes text={event.description} />
 
         {!gone && event.myStatus && (
           <div className="details-rsvp">
@@ -304,13 +303,21 @@ function Row({ label, children }: { label: string; children: React.ReactNode }):
   )
 }
 
+/** An event's description: nothing when empty, plain text with links made clickable, or formatted HTML. */
+export function Notes({ text, className }: { text?: string; className?: string }): React.JSX.Element | null {
+  const notes = cleanNotes(text)
+  if (!notes) return null
+  const cls = className ? `details-notes ${className}` : 'details-notes'
+  return isHtml(notes) ? <HtmlNotes html={notes} className={cls} /> : <p className={cls}><Linkified text={notes} /></p>
+}
+
 /** HTML descriptions (Google) render formatted, only after sanitizing to inert tags and http(s) links. */
-function HtmlNotes({ html }: { html: string }): React.JSX.Element {
+function HtmlNotes({ html, className }: { html: string; className: string }): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
     ref.current?.replaceChildren(notesFragment(html))
   }, [html])
-  return <div ref={ref} className="details-notes is-html" />
+  return <div ref={ref} className={`${className} is-html`} />
 }
 
 function Linkified({ text }: { text: string }): React.JSX.Element {

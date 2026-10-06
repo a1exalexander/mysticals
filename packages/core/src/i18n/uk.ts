@@ -341,6 +341,7 @@ export const uk: Record<Key, Msg> = {
   'agenda.joinShort': 'Приєднатися',
   'agenda.noCalls': 'Сьогодні дзвінків немає. Насолоджуйтеся тишею.',
   'agenda.fact.calendar': 'календар',
+  'agenda.fact.organizer': 'організатор',
   'agenda.fact.where': 'де',
   'agenda.fact.people': 'учасники',
   'agenda.fact.link': 'посилання',
