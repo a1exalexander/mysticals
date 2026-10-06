@@ -9,6 +9,7 @@ import { StatusBar } from './components/StatusBar'
 import { EventTooltipHost } from './components/EventTooltip'
 import { ToastHost } from './components/Toast'
 import { ScopePromptHost } from './components/ScopePrompt'
+import { EventMenuHost } from './components/EventMenu'
 import { ReauthHost } from './components/Reauth'
 import { useDirectory } from './components/ui/useDirectory'
 import { t, useLocale } from './i18n'
@@ -39,6 +40,20 @@ export function App(): React.JSX.Element {
   return (
     <div className="app" data-sidebar={collapsed ? 'collapsed' : 'expanded'}>
       <Sidebar collapsed={collapsed} />
+      {!collapsed && (
+        <button
+          type="button"
+          className="sidebar-handle"
+          data-testid="sidebar-handle"
+          aria-label={t('toolbar.hideSidebar')}
+          title={`${t('toolbar.hideSidebar')} (${document.documentElement.dataset.platform === 'darwin' ? '⌘' : 'Ctrl+'}\\)`}
+          onClick={toggleSidebar}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M15 6l-6 6 6 6" />
+          </svg>
+        </button>
+      )}
       <main className="main">
         <CalendarView />
       </main>
@@ -48,6 +63,7 @@ export function App(): React.JSX.Element {
       <AccountsHost />
       <SettingsHost />
       <EventTooltipHost />
+      <EventMenuHost />
       <ToastHost />
       <ScopePromptHost />
       <ReauthHost />
