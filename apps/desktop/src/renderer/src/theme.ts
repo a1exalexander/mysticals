@@ -12,7 +12,7 @@ export const THEMES = [
   { id: 'matrix', name: 'Matrix', scheme: 'dark', preview: ['#0a0a0a', '#3ecf68', '#a8d66a', '#6fcfa2', '#35b85a'] },
   { id: 'bubble', name: 'Bubblegum', scheme: 'light', preview: ['#fff5fa', '#e0458f', '#ffa3d1', '#b9a6ff', '#9fe3c9'] },
   { id: 'toon', name: 'Cartoon', scheme: 'light', preview: ['#fffbea', '#7b3ff2', '#ff3d7f', '#18b6f6', '#ffd60a'] },
-  { id: 'babyblue', name: 'Baby Blue', scheme: 'light', preview: ['#f3f9ff', '#3b8ad6', '#a9d4f5', '#f5b8d4', '#a8e3cf'] },
+  { id: 'cloud', name: 'Cloud', scheme: 'light', preview: ['#f2fefe', '#1f9fb0', '#e0ffff', '#f7c3d9', '#b4ebd9'] },
   { id: 'light', name: 'Light', scheme: 'light', preview: ['#ffffff', '#2563eb', '#18181b', '#a1a1aa', '#e4e4e7'] }
 ] as const
 
@@ -23,7 +23,7 @@ const TRANSLATED = {
   amber: 'theme.amber',
   mono: 'theme.mono',
   toon: 'theme.toon',
-  babyblue: 'theme.babyblue',
+  cloud: 'theme.cloud',
   light: 'theme.light'
 } as const satisfies Partial<Record<ThemeId, string>>
 

@@ -140,7 +140,7 @@ export const en = {
   'theme.amber': 'Phosphor amber',
   'theme.mono': 'Black & White',
   'theme.toon': 'Cartoon',
-  'theme.babyblue': 'Baby Blue',
+  'theme.cloud': 'Cloud',
   'theme.light': 'Light',
   'settings.language.auto': 'Automatic',
   'settings.language.system': 'system: {name}',

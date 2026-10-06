@@ -165,24 +165,24 @@
   --red: #f0263c;
   --yellow: #f5c400;
 }
-/* Baby Blue: soft pastel sky. */
-:root[data-theme='babyblue'] {
-  --bg: #f3f9ff;
-  --surface: #e6f2fd;
+/* Cloud: airy light cyan around #e0ffff. */
+:root[data-theme='cloud'] {
+  --bg: #f2fefe;
+  --surface: #e0ffff;
   --surface-2: #ffffff;
-  --hover: #d9ebfb;
-  --line: #cfe3f6;
-  --line-strong: #aecdeb;
-  --fg: #23384f;
-  --muted: #5f7d9c;
-  --faint: #bcd4ea;
-  --accent: #3b8ad6;
-  --pink: #e58fb8;
-  --green: #3fb08a;
-  --cyan: #3fb3d6;
-  --orange: #f0a06b;
-  --red: #e05a6a;
-  --yellow: #e2b23e;
+  --hover: #d2f6f7;
+  --line: #c8eff1;
+  --line-strong: #9fdde2;
+  --fg: #1d3b40;
+  --muted: #55848b;
+  --faint: #b3e3e7;
+  --accent: #1f9fb0;
+  --pink: #e98fb6;
+  --green: #36b08c;
+  --cyan: #5aa8e6;
+  --orange: #f2a26c;
+  --red: #e15b6b;
+  --yellow: #e0b13f;
 }
 /* Light: plain white, neutral greys, one quiet blue accent. */
 :root[data-theme='light'] {
@@ -228,7 +228,7 @@
 }
 :root[data-theme='bubble'] { --shadow: 230 90 160; --shadow-k: 0.3; }
 :root[data-theme='toon'] { --shadow: 43 33 64; --shadow-k: 0.5; }
-:root[data-theme='babyblue'] { --shadow: 60 120 190; --shadow-k: 0.3; }
+:root[data-theme='cloud'] { --shadow: 40 130 145; --shadow-k: 0.28; }
 :root[data-theme='light'] { --shadow: 0 0 0; --shadow-k: 0.12; }
 /* Matrix: everything in mono with a barely-there phosphor glow. */
 :root[data-theme='matrix'] { --shadow: 0 0 0; font-family: var(--mono); }

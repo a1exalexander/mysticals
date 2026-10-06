@@ -18,7 +18,7 @@ export const THEMES: { id: string; name: string; scheme: 'dark' | 'light'; token
   { id: 'matrix', name: 'Matrix', scheme: 'dark', tokens: t('#0a0a0a, #0f0f0f, #151515, #1b1b1b, #1e1e1e, #2c2c2c, #8fd99e, #4d8a5c, #2b4232, #3ecf68, #a8d66a, #35b85a, #6fcfa2, #c4cf62, #d9594c, #d2d98a') },
   { id: 'bubble', name: 'Bubblegum', scheme: 'light', tokens: t('#fff5fa, #ffeaf4, #ffffff, #ffdeee, #fcd6e8, #f6bdd9, #4a2a40, #9a6487, #eabfd5, #e0458f, #ff7ab8, #3fb68a, #5aa7dc, #f28a6b, #e04468, #e6ae3a') },
   { id: 'toon', name: 'Cartoon', scheme: 'light', tokens: t('#fffbea, #fff1bf, #ffffff, #ffe8a0, #f1e1a4, #2b2140, #2b2140, #6e5f8f, #cbb98a, #7b3ff2, #ff3d7f, #17b45a, #0ea5e9, #ff8a00, #f0263c, #f5c400') },
-  { id: 'babyblue', name: 'Baby Blue', scheme: 'light', tokens: t('#f3f9ff, #e6f2fd, #ffffff, #d9ebfb, #cfe3f6, #aecdeb, #23384f, #5f7d9c, #bcd4ea, #3b8ad6, #e58fb8, #3fb08a, #3fb3d6, #f0a06b, #e05a6a, #e2b23e') },
+  { id: 'cloud', name: 'Cloud', scheme: 'light', tokens: t('#f2fefe, #e0ffff, #ffffff, #d2f6f7, #c8eff1, #9fdde2, #1d3b40, #55848b, #b3e3e7, #1f9fb0, #e98fb6, #36b08c, #5aa8e6, #f2a26c, #e15b6b, #e0b13f') },
   { id: 'light', name: 'Light', scheme: 'light', tokens: t('#ffffff, #f7f7f8, #ffffff, #f0f0f2, #e8e8eb, #d4d4d8, #18181b, #71717a, #d4d4d8, #2563eb, #db2777, #16a34a, #0891b2, #ea580c, #dc2626, #ca8a04') },
 ]
 

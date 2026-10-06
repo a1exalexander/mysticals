@@ -141,7 +141,7 @@ export const uk: Record<Key, Msg> = {
   'theme.amber': 'Бурштиновий люмінофор',
   'theme.mono': 'Чорно-біла',
   'theme.toon': 'Мультяшна',
-  'theme.babyblue': 'Ніжно-блакитна',
+  'theme.cloud': 'Хмаринка',
   'theme.light': 'Світла',
   'settings.language.auto': 'Автоматично',
   'settings.language.system': 'системна: {name}',
