@@ -20,6 +20,11 @@ test('recurring delete: "This and following" keeps earlier instances only', asyn
   await expect(details).toBeHidden()
   const prompt = page.getByTestId('scope-prompt')
   await expect(prompt).toContainText('Delete recurring event')
+  // Each choice carries an icon of how much of the series it takes, in delete red.
+  for (const name of ['This event', 'This and following', 'All events', 'Cancel']) {
+    await expect(prompt.getByRole('button', { name }).locator('svg')).toHaveCount(1)
+  }
+  await expect(prompt.getByRole('button', { name: 'All events' })).toHaveClass(/danger/)
   await page.screenshot({ path: 'e2e/screens/recurring-delete.png' })
   await prompt.getByRole('button', { name: 'This and following' }).click()
   await expect(prompt).toBeHidden()

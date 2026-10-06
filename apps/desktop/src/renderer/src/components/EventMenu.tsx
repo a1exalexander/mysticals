@@ -71,7 +71,7 @@ export function deleteEvent(e: CalEvent): void {
         }),
       (err) => bus.emit('toast', { text: t('toast.deleteFailed', { title: name(e), error: errorText(err) }), error: true })
     )
-  if (e.recurringEventId) bus.emit('scope:ask', { title: t('scope.delete'), onPick: run, onCancel: () => {} })
+  if (e.recurringEventId) bus.emit('scope:ask', { title: t('scope.delete'), danger: true, onPick: run, onCancel: () => {} })
   else run('one')
 }
 
