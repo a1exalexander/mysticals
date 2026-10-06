@@ -6,6 +6,7 @@ interface Props { title: string; description?: string }
 const { title, description = 'A calendar for several Google and CalDAV accounts, on the desktop or in your terminal. Every account stays in its own box.' } = Astro.props
 const here = Astro.url.pathname.replace(/\/$/, '') || '/'
 const gh = 'https://github.com/a1exalexander/mysticals'
+const donate = 'https://ko-fi.com/a1exalexander'
 const cur = (href: string) => (here === href ? 'page' : undefined)
 const canonical = new URL(Astro.url.pathname, Astro.site).href
 const ogImage = new URL('/og-image.png', Astro.site).href
@@ -73,6 +74,7 @@ const phKey = process.env.MYSTICALS_POSTHOG_KEY
         <a href="/">Home</a>{!PREVIEW && <><a href="/download/">Download</a><a href="/install/">Install</a></>}
         <a href={gh}>GitHub</a>{!PREVIEW && <a href="https://www.npmjs.com/package/mysticals">npm</a>}
         <a href="/privacy/">Privacy</a><a href="/terms/">Terms</a>
+        <a href={donate} data-track="donate_click">Support on Ko-fi</a>
       </nav>
     </footer>
     <script>

@@ -16,6 +16,9 @@ import { Button, Clickable, useKeys } from '../mouse'
 import { ansiOf, C } from '../theme'
 import { AddCaldav, PALETTE, cycle, editText, useKeyState } from './AddCaldav'
 import { Spinner } from '../StatusLine'
+import { openUrl } from '../../daemon/google'
+
+const DONATE_URL = 'https://ko-fi.com/a1exalexander'
 
 export interface AccountsProps {
   onClose(): void
@@ -296,7 +299,13 @@ export function Accounts({ onClose }: AccountsProps) {
       )}
       {mode.kind === 'list' && (
         <Box marginTop={1}>
-          <Text color={C.muted}>Made in Ukraine</Text>
+          <Text color={C.muted}>Made in Ukraine · </Text>
+          <Clickable onClick={() => void openUrl(DONATE_URL).catch(() => {})}>
+            <Text color={C.muted}>Support on Ko-fi: </Text>
+            <Text color={C.cyan} underline>
+              {DONATE_URL}
+            </Text>
+          </Clickable>
         </Box>
       )}
     </Clickable>
