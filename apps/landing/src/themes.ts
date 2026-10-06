@@ -19,7 +19,7 @@ export const THEMES: { id: string; name: string; scheme: 'dark' | 'light'; token
   { id: 'bubble', name: 'Bubblegum', scheme: 'light', tokens: t('#fff5fa, #ffeaf4, #ffffff, #ffdeee, #fcd6e8, #f6bdd9, #4a2a40, #9a6487, #eabfd5, #e0458f, #ff7ab8, #3fb68a, #5aa7dc, #f28a6b, #e04468, #e6ae3a') },
   { id: 'toon', name: 'Cartoon', scheme: 'light', tokens: t('#fffbea, #fff1bf, #ffffff, #ffe8a0, #f1e1a4, #2b2140, #2b2140, #6e5f8f, #cbb98a, #7b3ff2, #ff3d7f, #17b45a, #0ea5e9, #ff8a00, #f0263c, #f5c400') },
   { id: 'cloud', name: 'Cloud', scheme: 'light', tokens: t('#f2fefe, #e0ffff, #ffffff, #d2f6f7, #c8eff1, #9fdde2, #1d3b40, #55848b, #b3e3e7, #1f9fb0, #e98fb6, #36b08c, #5aa8e6, #f2a26c, #e15b6b, #e0b13f') },
-  { id: 'light', name: 'Light', scheme: 'light', tokens: t('#ffffff, #f7f7f8, #ffffff, #f0f0f2, #e8e8eb, #d4d4d8, #18181b, #71717a, #d4d4d8, #2563eb, #db2777, #16a34a, #0891b2, #ea580c, #dc2626, #ca8a04') },
+  { id: 'light', name: 'Light', scheme: 'light', tokens: t('#ffffff, #f7f7f7, #ffffff, #efefef, #e5e5e5, #d4d4d4, #111111, #737373, #d4d4d4, #111111, #111111, #262626, #404040, #525252, #dc2626, #171717') },
 ]
 
 export type Theme = (typeof THEMES)[number]

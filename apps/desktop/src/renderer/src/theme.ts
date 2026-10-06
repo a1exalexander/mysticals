@@ -13,7 +13,7 @@ export const THEMES = [
   { id: 'bubble', name: 'Bubblegum', scheme: 'light', preview: ['#fff5fa', '#e0458f', '#ffa3d1', '#b9a6ff', '#9fe3c9'] },
   { id: 'toon', name: 'Cartoon', scheme: 'light', preview: ['#fffbea', '#7b3ff2', '#ff3d7f', '#18b6f6', '#ffd60a'] },
   { id: 'cloud', name: 'Cloud', scheme: 'light', preview: ['#f2fefe', '#1f9fb0', '#e0ffff', '#f7c3d9', '#b4ebd9'] },
-  { id: 'light', name: 'Light', scheme: 'light', preview: ['#ffffff', '#2563eb', '#18181b', '#a1a1aa', '#e4e4e7'] }
+  { id: 'light', name: 'Light', scheme: 'light', preview: ['#ffffff', '#111111', '#525252', '#a3a3a3', '#e5e5e5'] }
 ] as const
 
 export type ThemeId = (typeof THEMES)[number]['id']
