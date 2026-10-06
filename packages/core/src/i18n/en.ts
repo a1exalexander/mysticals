@@ -140,6 +140,8 @@ export const en = {
   'theme.amber': 'Phosphor amber',
   'theme.mono': 'Black & White',
   'theme.toon': 'Cartoon',
+  'theme.babyblue': 'Baby Blue',
+  'theme.light': 'Light',
   'settings.language.auto': 'Automatic',
   'settings.language.system': 'system: {name}',
   'settings.sync.note': 'Accounts sync automatically every 2 minutes and when the app regains focus.',

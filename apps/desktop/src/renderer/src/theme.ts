@@ -11,14 +11,24 @@ export const THEMES = [
   { id: 'vscode', name: 'VS Code Dark', scheme: 'dark', preview: ['#1f1f1f', '#3794ff', '#c586c0', '#4ec9b0', '#6a9955'] },
   { id: 'matrix', name: 'Matrix', scheme: 'dark', preview: ['#0a0a0a', '#3ecf68', '#a8d66a', '#6fcfa2', '#35b85a'] },
   { id: 'bubble', name: 'Bubblegum', scheme: 'light', preview: ['#fff5fa', '#e0458f', '#ffa3d1', '#b9a6ff', '#9fe3c9'] },
-  { id: 'toon', name: 'Cartoon', scheme: 'light', preview: ['#fffbea', '#7b3ff2', '#ff3d7f', '#18b6f6', '#ffd60a'] }
+  { id: 'toon', name: 'Cartoon', scheme: 'light', preview: ['#fffbea', '#7b3ff2', '#ff3d7f', '#18b6f6', '#ffd60a'] },
+  { id: 'babyblue', name: 'Baby Blue', scheme: 'light', preview: ['#f3f9ff', '#3b8ad6', '#a9d4f5', '#f5b8d4', '#a8e3cf'] },
+  { id: 'light', name: 'Light', scheme: 'light', preview: ['#ffffff', '#2563eb', '#18181b', '#a1a1aa', '#e4e4e7'] }
 ] as const
 
 export type ThemeId = (typeof THEMES)[number]['id']
 
 /** Proper names stay as they are; only the descriptive ones are translated. */
+const TRANSLATED = {
+  amber: 'theme.amber',
+  mono: 'theme.mono',
+  toon: 'theme.toon',
+  babyblue: 'theme.babyblue',
+  light: 'theme.light'
+} as const satisfies Partial<Record<ThemeId, string>>
+
 export const themeName = (th: (typeof THEMES)[number]): string =>
-  th.id === 'amber' ? t('theme.amber') : th.id === 'mono' ? t('theme.mono') : th.id === 'toon' ? t('theme.toon') : th.name
+  th.id in TRANSLATED ? t(TRANSLATED[th.id as keyof typeof TRANSLATED]) : th.name
 
 const KEY = 'mysticals-theme'
 const isTheme = (v: unknown): v is ThemeId => THEMES.some((t) => t.id === v)
