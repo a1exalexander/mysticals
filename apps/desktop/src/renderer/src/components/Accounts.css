@@ -108,7 +108,7 @@
 .acc-sheet button.acc-link:hover { background: none; text-decoration: underline; }
 
 /* Theme picker */
-.theme-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .acc-sheet button.theme-opt {
   height: auto; display: grid; gap: 8px; padding: 10px; text-align: left; border-radius: 6px; background: var(--bg);
 }
@@ -122,7 +122,7 @@
   display: flex; justify-content: space-between; align-items: center; gap: 4px; font: 500 11.5px/1.25 var(--mono);
 }
 .theme-name .on { color: var(--accent); }
-/* Four rows of themes fit the panel without growing the sheet. */
+/* Four themes a row on the wide Settings sheet; three rows fit the panel without growing it. */
 .set-panel .theme-swatch { height: 32px; }
 
 /* Settings: a larger sheet with the sections listed down the left (SegTabs orientation="vertical", sliding thumb)

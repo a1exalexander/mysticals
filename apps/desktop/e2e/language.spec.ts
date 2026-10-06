@@ -17,6 +17,14 @@ test('language: switch to Ukrainian in Settings and back', async () => {
   await expect(page.getByTestId('view-switch-week')).toHaveText('Тиждень')
   await expect(page.getByTestId('new-event')).toHaveText('+ нова')
   await expect(page.locator('html')).toHaveAttribute('lang', 'uk')
+  // The long Ukrainian tab labels fit whole inside their tabs, and the tabs inside the track.
+  const track = (await page.locator('.set-tabs').boundingBox())!
+  for (const tab of await page.locator('.set-tabs [role=tab]').all()) {
+    const b = (await tab.boundingBox())!
+    expect(b.x).toBeGreaterThanOrEqual(track.x - 0.5)
+    expect(b.x + b.width).toBeLessThanOrEqual(track.x + track.width + 0.5)
+    expect(await tab.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+  }
   const menu = await app.evaluate(({ Menu }) => Menu.getApplicationMenu()?.items.map((i) => i.label))
   expect(menu).toEqual(expect.arrayContaining(['Файл', 'Редагування', 'Вигляд', 'Вікно']))
   await page.screenshot({ path: 'e2e/screens/language-uk.png' })

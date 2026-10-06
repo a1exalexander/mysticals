@@ -177,21 +177,22 @@ export function CalendarView(): React.JSX.Element {
   return (
     <div className="calendar-view" data-testid="calendar-view">
       <header className="toolbar">
-        <button
-          type="button"
-          className="sidebar-toggle"
-          data-testid="sidebar-toggle"
-          aria-pressed={!sidebarHidden}
-          aria-label={t(sidebarHidden ? 'toolbar.showSidebar' : 'toolbar.hideSidebar')}
-          title={`${t(sidebarHidden ? 'toolbar.showSidebar' : 'toolbar.hideSidebar')} (${document.documentElement.dataset.platform === 'darwin' ? '⌘' : 'Ctrl+'}\\)`}
-          onClick={toggleSidebar}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <rect x="3" y="4" width="18" height="16" rx="2" />
-            <path d="M9 4v16" />
-            {!sidebarHidden && <path d="M5.5 8h1M5.5 11h1" />}
-          </svg>
-        </button>
+        {/* Expanded, the handle on the sidebar's edge (App.tsx) collapses it; collapsed, this brings it back. */}
+        {sidebarHidden && (
+          <button
+            type="button"
+            className="sidebar-toggle"
+            data-testid="sidebar-toggle"
+            aria-label={t('toolbar.showSidebar')}
+            title={`${t('toolbar.showSidebar')} (${document.documentElement.dataset.platform === 'darwin' ? '⌘' : 'Ctrl+'}\\)`}
+            onClick={toggleSidebar}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <path d="M9 4v16" />
+            </svg>
+          </button>
+        )}
         {/* Keyed by the period so a step to the next one fades the new title in. */}
         <h1 className="toolbar-title" key={`${deskView}/${format(days[0], 'yyyy-MM-dd')}`}>
           {agenda && isToday(date) ? t('common.today') : view === 'day' ? fmt(date, 'd MMMM') : view === '3day' ? rangeLabel(days[0], days[2], currentLocale()) : cap(fmt(date, 'LLLL'))}

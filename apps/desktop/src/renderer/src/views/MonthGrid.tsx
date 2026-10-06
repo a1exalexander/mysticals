@@ -3,6 +3,7 @@ import { addDays, differenceInCalendarDays, format, isSameMonth, isToday } from 
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
+import { eventMenu, slotMenu } from '../components/EventMenu'
 import { nav } from './nav'
 import { eventBounds, eventsOnDay, isPast, monthGrid, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
@@ -89,6 +90,7 @@ export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): Re
               data-idx={idx}
               className={`mg-cell${isSameMonth(d, date) ? '' : ' is-other'}${isToday(d) ? ' is-today' : ''}${moving?.over === idx ? ' is-drop' : ''}`}
               onDoubleClick={() => bus.emit('event:create', { start: ymd(d), end: ymd(addDays(d, 1)), allDay: true })}
+              {...slotMenu(() => ({ slot: { start: ymd(d), allDay: true }, end: ymd(addDays(d, 1)) }))}
             >
               <div className="mg-num">
                 <span>{format(d, 'd') === '1' ? fmt(d, 'd MMM') : format(d, 'd')}</span>
@@ -107,6 +109,7 @@ export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): Re
                     bus.emit('event:open', { event: e, anchor: ev.currentTarget.getBoundingClientRect(), el: ev.currentTarget })
                   }
                   {...tooltipHover(e)}
+                  {...eventMenu(e)}
                 >
                   {!e.allDay && <span className="mg-dot" />}
                   <span className="ev-title">{e.title}</span>

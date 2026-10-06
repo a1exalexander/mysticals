@@ -10,6 +10,7 @@ import { useDirectory } from '../components/ui/useDirectory'
 import { Notes, PARTSTAT } from '../components/EventDetails'
 import { STATUS_ICON } from '@mysticals/core/logic/details'
 import { nav } from './nav'
+import { eventMenu } from '../components/EventMenu'
 import '../components/EventDetails.css'
 import type { ColorOf } from './CalendarView'
 import './Agenda.css'
@@ -125,7 +126,7 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
     evs.length ? (
       <div className="ag-allday">
         {evs.map((e) => (
-          <button key={keyOf(e)} type="button" className="ag-chip" style={{ '--c': colorOf(e) } as React.CSSProperties} onClick={(ev) => open(e, ev.currentTarget)}>
+          <button key={keyOf(e)} type="button" className="ag-chip" style={{ '--c': colorOf(e) } as React.CSSProperties} onClick={(ev) => open(e, ev.currentTarget)} {...eventMenu(e)}>
             {e.title || t('common.untitled')}
           </button>
         ))}
@@ -218,6 +219,7 @@ function Row({ e, i, now, color, focused, next, nowLine, onPick }: {
         data-declined={e.myStatus === 'declined'}
         onClick={() => onPick(e)}
         onDoubleClick={(ev) => open(e, ev.currentTarget)}
+        {...eventMenu(e)}
       >
         <span className="ag-time">{format(eventBounds(e).start, 'HH:mm')}</span>
         <span className="ag-bar" />
