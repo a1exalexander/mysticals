@@ -260,34 +260,34 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 
 .app {
   height: 100%; display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto;
-  background: var(--surface); transition: grid-template-columns 180ms ease;
+  transition: grid-template-columns 180ms ease;
 }
 .main {
   grid-area: 1 / 2; background: var(--bg); min-width: 0; min-height: 0; border-left: 1px solid var(--line);
   /* Above the sidebar, which keeps its full width and slides under the calendar while its column folds. */
   position: relative; z-index: 1;
 }
-/* Collapsed sidebar (sidebar.ts): the column folds to a slim rail holding the handle; on macOS the toolbar
-   still clears the traffic lights. */
-.app[data-sidebar='collapsed'] { grid-template-columns: 28px minmax(0, 1fr); }
+/* Collapsed sidebar (sidebar.ts): the column folds to nothing; on macOS the toolbar clears the traffic lights. */
+.app[data-sidebar='collapsed'] { grid-template-columns: 0 minmax(0, 1fr); }
 /* Hidden (and out of the tab order) only once the fold has finished, so it slides under the calendar. */
 .app[data-sidebar='collapsed'] .sidebar { visibility: hidden; transition: visibility 0s linear 180ms; }
-:root[data-platform='darwin'] .app[data-sidebar='collapsed'] .toolbar { padding-left: 56px; }
-/* The one sidebar toggle (App.tsx): a round handle straddling the column's right edge, halfway down. It follows
-   the column as it folds; collapsed, it sits centred in the rail and its chevron turns around. */
-.sidebar-handle {
-  grid-area: 1 / 1; justify-self: end; align-self: center; position: relative; z-index: 2; margin-right: -11px;
-  width: 22px; height: 22px; display: grid; place-items: center; padding: 0; -webkit-app-region: no-drag;
-  border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); color: var(--muted);
-  box-shadow: 0 1px 3px rgb(var(--shadow) / calc(0.2 * var(--shadow-k)));
-  opacity: 0.7; transition: margin-right 180ms ease, opacity 120ms ease, background-color 120ms ease;
+.app[data-sidebar='collapsed'] .main { border-left: 0; }
+:root[data-platform='darwin'] .app[data-sidebar='collapsed'] .toolbar { padding-left: 84px; }
+/* The one sidebar toggle (CalendarView), first in the toolbar beside the title. Open, the panel's left pane is
+   filled and the chevron points left; collapsed, the pane empties and the chevron turns around. */
+.sidebar-toggle {
+  flex: none; width: 30px; height: 30px; margin-right: -4px; display: grid; place-items: center; padding: 0;
+  border: 1px solid color-mix(in srgb, var(--muted) 55%, transparent); border-radius: 6px;
+  background: var(--surface); color: var(--fg);
 }
-.sidebar-handle svg { transition: transform 180ms ease; }
-.sidebar-handle:hover { opacity: 1; background: var(--hover); color: var(--fg); border-color: var(--muted); }
-.app[data-sidebar='collapsed'] .sidebar-handle { margin-right: 3px; }
-.app[data-sidebar='collapsed'] .sidebar-handle svg { transform: rotate(180deg); }
+.sidebar-toggle:hover { background: var(--hover); border-color: var(--accent); }
+.sidebar-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sidebar-toggle-pane { opacity: 0.45; transition: opacity 180ms ease; }
+.sidebar-toggle-chev { transform-box: fill-box; transform-origin: center; transition: transform 180ms ease; }
+.sidebar-toggle[aria-expanded='false'] .sidebar-toggle-pane { opacity: 0; }
+.sidebar-toggle[aria-expanded='false'] .sidebar-toggle-chev { transform: rotate(180deg); }
 @media (prefers-reduced-motion: reduce) {
-  .app, .sidebar, .app[data-sidebar='collapsed'] .sidebar, .sidebar-handle, .sidebar-handle svg { transition: none; }
+  .app, .sidebar, .app[data-sidebar='collapsed'] .sidebar, .sidebar-toggle-pane, .sidebar-toggle-chev { transition: none; }
 }
 
 /* ---------- Sidebar ---------- */

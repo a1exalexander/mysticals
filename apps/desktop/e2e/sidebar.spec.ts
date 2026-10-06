@@ -6,27 +6,26 @@ test('sidebar collapses and expands, remembers it, and ⌘\\ / Ctrl+\\ toggles i
   await page.setViewportSize({ width: 1200, height: 800 })
   await expect(page.locator('.app-loader')).toBeHidden()
   const sidebar = page.getByTestId('sidebar')
-  const handle = page.getByTestId('sidebar-handle')
+  const toggle = page.getByTestId('sidebar-toggle')
+  const title = page.locator('.toolbar-title')
 
-  // Expanded by default: the collapse handle sits on the sidebar's right border, halfway down it.
+  // Expanded by default: the one toggle sits in the toolbar, just left of the title and level with it.
   await expect(sidebar).toBeVisible()
-  await expect(handle).toHaveAttribute('aria-expanded', 'true')
-  const sb = (await sidebar.boundingBox())!
-  const h = (await handle.boundingBox())!
-  expect(Math.abs(h.x + h.width / 2 - (sb.x + sb.width))).toBeLessThan(2)
-  expect(Math.abs(h.y + h.height / 2 - (sb.y + sb.height / 2))).toBeLessThan(2)
+  await expect(toggle).toBeVisible()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  const tb = (await toggle.boundingBox())!
+  const hb = (await title.boundingBox())!
+  expect(tb.x + tb.width).toBeLessThanOrEqual(hb.x)
+  expect(hb.x - (tb.x + tb.width)).toBeLessThan(20)
+  expect(Math.abs(tb.y + tb.height / 2 - (hb.y + hb.height / 2))).toBeLessThan(4)
 
-  await handle.click()
+  await toggle.click()
   await expect(sidebar).toBeHidden()
-  // The same handle stays on screen, in a slim rail left of the calendar, to bring it back.
-  await expect(handle).toBeVisible()
-  await expect(handle).toHaveAttribute('aria-expanded', 'false')
-  await expect.poll(async () => (await page.locator('.main').boundingBox())!.x).toBeLessThan(40)
-  const main = (await page.locator('.main').boundingBox())!
-  const hc = (await handle.boundingBox())!
-  expect(hc.x).toBeGreaterThanOrEqual(0)
-  expect(hc.x + hc.width).toBeLessThanOrEqual(main.x)
-  await expect(page.getByTestId('sidebar-toggle')).toHaveCount(0)
+  // The same toggle stays in place beside the title to bring it back.
+  await expect(toggle).toBeVisible()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await expect.poll(async () => (await page.locator('.main').boundingBox())!.x).toBeLessThan(1)
+  expect((await toggle.boundingBox())!.x + tb.width).toBeLessThanOrEqual((await title.boundingBox())!.x)
   await page.screenshot({ path: 'e2e/screens/sidebar-collapsed.png' })
 
   // Survives a reload.
@@ -38,11 +37,11 @@ test('sidebar collapses and expands, remembers it, and ⌘\\ / Ctrl+\\ toggles i
   await expect(sidebar).toBeVisible()
   await expect.poll(async () => (await page.locator('.main').boundingBox())!.x).toBeGreaterThan(200)
 
-  // One handle both hides and shows it.
-  await handle.click()
+  // One toggle both hides and shows it.
+  await toggle.click()
   await expect(sidebar).toBeHidden()
-  await handle.click()
+  await toggle.click()
   await expect(sidebar).toBeVisible()
-  await expect(handle).toHaveAttribute('aria-expanded', 'true')
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
   await app.close()
 })
