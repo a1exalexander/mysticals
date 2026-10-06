@@ -9,23 +9,26 @@ test('sidebar collapses and expands, remembers it, and ⌘\\ / Ctrl+\\ toggles i
   const toggle = page.getByTestId('sidebar-toggle')
   const title = page.locator('.toolbar-title')
 
-  // Expanded by default: the one toggle sits in the toolbar, just left of the title and level with it.
+  // Expanded by default: the one toggle sits centred on the sidebar's right edge, level with the title.
   await expect(sidebar).toBeVisible()
   await expect(toggle).toBeVisible()
   await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  const sb = (await sidebar.boundingBox())!
   const tb = (await toggle.boundingBox())!
   const hb = (await title.boundingBox())!
-  expect(tb.x + tb.width).toBeLessThanOrEqual(hb.x)
-  expect(hb.x - (tb.x + tb.width)).toBeLessThan(20)
+  expect(Math.abs(tb.x + tb.width / 2 - (sb.x + sb.width))).toBeLessThan(2)
   expect(Math.abs(tb.y + tb.height / 2 - (hb.y + hb.height / 2))).toBeLessThan(4)
 
   await toggle.click()
   await expect(sidebar).toBeHidden()
-  // The same toggle stays in place beside the title to bring it back.
+  // The same toggle stays at the top, now a little in from the left edge, with the title clear of it.
   await expect(toggle).toBeVisible()
   await expect(toggle).toHaveAttribute('aria-expanded', 'false')
   await expect.poll(async () => (await page.locator('.main').boundingBox())!.x).toBeLessThan(1)
-  expect((await toggle.boundingBox())!.x + tb.width).toBeLessThanOrEqual((await title.boundingBox())!.x)
+  await expect.poll(async () => (await toggle.boundingBox())!.x).toBeGreaterThan(0)
+  const tc = (await toggle.boundingBox())!
+  expect(Math.abs(tc.y - tb.y)).toBeLessThan(1)
+  await expect.poll(async () => (await title.boundingBox())!.x).toBeGreaterThan(tc.x + tc.width)
   await page.screenshot({ path: 'e2e/screens/sidebar-collapsed.png' })
 
   // Survives a reload.

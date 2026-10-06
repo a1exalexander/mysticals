@@ -15,7 +15,7 @@ import { AHEAD_DAYS, Agenda } from './Agenda'
 import { cap, currentLocale, fmt, t, useLocale } from '../i18n'
 import type { Key } from '@mysticals/core/i18n'
 import { SegTabs } from '../components/ui/SegTabs'
-import { toggleSidebar, useSidebarCollapsed } from '../sidebar'
+import { toggleSidebar } from '../sidebar'
 
 const VIEWS: DeskView[] = ['agenda', 'day', '3day', 'week', 'month']
 const LABEL: Record<DeskView, Key> = { agenda: 'view.agenda', day: 'view.day', '3day': 'view.3day', week: 'view.week', month: 'view.month' }
@@ -55,7 +55,6 @@ const readAhead = (): boolean => {
 
 export function CalendarView(): React.JSX.Element {
   const { date: navDate, view: deskView } = useNav()
-  const sidebarCollapsed = useSidebarCollapsed()
   useLocale()
   const agenda = deskView === 'agenda'
   // The agenda shows one day (today unless stepped away); underneath it loads like the day view.
@@ -177,23 +176,6 @@ export function CalendarView(): React.JSX.Element {
   return (
     <div className="calendar-view" data-testid="calendar-view">
       <header className="toolbar">
-        {/* The one sidebar toggle: hides and shows it, always beside the title. */}
-        <button
-          type="button"
-          className="sidebar-toggle"
-          data-testid="sidebar-toggle"
-          aria-expanded={!sidebarCollapsed}
-          aria-label={t(sidebarCollapsed ? 'toolbar.showSidebar' : 'toolbar.hideSidebar')}
-          title={`${t(sidebarCollapsed ? 'toolbar.showSidebar' : 'toolbar.hideSidebar')} (${document.documentElement.dataset.platform === 'darwin' ? '⌘' : 'Ctrl+'}\\)`}
-          onClick={toggleSidebar}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <rect x="3" y="4" width="18" height="16" rx="2" />
-            <path d="M9 4v16" />
-            <path className="sidebar-toggle-pane" d="M5 4h4v16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" fill="currentColor" stroke="none" />
-            <path className="sidebar-toggle-chev" d="M16.5 9l-3 3 3 3" />
-          </svg>
-        </button>
         {/* Keyed by the period so a step to the next one fades the new title in. */}
         <h1 className="toolbar-title" key={`${deskView}/${format(days[0], 'yyyy-MM-dd')}`}>
           {agenda && isToday(date) ? t('common.today') : view === 'day' ? fmt(date, 'd MMMM') : view === '3day' ? rangeLabel(days[0], days[2], currentLocale()) : cap(fmt(date, 'LLLL'))}
