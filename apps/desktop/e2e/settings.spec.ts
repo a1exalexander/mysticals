@@ -15,9 +15,14 @@ test('settings tabs: accounts, themes, sync', async () => {
   await page.waitForTimeout(250)
   await page.screenshot({ path: 'e2e/screens/settings-accounts.png' })
 
-  // Arrow keys move between tabs.
+  // The sections are listed down the left side; arrow keys move between them.
+  const accBox = (await page.getByTestId('settings-tab-accounts').boundingBox())!
+  const themesBox = (await page.getByTestId('settings-tab-themes').boundingBox())!
+  expect(themesBox.y).toBeGreaterThan(accBox.y)
+  expect(themesBox.x).toBeCloseTo(accBox.x, 0)
+  expect((await panel.boundingBox())!.x).toBeGreaterThan(accBox.x + accBox.width)
   await page.getByTestId('settings-tab-accounts').focus()
-  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('ArrowDown')
   await expect(page.getByTestId('settings-tab-themes')).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByTestId('settings-tab-themes')).toBeFocused()
   await page.getByTestId('theme-catppuccin').click()
@@ -37,14 +42,14 @@ test('settings tabs: accounts, themes, sync', async () => {
 
   await page.getByTestId('settings-tab-sync').click()
   await expect(page.getByTestId('sync-work')).toContainText('ok')
-  // The thumb slides under the active tab; no extra space under the tabs inside the track.
+  // The thumb slides under the active tab, and the sheet keeps its size across tabs.
   await page.waitForTimeout(500)
   const tabBox = await page.getByTestId('settings-tab-sync').boundingBox()
   const thumbBox = await settings.locator('.set-tabs .seg-thumb').boundingBox()
-  expect(thumbBox?.x).toBeCloseTo(tabBox?.x ?? 0, 0)
+  expect(thumbBox?.y).toBeCloseTo(tabBox?.y ?? 0, 0)
+  expect(thumbBox?.height).toBeCloseTo(tabBox?.height ?? 0, 0)
   expect(thumbBox?.width).toBeCloseTo(tabBox?.width ?? 0, 0)
-  const trackBox = await settings.locator('.set-tabs').boundingBox()
-  expect((trackBox?.height ?? 0) - (tabBox?.height ?? 0)).toBeLessThanOrEqual(4)
+  expect((await settings.boundingBox())?.height).toBeCloseTo(box?.height ?? 0, 0)
   await page.getByTestId('sync-all').click()
   await expect(page.getByTestId('sync-all')).toHaveText('Sync all')
   await expect(page.getByTestId('sync-work')).toContainText('ok')

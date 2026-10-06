@@ -61,6 +61,9 @@ export function createMockApi(onChanged: (accountId: string) => void): Omit<Api,
   seed(personal, 'p-main', { title: 'Ukraine - Portugal', start: iso(5, 12, 30), end: iso(5, 13), conferenceUrl: 'https://meet.google.com/zon-fdwf-hnk' })
   seed(personal, 'p-main', { title: 'Catch-up', start: iso(5, 16), end: iso(5, 16, 30), location: 'https://meet.namechip.net/catch-up' })
   seed(personal, 'p-main', { title: 'Coffee', start: iso(5, 9), end: iso(5, 9, 30), location: 'Podil https://maps.app.goo.gl/kyiv-coffee' })
+  // Teammates blocking a whole working day with timed events, and a meeting inside: long-event layouts.
+  for (const title of ['Olena — busy', 'Maksym — busy']) seed(work, 'work-main', { title, start: iso(-2, 9), end: iso(-2, 20) })
+  seed(work, 'work-main', { title: 'Design review', start: iso(-2, 14), end: iso(-2, 15) })
   seed(personal, 'p-main', { title: 'Dinner with friends', start: iso(2, 20), end: iso(2, 22), location: 'Kyiv' })
   // Local dates (toISOString() would be off by a day near midnight); all-day ends are exclusive, like Google and iCal.
   const day = (offset: number): string => format(addDays(new Date(), offset), 'yyyy-MM-dd')

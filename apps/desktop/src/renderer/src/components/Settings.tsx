@@ -8,12 +8,15 @@ import { setLanguage, t, useLocale } from '../i18n'
 import { LOCALE_NAME, LOCALES, type Key, type LocaleSetting } from '@mysticals/core/i18n'
 import { extraEmail } from '@mysticals/core/logic/details'
 import { REMINDER_CHOICES } from '@mysticals/core/logic/reminders'
+import { LONG_HOURS, LONG_MODES, usesThreshold, type LongMode } from '@mysticals/core/logic/layout'
+import { setLongEvents, useLongEvents } from '../longEvents'
 import { Select } from './ui/Select'
 import './ui/ui.css'
 
 const TABS = [
   { id: 'accounts', name: 'settings.tab.accounts' },
   { id: 'themes', name: 'settings.tab.themes' },
+  { id: 'events', name: 'settings.tab.events' },
   { id: 'language', name: 'settings.tab.language' },
   { id: 'sync', name: 'settings.tab.sync' },
   { id: 'notifications', name: 'settings.tab.notifications' },
@@ -44,58 +47,64 @@ export function SettingsHost(): React.JSX.Element | null {
 
   return (
     <Sheet open={open} onClose={() => setOpen(false)} title={t('settings.title')} testId="settings-sheet">
-      <SegTabs
-        tabs={TABS.map((tb) => ({ id: tb.id, label: t(tb.name) }))}
-        value={tab}
-        onChange={setTab}
-        ariaLabel={t('settings.sections')}
-        className="set-tabs"
-        testId={(id) => `settings-tab-${id}`}
-        tabId={(id) => `settings-tab-${id}`}
-        controls="settings-panel"
-      />
-      <div className="set-panel" role="tabpanel" id="settings-panel" aria-labelledby={`settings-tab-${tab}`}>
-        {tab === 'accounts' && (
-          <>
-            {accounts.length === 0 ? (
-              <p className="acc-note">{t('settings.noAccounts')}</p>
-            ) : (
-              <ul className="acc-list">
-                {accounts.map((a) => (
-                  <AccountRow key={a.id} account={a} />
-                ))}
-              </ul>
-            )}
-            <div className="acc-actions">
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false)
-                  bus.emit('accounts:open', {})
-                }}
-              >
-                {t('settings.addAccount')}
-              </button>
-            </div>
-          </>
-        )}
-        {tab === 'themes' && <ThemePicker />}
-        {tab === 'language' && <LanguagePicker />}
-        {tab === 'sync' && <SyncPanel accounts={accounts} />}
-        {tab === 'notifications' && <RemindersPanel accounts={accounts} />}
-        {tab === 'privacy' && <PrivacyPanel />}
+      <div className="set-body">
+        <nav className="set-side">
+          <SegTabs
+            tabs={TABS.map((tb) => ({ id: tb.id, label: t(tb.name) }))}
+            value={tab}
+            onChange={setTab}
+            ariaLabel={t('settings.sections')}
+            className="set-tabs"
+            testId={(id) => `settings-tab-${id}`}
+            tabId={(id) => `settings-tab-${id}`}
+            controls="settings-panel"
+            orientation="vertical"
+          />
+          <p className="set-made" data-testid="made-in-ukraine">
+            <svg viewBox="0 0 3 2" aria-hidden>
+              <rect width="3" height="1" fill="#0057B7" />
+              <rect y="1" width="3" height="1" fill="#FFD700" />
+            </svg>
+            Made in Ukraine
+            <span aria-hidden>·</span>
+            <a href="https://ko-fi.com/a1exalexander" target="_blank" rel="noreferrer" data-testid="donate-link">
+              {t('settings.donate')}
+            </a>
+          </p>
+        </nav>
+        <div className="set-panel" role="tabpanel" id="settings-panel" aria-labelledby={`settings-tab-${tab}`}>
+          {tab === 'accounts' && (
+            <>
+              {accounts.length === 0 ? (
+                <p className="acc-note">{t('settings.noAccounts')}</p>
+              ) : (
+                <ul className="acc-list">
+                  {accounts.map((a) => (
+                    <AccountRow key={a.id} account={a} />
+                  ))}
+                </ul>
+              )}
+              <div className="acc-actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false)
+                    bus.emit('accounts:open', {})
+                  }}
+                >
+                  {t('settings.addAccount')}
+                </button>
+              </div>
+            </>
+          )}
+          {tab === 'themes' && <ThemePicker />}
+          {tab === 'events' && <EventsPanel />}
+          {tab === 'language' && <LanguagePicker />}
+          {tab === 'sync' && <SyncPanel accounts={accounts} />}
+          {tab === 'notifications' && <RemindersPanel accounts={accounts} />}
+          {tab === 'privacy' && <PrivacyPanel />}
+        </div>
       </div>
-      <p className="set-made" data-testid="made-in-ukraine">
-        <svg viewBox="0 0 3 2" aria-hidden>
-          <rect width="3" height="1" fill="#0057B7" />
-          <rect y="1" width="3" height="1" fill="#FFD700" />
-        </svg>
-        Made in Ukraine
-        <span aria-hidden>·</span>
-        <a href="https://ko-fi.com/a1exalexander" target="_blank" rel="noreferrer" data-testid="donate-link">
-          {t('settings.donate')}
-        </a>
-      </p>
     </Sheet>
   )
 }
@@ -125,6 +134,77 @@ function LanguagePicker(): React.JSX.Element {
       </div>
       {error && <p className="acc-error" role="alert">{error}</p>}
     </>
+  )
+}
+
+const MODE_TEXT = {
+  rails: ['settings.events.rails', 'settings.events.railsHint'],
+  allday: ['settings.events.allday', 'settings.events.alldayHint'],
+  cascade: ['settings.events.cascade', 'settings.events.cascadeHint'],
+  expand: ['settings.events.expand', 'settings.events.expandHint']
+} as const satisfies Record<LongMode, readonly [Key, Key]>
+
+/** How timed events longer than a threshold show in the day grids; a per-device preference. */
+function EventsPanel(): React.JSX.Element {
+  const long = useLongEvents()
+  return (
+    <>
+      <h3 className="set-heading set-heading-first">{t('settings.events.long')}</h3>
+      <p className="acc-note">{t('settings.events.note')}</p>
+      <div className="long-grid" role="radiogroup" aria-label={t('settings.events.mode')}>
+        {LONG_MODES.map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="radio"
+            aria-checked={long.mode === m}
+            className="long-opt"
+            data-testid={`long-mode-${m}`}
+            onClick={() => setLongEvents({ mode: m })}
+          >
+            <LongPreview mode={m} />
+            <span className="theme-name">
+              {t(MODE_TEXT[m][0])}
+              {long.mode === m && <span className="on">●</span>}
+            </span>
+            <span className="long-hint">{t(MODE_TEXT[m][1])}</span>
+          </button>
+        ))}
+      </div>
+      <div className="set-check long-threshold">
+        <span>{t('settings.events.longer')}</span>
+        <Select
+          compact
+          data-testid="long-hours"
+          aria-label={t('settings.events.longer')}
+          disabled={!usesThreshold(long.mode)}
+          value={String(long.hours)}
+          options={LONG_HOURS.map((n) => ({ value: String(n), label: t('settings.events.hours', { n }) }))}
+          onChange={(v) => setLongEvents({ hours: Number(v) })}
+        />
+      </div>
+      {!usesThreshold(long.mode) && <p className="acc-note">{t('settings.events.noThreshold')}</p>}
+    </>
+  )
+}
+
+/** A mini day column: three long blocks and one short meeting, drawn the way each mode would. */
+function LongPreview({ mode }: { mode: LongMode }): React.JSX.Element {
+  return (
+    <span className={`long-preview is-${mode}`} aria-hidden>
+      {mode === 'allday' && (
+        <span className="lp-allday">
+          <i /><i />
+        </span>
+      )}
+      <span className="lp-grid">
+        {usesThreshold(mode) && <span className="lp-busy" />}
+        {mode === 'rails' && [0, 1].map((i) => <span key={i} className="lp-rail" style={{ left: 2 + i * 6 }} />)}
+        {mode === 'expand' && [0, 1].map((i) => <span key={i} className="lp-long" style={{ left: `${i * 33.3}%` }} />)}
+        {mode === 'cascade' && [0, 1].map((i) => <span key={i} className="lp-long lp-stack" style={{ left: 2 + i * 9 }} />)}
+        <span className="lp-meet" />
+      </span>
+    </span>
   )
 }
 
