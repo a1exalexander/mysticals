@@ -108,24 +108,24 @@
   --red: #f14c4c;
   --yellow: #dcdcaa;
 }
-/* Matrix: phosphor green on black, CRT glow and scanlines (extras below). */
+/* Matrix: retro terminal, neutral black screen; only the text glows phosphor green (extras below). */
 :root[data-theme='matrix'] {
-  --bg: #020a04;
-  --surface: #04110a;
-  --surface-2: #071a0e;
-  --hover: #0a2414;
-  --line: #0b2414;
-  --line-strong: #12391f;
-  --fg: #b6ffc8;
-  --muted: #2f8a4a;
-  --faint: #164a26;
-  --accent: #00ff41;
-  --pink: #9dff00;
-  --green: #00d936;
-  --cyan: #5cffb0;
-  --orange: #c8ff3d;
-  --red: #ff3b3b;
-  --yellow: #e4ff7a;
+  --bg: #0a0a0a;
+  --surface: #0f0f0f;
+  --surface-2: #151515;
+  --hover: #1b1b1b;
+  --line: #1e1e1e;
+  --line-strong: #2c2c2c;
+  --fg: #8fd99e;
+  --muted: #4d8a5c;
+  --faint: #2b4232;
+  --accent: #3ecf68;
+  --pink: #a8d66a;
+  --green: #35b85a;
+  --cyan: #6fcfa2;
+  --orange: #c4cf62;
+  --red: #d9594c;
+  --yellow: #d2d98a;
 }
 /* Bubblegum: pastel marshmallow pinks. */
 :root[data-theme='bubble'] {
@@ -190,13 +190,13 @@
 }
 :root[data-theme='bubble'] { --shadow: 230 90 160; --shadow-k: 0.3; }
 :root[data-theme='toon'] { --shadow: 43 33 64; --shadow-k: 0.5; }
-/* Matrix: everything in mono, a faint phosphor glow and CRT scanlines over the whole window. */
-:root[data-theme='matrix'] { --shadow: 0 40 10; font-family: var(--mono); }
+/* Matrix: everything in mono, a faint phosphor glow and light CRT scanlines over the whole window. */
+:root[data-theme='matrix'] { --shadow: 0 0 0; font-family: var(--mono); }
 :root[data-theme='matrix'] :is(input, textarea, .invites-panel) { font-family: var(--mono); }
-:root[data-theme='matrix'] body { text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 35%, transparent); }
+:root[data-theme='matrix'] body { text-shadow: 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
 :root[data-theme='matrix'] body::after {
   content: ''; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
-  background: repeating-linear-gradient(to bottom, rgb(0 0 0 / 0.18) 0 1px, transparent 1px 3px);
+  background: repeating-linear-gradient(to bottom, rgb(0 0 0 / 0.12) 0 1px, transparent 1px 3px);
 }
 
 * { box-sizing: border-box; }

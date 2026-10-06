@@ -15,7 +15,7 @@ export const THEMES: { id: string; name: string; scheme: 'dark' | 'light'; token
   { id: 'amber', name: 'Phosphor amber', scheme: 'dark', tokens: t('#0a0806, #100d08, #18130c, #21190f, #241d12, #3a2f1c, #ffcc66, #8a6a33, #4d3b1d, #ffb000, #ff6a00, #9fd67a, #d4a24c, #ff9a3c, #ff4d2e, #ffe08a') },
   { id: 'mono', name: 'Black & White', scheme: 'dark', tokens: t('#000000, #0a0a0a, #111111, #1a1a1a, #1a1a1a, #2e2e2e, #fafafa, #8a8a8a, #404040, #ffffff, #ffffff, #e5e5e5, #d4d4d4, #bdbdbd, #ff5c5c, #fafafa') },
   { id: 'vscode', name: 'VS Code Dark', scheme: 'dark', tokens: t('#1f1f1f, #181818, #252526, #2a2d2e, #2b2b2b, #3c3c3c, #cccccc, #9d9d9d, #5a5a5a, #3794ff, #c586c0, #89d185, #4ec9b0, #ce9178, #f14c4c, #dcdcaa') },
-  { id: 'matrix', name: 'Matrix', scheme: 'dark', tokens: t('#020a04, #04110a, #071a0e, #0a2414, #0b2414, #12391f, #b6ffc8, #2f8a4a, #164a26, #00ff41, #9dff00, #00d936, #5cffb0, #c8ff3d, #ff3b3b, #e4ff7a') },
+  { id: 'matrix', name: 'Matrix', scheme: 'dark', tokens: t('#0a0a0a, #0f0f0f, #151515, #1b1b1b, #1e1e1e, #2c2c2c, #8fd99e, #4d8a5c, #2b4232, #3ecf68, #a8d66a, #35b85a, #6fcfa2, #c4cf62, #d9594c, #d2d98a') },
   { id: 'bubble', name: 'Bubblegum', scheme: 'light', tokens: t('#fff5fa, #ffeaf4, #ffffff, #ffdeee, #fcd6e8, #f6bdd9, #4a2a40, #9a6487, #eabfd5, #e0458f, #ff7ab8, #3fb68a, #5aa7dc, #f28a6b, #e04468, #e6ae3a') },
   { id: 'toon', name: 'Cartoon', scheme: 'light', tokens: t('#fffbea, #fff1bf, #ffffff, #ffe8a0, #f1e1a4, #2b2140, #2b2140, #6e5f8f, #cbb98a, #7b3ff2, #ff3d7f, #17b45a, #0ea5e9, #ff8a00, #f0263c, #f5c400') },
 ]
