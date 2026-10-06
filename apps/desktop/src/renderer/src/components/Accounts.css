@@ -125,18 +125,71 @@
 /* Four rows of themes fit the panel without growing the sheet. */
 .set-panel .theme-swatch { height: 32px; }
 
-/* Settings tabs: the toolbar .seg (sliding thumb), a bit taller; undo the generic .acc-sheet button look. */
-/* Five tabs, some long in Ukrainian: the Settings sheet is a bit wider than the add-account one. */
-.acc-sheet:has(.set-tabs) { width: min(560px, calc(100vw - 32px)); }
-.acc-sheet .set-tabs { width: max-content; max-width: 100%; margin: 6px 0 16px; }
-.acc-sheet .set-tabs .seg-thumb { height: 26px; }
+/* Settings: a larger sheet with the sections listed down the left (SegTabs orientation="vertical", sliding thumb)
+   and the panel scrolling on the right; a fixed height so switching tabs doesn't resize the sheet. */
+.acc-sheet:has(.set-body) {
+  width: min(820px, calc(100vw - 32px)); height: min(600px, calc(100vh - 80px));
+  display: flex; flex-direction: column;
+}
+.set-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 184px minmax(0, 1fr); gap: 24px; margin-top: 8px; }
+.set-side { display: flex; flex-direction: column; min-height: 0; padding-right: 16px; border-right: 1px solid var(--line); }
+.acc-sheet .set-tabs { flex-direction: column; gap: 2px; padding: 3px; }
 .acc-sheet .set-tabs button {
-  height: 26px; padding: 0 9px; border: 0; border-radius: 4px; background: none; color: var(--muted); font: 12px/26px var(--mono);
-  white-space: nowrap;
+  height: 30px; padding: 0 10px; border: 0; border-radius: 4px; background: none; color: var(--muted); font: 12px/30px var(--mono);
+  text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .acc-sheet .set-tabs button:hover:not(:disabled) { background: none; color: var(--fg); }
 .acc-sheet .set-tabs button.active { color: var(--accent); }
-.set-panel { min-height: 340px; }
+.set-panel { min-height: 0; overflow-y: auto; padding-right: 6px; }
+.set-side .set-made { margin-top: auto; justify-content: flex-start; flex-wrap: wrap; padding: 12px 0 0 6px; }
+.set-side .set-made > span { display: none; } /* the dot; the link takes its own line */
+.set-side .set-made a { flex-basis: 100%; }
+/* Narrow windows: the sections go back to one row above the panel. */
+@media (max-width: 640px) {
+  .set-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 14px; }
+  .set-side { padding-right: 0; border-right: 0; }
+  .acc-sheet .set-tabs { flex-direction: row; overflow-x: auto; }
+  .set-side .set-made { display: none; }
+}
+.set-heading.set-heading-first { margin-top: 2px; }
+
+/* Long events: one card per mode, each with a mini day column drawn the way that mode shows it. */
+.long-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
+@media (max-width: 640px) { .long-grid { grid-template-columns: minmax(0, 1fr); } }
+.acc-sheet button.long-opt {
+  height: auto; display: grid; gap: 8px; align-content: start; padding: 10px; text-align: left; border-radius: 6px; background: var(--bg);
+}
+.acc-sheet button.long-opt:hover { background: var(--bg); border-color: var(--muted); }
+.acc-sheet button.long-opt[aria-checked='true'] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.long-hint { font-size: 11.5px; font-weight: 400; line-height: 1.45; color: var(--muted); white-space: normal; }
+.long-threshold { margin-bottom: 10px; }
+.long-preview {
+  --l: var(--accent); --m: var(--cyan);
+  display: flex; flex-direction: column; height: 76px; border: 1px solid var(--line-strong); border-radius: 4px; overflow: hidden;
+}
+.lp-allday { display: flex; flex-direction: column; gap: 2px; padding: 3px; border-bottom: 1px solid var(--line-strong); }
+.lp-allday i { height: 5px; width: 70%; border-radius: 0; background: color-mix(in srgb, var(--l) 55%, transparent); }
+.lp-allday i + i { width: 55%; }
+.lp-grid {
+  position: relative; flex: 1;
+  background: linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 100% 12px;
+}
+.lp-busy {
+  position: absolute; left: 0; right: 0; top: 8%; bottom: 8%;
+  background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--muted) 18%, transparent) 0 3px, transparent 3px 6px);
+}
+.long-preview.is-allday .lp-busy { top: 6%; bottom: 10%; }
+.lp-rail { position: absolute; top: 8%; bottom: 8%; width: 4px; border-radius: 0; background: color-mix(in srgb, var(--l) 75%, transparent); }
+.lp-long {
+  position: absolute; top: 8%; bottom: 8%; width: calc(33.3% - 2px); border-radius: 0;
+  background: color-mix(in srgb, var(--l) 18%, transparent); border-left: 2px solid var(--l);
+}
+.lp-meet {
+  position: absolute; top: 45%; height: 26%; left: 16px; right: 3px; border-radius: 0;
+  background: color-mix(in srgb, var(--m) 22%, transparent); border-left: 2px solid var(--m);
+}
+.long-preview.is-allday .lp-meet { left: 3px; }
+.long-preview.is-expand .lp-meet { left: calc(66.6% + 1px); }
 .set-made { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 12px 0 0; font-size: 11px; color: var(--muted); }
 .set-made svg { width: 12px; height: 8px; border-radius: 1px; }
 .set-made a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }

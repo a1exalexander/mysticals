@@ -18,6 +18,8 @@ interface Props<T extends string> {
   controls?: string
   /** Arrow keys / Home / End move the selection (roving tabindex). Off where the arrows already mean something else. */
   arrowKeys?: boolean
+  /** Vertical: tabs stacked top to bottom (Settings sidebar); Up/Down move too. Layout itself is the caller's CSS. */
+  orientation?: 'horizontal' | 'vertical'
 }
 
 /**
@@ -33,7 +35,8 @@ export function SegTabs<T extends string>({
   testId,
   tabId,
   controls,
-  arrowKeys = true
+  arrowKeys = true,
+  orientation = 'horizontal'
 }: Props<T>): React.JSX.Element {
   const btns = useRef(new Map<T, HTMLButtonElement>())
   const thumb = useRef<HTMLSpanElement>(null)
@@ -43,7 +46,11 @@ export function SegTabs<T extends string>({
     const t = thumb.current
     if (!b || !t) return
     const place = (): void => {
-      t.style.transform = `translateX(${b.offsetLeft}px)`
+      if (orientation === 'vertical') {
+        // Follows the tab on both axes: narrow sheets lay the same tabs out in a row.
+        t.style.transform = `translate(${b.offsetLeft}px, ${b.offsetTop}px)`
+        t.style.height = `${b.offsetHeight}px`
+      } else t.style.transform = `translateX(${b.offsetLeft}px)`
       t.style.width = `${b.offsetWidth}px`
     }
     place()
@@ -51,7 +58,7 @@ export function SegTabs<T extends string>({
     const ro = new ResizeObserver(place)
     btns.current.forEach((el) => ro.observe(el))
     return () => ro.disconnect()
-  }, [value])
+  }, [value, orientation])
   // Only animate moves after the first placement, so the thumb doesn't fly in on mount.
   useEffect(() => {
     const id = requestAnimationFrame(() => setReady(true))
@@ -61,10 +68,12 @@ export function SegTabs<T extends string>({
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>): void => {
     const i = tabs.findIndex((t) => t.id === value)
     const n = tabs.length
+    const fwd = e.key === 'ArrowRight' || (orientation === 'vertical' && e.key === 'ArrowDown')
+    const back = e.key === 'ArrowLeft' || (orientation === 'vertical' && e.key === 'ArrowUp')
     const next =
-      e.key === 'ArrowRight'
+      fwd
         ? (i + 1) % n
-        : e.key === 'ArrowLeft'
+        : back
           ? (i - 1 + n) % n
           : e.key === 'Home'
             ? 0
@@ -79,9 +88,10 @@ export function SegTabs<T extends string>({
 
   return (
     <div
-      className={className ? `seg ${className}` : 'seg'}
+      className={['seg', orientation === 'vertical' && 'seg-vertical', className].filter(Boolean).join(' ')}
       role="tablist"
       aria-label={ariaLabel}
+      aria-orientation={orientation === 'vertical' ? 'vertical' : undefined}
       data-ready={ready}
       onKeyDown={arrowKeys ? onKey : undefined}
     >

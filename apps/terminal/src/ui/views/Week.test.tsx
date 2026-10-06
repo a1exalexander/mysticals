@@ -51,7 +51,7 @@ describe('Week view', () => {
   })
 
   it('underlines the last row of a block that another block follows directly', () => {
-    const slot = (start: number, end: number, col = 0, cols = 1) => ({ item: {} as never, start, end, col, cols })
+    const slot = (start: number, end: number, col = 0, cols = 1) => ({ item: {} as never, start, end, col, cols, span: 1 })
     const a = slot(540, 600) // 09–10
     const b = slot(600, 720) // 10–12, right after a
     const c = slot(720, 780, 1, 2) // 12–13, right half: touches b's span

@@ -52,20 +52,27 @@ export interface Placed<T> {
   end: number
   col: number
   cols: number
+  /** Columns the item covers from `col`: it widens into neighbours that are free for its whole span. */
+  span: number
 }
 
 /**
  * Side-by-side packing: transitively overlapping items form a cluster; each item takes the
- * first free column. `minDur` treats very short items as taller so their blocks don't overlap.
+ * first free column, then widens to the right over columns free for its whole span.
+ * `minDur` treats very short items as taller so their blocks don't overlap.
  */
 export function packColumns<T>(items: { item: T; start: number; end: number }[], minDur = 0): Placed<T>[] {
   const sorted = [...items].sort((a, b) => a.start - b.start || b.end - a.end)
   const out: Placed<T>[] = []
-  let cluster: Placed<T>[] = []
+  let cluster: { p: Placed<T>; end: number }[] = []
   let colEnds: number[] = []
   let clusterEnd = -Infinity
   const flush = (): void => {
-    for (const p of cluster) p.cols = colEnds.length
+    for (const { p, end } of cluster) {
+      p.cols = colEnds.length
+      const busy = (col: number): boolean => cluster.some((q) => q.p.col === col && q.p.start < end && p.start < q.end)
+      while (p.col + p.span < p.cols && !busy(p.col + p.span)) p.span++
+    }
     cluster = []
     colEnds = []
   }
@@ -76,8 +83,8 @@ export function packColumns<T>(items: { item: T; start: number; end: number }[],
     if (col < 0) col = colEnds.push(end) - 1
     else colEnds[col] = end
     clusterEnd = Math.max(clusterEnd, end)
-    const p = { ...it, col, cols: 0 }
-    cluster.push(p)
+    const p = { ...it, col, cols: 0, span: 1 }
+    cluster.push({ p, end })
     out.push(p)
   }
   flush()
@@ -86,9 +93,9 @@ export function packColumns<T>(items: { item: T; start: number; end: number }[],
 
 const wallMinutes = (d: Date): number => d.getHours() * 60 + d.getMinutes()
 
-/** Timed events of one day, clipped to the day (wall-clock minutes, DST-safe) and packed. */
-export function layoutDay(events: CalEvent[], day: Date, minDur = 0): Placed<CalEvent>[] {
-  const items = events
+/** Timed events of one day, clipped to the day (wall-clock minutes, DST-safe). */
+function clipDay(events: CalEvent[], day: Date): { item: CalEvent; start: number; end: number }[] {
+  return events
     .filter((e) => !e.allDay && overlapsDay(e, day))
     .map((e) => {
       const { start, end } = eventBounds(e)
@@ -98,7 +105,55 @@ export function layoutDay(events: CalEvent[], day: Date, minDur = 0): Placed<Cal
         end: isSameDay(end, day) ? wallMinutes(end) : 1440
       }
     })
-  return packColumns(items, minDur)
+}
+
+/** Timed events of one day, clipped to the day and packed. */
+export function layoutDay(events: CalEvent[], day: Date, minDur = 0): Placed<CalEvent>[] {
+  return packColumns(clipDay(events, day), minDur)
+}
+
+/**
+ * How timed events longer than a threshold show in the day grid: thin rails at the left edge,
+ * chips in the all-day row, or ordinary blocks.
+ */
+export type LongMode = 'rails' | 'allday' | 'expand'
+export interface LongEvents {
+  mode: LongMode
+  /** An event is long when its part on a day is longer than this. */
+  hours: number
+}
+export const LONG_MODES: readonly LongMode[] = ['rails', 'allday', 'expand']
+export const LONG_HOURS = [3, 4, 5, 6, 8, 10, 12] as const
+export const LONG_DEFAULT: LongEvents = { mode: 'rails', hours: 6 }
+
+export interface DayLayout {
+  /** Ordinary blocks; `inset` is how many rail lanes sit to their left. */
+  timed: (Placed<CalEvent> & { inset: number })[]
+  rails: Placed<CalEvent>[]
+  /** Long events moved to the all-day row, with their part of the day. */
+  allDay: { item: CalEvent; start: number; end: number }[]
+  /** Merged spans of the long events, for the busy hatch. */
+  busy: { start: number; end: number }[]
+}
+
+/** layoutDay, with long events split off per `long.mode`. */
+export function layoutDayLong(events: CalEvent[], day: Date, minDur: number, long: LongEvents): DayLayout {
+  const items = clipDay(events, day)
+  const isLong = (it: { start: number; end: number }): boolean => long.mode !== 'expand' && it.end - it.start > long.hours * 60
+  const longs = items.filter(isLong)
+  const rails = long.mode === 'rails' ? packColumns(longs) : []
+  const timed = packColumns(items.filter((it) => !isLong(it)), minDur).map((p) => {
+    const end = Math.max(p.end, p.start + minDur)
+    const over = rails.filter((r) => r.start < end && p.start < r.end)
+    return { ...p, inset: over.length ? Math.max(...over.map((r) => r.cols)) : 0 }
+  })
+  const busy: { start: number; end: number }[] = []
+  for (const it of [...longs].sort((a, b) => a.start - b.start)) {
+    const last = busy[busy.length - 1]
+    if (last && it.start <= last.end) last.end = Math.max(last.end, it.end)
+    else busy.push({ start: it.start, end: it.end })
+  }
+  return { timed, rails, allDay: long.mode === 'allday' ? longs : [], busy }
 }
 
 /** 6-week grid (42 days) covering the month of `date`. */

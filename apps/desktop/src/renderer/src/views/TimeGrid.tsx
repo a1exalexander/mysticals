@@ -5,17 +5,24 @@ import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
 import { eventMeetingUrl, eventPlace } from '@mysticals/core/logic/meeting'
 import { nav } from './nav'
-import { dragRange, eventBounds, eventsOnDay, isPast, layoutDay, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
+import { dragRange, eventBounds, eventsOnDay, isPast, layoutDayLong, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
 import { moveRange, resizeEnd, resizeStart } from './drag'
 import { currentLocale, fmt, t } from '../i18n'
+import { useLongEvents } from '../longEvents'
 
 const HOUR = 48 // px per hour
 const MAX_ALLDAY = 3 // all-day events per day before the row collapses
 const MIN_DUR = 22 // minutes; shorter events render (and pack) as if this long
+const RAIL = 8 // px per rail lane (6px bar + gap) for long events in rails mode
 const pxOf = (min: number): number => (min / 60) * HOUR
 
 const hhmm = (d: Date): string => format(d, 'HH:mm')
+/** "10–23", "9:30–20": the hours a long event covers on a day, for its all-day chip. */
+const hourSpan = (a: number, b: number): string => {
+  const h = (m: number): string => (m % 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : String(m / 60))
+  return `${h(a)}–${h(b)}`
+}
 
 /** Wall-clock minute of `day` (DST-safe, unlike adding elapsed minutes). */
 const atMinute = (day: Date, m: number): Date => {
@@ -66,6 +73,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
   const [drag, setDrag] = useState<{ day: Date; a: number; b: number } | null>(null)
   const [moving, setMoving] = useState<Moving | null>(null)
   const [allDayOpen, setAllDayOpen] = useState(false)
+  const long = useLongEvents()
   // The click that ends a drag must not also open the event.
   const justDragged = useRef(false)
 
@@ -186,8 +194,13 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
   const nowMin = now.getHours() * 60 + now.getMinutes()
   const multi = days.length > 1
   const showsToday = days.some((d) => isToday(d))
-  const allDayOf = (d: Date): CalEvent[] => eventsOnDay(events, d).filter((e) => e.allDay)
-  const allDayOverflows = days.some((d) => allDayOf(d).length > MAX_ALLDAY)
+  const layouts = days.map((d) => layoutDayLong(events, d, MIN_DUR, long))
+  /** All-day events, then long timed ones moved up (all-day mode) with their hours as a tag. */
+  const allDayOf = (i: number): { e: CalEvent; tag?: string }[] => [
+    ...eventsOnDay(events, days[i]).filter((e) => e.allDay).map((e) => ({ e })),
+    ...layouts[i].allDay.map((x) => ({ e: x.item, tag: hourSpan(x.start, x.end) }))
+  ]
+  const allDayOverflows = days.some((_, i) => allDayOf(i).length > MAX_ALLDAY)
 
   return (
     <div className={`tg${multi ? '' : ' tg-single'}`} ref={scroller}>
@@ -214,8 +227,8 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
               </button>
             )}
           </div>
-          {days.map((d) => {
-            const list = allDayOf(d)
+          {days.map((d, i) => {
+            const list = allDayOf(i)
             const more = allDayOpen ? 0 : Math.max(0, list.length - MAX_ALLDAY)
             return (
               <div
@@ -225,17 +238,18 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
               >
                 {list
                   .slice(0, list.length - more)
-                  .map((e) => (
+                  .map(({ e, tag }) => (
                     <div
                       key={e.id}
                       data-testid="event-block"
                       data-account-id={e.accountId}
-                      className={`ev ev-allday${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}`}
+                      className={`ev ev-allday${tag ? ' is-promoted' : ''}${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}`}
                       style={{ '--c': colorOf(e) } as React.CSSProperties}
                       onClick={open(e)}
                       onDoubleClick={stop}
                       {...tooltipHover(e)}
                     >
+                      {tag && <span className="ev-hours">{tag}</span>}
                       <span className="ev-title">{e.title}</span>
                     </div>
                   ))}
@@ -281,7 +295,29 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
             onMouseDown={onMouseDown(d)}
             onDoubleClick={onDoubleClick(d)}
           >
-            {layoutDay(events, d, MIN_DUR).map(({ item: e, start, end, col, cols }) => {
+            {layouts[dayIdx].busy.map((b) => (
+              <div
+                key={b.start}
+                className={`tg-busy${long.mode === 'allday' ? ' is-capped' : ''}`}
+                data-testid="busy-band"
+                style={{ top: pxOf(b.start), height: pxOf(b.end - b.start) }}
+              />
+            ))}
+            {layouts[dayIdx].rails.map(({ item: e, start, end, col }) => (
+              <div
+                key={e.id}
+                data-testid="event-rail"
+                data-account-id={e.accountId}
+                className={`ev-rail${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}`}
+                style={{ '--c': colorOf(e), top: pxOf(start), height: pxOf(end - start) - 1, left: 2 + col * RAIL } as React.CSSProperties}
+                aria-label={`${e.title}, ${hhmm(eventBounds(e).start)} – ${hhmm(eventBounds(e).end)}`}
+                onMouseDown={stop}
+                onDoubleClick={stop}
+                onClick={open(e)}
+                {...tooltipHover(e)}
+              />
+            ))}
+            {layouts[dayIdx].timed.map(({ item: e, start, end, col, cols, span, inset }) => {
               const b = eventBounds(e)
               const h = pxOf(Math.max(end - start, MIN_DUR))
               const short = h < 34
@@ -298,8 +334,8 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                       '--c': colorOf(e),
                       top: pxOf(start),
                       height: h - 1,
-                      left: `calc(${(col / cols) * 100}% + 1px)`,
-                      width: `calc(${100 / cols}% - 3px)`
+                      left: `calc(${inset * RAIL}px + (100% - ${inset * RAIL}px) * ${col / cols} + 1px)`,
+                      width: `calc((100% - ${inset * RAIL}px) * ${span / cols} - 3px)`
                     } as React.CSSProperties
                   }
                   title={eventMeetingUrl(e) ? undefined : `${e.title}\n${hhmm(b.start)} – ${hhmm(b.end)}`}
