@@ -3,7 +3,7 @@
   --fg: #f2f2ec; --muted: #9a9aa8; --soft: #d4d4cc; --faint: #3c3c4c;
   --green: #50fa7b; --red: #ff5555;
   /* account colours, the two halves of the app icon */
-  --personal: #bd93f9; --work: #ffb86c;
+  --personal: #bd93f9; --work: #ffb86c; --family: #8be9fd;
   --sans: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   color-scheme: dark;

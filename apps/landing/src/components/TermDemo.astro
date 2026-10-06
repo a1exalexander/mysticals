@@ -2,7 +2,7 @@
 /**
  * Animated illustration of the terminal app: types `mysticals`, then plays a scripted session over fake data
  * (agenda, j/k selection, invites + accept, week and month views). Layout follows apps/terminal/src/ui
- * (Agenda.tsx cards, StatusLine.tsx). Dates are computed from the viewer's today so it never looks stale.
+ * (App.tsx header, views/Agenda.tsx cards, views/TimeGrid.tsx, views/Month.tsx, screens/Invites.tsx, StatusLine.tsx). Dates are computed from the viewer's today so it never looks stale.
  * Reduced motion: a static agenda frame. Paused while off screen.
  */
 ---
@@ -19,149 +19,193 @@
   type Part = [string, string?]
   type Line = Part[]
   let W = 80 // columns; 46 on narrow screens, set per figure below
-  const BODY = 18
+  const H = 22 // rows: header, body, two status lines
+  const BODY = H - 3
 
   const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   const today = new Date()
   today.setHours(0, 0, 0, 0)
+  const mon = (today.getDay() + 6) % 7 // days since Monday
   const dayAt = (off: number) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + off)
   const fmt = (d: Date) => `${WD[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`
+  /** "6 – 19 Oct 2026" or "28 Sep – 11 Oct 2026", the header title of the agenda and week */
+  const range = (a: Date, b: Date) =>
+    a.getMonth() === b.getMonth() ? `${a.getDate()} – ${b.getDate()} ${MON[b.getMonth()]} ${b.getFullYear()}` : `${a.getDate()} ${MON[a.getMonth()]} – ${b.getDate()} ${MON[b.getMonth()]} ${b.getFullYear()}`
 
   const len = (l: Line) => l.reduce((n, [t]) => n + t.length, 0)
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
-  /** Cut to W cells (last part gets "…"), pad with spaces so inverse rows span the width. */
-  function fit(l: Line): Line {
+  /** Cut to n cells (last part gets "…"), pad with spaces so inverse rows span the width. */
+  function fit(l: Line, n = W, pad = true): Line {
     const out: Line = []
-    let left = W
+    let left = n
     for (const [t, c] of l) {
       if (left <= 0) break
       if (t.length <= left) { out.push([t, c]); left -= t.length }
       else { out.push([t.slice(0, left - 1) + '…', c]); left = 0 }
     }
-    if (left > 0) out.push([' '.repeat(left)])
+    if (pad && left > 0) out.push([' '.repeat(left)])
     return out
   }
   /** Left parts, a ─ rule or spaces, right parts flush to the edge. */
-  const spread = (l: Line, r: Line, fill = ' ', cls = 'm'): Line => [...l, [fill.repeat(Math.max(1, W - len(l) - len(r))), cls], ...r]
-  const html = (l: Line, extra = '') => fit(l).map(([t, c]) => (c || extra ? `<span class="${[c, extra].filter(Boolean).join(' ')}">${esc(t)}</span>` : esc(t))).join('')
+  const spread = (l: Line, r: Line, fill = ' ', cls = 'm'): Line => [...fit(l, W - len(r) - 1, false), [fill.repeat(Math.max(1, W - Math.min(len(l), W - len(r) - 1) - len(r))), cls], ...r]
+  const html = (l: Line) => fit(l).map(([t, c]) => (c ? `<span class="${c}">${esc(t)}</span>` : esc(t))).join('')
+  const paint = (l: Line, c: string): Line => [...l.map(([t]) => [t, c] as Part), [' '.repeat(Math.max(0, W - len(l))), c]]
 
-  interface Ev { id: string; day: number; s?: string; e?: string; t: string; c: string; acc: string; badges?: Line; extra?: string; dur?: string; past?: boolean }
+  // Colours are the terminal's ANSI ones: a = magenta (accent, and the Work calendar), pk = bright magenta, r = red (now, today)
+  interface Ev { id: string; day: number; s?: string; e?: string; t: string; c: string; acc: string; dur?: string; live?: string; soon?: string; invite?: boolean; past?: boolean; repeats?: boolean; overlaps?: boolean; place?: string; people?: string }
   const EVENTS: Ev[] = [
-    { id: 'standup', day: 0, s: '09:30', e: '09:45', t: 'Standup', c: 'a', acc: 'Work · Team', badges: [['↻ repeats', 'm']], extra: '6 people', dur: '15m', past: true },
-    { id: 'review', day: 0, s: '10:00', e: '10:45', t: 'Design review', c: 'a', acc: 'Work · Product', badges: [['● now · ends in 25m', 'g']], extra: '⚠ overlaps  Room 3', dur: '45m' },
-    { id: 'dentist', day: 0, s: '10:30', e: '11:00', t: 'Dentist', c: 'g', acc: 'Personal · Health', badges: [['in 10m', 'y']], extra: '⚠ overlaps', dur: '30m' },
-    { id: 'lunch', day: 0, s: '14:00', e: '15:00', t: 'Lunch with Ana', c: 'cy', acc: 'iCloud · Family', extra: 'video call', dur: '1h' },
+    { id: 'standup', day: 0, s: '09:30', e: '09:45', t: 'Standup', c: 'a', acc: 'Work · Team', dur: '15m', past: true, repeats: true, place: 'video call', people: '6 people' },
+    { id: 'review', day: 0, s: '10:00', e: '10:45', t: 'Design review', c: 'a', acc: 'Work · Product', dur: '45m', live: '● now · ends in 25m', overlaps: true, place: 'Room 3' },
+    { id: 'dentist', day: 0, s: '10:30', e: '11:00', t: 'Dentist', c: 'g', acc: 'Personal · Health', dur: '30m', soon: 'in 10m', overlaps: true, place: 'Clinic' },
+    { id: 'lunch', day: 0, s: '14:00', e: '15:00', t: 'Lunch with Ana', c: 'cy', acc: 'iCloud · Family', dur: '1h', invite: true, place: 'video call', people: '3 people' },
     { id: 'bday', day: 1, t: "Mom's birthday", c: 'pk', acc: 'iCloud · Family' },
-    { id: 'plan', day: 1, s: '11:00', e: '12:30', t: 'Sprint planning', c: 'a', acc: 'Work · Team', badges: [['↻ repeats', 'm']], extra: '8 people', dur: '1h 30m' },
-    { id: 'yoga', day: 4, s: '08:00', e: '09:00', t: 'Yoga', c: 'g', acc: 'Personal · Sport', dur: '1h' },
+    { id: 'plan', day: 1, s: '11:00', e: '12:30', t: 'Sprint planning', c: 'a', acc: 'Work · Team', dur: '1h 30m', repeats: true, place: 'Room 3', people: '8 people' },
+    { id: 'yoga', day: 4, s: '08:00', e: '09:00', t: 'Yoga', c: 'g', acc: 'Personal · Sport', dur: '1h', place: 'Studio' },
   ]
+  const BUSY: Record<number, string> = { 0: '2h 15m', 1: '1h 30m', 4: '1h' }
 
-  interface State { view: 'prompt' | 'agenda' | 'invites' | 'week' | 'month'; typed: string; sel: string; accepted: boolean; note?: string }
+  interface State { view: 'prompt' | 'agenda' | 'invites' | 'week' | 'month'; typed: string; sel: string; reply?: 'sending' | 'sent'; accepted: boolean }
 
-  const tabs = (s: State): Line => {
+  function header(s: State): Line {
     const names: [string, State['view'][]][] = [['Agenda', ['agenda', 'invites']], ['Day', []], ['2 Days', []], ['Week', ['week']], ['Month', ['month']]]
-    const l: Line = []
-    for (const [n, v] of names) l.push([` ${n} `, v.includes(s.view) ? 'inv b' : 'm'])
-    return spread(l, [['● synced · 3 accounts ', 'g']])
+    const l: Line = names.map(([n, v]) => [` ${n} `, v.includes(s.view) ? 'ia b' : 'm'])
+    const title = s.view === 'week' ? range(dayAt(-mon), dayAt(6 - mon)) : s.view === 'month' ? today.toLocaleString('en', { month: 'long', year: 'numeric' }) : range(today, dayAt(13))
+    return [...l, [' '], [' ‹ ', 'cy'], ['today', 'm'], [' › ', 'cy'], [' '], [title, 'b']]
+  }
+
+  function card(e: Ev, s: State): Line[] {
+    const invite = e.invite && !s.accepted
+    const time = e.s ? `  ${e.s}`.padEnd(9) : ' all day '
+    const top: Line = [[time, e.live ? 'g b' : ''], ['▌ ', e.c], [(invite ? '• ' : '') + e.t, 'b']]
+    if (e.live) top.push(['  ' + e.live, 'g b'])
+    else if (e.soon) top.push(['  ' + e.soon, 'y'])
+    if (invite) top.push(['  RSVP', 'y b'])
+    const bottom: Line = [[(e.e ? `  ${e.e}` : '').padEnd(9), 'm'], ['▌ ', e.c], [e.acc, 'm']]
+    if (e.repeats) bottom.push(['  ↻ repeats', 'm'])
+    if (e.overlaps) bottom.push(['  ⚠ overlaps', 'y'])
+    if (e.place) bottom.push(['  ' + e.place, 'cy'])
+    if (e.people) bottom.push(['  ' + e.people, 'm'])
+    const lines = [e.dur ? spread(top, [[e.dur, 'm']]) : top, bottom]
+    return s.sel === e.id ? lines.map((l) => paint(l, 'ia b')) : e.past ? lines.map((l) => paint(l, 'm')) : lines
   }
 
   function agenda(s: State): Line[] {
-    const out: { l: Line; inv?: boolean; muted?: boolean }[] = []
-    const byDay = (d: number) => EVENTS.filter((e) => e.day === d)
-    for (let d = 0; d < 5; d++) {
-      const list = byDay(d)
-      if (!list.length) {
-        if (d === 2) out.push({ l: [[` ${fmt(dayAt(2))} – ${fmt(dayAt(3))}  `, 'm'], ['free', 'g']] })
-        continue
-      }
-      const rel = d === 0 ? 'today' : d === 1 ? 'tomorrow' : `in ${d} days`
-      const busy = d === 0 ? '4 events · 2h 30m busy' : `${list.length} event${list.length > 1 ? 's' : ''}`
-      out.push({ l: spread([[` ${fmt(dayAt(d))}  `, 'b'], [rel + ' ', d === 0 ? 'g' : 'cy']], [[' ' + busy + ' ', 'm']], '─') })
-      for (const e of list) {
-        if (e.id === 'dentist') out.push({ l: [['  10:20  ', 'r'], ['─'.repeat(W - 9), 'r']] })
-        const invite = e.id === 'lunch' && !s.accepted
-        const badges: Line = [...(e.badges ?? []), ...(invite ? [['? needs reply', 'y'] as Part] : [])]
-        const sel = s.sel === e.id
-        const top: Line = [[`  ${e.s ?? 'all day'}  `.padEnd(9), 'b'], ['▌ ', e.c], [e.t, 'b']]
-        for (const b of badges) top.push(['  '], b)
-        out.push({ l: spread(top, [[(e.dur ?? '') + ' ', 'm']]), inv: sel, muted: e.past })
-        out.push({ l: [[`  ${e.e ?? ''}`.padEnd(9), 'm'], ['▌ ', e.c], [e.acc, 'm'], ...(e.extra ? [['  ' + e.extra, 'm'] as Part] : [])], inv: sel, muted: e.past })
-      }
+    const out: Line[] = []
+    let free: [Date, Date] | undefined
+    const flush = () => {
+      if (!free) return
+      const [a, b] = free
+      out.push([[` ${fmt(a)}${+a === +b ? '' : ` – ${fmt(b)}`}  free`, 'm']])
+      free = undefined
     }
-    const paint = (l: Line, c: string): Line => [...l.map(([t]) => [t, c] as Part), [' '.repeat(Math.max(0, W - len(l))), c]]
-    return out.map(({ l, inv, muted }) => (inv ? paint(l, 'inv') : muted ? paint(l, 'm') : l))
+    for (let d = 0; d < 14; d++) {
+      const list = EVENTS.filter((e) => e.day === d)
+      if (!list.length) { free = free ? [free[0], dayAt(d)] : [dayAt(d), dayAt(d)]; continue }
+      flush()
+      const left = ` ${fmt(dayAt(d))}  `
+      const rel = d === 0 ? 'today' : d === 1 ? 'tomorrow' : `in ${d} days`
+      const right = ` ${list.length} ${list.length === 1 ? 'event' : 'events'}${BUSY[d] ? ` · ${BUSY[d]} busy` : ''} `
+      out.push([[left, d ? 'a b' : 'r b'], [rel, d ? 'm' : 'r'], [' ' + '─'.repeat(Math.max(W - left.length - rel.length - right.length - 1, 1)) + right, 'm']])
+      list.forEach((e, i) => {
+        // today's now line sits before the first event that hasn't started; no divider next to it
+        const nowHere = d === 0 && e.id === 'dentist'
+        if (nowHere) out.push([['  10:20 ' + '─'.repeat(W), 'r b']])
+        else if (i) out.push([[' '.repeat(9) + '─'.repeat(W - 10), 'm dimc']])
+        out.push(...card(e, s))
+      })
+    }
+    free = free ? [free[0], dayAt(13)] : free
+    flush()
+    return out
+  }
+
+  /** A round-bordered overlay, like Ink's borderStyle="round" with paddingX 1. */
+  function box(lines: Line[], c = 'm'): Line[] {
+    const inner = W - 4
+    return [
+      [['╭' + '─'.repeat(W - 2) + '╮', c]],
+      ...lines.map((l): Line => [['│ ', c], ...fit(l, inner), [' │', c]]),
+      [['╰' + '─'.repeat(W - 2) + '╯', c]],
+    ]
   }
 
   function invites(s: State): Line[] {
-    return [
-      spread([[' Invites  ', 'b'], [s.accepted ? 'all answered ' : '1 waiting for a reply ', 'y']], [], '─'),
-      [],
-      [['  ▌ ', 'cy'], ['Lunch with Ana', 'b'], ...(s.accepted ? [['  ✓ accepted', 'g'] as Part] : [['  ? needs reply', 'y'] as Part])],
-      [['  ▌ ', 'cy'], [`today 14:00–15:00 · iCloud · Family`, 'm']],
-      [['    ', ''], ['from ana@example.com · 3 guests · video call', 'm']],
-      [],
-      s.accepted
-        ? [['    ✓ reply sent from ', 'g'], ['iCloud', 'cy'], [' (the account that got it)', 'g']]
-        : [['    '], [' y ', 'inv'], [' accept   '], [' m ', 'inv'], [' maybe   '], [' n ', 'inv'], [' decline']],
-      [],
-      [['  esc back', 'm']],
-    ]
+    const when = `${WD[today.getDay()]}, ${today.getDate()} ${MON[today.getMonth()]} · 14:00 – 15:00`
+    const reply: Line = s.reply ? [[s.reply === 'sent' ? ' sent' : ' sending…', 'y']] : []
+    // the selected row is plain inverse, the reply status follows it in yellow; Ink wraps it when it doesn't fit
+    const wide = W >= 80
+    const row: Line[] = wide
+      ? [[['▸ Lunch with Ana', 'inv b'], [`  ${when}  ● iCloud · me@icloud.example`, 'inv'], ...reply]]
+      : [[['▸ Lunch with Ana', 'inv b']], [[`  ${when}`, 'inv']], [['  ● iCloud · me@icloud.example', 'inv'], ...reply]]
+    const keys: Line = [['y', 'ig b'], [' accept  '], ['n', 'ir b'], [' decline  '], ['m', 'iy b'], [' maybe  ']]
+    const nav: Line = [['j/k move  ', 'm'], ['esc', 'ia b'], [' close']]
+    return box([[['Invitations', 'b']], ...row, [], ...(wide ? [[...keys, ...nav]] : [keys, nav])])
   }
 
+  // week blocks: [day offset from today, first hour, hours, title, time, place, colour]
+  const BLOCKS: [number, number, number, string, string, string, string][] = [
+    [-1, 8, 1, 'Gym', '08:30–09:30', '', 'g'], [-1, 16, 1, 'Retro', '16:00–17:00', 'Room 1', 'a'],
+    [0, 9, 1, 'Standup', '09:30–09:45', '', 'a'], [0, 10, 1, 'Design review', '10:00–10:45', 'Room 3', 'a'], [0, 14, 1, 'Lunch with Ana', '14:00–15:00', '', 'cy'],
+    [1, 11, 2, 'Sprint planning', '11:00–12:30', 'Room 3', 'a'], [2, 8, 1, 'Yoga', '08:00–09:00', '', 'g'], [2, 15, 1, '1:1 with Sam', '15:00–15:30', '', 'a'],
+    [3, 13, 3, 'Hike', '13:00–16:00', 'Carpathians', 'pk'], [4, 18, 1, 'Gym', '18:00–19:00', '', 'g'], [5, 17, 1, 'Call', '17:00–18:00', '', 'cy'],
+  ]
+
   function week(): Line[] {
-    const mon = (today.getDay() + 6) % 7 // days since Monday
-    const COL = Math.floor((W - 6) / 7)
+    const colW = Math.floor((W - 6) / 7) - 1
+    const cell = (l: Line): Line => fit(l, colW)
     const head: Line = [['      ']]
     for (let i = 0; i < 7; i++) {
       const d = dayAt(i - mon)
-      head.push([(COL > 7 ? ` ${WD[d.getDay()]} ${d.getDate()}` : ` ${WD[d.getDay()][0]}${d.getDate()}`).padEnd(COL), i === mon ? 'inv b' : 'b'])
+      const n = BLOCKS.filter(([o]) => o === i - mon).length
+      head.push(['│', 'm'], ...cell([[` ${WD[d.getDay()]} ${d.getDate()} `, i === mon ? 'ir b' : 'a b'], [n ? `·${n}` : '', 'm']]))
     }
-    // [column, first half-hour slot from 08:00, slots, title, color]
-    const blocks: [number, number, number, string, string][] = [
-      [mon, 3, 1, 'Standup', 'a'], [mon, 4, 2, 'Design', 'a'], [mon, 5, 1, 'Dentist', 'g'], [mon, 12, 2, 'Lunch', 'cy'],
-      [(mon + 1) % 7, 6, 3, 'Sprint', 'a'], [(mon + 2) % 7, 0, 2, 'Yoga', 'g'], [(mon + 3) % 7, 8, 2, '1:1', 'a'],
-      [(mon + 5) % 7, 2, 4, 'Hike', 'pk'], [(mon + 6) % 7, 10, 2, 'Call', 'cy'], [(mon + 4) % 7, 11, 1, 'Gym', 'g'],
-    ]
-    const rows: Line[] = [head]
-    for (let slot = 0; slot < 16; slot++) {
-      const h = 8 + slot / 2
-      const l: Line = [[slot % 2 ? '      ' : `${String(h).padStart(2, '0')}:00 `.padEnd(6), 'm']]
-      for (let c = 0; c < 7; c++) {
-        const b = blocks.find(([bc, bs, bn]) => bc === c && slot >= bs && slot < bs + bn)
-        if (b) l.push([(slot === b[1] ? ' ' + b[3] : ' ').padEnd(COL - 1).slice(0, COL - 1), 'bg-' + b[4]], [' '])
-        else if (c === mon && slot === 4) l.push(['─'.repeat(COL), 'r'])
-        else l.push([slot % 2 ? ' '.repeat(COL) : '·'.padEnd(COL), 'm'])
+    const allday: Line = [['all   ', 'm']]
+    for (let i = 0; i < 7; i++) allday.push(['│', 'm'], ...cell(i - mon === 1 ? [[' ● ', 'pk'], ["Mom's birthday", 'y']] : []))
+    const rows: Line[] = [head, allday, [['──────' + ('┼' + '─'.repeat(colW)).repeat(7), 'm']]]
+    for (let h = 8; rows.length < BODY; h++) {
+      const now = h === 10
+      const l: Line = [now ? ['10:20─', 'r b'] : [`${String(h).padStart(2, '0')}:00 `, 'm']]
+      for (let i = 0; i < 7; i++) {
+        const off = i - mon
+        const b = BLOCKS.find(([o, s, n]) => o === off && h >= s && h < s + n)
+        l.push(now ? ['┼', 'r'] : ['│', 'm'])
+        if (b) {
+          const k = h - b[1]
+          const text = [b[3], b[4], b[5]][k] ?? ''
+          l.push(...cell([[' ' + text + ' '.repeat(colW), (off < 0 ? 'bg-m' : 'bg-' + b[6]) + (k ? '' : ' b')]]))
+        } else l.push(now ? ['─'.repeat(colW), off ? 'r dimc' : 'r'] : [' '.repeat(colW)])
       }
       rows.push(l)
     }
     return rows
   }
 
+  const POOL = ['Standup', 'Gym', 'Retro', 'Yoga', '1:1 Sam', 'Dinner', 'Sprint', 'Hike', 'Call', 'Focus', 'Lunch', 'Dentist']
   function month(): Line[] {
     const first = new Date(today.getFullYear(), today.getMonth(), 1)
     const start = new Date(first)
     start.setDate(1 - ((first.getDay() + 6) % 7))
     const COL = Math.floor(W / 7)
-    const rows: Line[] = [
-      spread([[` ${first.toLocaleString('en', { month: 'long' })} ${first.getFullYear()} `, 'b']], [], '─'),
-      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => [` ${d}`.slice(0, COL - 1).padEnd(COL), 'm'] as Part),
-    ]
-    const dots = ['a', 'g', 'cy', 'pk']
+    const rows: Line[] = [['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => [d.padEnd(COL), 'a b'] as Part)]
+    const per = Math.floor((BODY - 1) / 6)
     for (let w = 0; w < 6; w++) {
-      const num: Line = []
-      const ev: Line = []
+      const lines: Line[] = Array.from({ length: per }, () => [])
       for (let i = 0; i < 7; i++) {
         const d = new Date(start)
         d.setDate(start.getDate() + w * 7 + i)
         const other = d.getMonth() !== first.getMonth()
         const isToday = +d === +today
-        num.push([` ${d.getDate()}`.padEnd(COL - 1), isToday ? 'inv b' : other ? 'm' : ''], [' '])
-        const n = other ? 0 : (d.getDate() * 7 + 3) % 4
-        for (let k = 0; k < n; k++) ev.push([k ? '•' : ' •', dots[(d.getDate() + k) % 4]])
-        ev.push([' '.repeat(COL - (n ? n + 1 : 0))])
+        lines[0].push(...fit([[isToday ? ` ${d.getDate()} ` : String(d.getDate()), isToday ? 'ir b' : other ? 'm' : '']], COL))
+        const titles: Part[] = other ? [] : isToday ? [['Design review', 'g'], ['Dentist', ''], ['Lunch with Ana', '']]
+          : Array.from({ length: (d.getDate() * 7 + 3) % 4 }, (_, k) => [POOL[(d.getDate() + k * 5) % POOL.length], d < today ? 'm' : d.getDate() % 9 === 0 && !k ? 'y' : ''])
+        for (let r = 1; r < per; r++) {
+          const over = titles.length > per - 1 && r === per - 1
+          const p: Part = over ? [`+${titles.length - r + 1}`, 'm'] : titles[r - 1] ?? ['']
+          lines[r].push(...fit([p], COL - 1), [' '])
+        }
       }
-      rows.push(num, ev)
+      rows.push(...lines)
     }
     return rows
   }
@@ -169,22 +213,21 @@
   function status(s: State): Line[] {
     const info: Line = [['now', 'g b'], [' Design review'], [' · ', 'm'], ['next', 'cy b'], [' Dentist '], ['in 10m', 'y']]
     if (!s.accepted) info.push([' · ', 'm'], ['1 invite (i)', 'y'])
-    if (s.note) info.push([' · ', 'm'], [s.note, 'g'])
     const btn: Line = []
-    for (const [k, l] of [['n', 'new'], ['r', 'sync'], ['i', 'invites'], ['s', 'accounts'], ['?', 'help'], ['q', 'quit']]) btn.push([` ${k} `, 'kb'], [` ${l} `, 'm'])
+    for (const [k, l] of [['n', 'new'], ['r', 'sync'], ['i', 'invites'], ['s', 'accounts'], ['?', 'help'], ['q', 'quit']]) btn.push([k, 'ia b'], [` ${l}  `])
     return [info, btn]
   }
 
   function render(s: State): string {
     if (s.view === 'prompt') {
       const lines = [[['~ ', 'cy'], ['$ ', 'g'], [s.typed], ['█', 'cur']] as Line]
-      while (lines.length < BODY + 3) lines.push([])
+      while (lines.length < H) lines.push([])
       return lines.map((l) => html(l)).join('\n')
     }
     const body = s.view === 'agenda' ? agenda(s) : s.view === 'invites' ? invites(s) : s.view === 'week' ? week() : month()
-    const lines = [tabs(s), [] as Line, ...body].slice(0, BODY + 1)
+    const lines = [header(s), ...body].slice(0, BODY + 1)
     while (lines.length < BODY + 1) lines.push([])
-    return [...lines.map((l) => html(l)), ...status(s).map((l, i) => html(l, i ? '' : 'sl'))].join('\n')
+    return [...lines, ...status(s)].map((l) => html(l)).join('\n')
   }
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -193,7 +236,7 @@
     const pre = fig.querySelector<HTMLElement>('.screen')!
     W = fig.clientWidth < 560 ? 46 : 80
     fig.style.setProperty('--cols', String(W))
-    fig.querySelector('.bar span')!.textContent = `mysticals — zsh — ${W}×22`
+    fig.querySelector('.bar span')!.textContent = `mysticals — zsh — ${W}×${H}`
     const key = fig.querySelector<HTMLElement>('.key')!
     const s: State = { view: 'agenda', typed: '', sel: 'review', accepted: false }
     const draw = () => (pre.innerHTML = render(s))
@@ -215,10 +258,15 @@
       draw()
       await wait(hold)
     }
+    const set = async (change: Partial<State>, hold: number) => {
+      Object.assign(s, change)
+      draw()
+      await wait(hold)
+    }
 
     ;(async () => {
       for (;;) {
-        Object.assign(s, { view: 'prompt', typed: '', sel: 'review', accepted: false, note: undefined })
+        Object.assign(s, { view: 'prompt', typed: '', sel: 'review', accepted: false, reply: undefined })
         draw()
         await wait(700)
         for (const ch of 'mysticals') {
@@ -226,14 +274,15 @@
           draw()
           await wait(70 + Math.random() * 90)
         }
-        await press('⏎', { view: 'agenda' }, 2200)
+        await press('⏎', { view: 'agenda' }, 2400)
         await press('j', { sel: 'dentist' }, 900)
         await press('j', { sel: 'lunch' }, 1100)
         await press('i', { view: 'invites' }, 1500)
-        await press('y', { accepted: true, note: 'accepted Lunch with Ana' }, 1800)
-        await press('esc', { view: 'agenda' }, 1800)
-        await press('w', { view: 'week', note: undefined }, 2600)
-        await press('m', { view: 'month' }, 2600)
+        await press('y', { reply: 'sending' }, 700)
+        await set({ reply: 'sent', accepted: true }, 1300)
+        await press('esc', { view: 'agenda', reply: undefined }, 1800)
+        await press('w', { view: 'week' }, 2800)
+        await press('m', { view: 'month' }, 2800)
         await press('a', { view: 'agenda', sel: 'review' }, 2400)
       }
     })()
@@ -265,16 +314,19 @@
   .screen :global(.pk) { color: var(--pink); }
   .screen :global(.y) { color: var(--yellow); }
   .screen :global(.r) { color: var(--red); }
-  .screen :global(.inv) { background: var(--fg); color: var(--bg); }
-  .screen :global(.kb) { background: var(--line-strong); color: var(--fg); font-weight: 700; }
-  .screen :global(.sl) { background: var(--surface-2); }
+  .screen :global(.dimc) { opacity: .5; }
   @keyframes blink { 50% { opacity: 0; } }
   .screen :global(.cur) { animation: blink 1s steps(1) infinite; }
-  .screen :global([class^='bg-']) { color: var(--bg); font-weight: 700; }
-  /* fill the whole line box so stacked highlighted rows join up */
-  .screen :global(:is(.inv, .sl, [class^='bg-'])) { display: inline-block; }
+  /* inverse: the colour becomes the background, text takes the terminal background */
+  .screen :global(:is(.inv, .ia, .ir, .ig, .iy, [class^='bg-'])) { display: inline-block; color: var(--bg); }
+  .screen :global(.inv) { background: var(--fg); }
+  .screen :global(.ia) { background: var(--accent); }
+  .screen :global(.ir) { background: var(--red); }
+  .screen :global(.ig) { background: var(--green); }
+  .screen :global(.iy) { background: var(--yellow); }
   .screen :global(.bg-a) { background: var(--accent); }
   .screen :global(.bg-g) { background: var(--green); }
   .screen :global(.bg-cy) { background: var(--cyan); }
   .screen :global(.bg-pk) { background: var(--pink); }
+  .screen :global(.bg-m) { background: var(--muted); }
 </style>

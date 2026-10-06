@@ -1,19 +1,21 @@
 ---
 /**
- * Animated illustration of the desktop app, pure CSS on one 16s loop: events of three accounts drop into the week
- * grid, a drag creates an event whose editor must pick an account and calendar, and a pending invite is accepted
- * from the status-bar invites popover. Markup and styles mirror apps/desktop/src/renderer (styles/base.css,
- * components/ui/ui.css, EventEditor.css, Invites.css) with the default Dracula palette, scaled to em.
- * The palette comes from src/themes.ts (Dracula unless `theme` is set); ThemeShowcase swaps it at runtime.
+ * Animated illustration of the desktop app, pure CSS on one 24s loop. It opens on the Agenda view (today's list,
+ * the live call with its Join button, breaks, the next days and the focus card), then a click on Week switches to
+ * the week grid: events of three accounts drop in, a drag creates an event whose editor must pick an account and
+ * calendar, and a pending invite is accepted from the status-bar invites popover.
+ * Markup and styles mirror apps/desktop/src/renderer (styles/base.css, components/ui/ui.css, views/Agenda.css,
+ * EventEditor.css, Invites.css), scaled to em. The palette comes from src/themes.ts (Dracula unless `theme` is set);
+ * ThemeShowcase swaps it at runtime.
  * The script only fills dates from the viewer's today and pauses the loop off screen.
- * Base styles are the final frame, so reduced motion (animations off in global.css) shows a still.
+ * Base styles are the final frame (the week), so reduced motion (animations off in global.css) shows a still.
  */
 import { THEMES, themeVars } from '../themes'
 interface Props { theme?: string }
 const th = THEMES.find((x) => x.id === Astro.props.theme) ?? THEMES[0]
 type Ev = [off: number, start: number, hours: number, title: string, acc: 'work' | 'pers' | 'icl', meta?: string, extra?: string]
 const events: Ev[] = [
-  [0, 9.5, 0.25, 'Standup', 'work', 'Meet'],
+  [0, 9.5, 0.25, 'Standup', 'work'],
   [0, 10, 0.75, 'Design review', 'work', 'Room 3', 'half1'],
   [0, 10.5, 0.5, 'Dentist', 'pers', '', 'half2'],
   [0, 14, 1, 'Lunch with Ana', 'icl', 'Kyiv', 'invite'],
@@ -28,12 +30,29 @@ const events: Ev[] = [
 ]
 const hours = [8, 9, 10, 11, 12, 13, 14, 15, 16]
 const hh = (s: number) => `${String(Math.floor(s)).padStart(2, '0')}:${s % 1 ? '30' : '00'}`
+// [id, label, email shown under it (none when the label already is the email), calendars]
 const accounts = [
   ['work', 'Work', 'me@work.example', [['Team'], ['Product']]],
-  ['pers', 'Personal', 'me@gmail.example', [['Health'], ['Holidays', 'read-only']]],
+  ['pers', 'me@gmail.example', '', [['Health'], ['Holidays', 'read-only']]],
   ['icl', 'iCloud', 'me@icloud.example', [['Family']]],
 ] as const
+// Agenda rows: [kind, time, account, title, meta, flags]
+type Row = ['ev', string, 'work' | 'pers' | 'icl', string, string, string?] | ['now'] | ['gap', string]
+const today: Row[] = [
+  ['ev', '09:30', 'work', 'Standup', '15m · video call', 'past'],
+  ['ev', '10:00', 'work', 'Design review', '<span class="live">● now</span> · Room 3', 'live sel'],
+  ['now'],
+  ['ev', '10:30', 'pers', 'Dentist', 'in 10m · Clinic'],
+  ['gap', 'Break · 3h'],
+  ['ev', '14:00', 'icl', 'Lunch with Ana', '1h · Kyiv'],
+]
+const ahead: Row[][] = [
+  [['ev', '11:00', 'work', 'Sprint planning', '1h 30m · Room 3']],
+  [['ev', '08:00', 'pers', 'Yoga', '1h · Studio'], ['gap', 'Break · 6h'], ['ev', '15:00', 'work', '1:1 with Sam', '30m']],
+]
+const tabs = ['Agenda', 'Day', '3 Days', 'Week', 'Month']
 const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" /></svg>'
+const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
 ---
 <figure class="ddemo">
   <div class="dwin" aria-hidden="true" data-theme={th.id} style={themeVars(th)}>
@@ -49,54 +68,110 @@ const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" />
       <div class="accs">
         {accounts.map(([id, name, email, cals]) => (
           <div class={`acc ${id}`}>
-            <div class="acc-head"><span class="arrow">›</span><i></i><b>{name}</b><small>{email}</small></div>
+            <div class="acc-head"><span class="arrow" set:html={chevron} /><i></i><b>{name}</b>{email && <small>{email}</small>}</div>
             {cals.map(([c, ro]) => (
-              <div class={`cal${c === 'Holidays' ? ' hol' : ''}`}><span class="ck">✓</span>{c}{ro && <small>{ro}</small>}</div>
+              <div class={`cal${c === 'Holidays' ? ' hol' : ''}`}><span class="ck"></span>{c}{ro && <small>{ro}</small>}</div>
             ))}
           </div>
         ))}
       </div>
-      <div class="sfoot"><span>+ Add calendar</span><span class="gear">⚙</span></div>
+      <div class="sfoot">
+        <span>＋ Add calendar</span>
+        <svg class="gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+      </div>
     </aside>
     <section class="main">
       <div class="toolbar">
-        <div class="ttl"><b class="tmonth">Month</b><span class="tsub">2026 · W1</span></div>
-        <div class="seg"><span>Day</span><span>3 Days</span><span class="on">Week</span><span>Month</span></div>
+        <svg class="stoggle" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16M5.5 8h1M5.5 11h1" /></svg>
+        <div class="ttl">
+          <span class="tv tw"><b class="tmonth">Month</b><span class="tsub">2026 · W1</span></span>
+          <span class="tv ta"><b>Today</b><span class="tsub adate">Monday, 1 January</span></span>
+        </div>
+        <div class="seg">
+          <span class="thumb"></span>
+          {tabs.map((t) => <span class={`t-${t[0].toLowerCase()}`}>{t}{t === 'Week' && <span class="cur c0" set:html={cursor} />}</span>)}
+        </div>
         <div class="tnav"><span>‹</span><span class="today">today</span><span>›</span></div>
         <span class="new">+ new</span>
       </div>
-      <div class="heads">
-        <span></span>{Array.from({ length: 7 }, () => <span class="dh"><span class="dw"></span><span class="num"></span></span>)}
-      </div>
-      <div class="allday">
-        <span class="adg">all-day</span>
-        <div class="adcells"><div class="ev hol ad" data-off="3"><b>Holiday</b></div></div>
-      </div>
-      <div class="grid">
-        {hours.map((h, i) => <div class="hr" style={`--s:${i}`}><span>{String(h).padStart(2, '0')}:00</span></div>)}
-        <div class="cols">
-          <div class="tcol" data-off="0"></div>
-          {events.map(([off, s, n, t, acc, meta, extra], i) => (
-            <div class={`ev ${acc} ${extra ?? ''} ${n < 0.75 ? 'short' : ''}`} data-off={off} style={`--s:${s - 8};--n:${n};--d:${(i % 6) * 0.15}s`}>
-              <b>{t}</b><small>{hh(s)}{meta && ` · ${meta}`}</small>
-            </div>
-          ))}
-          <div class="now" data-off="0"></div>
-          <div class="ev work nb" data-off="2" style="--s:2;--n:2">
-            <b>Focus time</b><small>10:00 · Team</small>
-            <span class="dghost">10:00 – 12:00</span>
-            <span class="cur c1" set:html={cursor} />
+      <div class="views">
+        <div class="wkv">
+          <div class="heads">
+            <span></span>{Array.from({ length: 7 }, () => <span class="dh"><span class="dw"></span><span class="num"></span></span>)}
           </div>
+          <div class="allday">
+            <span class="adg">all-day</span>
+            <div class="adcells"><div class="ev hol ad" data-off="3"><b>Holiday</b></div></div>
+          </div>
+          <div class="grid">
+            {hours.map((h, i) => <div class="hr" style={`--s:${i}`}><span>{String(h).padStart(2, '0')}:00</span></div>)}
+            <span class="nowclk">10:20</span>
+            <div class="cols">
+              <div class="tcol" data-off="0"></div>
+              {events.map(([off, s, n, t, acc, meta, extra], i) => (
+                <div class={`ev ${acc} ${extra ?? ''} ${n < 0.75 ? 'short' : ''}`} data-off={off} style={`--s:${s - 8};--n:${n};--d:${(i % 6) * 0.15}s`}>
+                  <b>{t}</b><small>{hh(s)}{meta && n >= 0.75 && ` · ${meta}`}</small>
+                </div>
+              ))}
+              <div class="nowall"></div>
+              <div class="now" data-off="0"></div>
+              <div class="ev work nb" data-off="2" style="--s:2;--n:2">
+                <b>Focus time</b><small>10:00 · Team</small>
+                <span class="dghost">10:00 – 12:00</span>
+                <span class="cur c1" set:html={cursor} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="agv">
+          <div class="aglist">
+            <ol class="agrows">
+              {today.map((r, i) => r[0] === 'now' ? <li class="agnow"><span>10:20</span></li>
+                : r[0] === 'gap' ? <li class="aggap">{r[1]}</li>
+                : (
+                  <li class={`agrow ${r[2]} ${r[5] ?? ''}`} style={`--i:${i}`}>
+                    <span class="agt">{r[1]}</span><span class="agbar"></span>
+                    <span class="agm"><b>{r[3]}</b><small set:html={r[4]} /></span>
+                    {r[5]?.includes('live') && <span class="pill">Join</span>}
+                  </li>
+                ))}
+            </ol>
+            <div class="agahead"><span class="chev" set:html={chevron} /><em class="x1">Next 7 days</em><em class="x2">Hide upcoming</em></div>
+            <div class="agup">
+              {ahead.map((day, d) => (
+                <div class="agday">
+                  <h3 class="agdh" data-day={d + 1}>Day</h3>
+                  <ol class="agrows">
+                    {day.map((r) => r[0] === 'gap' ? <li class="aggap">{r[1]}</li> : r[0] === 'ev' && (
+                      <li class={`agrow ${r[2]}`}><span class="agt">{r[1]}</span><span class="agbar"></span><span class="agm"><b>{r[3]}</b><small>{r[4]}</small></span></li>
+                    ))}
+                  </ol>
+                </div>
+              ))}
+            </div>
+          </div>
+          <section class="agf">
+            <div class="agst">now · ends in 25m</div>
+            <b class="agft">Design review</b>
+            <div class="agfw">10:00 – 10:45 <span>· 45m</span></div>
+            <dl>
+              <dt>calendar</dt><dd><i></i> Team</dd>
+              <dt>where</dt><dd>Room 3</dd>
+              <dt>people</dt><dd>▸ 4 people</dd>
+              <dt>link</dt><dd class="url">https://meet.example/abc-defg</dd>
+            </dl>
+            <div class="agacts"><span class="join">Join call <kbd>↵</kbd></span><span class="dbtn det">Details</span></div>
+          </section>
         </div>
       </div>
     </section>
     <footer class="status">
-      <span class="mode">Week</span>
-      <span class="seg-s range">This week</span>
-      <span class="seg-s"><i class="sdot">●</i> Design review · until 10:45</span>
-      <span class="seg-s"><span class="dim">next:</span> Dentist · in 10m</span>
+      <span class="mode"><span class="sw">Week</span><span class="sa">Agenda</span></span>
+      <span class="seg-s rng"><span class="sw range">This week</span><span class="sa aday">Today</span></span>
+      <span class="seg-s sev"><i class="sdot">●</i> Design review · until 10:45</span>
+      <span class="seg-s nxt"><span class="dim">next:</span> Dentist · in 10m</span>
       <span class="grow"></span>
-      <span class="keys"><b>n</b> new · <b>t</b> today · <b>h</b>/<b>l</b> · <b>d</b>/<b>3</b>/<b>w</b>/<b>m</b> · <b>i</b> invites</span>
       <span class="invc">1 invite</span>
     </footer>
 
@@ -115,22 +190,27 @@ const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" />
       <div class="sheet">
         <div class="shead"><i></i><b>Focus time</b></div>
         <div class="sgrid">
-          <label>Account</label><span class="f"><em class="x1">Pick an account…</em><em class="x2">Work · me@work.example</em></span>
-          <label>Calendar</label><span class="f"><em class="y1">Pick a calendar…</em><em class="y2">Team</em></span>
+          <label>Account</label><span class="f"><em class="x1">Choose account…</em><em class="x2"><i class="sw-work"></i>Work<small>me@work.example</small></em></span>
+          <label>Calendar</label><span class="f"><em class="y1">Choose calendar…</em><em class="y2"><i class="sw-work"></i>Team</em></span>
           <label>Starts</label><span class="f2"><span class="f fd sday">Today</span><span class="f ft">10:00</span></span>
           <label>Ends</label><span class="f2"><span class="f fd sday">Today</span><span class="f ft">12:00</span></span>
+          <label>Repeat</label><span class="f"><em class="plain">Does not repeat</em></span>
         </div>
-        <div class="ident">Created in <b>Work</b> · me@work.example</div>
+        <div class="ident"><em class="x1">Choose which account this event belongs to.</em><em class="x2">Created in <b>Work</b> · me@work.example</em></div>
         <div class="sacts"><span class="dbtn">Cancel</span><span class="dbtn add">Add Event</span></div>
       </div>
     </div>
   </div>
-  <figcaption class="sr-only">Animation: the Mysticals desktop app showing a week of events from three accounts, creating an event with an explicit account and calendar, and accepting an invite from the account that received it.</figcaption>
+  <figcaption class="sr-only">Animation: the Mysticals desktop app opening on today's agenda with a live call to join, then switching to a week of events from three accounts, creating an event with an explicit account and calendar, and accepting an invite from the account that received it.</figcaption>
 </figure>
 
 <script>
   const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   const short = (d: Date) => d.toLocaleString('en', { month: 'short' })
+  /** "Tue 6 Oct 2026", like the app's status-bar range */
+  const dayLabel = (d: Date) => `${WD[d.getDay()]} ${d.getDate()} ${short(d)} ${d.getFullYear()}`
+  /** "Tue, 6 Oct", like the agenda day heads and the invites popover */
+  const dayShort = (d: Date) => `${WD[d.getDay()]}, ${d.getDate()} ${short(d)}`
   for (const fig of document.querySelectorAll<HTMLElement>('.ddemo')) {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -161,10 +241,17 @@ const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" />
     const jan4 = new Date(thu.getFullYear(), 0, 4)
     const week = 1 + Math.round(((+thu - +jan4) / 864e5 - 3 + ((jan4.getDay() + 6) % 7)) / 7)
     fig.querySelector('.tmonth')!.textContent = today.toLocaleString('en', { month: 'long' })
-    fig.querySelector('.tsub')!.textContent = `${today.getFullYear()} · W${week}`
+    fig.querySelector('.tw .tsub')!.textContent = `${today.getFullYear()} · W${week}`
     const a = at(-mon), b = at(6 - mon)
     fig.querySelector('.range')!.textContent =
       a.getMonth() === b.getMonth() ? `${a.getDate()} – ${b.getDate()} ${short(b)} ${b.getFullYear()}` : `${a.getDate()} ${short(a)} – ${b.getDate()} ${short(b)} ${b.getFullYear()}`
+    // Agenda: "Today · Tuesday, 6 October", day heads for the next days, today's date in the status bar
+    fig.querySelector('.adate')!.textContent = today.toLocaleString('en', { weekday: 'long', day: 'numeric', month: 'long' })
+    fig.querySelector('.aday')!.textContent = dayLabel(today)
+    fig.querySelectorAll<HTMLElement>('.agdh').forEach((el) => (el.textContent = dayShort(at(Number(el.dataset.day)))))
+    fig.querySelector('.pwhen')!.textContent = `${dayShort(today)} · 14:00 – 15:00`
+    const focus = at(2)
+    fig.querySelectorAll('.sday').forEach((el) => (el.textContent = `${dayShort(focus)} ${focus.getFullYear()}`))
     new IntersectionObserver(([e]) => fig.classList.toggle('paused', !e.isIntersecting)).observe(fig)
   }
 </script>
@@ -175,17 +262,18 @@ const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" />
   .dwin {
     --mono: ui-monospace, 'SF Mono', Menlo, monospace;
     /* Account colours are the user's own, so they stay the same in every theme */
-    --work: #bd93f9; --pers: #50fa7b; --icl: #8be9fd; --hol: #f1fa8c; --T: 16s;
+    --work: #bd93f9; --pers: #50fa7b; --icl: #8be9fd; --hol: #f1fa8c; --T: 24s;
     position: relative; display: grid; grid-template-columns: 14em minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif; font-size: calc(100cqw / 72); line-height: 1.35;
     background: var(--bg); color: var(--fg); border: 1px solid var(--line-strong); border-radius: .8em; overflow: hidden;
     box-shadow: 0 24px 60px -24px rgb(22 23 29 / .45); user-select: none; -webkit-font-smoothing: antialiased;
   }
-  .dwin, .dwin :is(.side, .status, .pop, .sheet, .f, .ev, .hr span) { transition: background-color .4s ease, color .4s ease, border-color .4s ease; }
+  .dwin, .dwin :is(.side, .status, .pop, .sheet, .f, .ev, .hr span, .agf, .agv) { transition: background-color .4s ease, color .4s ease, border-color .4s ease; }
   /* Matrix: mono everywhere plus a barely-there phosphor glow, like the app */
   .dwin[data-theme='matrix'] { font-family: var(--mono); text-shadow: 0 0 .15em color-mix(in srgb, var(--accent) 10%, transparent); }
   .ddemo.paused * { animation-play-state: paused !important; }
   .dim { color: var(--muted); }
+  .dwin svg { display: block; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
   /* macOS traffic lights over the sidebar (hidden title bar) */
   .lights { position: absolute; top: 1.1em; left: 1.1em; display: flex; gap: .6em; z-index: 2; }
@@ -205,31 +293,49 @@ const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" />
   .md.other { color: var(--faint); }
   .md.today { background: var(--pink); color: var(--on-accent); font-weight: 700; }
   .accs { flex: 1; display: flex; flex-direction: column; gap: 1.1em; padding: 1em .75em; border-top: 1px solid var(--line); }
-  .acc-head { display: grid; grid-template-columns: .8em .55em 1fr; column-gap: .55em; align-items: center; padding: .3em .45em; }
-  .arrow { color: var(--muted); transform: rotate(90deg); font-size: .9em; }
+  .acc-head { display: grid; grid-template-columns: .75em .55em 1fr; column-gap: .55em; align-items: center; padding: .3em .45em; }
+  .arrow { color: var(--muted); transform: rotate(90deg); }
+  .arrow :global(svg) { width: .75em; height: .75em; stroke-width: 1.6; }
   .acc-head i { width: .55em; height: .55em; border-radius: .15em; background: var(--k); }
-  .acc-head b { font: 600 .8em/1.4 var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+  .acc-head b { font: 600 .8em/1.4 var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .acc-head small { grid-column: 3; font: .8em/1.5 var(--mono); color: color-mix(in srgb, var(--muted) 70%, var(--fg)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .acc.work { --k: var(--work); } .acc.pers { --k: var(--pers); } .acc.icl { --k: var(--icl); }
   .cal { display: flex; align-items: center; gap: .6em; height: 2em; padding: 0 .45em; }
   .cal small { margin-left: auto; font: .75em/1 var(--mono); color: var(--muted); }
-  .ck { width: 1em; height: 1em; flex: none; display: grid; place-items: center; border-radius: .2em; background: var(--k); color: var(--on-accent); font: 700 .75em/1 var(--mono); }
+  /* .mc-check: a filled square in the calendar colour with a CSS-drawn tick */
+  .ck { position: relative; width: 1em; height: 1em; flex: none; border-radius: .23em; background: var(--k); }
+  .ck::after { content: ''; position: absolute; left: .26em; top: .24em; width: .5em; height: .28em; border: solid var(--on-accent); border-width: 0 0 .13em .13em; transform: rotate(-45deg); }
   .cal.hol .ck { background: var(--hol); }
-  .sfoot { display: flex; justify-content: space-between; padding: .7em 1.2em; border-top: 1px solid var(--line); font: .88em/1.2 var(--mono); color: var(--muted); }
+  .sfoot { display: flex; justify-content: space-between; align-items: center; padding: .55em .6em .55em 1.2em; border-top: 1px solid var(--line); font: .88em/1.2 var(--mono); color: var(--muted); }
+  .gear { width: 1.15em; height: 1.15em; margin-right: .5em; }
 
   /* ---------- toolbar ---------- */
   .main { position: relative; min-width: 0; display: flex; flex-direction: column; }
   .toolbar { height: 4em; display: flex; align-items: center; gap: 1em; padding: 0 1em 0 1.5em; }
-  .ttl { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: .7em; white-space: nowrap; overflow: hidden; }
-  .tmonth { font-size: 1.4em; font-weight: 700; letter-spacing: -.01em; }
+  .stoggle { flex: none; width: 1.25em; height: 1.25em; margin-right: -.3em; color: var(--muted); }
+  .ttl { flex: 1; min-width: 0; display: grid; white-space: nowrap; overflow: hidden; }
+  .tv { grid-area: 1 / 1; display: flex; align-items: baseline; gap: .7em; }
+  .tv b { font-size: 1.4em; font-weight: 700; letter-spacing: -.01em; }
   .tsub { font: 500 .95em/1 var(--mono); color: var(--muted); }
-  .seg { display: flex; gap: .15em; font: .92em/2.1 var(--mono); color: var(--muted); white-space: nowrap; }
-  .seg span { padding: 0 .45em; border-radius: .3em; }
-  .seg .on { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
-  .tnav { display: flex; font: .92em/2 var(--mono); border: 1px solid var(--line-strong); border-radius: .3em; }
+  .seg {
+    --aw: calc(6ch + 1.5em); --ww: calc(4ch + 1.5em); --wx: calc(.15em + 15ch + 5.4em);
+    position: relative; display: flex; gap: .3em; padding: .15em; border-radius: .46em;
+    background: color-mix(in srgb, var(--fg) 6%, transparent); font: .92em/1.85 var(--mono); color: var(--muted); white-space: nowrap;
+  }
+  .seg > span:not(.thumb) { position: relative; padding: 0 .75em; border-radius: .3em; }
+  .seg .t-w { color: var(--accent); }
+  .thumb {
+    position: absolute; top: .15em; bottom: .15em; left: var(--wx); width: var(--ww); border-radius: .3em;
+    background: color-mix(in srgb, var(--accent) 16%, var(--bg)); box-shadow: 0 1px 2px rgb(0 0 0 / .25), inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+  .tnav { display: flex; font: .92em/2 var(--mono); border: 1px solid color-mix(in srgb, var(--muted) 55%, transparent); border-radius: .3em; }
   .tnav span { padding: 0 .65em; color: var(--muted); }
-  .tnav .today { color: var(--fg); border-inline: 1px solid var(--line-strong); }
+  .tnav .today { color: var(--fg); border-inline: 1px solid color-mix(in srgb, var(--muted) 55%, transparent); }
   .new { padding: 0 .75em; font: 700 .92em/2.1 var(--mono); background: var(--accent); color: var(--on-accent); border-radius: .3em; white-space: nowrap; }
+
+  /* ---------- views: the week underneath, the agenda on top for the first part of the loop ---------- */
+  .views { position: relative; flex: 1; display: flex; flex-direction: column; }
+  .wkv { flex: 1; display: flex; flex-direction: column; }
 
   /* ---------- time grid ---------- */
   .heads, .allday { display: grid; grid-template-columns: 4.3em minmax(0, 1fr); }
@@ -262,56 +368,151 @@ const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" />
   .ev b { font-weight: 600; }
   .ev small { font: .9em/1.3 var(--mono); opacity: .8; }
   .ev.short { flex-direction: row; align-items: center; gap: .5em; padding-block: 0; }
-  .ev.short small { flex: none; }
+  .ev.short b { flex: 0 1 auto; min-width: 1.5em; }
+  .ev.short small { flex: 0 100 auto; min-width: 0; }
   .ev.past { opacity: .55; }
   .ev.work { --k: var(--work); } .ev.pers { --k: var(--pers); } .ev.icl { --k: var(--icl); } .ev.hol { --k: var(--hol); }
   .ev.half1 { width: calc(var(--w) / 2 - 2px); }
   .ev.half2 { left: calc(var(--c, 0) * var(--w) + var(--w) / 2); width: calc(var(--w) / 2 - 2px); }
   .ev.ad { top: .25em; height: 1.65em; justify-content: center; padding-block: 0; }
-  @keyframes ev { 0%, 1% { opacity: 0; transform: translateY(-.5em); } 5%, 96% { opacity: var(--o, 1); transform: none; } 100% { opacity: 0; } }
+  /* The week takes over at 30% of the loop; everything in it drops in from there */
+  @keyframes ev { 0%, 30% { opacity: 0; transform: translateY(-.5em); } 33%, 97% { opacity: var(--o, 1); transform: none; } 100% { opacity: 0; } }
   .ev.past { --o: .55; }
   /* invite: pending (orange stripes, dashed outline) until it's accepted from the popover */
   .ev.invite { animation: ev var(--T) var(--d) infinite both, pending var(--T) infinite both; }
   @keyframes pending {
-    0%, 75% {
+    0%, 82.5% {
       background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--orange) 13%, transparent) 0 .38em, transparent .38em .77em), color-mix(in srgb, var(--k) 7%, var(--bg));
       outline: 1px dashed var(--orange); outline-offset: -1px;
     }
-    76%, 100% { outline: 1px dashed transparent; outline-offset: -1px; }
+    83%, 100% { outline: 1px dashed transparent; outline-offset: -1px; }
   }
 
+  /* now: a strong line on today, faint ones across the other days, and the clock pill in the gutter */
   .now { position: absolute; z-index: 3; left: calc(var(--c, 0) * 100% / 7); width: calc(100% / 7); top: calc(2.33 * 100% / 9); border-top: 2px solid var(--pink); animation: ev var(--T) infinite both; }
   .now::before { content: ''; position: absolute; left: -.3em; top: -.4em; width: .6em; height: .6em; border-radius: 50%; background: var(--pink); }
+  .nowall { position: absolute; z-index: 2; left: 0; right: 0; top: calc(2.33 * 100% / 9 + .5px); border-top: 1px solid var(--pink); opacity: .35; }
+  .nowclk { position: absolute; z-index: 3; right: calc(100% - 4.1em); top: calc(2.33 * 100% / 9 + 1px); transform: translateY(-50%); padding: .08em .3em; border-radius: .23em; background: var(--pink); color: var(--on-accent); font: 700 .77em/1.2 var(--mono); }
 
-  /* drag-to-create: ghost block grows 10:00 → 12:00, the editor opens, then it becomes a real event */
+  /* drag-to-create: ghost block (theme accent) grows 10:00 → 12:00, the editor opens, then it becomes a real event */
   .nb { overflow: visible; animation: nb var(--T) infinite both; }
   .nb b, .nb small { animation: nbtext var(--T) infinite both; }
-  .dghost { position: absolute; inset: 0; padding: .25em .5em; background: color-mix(in srgb, var(--work) var(--ev-mix), var(--bg)); border-left: 2px solid var(--work); margin-left: -2px; color: color-mix(in srgb, var(--work) var(--ev-text-mix), var(--fg)); font: 600 .9em/1.4 var(--mono); white-space: nowrap; overflow: hidden; opacity: 0; animation: dghost var(--T) infinite both; }
-  @keyframes nb { 0%, 17% { opacity: 0; height: calc(.5 * 100% / 9 - 2px); } 18% { opacity: 1; height: calc(.5 * 100% / 9 - 2px); } 28%, 96% { opacity: 1; height: calc(2 * 100% / 9 - 2px); } 100% { opacity: 0; } }
-  @keyframes dghost { 0%, 17% { opacity: 0; } 18%, 55% { opacity: 1; } 56%, 100% { opacity: 0; } }
-  @keyframes nbtext { 0%, 55% { opacity: 0; } 57%, 100% { opacity: 1; } }
+  .dghost { position: absolute; inset: 0; padding: .25em .5em; background: color-mix(in srgb, var(--accent) 18%, var(--bg)); border-left: 2px solid var(--accent); margin-left: -2px; color: var(--accent); font: 600 .9em/1.4 var(--mono); white-space: nowrap; overflow: hidden; opacity: 0; animation: dghost var(--T) infinite both; }
+  @keyframes nb { 0%, 42% { opacity: 0; height: calc(.5 * 100% / 9 - 2px); } 43% { opacity: 1; height: calc(.5 * 100% / 9 - 2px); } 50%, 97% { opacity: 1; height: calc(2 * 100% / 9 - 2px); } 100% { opacity: 0; } }
+  @keyframes dghost { 0%, 42% { opacity: 0; } 43%, 68.5% { opacity: 1; } 69%, 100% { opacity: 0; } }
+  @keyframes nbtext { 0%, 68.5% { opacity: 0; } 70%, 100% { opacity: 1; } }
 
   .cur { position: absolute; z-index: 9; width: 1.2em; opacity: 0; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .6)); }
   .cur :global(svg) { display: block; fill: #fff; stroke: #000; stroke-width: 1; }
   .c1 { right: -.5em; bottom: -1em; animation: c1 var(--T) infinite both; }
-  @keyframes c1 { 0%, 13% { opacity: 0; transform: translate(5em, 4em); } 15% { opacity: 1; transform: translate(5em, 4em); } 18%, 29% { opacity: 1; transform: none; } 31%, 100% { opacity: 0; } }
+  @keyframes c1 { 0%, 39% { opacity: 0; transform: translate(5em, 4em); } 40.5% { opacity: 1; transform: translate(5em, 4em); } 42.5%, 50% { opacity: 1; transform: none; } 51.5%, 100% { opacity: 0; } }
+
+  /* ---------- agenda (views/Agenda.css): today's list on the left, the focus card on the right ---------- */
+  .agv {
+    position: absolute; inset: 0; z-index: 5; display: grid; grid-template-columns: minmax(0, 1fr) 21em; gap: 1.8em; align-items: start;
+    padding: 1.1em 1.5em; background: var(--bg); border-top: 1px solid var(--line); overflow: hidden;
+    opacity: 0; visibility: hidden; animation: agv var(--T) infinite both;
+  }
+  .wkv { animation: wkv var(--T) infinite both; }
+  @keyframes agv { 0% { opacity: 0; visibility: visible; } 2%, 27% { opacity: 1; visibility: visible; } 30%, 100% { opacity: 0; visibility: hidden; } }
+  @keyframes wkv { 0% { opacity: 1; } 2%, 27% { opacity: 0; } 30%, 100% { opacity: 1; } }
+  .aglist { min-width: 0; }
+  .agrows { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .agrow {
+    position: relative; display: grid; grid-template-columns: 3.4em 3px minmax(0, 1fr); align-items: center; gap: .77em;
+    padding: .54em 4.9em .54em .6em; border-radius: .3em; animation: agin var(--T) calc(var(--i, 0) * .06s) infinite both;
+  }
+  @keyframes agin { 0% { opacity: 0; transform: translateY(3px); } 2.5%, 100% { opacity: var(--o, 1); transform: none; } }
+  .agrow.work { --k: var(--work); } .agrow.pers { --k: var(--pers); } .agrow.icl { --k: var(--icl); }
+  .agrow.sel { background: color-mix(in srgb, var(--k) 10%, transparent); }
+  .agrow.past { --o: .45; }
+  .agt { font: .92em/1 var(--mono); color: var(--muted); }
+  .agrow.live .agt { color: var(--green); }
+  .agbar { align-self: stretch; border-radius: 1px; background: var(--k); }
+  .agm { min-width: 0; display: grid; gap: .23em; }
+  .agm b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .agm small { font: .88em/1.3 var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .agm :global(.live) { color: var(--green); }
+  .pill { position: absolute; right: .6em; top: 50%; transform: translateY(-50%); padding: 0 .77em; border-radius: .23em; background: var(--green); color: var(--bg); font: 700 .85em/1.7em var(--mono); }
+  .agnow { position: relative; height: 0; margin: .4em 0 .4em 4em; border-top: 2px solid var(--pink); }
+  .agnow::before { content: ''; position: absolute; left: -.3em; top: -.4em; width: .6em; height: .6em; border-radius: 50%; background: var(--pink); }
+  .agnow span { position: absolute; right: 0; top: 0; transform: translateY(-50%); padding: .08em .3em; border-radius: .23em; background: var(--pink); color: var(--on-accent); font: 700 .77em/1.2 var(--mono); }
+  .aggap { margin-left: 4.8em; padding: 1px 0; font: .77em/1.2 var(--mono); color: color-mix(in srgb, var(--muted) 70%, transparent); }
+  /* "Next 7 days" opens a little after the list settles */
+  .agahead { position: relative; display: flex; align-items: center; gap: .55em; margin-top: .77em; padding: .6em; border-top: 1px dashed var(--line-strong); font: .88em/1 var(--mono); color: var(--muted); animation: ahead var(--T) infinite both; }
+  .agahead em { font-style: normal; }
+  .agahead .x2 { position: absolute; left: 2.2em; }
+  .chev { transform: rotate(90deg); animation: chev var(--T) infinite both; }
+  .chev :global(svg) { width: .9em; height: .9em; stroke-width: 1.6; }
+  .agup { display: grid; gap: 1.1em; margin-top: .45em; animation: agup var(--T) infinite both; }
+  .agdh { margin: 0 0 .45em .6em; font: 600 .8em/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .agahead .x1 { animation: out0 var(--T) infinite both; }
+  .agahead .x2 { animation: in0 var(--T) infinite both; }
+  @keyframes ahead { 0%, 9% { color: var(--muted); } 10%, 100% { color: var(--fg); } }
+  @keyframes chev { 0%, 9% { transform: rotate(90deg); } 10%, 100% { transform: rotate(-90deg); } }
+  @keyframes agup { 0%, 9.5% { opacity: 0; transform: translateY(3px); } 11%, 100% { opacity: 1; transform: none; } }
+  @keyframes in0 { 0%, 9% { opacity: 0; } 10%, 100% { opacity: 1; } }
+  @keyframes out0 { 0%, 9% { opacity: 1; } 10%, 100% { opacity: 0; } }
+
+  /* focus card: rounded, so the calendar colour is a straight inset bar drawn as a background layer */
+  .agf {
+    --k: var(--work); padding: 1.4em 1.5em 1.4em 1.7em; border: 1px solid var(--line-strong); border-radius: .46em;
+    background: linear-gradient(var(--k), var(--k)) 0 1.1em / 3px calc(100% - 2.2em) no-repeat, var(--surface);
+    animation: agin var(--T) .2s infinite both;
+  }
+  .agst { font: 600 .85em/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--green); }
+  .agst::before { content: ''; display: inline-block; width: .46em; height: .46em; margin-right: .54em; border-radius: 50%; background: var(--green); vertical-align: .08em; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .agft { display: block; margin: .77em 0 .3em; font-size: 1.46em; font-weight: 700; letter-spacing: -.01em; }
+  .agfw { font: .96em/1.4 var(--mono); }
+  .agfw span { color: var(--muted); }
+  .agf dl { display: grid; grid-template-columns: 5.8em minmax(0, 1fr); gap: .3em .77em; margin: 1.2em 0 0; }
+  .agf dt { font: .8em/1.8 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .agf dd { margin: 0; min-width: 0; line-height: 1.46; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .agf dd i { display: inline-block; width: .54em; height: .54em; border-radius: .15em; background: var(--k); }
+  .agf .url { font: .92em/1.58 var(--mono); color: var(--cyan); }
+  .agacts { display: flex; gap: .6em; margin-top: 1.4em; }
+  .join { flex: 1; text-align: center; border-radius: .3em; background: var(--green); color: var(--bg); font: 700 1em/2.6em var(--mono); }
+  .join kbd { display: inline; min-width: 0; margin-left: .6em; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 400; opacity: .6; }
+  .det { font-size: .92em; line-height: 2.8em; background: none; }
+
+  /* Week tab click at ~27%: thumb, active tab, title and status-bar mode all follow */
+  .thumb { animation: thumb var(--T) infinite both; }
+  .seg .t-a { animation: tabA var(--T) infinite both; }
+  .seg .t-w { animation: tabW var(--T) infinite both; }
+  .tw, .sw { animation: inW var(--T) infinite both; }
+  .ta, .sa { animation: outW var(--T) infinite both; }
+  @keyframes thumb { 0%, 27.5% { left: .15em; width: var(--aw); } 29%, 100% { left: var(--wx); width: var(--ww); } }
+  @keyframes tabA { 0%, 27.5% { color: var(--accent); } 28.5%, 100% { color: var(--muted); } }
+  @keyframes tabW { 0%, 27.5% { color: var(--muted); } 28.5%, 100% { color: var(--accent); } }
+  @keyframes inW { 0%, 27.5% { opacity: 0; } 29%, 100% { opacity: 1; } }
+  @keyframes outW { 0%, 27.5% { opacity: 1; } 29%, 100% { opacity: 0; } }
+  .c0 { left: 50%; top: 60%; animation: c0 var(--T) infinite both; }
+  @keyframes c0 {
+    0%, 22% { opacity: 0; transform: translate(4em, 7em); }
+    23% { opacity: 1; transform: translate(4em, 7em); }
+    26%, 27% { opacity: 1; transform: none; }
+    27.5% { opacity: 1; transform: scale(.85); }
+    28%, 29% { opacity: 1; transform: none; }
+    30.5%, 100% { opacity: 0; transform: none; }
+  }
 
   /* ---------- status bar ---------- */
-  .status { grid-column: 1 / -1; display: flex; align-items: stretch; height: 1.9em; background: var(--surface); border-top: 1px solid var(--line); font: .85em/1.9em var(--mono); color: var(--fg); white-space: nowrap; overflow: hidden; }
+  .status { grid-column: 1 / -1; display: flex; align-items: stretch; height: 1.9em; background: var(--surface); border-top: 1px solid var(--line); font: .85em/1.9em var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; }
   .status > span { flex: none; }
+  .mode, .rng { display: grid; }
+  .mode > span, .rng > span { grid-area: 1 / 1; }
   .mode { padding: 0 .8em; background: var(--accent); color: var(--on-accent); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
   .seg-s { padding: 0 1em; border-right: 1px solid var(--line); }
-  .range { color: var(--muted); }
+  .sev { color: var(--fg); }
   .sdot { font-style: normal; color: var(--work); }
   .status > .grow { flex: 1; }
-  .keys { padding: 0 1em; color: var(--muted); }
-  .keys b { font-weight: 400; color: var(--fg); }
   .invc { padding: 0 1em; border-left: 1px solid var(--line); color: var(--orange); animation: invc var(--T) infinite both; }
-  @keyframes invc { 0%, 75% { opacity: 1; } 76%, 100% { opacity: 0; } }
+  @keyframes invc { 0%, 82.5% { opacity: 1; } 83%, 100% { opacity: 0; } }
 
   /* ---------- invites popover (opens upward from the status bar) ---------- */
   .pop {
-    position: absolute; z-index: 7; right: .5em; bottom: 2.2em; width: 24em; padding: .8em 0 .5em;
+    position: absolute; z-index: 7; right: .5em; bottom: 2.2em; width: 26em; padding: .8em 0 .5em;
     background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: .6em; box-shadow: 0 1.4em 3.8em rgb(0 0 0 / .55);
     opacity: 0; visibility: hidden; animation: pop var(--T) infinite both;
   }
@@ -322,59 +523,69 @@ const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" />
   .pacc i { width: .55em; height: .55em; border-radius: .15em; background: var(--icl); }
   .acts { display: flex; gap: .45em; margin-top: .6em; }
   .dbtn { padding: 0 .9em; font: 500 .92em/2em var(--mono); background: var(--surface); border: 1px solid var(--line-strong); border-radius: .3em; white-space: nowrap; }
-  .dbtn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
+  /* Accept takes the colour of the account that got the invite */
+  .dbtn.primary { background: var(--icl); border-color: var(--icl); color: var(--bg); font-weight: 700; }
   .ok { animation: ok var(--T) infinite both; }
-  @keyframes pop { 0%, 63% { opacity: 0; visibility: hidden; transform: translateY(.4em); } 65%, 74% { opacity: 1; visibility: visible; transform: none; } 76%, 100% { opacity: 0; visibility: hidden; } }
-  @keyframes ok { 0%, 72% { filter: none; } 73%, 100% { filter: brightness(1.25); } }
+  @keyframes pop { 0%, 74% { opacity: 0; visibility: hidden; transform: translateY(.4em); } 75.5%, 81.8% { opacity: 1; visibility: visible; transform: none; } 83.2%, 100% { opacity: 0; visibility: hidden; } }
+  @keyframes ok { 0%, 80.4% { filter: none; } 81.1%, 100% { filter: brightness(1.25); } }
   .c2 { right: 2.4em; bottom: .2em; animation: c2 var(--T) infinite both; }
   @keyframes c2 {
-    0%, 58% { opacity: 0; transform: translate(-3em, -6em); }
-    60% { opacity: 1; transform: translate(-3em, -6em); }
-    63%, 66% { opacity: 1; transform: none; }
-    71%, 74% { opacity: 1; transform: translate(-18.5em, -3.2em); }
-    77%, 100% { opacity: 0; transform: translate(-18.5em, -3.2em); }
+    0%, 70.6% { opacity: 0; transform: translate(-3em, -6em); }
+    72% { opacity: 1; transform: translate(-3em, -6em); }
+    74%, 76% { opacity: 1; transform: none; }
+    79.5%, 81.8% { opacity: 1; transform: translate(-18.5em, -3.2em); }
+    84%, 100% { opacity: 0; transform: translate(-18.5em, -3.2em); }
   }
 
   /* ---------- event editor sheet (mc-overlay + mc-sheet + editor) ---------- */
   .overlay { position: absolute; inset: 0; z-index: 8; display: flex; justify-content: center; align-items: flex-start; background: color-mix(in srgb, var(--bg) 60%, transparent); opacity: 0; visibility: hidden; animation: ov var(--T) infinite both; }
   .sheet {
-    margin-top: 4em; width: min(33em, 92%); padding: 1.3em 1.5em;
-    /* Event colour as a straight inset bar: a coloured border would bend around the rounded corners. */
-    background: linear-gradient(var(--accent), var(--accent)) 0 .9em / 2px calc(100% - 1.8em) no-repeat, var(--surface-2);
+    position: relative; margin-top: 4em; width: min(35em, 92%); padding: 1.3em 1.5em; background: var(--surface-2);
     border: 1px solid var(--line-strong); border-radius: .6em; box-shadow: 0 1.4em 3.8em rgb(0 0 0 / .55);
     animation: drop var(--T) infinite both;
   }
+  /* The account colour as a straight inset bar (muted until an account is chosen): a coloured border would bend
+     around the rounded corners. */
+  .sheet::before { content: ''; position: absolute; left: 0; top: 1.1em; bottom: 1.1em; width: 3px; background: var(--muted); animation: acc var(--T) infinite both; }
   .shead { display: flex; align-items: center; gap: .75em; margin-bottom: 1.2em; }
-  .shead i { width: .77em; height: .77em; border-radius: .23em; background: var(--work); }
+  .shead i { width: .77em; height: .77em; border-radius: .23em; background: var(--muted); animation: acc var(--T) infinite both; }
+  @keyframes acc { 0%, 57.3% { background-color: var(--muted); } 58%, 100% { background-color: var(--work); } }
   .shead b { font-size: 1.3em; font-weight: 600; }
   .sgrid { display: grid; grid-template-columns: 6em 1fr; gap: .6em .9em; align-items: center; }
   .sgrid label { text-align: right; font: .8em/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .f { position: relative; display: block; min-height: 2.15em; background: var(--bg); border: 1px solid var(--line-strong); border-radius: .3em; }
-  .f em { position: absolute; inset: 0; padding: .35em .6em; font-style: normal; white-space: nowrap; overflow: hidden; }
+  .f em { position: absolute; inset: 0; display: flex; align-items: center; gap: .55em; padding: 0 1.8em 0 .7em; font-style: normal; white-space: nowrap; overflow: hidden; }
   .f em::after { content: '⌄'; position: absolute; right: .6em; top: .1em; color: var(--muted); }
-  .f2 { display: grid; grid-template-columns: 1fr 5em; gap: .6em; }
-  .fd, .ft { padding: .35em .6em; font: .95em/1.35 var(--mono); }
+  .f em i { width: .62em; height: .62em; flex: none; border-radius: .15em; background: var(--work); }
+  .f em small { font: .85em/1 var(--mono); color: var(--muted); }
+  .f2 { display: grid; grid-template-columns: 1fr 5em; gap: .45em; }
+  .fd, .ft { padding: .35em .6em; font: .92em/1.35 var(--mono); }
   .ft { text-align: center; }
   .x1, .y1 { color: var(--muted); }
   .x1 { animation: out1 var(--T) infinite both; } .x2 { animation: in1 var(--T) infinite both; }
   .y1 { animation: out2 var(--T) infinite both; } .y2 { animation: in2 var(--T) infinite both; }
-  @keyframes in1 { 0%, 39% { opacity: 0; } 40%, 100% { opacity: 1; } }
-  @keyframes out1 { 0%, 39% { opacity: 1; } 40%, 100% { opacity: 0; } }
-  @keyframes in2 { 0%, 44% { opacity: 0; } 45%, 100% { opacity: 1; } }
-  @keyframes out2 { 0%, 44% { opacity: 1; } 45%, 100% { opacity: 0; } }
-  .ident { margin-top: 1.2em; padding: .6em .8em; font: .88em/1.6 var(--mono); background: color-mix(in srgb, var(--work) 9%, transparent); border-left: 2px solid var(--work); border-radius: 0; animation: in1 var(--T) infinite both; }
+  @keyframes in1 { 0%, 57.3% { opacity: 0; } 58%, 100% { opacity: 1; } }
+  @keyframes out1 { 0%, 57.3% { opacity: 1; } 58%, 100% { opacity: 0; } }
+  @keyframes in2 { 0%, 60.8% { opacity: 0; } 61.5%, 100% { opacity: 1; } }
+  @keyframes out2 { 0%, 60.8% { opacity: 1; } 61.5%, 100% { opacity: 0; } }
+  /* square box, so the straight 2px account bar is fine here */
+  .ident { position: relative; display: grid; margin-top: 1.2em; padding: .6em .8em; font: .88em/1.6 var(--mono); background: color-mix(in srgb, var(--work) 9%, transparent); border-left: 2px solid var(--work); border-radius: 0; animation: identc var(--T) infinite both; }
+  .ident em { grid-area: 1 / 1; font-style: normal; }
+  @keyframes identc { 0%, 57.3% { border-left-color: var(--muted); background-color: color-mix(in srgb, var(--muted) 9%, transparent); } 58%, 100% { border-left-color: var(--work); background-color: color-mix(in srgb, var(--work) 9%, transparent); } }
   .sacts { display: flex; justify-content: flex-end; gap: .6em; margin-top: 1.2em; }
   .add { animation: add var(--T) infinite both; }
   @keyframes add {
-    0%, 44% { opacity: .4; }
-    45%, 100% { opacity: 1; background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
+    0%, 60.8% { opacity: .4; }
+    61.5%, 100% { opacity: 1; background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
   }
-  @keyframes ov { 0%, 30% { opacity: 0; visibility: hidden; } 32%, 52% { opacity: 1; visibility: visible; } 55%, 100% { opacity: 0; visibility: hidden; } }
-  @keyframes drop { 0%, 30% { transform: translateY(-.5em); } 32%, 100% { transform: none; } }
+  @keyframes ov { 0%, 51% { opacity: 0; visibility: hidden; } 52.4%, 66.4% { opacity: 1; visibility: visible; } 68.5%, 100% { opacity: 0; visibility: hidden; } }
+  @keyframes drop { 0%, 51% { transform: translateY(-.5em); } 52.4%, 100% { transform: none; } }
 
   @container (max-width: 470px) {
     .dwin { grid-template-columns: minmax(0, 1fr); font-size: calc(100cqw / 46); }
-    .side, .keys, .seg span:not(.on), .status .seg-s:nth-child(4) { display: none; }
+    .side, .stoggle, .seg .t-d, .seg .t-3, .seg .t-m, .status .nxt, .agf { display: none; }
+    .seg { --wx: calc(.15em + 6ch + 1.8em); }
+    .agv { grid-template-columns: minmax(0, 1fr); }
     .toolbar { padding-left: 5.5em; }
     .lights { top: 1.5em; }
   }
