@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Account, Calendar, CalEvent } from '../shared/types'
-import { canEdit, cleanNotes, formatWhen, htmlToText, isHtml, linkify, ownerLine, pendingInvites } from './details'
+import { canEdit, cleanNotes, extraEmail, formatWhen, htmlToText, isHtml, linkify, ownerLine, pendingInvites } from './details'
 
 const account: Account = { id: 'work', kind: 'caldav', label: 'Work', email: 'me@work.example', color: '#000' }
 const cal: Calendar = { id: 'w', accountId: 'work', name: 'Work', color: '#000', readOnly: false }
@@ -88,6 +88,16 @@ describe('ownerLine', () => {
   })
   it('handles a missing email', () => {
     expect(ownerLine('Home', 'Work')).toEqual({ calendar: 'Home', label: 'Work', email: undefined })
+  })
+})
+
+describe('extraEmail', () => {
+  it('drops an email that only repeats the label', () => {
+    expect(extraEmail('me@gmail.com', ' ME@gmail.com')).toBeUndefined()
+  })
+  it('keeps an email that adds to the label', () => {
+    expect(extraEmail('Work', 'me@work.example')).toBe('me@work.example')
+    expect(extraEmail('Work')).toBeUndefined()
   })
 })
 

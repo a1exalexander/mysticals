@@ -4,9 +4,12 @@ import type { Account, Calendar, CalEvent, PartStat } from '../shared/types'
 
 const same = (a?: string, b?: string): boolean => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase()
 
+/** The account's email when it adds something to its label (Google labels are often the email itself). */
+export const extraEmail = (label: string, email?: string): string | undefined => (same(email, label) ? undefined : email)
+
 /** "<calendar> in <label> · <email>" minus parts repeating an earlier one (Google: label = primary calendar = email). */
 export function ownerLine(calendar: string | undefined, label: string, email?: string): { calendar?: string; label: string; email?: string } {
-  return { calendar: same(calendar, label) || same(calendar, email) ? undefined : calendar, label, email: same(email, label) ? undefined : email }
+  return { calendar: same(calendar, label) || same(calendar, email) ? undefined : calendar, label, email: extraEmail(label, email) }
 }
 
 /** Edit/Delete only for events this account organizes (or plain events) in writable calendars. */

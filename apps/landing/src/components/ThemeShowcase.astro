@@ -7,10 +7,11 @@
 import DesktopDemo from './DesktopDemo.astro'
 import { THEMES, themeVars } from '../themes'
 const vars = Object.fromEntries(THEMES.map((th) => [th.id, themeVars(th)]))
-// Mini window: [day column 0-4, start row 0-7, rows, account colour]
+// Mini window: [day column 0-4, start row 0-7, rows, account colour]. Account colours are the user's, not the theme's.
+const [work, pers, icl, side] = ['#bd93f9', '#50fa7b', '#8be9fd', '#ffb86c']
 const evs: [number, number, number, string][] = [
-  [0, 1, 1, 'accent'], [0, 3, 2, 'green'], [1, 0, 2, 'cyan'], [1, 4, 1, 'accent'],
-  [2, 2, 3, 'accent'], [3, 1, 1, 'green'], [3, 5, 2, 'cyan'], [4, 0, 1, 'orange'], [4, 3, 2, 'green'],
+  [0, 1, 1, work], [0, 3, 2, pers], [1, 0, 2, icl], [1, 4, 1, work],
+  [2, 2, 3, work], [3, 1, 1, pers], [3, 5, 2, icl], [4, 0, 1, side], [4, 3, 2, pers],
 ]
 ---
 <div class="themes" data-vars={JSON.stringify(vars)}>
@@ -34,7 +35,7 @@ const evs: [number, number, number, string][] = [
               <span class="mbar"><b /><em>+ new</em></span>
               <span class="mgrid">
                 <span class="mtoday" />
-                {evs.map(([c, s, n, k]) => <span class="mev" style={`--c:${c};--s:${s};--n:${n};--k:var(--${k})`} />)}
+                {evs.map(([c, s, n, k]) => <span class="mev" style={`--c:${c};--s:${s};--n:${n};--k:${k}`} />)}
               </span>
             </span>
           </span>
@@ -141,7 +142,4 @@ const evs: [number, number, number, string][] = [
     top: calc(var(--s) * 100% / 8 + 2px); height: calc(var(--n) * 100% / 8 - 4px);
     background: color-mix(in srgb, var(--k) var(--ev-mix), var(--bg)); border-left: 2px solid var(--k);
   }
-  .mwin[data-theme='matrix'] { box-shadow: inset 0 0 18px color-mix(in srgb, var(--accent) 6%, transparent); }
-  .mwin[data-theme='matrix'] .mbar em { text-shadow: none; box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 40%, transparent); }
-  .mini[aria-pressed='true'] .mwin[data-theme='matrix'] { box-shadow: inset 0 0 18px color-mix(in srgb, var(--accent) 6%, transparent), 0 0 0 2px var(--bg), 0 0 0 3px var(--accent); }
 </style>
