@@ -6,6 +6,7 @@ import { DateTimeField } from './ui/DateTimeField'
 import { RecurringScope } from './ui/RecurringScope'
 import { RepeatField } from './ui/RepeatField'
 import { Select } from './ui/Select'
+import { extraEmail } from '@mysticals/core/logic/details'
 import {
   applyForm, emptyForm, setAllDay, errorText, formFromEvent, formToInput, isEmail, moveStart, repeatChanged, soleId, splitEmails,
   withLoadedRepeat, writableAccounts, writableCalendars, type EventForm
@@ -159,7 +160,7 @@ export function EventEditorHost(): React.JSX.Element | null {
               aria-label={t('editor.account')}
               placeholder={t('editor.chooseAccount')}
               value={form.accountId}
-              options={choices.map((a) => ({ value: a.id, label: a.label, hint: a.email, color: a.color }))}
+              options={choices.map((a) => ({ value: a.id, label: a.label, hint: extraEmail(a.label, a.email), color: a.color }))}
               onChange={chooseAccount}
             />
           )}
@@ -238,7 +239,7 @@ export function EventEditorHost(): React.JSX.Element | null {
         <div className="editor-identity">
           {account ? (
             <>
-              <div>{t('editor.createdIn')} <b>{account.label}</b> · {account.email}</div>
+              <div>{t('editor.createdIn')} <b>{account.label}</b>{extraEmail(account.label, account.email) && <> · {account.email}</>}</div>
               {invitees.length > 0 && <div className="editor-warn">{t('editor.invitesFrom')} <b>{account.email}</b></div>}
             </>
           ) : (

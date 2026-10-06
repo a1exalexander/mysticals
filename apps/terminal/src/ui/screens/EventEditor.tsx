@@ -20,6 +20,7 @@ import {
   daysText, describe, endsText, everyText, parseDays, parseEnds, parseEvery, presetOf, presets, weekdayOf, withEnd, type PresetId
 } from '@mysticals/core/logic/recurrence'
 import type { CalEvent, DeleteScope, Recurrence } from '@mysticals/core/shared/types'
+import { extraEmail } from '@mysticals/core/logic/details'
 import { useApi, useDirectory } from '../hooks'
 import { Button, Clickable, useKeys } from '../mouse'
 import { C } from '../theme'
@@ -306,9 +307,11 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
 
   const value = (f: Field): { text: string; dim?: boolean } => {
     switch (f) {
-      case 'account':
-        if (event) return { text: account ? `${account.label} · ${account.email}` : form.accountId }
-        return account ? { text: `${account.label} · ${account.email}` } : { text: '‹ choose account ›', dim: true }
+      case 'account': {
+        const name = account && [account.label, extraEmail(account.label, account.email)].filter(Boolean).join(' · ')
+        if (event) return { text: name || form.accountId }
+        return name ? { text: name } : { text: '‹ choose account ›', dim: true }
+      }
       case 'calendar':
         if (event) return { text: calendar?.name ?? form.calendarId }
         if (!form.accountId) return { text: 'choose an account first', dim: true }

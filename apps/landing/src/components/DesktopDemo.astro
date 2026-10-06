@@ -174,15 +174,16 @@ const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" />
   /* Palette tokens are set inline from src/themes.ts (mirrors the app's base.css); the page theme never leaks in */
   .dwin {
     --mono: ui-monospace, 'SF Mono', Menlo, monospace;
-    --work: var(--accent); --pers: var(--green); --icl: var(--cyan); --hol: var(--yellow); --T: 16s;
+    /* Account colours are the user's own, so they stay the same in every theme */
+    --work: #bd93f9; --pers: #50fa7b; --icl: #8be9fd; --hol: #f1fa8c; --T: 16s;
     position: relative; display: grid; grid-template-columns: 14em minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif; font-size: calc(100cqw / 72); line-height: 1.35;
     background: var(--bg); color: var(--fg); border: 1px solid var(--line-strong); border-radius: .8em; overflow: hidden;
     box-shadow: 0 24px 60px -24px rgb(22 23 29 / .45); user-select: none; -webkit-font-smoothing: antialiased;
   }
   .dwin, .dwin :is(.side, .status, .pop, .sheet, .f, .ev, .hr span) { transition: background-color .4s ease, color .4s ease, border-color .4s ease; }
-  /* Matrix: mono everywhere plus a phosphor glow, like the app */
-  .dwin[data-theme='matrix'] { font-family: var(--mono); text-shadow: 0 0 .25em color-mix(in srgb, var(--accent) 22%, transparent); }
+  /* Matrix: mono everywhere plus a barely-there phosphor glow, like the app */
+  .dwin[data-theme='matrix'] { font-family: var(--mono); text-shadow: 0 0 .15em color-mix(in srgb, var(--accent) 10%, transparent); }
   .ddemo.paused * { animation-play-state: paused !important; }
   .dim { color: var(--muted); }
 
@@ -285,7 +286,7 @@ const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" />
   /* drag-to-create: ghost block grows 10:00 → 12:00, the editor opens, then it becomes a real event */
   .nb { overflow: visible; animation: nb var(--T) infinite both; }
   .nb b, .nb small { animation: nbtext var(--T) infinite both; }
-  .dghost { position: absolute; inset: 0; padding: .25em .5em; background: color-mix(in srgb, var(--accent) 18%, var(--bg)); border-left: 2px solid var(--accent); margin-left: -2px; color: var(--accent); font: 600 .9em/1.4 var(--mono); white-space: nowrap; overflow: hidden; opacity: 0; animation: dghost var(--T) infinite both; }
+  .dghost { position: absolute; inset: 0; padding: .25em .5em; background: color-mix(in srgb, var(--work) var(--ev-mix), var(--bg)); border-left: 2px solid var(--work); margin-left: -2px; color: color-mix(in srgb, var(--work) var(--ev-text-mix), var(--fg)); font: 600 .9em/1.4 var(--mono); white-space: nowrap; overflow: hidden; opacity: 0; animation: dghost var(--T) infinite both; }
   @keyframes nb { 0%, 17% { opacity: 0; height: calc(.5 * 100% / 9 - 2px); } 18% { opacity: 1; height: calc(.5 * 100% / 9 - 2px); } 28%, 96% { opacity: 1; height: calc(2 * 100% / 9 - 2px); } 100% { opacity: 0; } }
   @keyframes dghost { 0%, 17% { opacity: 0; } 18%, 55% { opacity: 1; } 56%, 100% { opacity: 0; } }
   @keyframes nbtext { 0%, 55% { opacity: 0; } 57%, 100% { opacity: 1; } }
@@ -315,7 +316,7 @@ const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" />
     opacity: 0; visibility: hidden; animation: pop var(--T) infinite both;
   }
   .ptitle { padding: 0 1.1em .6em; font: 600 .8em/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-  .pitem { display: flex; flex-direction: column; gap: .15em; padding: .7em 1.1em; border-top: 1px solid var(--line); border-left: 2px solid var(--accent); }
+  .pitem { display: flex; flex-direction: column; gap: .15em; padding: .7em 1.1em; border-top: 1px solid var(--line); border-left: 2px solid var(--icl); }
   .pwhen, .pacc { font: .85em/1.4 var(--mono); }
   .pacc { display: flex; align-items: center; gap: .45em; color: var(--muted); }
   .pacc i { width: .55em; height: .55em; border-radius: .15em; background: var(--icl); }
@@ -344,7 +345,7 @@ const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" />
     animation: drop var(--T) infinite both;
   }
   .shead { display: flex; align-items: center; gap: .75em; margin-bottom: 1.2em; }
-  .shead i { width: .77em; height: .77em; border-radius: .23em; background: var(--accent); }
+  .shead i { width: .77em; height: .77em; border-radius: .23em; background: var(--work); }
   .shead b { font-size: 1.3em; font-weight: 600; }
   .sgrid { display: grid; grid-template-columns: 6em 1fr; gap: .6em .9em; align-items: center; }
   .sgrid label { text-align: right; font: .8em/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
@@ -361,7 +362,7 @@ const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" />
   @keyframes out1 { 0%, 39% { opacity: 1; } 40%, 100% { opacity: 0; } }
   @keyframes in2 { 0%, 44% { opacity: 0; } 45%, 100% { opacity: 1; } }
   @keyframes out2 { 0%, 44% { opacity: 1; } 45%, 100% { opacity: 0; } }
-  .ident { margin-top: 1.2em; padding: .6em .8em; font: .88em/1.6 var(--mono); background: color-mix(in srgb, var(--accent) 9%, transparent); border-left: 2px solid var(--accent); border-radius: 0; animation: in1 var(--T) infinite both; }
+  .ident { margin-top: 1.2em; padding: .6em .8em; font: .88em/1.6 var(--mono); background: color-mix(in srgb, var(--work) 9%, transparent); border-left: 2px solid var(--work); border-radius: 0; animation: in1 var(--T) infinite both; }
   .sacts { display: flex; justify-content: flex-end; gap: .6em; margin-top: 1.2em; }
   .add { animation: add var(--T) infinite both; }
   @keyframes add {

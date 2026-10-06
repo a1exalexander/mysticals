@@ -6,6 +6,7 @@ import { KindIcon, Sheet, Swatches, errorText } from './AccountsShared'
 import { SegTabs } from './ui/SegTabs'
 import { setLanguage, t, useLocale } from '../i18n'
 import { LOCALE_NAME, LOCALES, type Key, type LocaleSetting } from '@mysticals/core/i18n'
+import { extraEmail } from '@mysticals/core/logic/details'
 import './ui/ui.css'
 
 const TABS = [
@@ -238,7 +239,7 @@ function SyncRow({ account: a, busy }: { account: Account; busy: boolean }): Rea
         <KindIcon kind={a.kind} />
         <div className="acc-item-id">
           <span className="set-sync-label">{a.label}</span>
-          <span className="acc-email">{a.email}</span>
+          {extraEmail(a.label, a.email) && <span className="acc-email">{a.email}</span>}
         </div>
         <span className={failed ? 'set-status err' : 'set-status'}>
           {syncing || busy ? t('settings.sync.stateSyncing') : failed ? t('settings.sync.stateError') : t('settings.sync.stateOk')}

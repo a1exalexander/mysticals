@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { extraEmail } from '@mysticals/core/logic/details'
 import { bus } from '../bus'
 import { setCalendarVisible, useCalendarData } from '../hooks/useCalendarData'
 import { MiniMonth } from './MiniMonth'
@@ -64,7 +65,7 @@ export function Sidebar({ collapsed: hidden = false }: { collapsed?: boolean }):
                     </span>
                   )
                 )}
-                <span className="sb-email">{a.email}</span>
+                {extraEmail(a.label, a.email) && <span className="sb-email">{a.email}</span>}
               </button>
               {open && loading && (
                 <div className="sb-loading" role="status" data-testid={`sidebar-loading-${a.id}`}>

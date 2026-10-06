@@ -190,14 +190,10 @@
 }
 :root[data-theme='bubble'] { --shadow: 230 90 160; --shadow-k: 0.3; }
 :root[data-theme='toon'] { --shadow: 43 33 64; --shadow-k: 0.5; }
-/* Matrix: everything in mono, a faint phosphor glow and light CRT scanlines over the whole window. */
+/* Matrix: everything in mono with a barely-there phosphor glow. */
 :root[data-theme='matrix'] { --shadow: 0 0 0; font-family: var(--mono); }
 :root[data-theme='matrix'] :is(input, textarea, .invites-panel) { font-family: var(--mono); }
-:root[data-theme='matrix'] body { text-shadow: 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
-:root[data-theme='matrix'] body::after {
-  content: ''; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
-  background: repeating-linear-gradient(to bottom, rgb(0 0 0 / 0.12) 0 1px, transparent 1px 3px);
-}
+:root[data-theme='matrix'] body { text-shadow: 0 0 2px color-mix(in srgb, var(--accent) 10%, transparent); }
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
