@@ -28,6 +28,9 @@
 .mc-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .mc-scope { flex-direction: column; align-items: stretch; gap: 6px; }
 .mc-scope span { margin: 0 0 2px; }
+.mc-scope .mc-btn { display: flex; align-items: center; justify-content: flex-start; gap: 9px; }
+.mc-scope-icon { flex: none; color: var(--muted); }
+.mc-scope .mc-btn:hover:not(:disabled) .mc-scope-icon, .mc-scope .mc-btn.danger .mc-scope-icon { color: inherit; }
 .scope-prompt { width: 280px; }
 .scope-prompt .mc-scope { margin-top: 0; }
 .mc-btn {

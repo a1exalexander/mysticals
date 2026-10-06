@@ -21,7 +21,7 @@ export interface BusEvents {
   /** Short notice above the status bar (e.g. "Event moved · Undo"); replaces the one shown. */
   toast: { text: string; error?: boolean; action?: { label: string; run: () => void } }
   /** Ask which part of a recurring series a change is for; exactly one of the callbacks runs. */
-  'scope:ask': { title: string; onPick: (scope: DeleteScope) => void; onCancel: () => void }
+  'scope:ask': { title: string; /** A delete: the choices show in red. */ danger?: boolean; onPick: (scope: DeleteScope) => void; onCancel: () => void }
   /** Optimistic calendar show/hide, applied locally before the IPC write settles. */
   'calendars:visible': { accountId: string; calendarId: string; visible: boolean }
 }

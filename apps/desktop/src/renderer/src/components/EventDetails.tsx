@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { addDays, subDays } from 'date-fns'
-import type { CalEvent, DeleteScope, PartStat } from '@shared/types'
+import type { CalEvent, PartStat } from '@shared/types'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
-import { RecurringScope } from './ui/RecurringScope'
+import { deleteEvent } from './EventMenu'
 import { canEdit, cleanNotes, formatWhen, isHtml, linkify, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
 import { eventBounds } from '@mysticals/core/logic/layout'
@@ -35,7 +35,6 @@ export function EventDetailsHost(): React.JSX.Element | null {
   const [gone, setGone] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [confirmDelete, setConfirmDelete] = useState(false)
   const [showPeople, setShowPeople] = useState(false)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   const ref = useRef<HTMLDivElement>(null)
@@ -48,7 +47,6 @@ export function EventDetailsHost(): React.JSX.Element | null {
         setOpened(o)
         setBusy(false)
         setError('')
-        setConfirmDelete(false)
         setShowPeople(false)
         setGone(false)
         setPos(null)
@@ -100,7 +98,6 @@ export function EventDetailsHost(): React.JSX.Element | null {
   }, [opened, place])
 
   // Follow the event while shown: edits from elsewhere update it, a deletion shows a notice.
-  const deleting = useRef(false) // our own Delete: the popover closes, no notice
   const accountId = opened?.event.accountId
   const eventId = opened?.event.id
   useEffect(() => {
@@ -112,7 +109,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
     const off = window.api.onChanged((changed) => {
       if (changed !== accountId) return
       window.api.events.list(range).then((events) => {
-        if (!live || deleting.current) return
+        if (!live) return
         const fresh = events.find((e) => e.accountId === accountId && e.id === eventId)
         setGone(!fresh)
         if (fresh) setOpened((o) => (o && o.event.id === eventId ? { ...o, event: fresh } : o))
@@ -153,16 +150,11 @@ export function EventDetailsHost(): React.JSX.Element | null {
       const updated = await window.api.events.respond(event, status)
       if (still()) setOpened((o) => o && { ...o, event: updated })
     })
-  const remove = (scope: DeleteScope = 'one'): Promise<void> =>
-    run(async () => {
-      deleting.current = true
-      try {
-        await window.api.events.delete(event, scope)
-        if (still()) setOpened(null)
-      } finally {
-        deleting.current = false
-      }
-    })
+  // The same flow as the right-click menu: gone at once with Undo in a toast; a series asks which part first.
+  const remove = (): void => {
+    setOpened(null)
+    deleteEvent(event)
+  }
 
   return (
     <>
@@ -265,30 +257,21 @@ export function EventDetailsHost(): React.JSX.Element | null {
 
         {error && <div className="details-error" role="alert">{error}</div>}
 
-        {editable && !gone &&
-          (confirmDelete && event.recurringEventId ? (
-            <RecurringScope title={t('scope.delete')} danger busy={busy} onPick={remove} onCancel={() => setConfirmDelete(false)} />
-          ) : confirmDelete ? (
-            <div className="mc-actions details-confirm">
-              <span>{t('details.confirmDelete')}</span>
-              <button type="button" className="mc-btn" onClick={() => setConfirmDelete(false)}>{t('common.cancel')}</button>
-              <button type="button" className="mc-btn danger primary" disabled={busy} onClick={() => remove()}>{t('common.delete')}</button>
-            </div>
-          ) : (
-            <div className="mc-actions">
-              <button type="button" className="mc-btn danger" onClick={() => setConfirmDelete(true)}>{t('common.delete')}</button>
-              <button
-                type="button"
-                className="mc-btn"
-                onClick={() => {
-                  setOpened(null)
-                  bus.emit('event:edit', { event })
-                }}
-              >
-                {t('common.edit')}
-              </button>
-            </div>
-          ))}
+        {editable && !gone && (
+          <div className="mc-actions">
+            <button type="button" className="mc-btn danger" onClick={remove}>{t('common.delete')}</button>
+            <button
+              type="button"
+              className="mc-btn"
+              onClick={() => {
+                setOpened(null)
+                bus.emit('event:edit', { event })
+              }}
+            >
+              {t('common.edit')}
+            </button>
+          </div>
+        )}
       </div>
     </>
   )

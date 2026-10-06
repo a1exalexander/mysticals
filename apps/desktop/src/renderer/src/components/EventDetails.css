@@ -43,8 +43,6 @@
 .details-rsvp .mc-seg button { flex: 1; min-width: 0; }
 .details-replyas { margin-top: 6px; font: 11px/1.4 var(--mono); }
 .details-error { margin-top: 10px; color: var(--red); }
-.details-confirm { align-items: center; }
-.details-confirm span { margin-right: auto; }
 
 /* Meet / video / map / other links from the conference and the location, as buttons. */
 .details-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }

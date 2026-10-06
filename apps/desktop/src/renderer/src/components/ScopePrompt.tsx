@@ -38,6 +38,7 @@ export function ScopePromptHost(): React.JSX.Element | null {
       <div className="mc-sheet scope-prompt" data-testid="scope-prompt">
         <RecurringScope
           title={ask.title}
+          danger={ask.danger}
           onPick={(scope) => {
             setAsk(null)
             ask.onPick(scope)

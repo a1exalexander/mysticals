@@ -7,12 +7,12 @@ test('language: switch to Ukrainian in Settings and back', async () => {
   // Mock runs see an English OS.
   await expect(page.getByTestId('view-switch-week')).toHaveText('Week')
   await page.getByRole('button', { name: 'Settings' }).click()
-  await page.getByTestId('settings-tab-language').click()
+  await page.getByTestId('settings-tab-general').click()
   await expect(page.getByTestId('language-auto')).toContainText('system: English')
   await expect(page.getByTestId('language-auto').getByRole('radio')).toBeChecked()
 
   await page.getByTestId('language-uk').click()
-  await expect(page.getByTestId('settings-tab-language')).toHaveText('Мова')
+  await expect(page.getByTestId('settings-tab-general')).toHaveText('Загальні')
   await expect(page.getByTestId('settings-tab-accounts')).toHaveText('Облікові записи')
   await expect(page.getByTestId('view-switch-week')).toHaveText('Тиждень')
   await expect(page.getByTestId('new-event')).toHaveText('+ нова')
@@ -31,7 +31,7 @@ test('language: switch to Ukrainian in Settings and back', async () => {
 
   await page.getByTestId('language-en').click()
   await expect(page.getByTestId('view-switch-week')).toHaveText('Week')
-  await expect(page.getByTestId('settings-tab-language')).toHaveText('Language')
+  await expect(page.getByTestId('settings-tab-general')).toHaveText('General')
   await app.close()
 })
 

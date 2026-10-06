@@ -1,0 +1,28 @@
+.mrange { position: relative; padding: 4px 9px 0; user-select: none; }
+.mrange-track { position: relative; height: 22px; cursor: pointer; touch-action: none; }
+.mrange-rail, .mrange-fill {
+  position: absolute; top: 50%; left: 0; height: 4px; margin-top: -2px; border-radius: 2px;
+}
+.mrange-rail { right: 0; background: var(--line-strong); }
+.mrange-fill { background: var(--accent); }
+.mrange-thumb {
+  position: absolute; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px;
+  background: var(--fg); border-radius: 50%;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 0%, transparent), 0 1px 3px rgb(0 0 0 / 0.4);
+  transition: box-shadow 120ms ease, transform 120ms ease;
+  cursor: grab;
+}
+.mrange-thumb:hover { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent), 0 1px 3px rgb(0 0 0 / 0.4); }
+.mrange-thumb:focus-visible, .mrange.is-dragging .mrange-thumb {
+  outline: none; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 30%, transparent), 0 1px 3px rgb(0 0 0 / 0.4);
+}
+.mrange.is-dragging .mrange-thumb { cursor: grabbing; transform: scale(1.1); }
+/* Tick labels sit under their values; the ends stay inside the track's padding. */
+.mrange-ticks { position: relative; height: 16px; margin-top: 2px; }
+.mrange-ticks span {
+  position: absolute; transform: translateX(-50%); white-space: nowrap;
+  font: 10px/16px var(--mono); color: var(--muted);
+}
+.mrange-ticks span.on { color: var(--fg); }
+.mrange.is-disabled { opacity: 0.45; }
+.mrange.is-disabled .mrange-track, .mrange.is-disabled .mrange-thumb { cursor: default; pointer-events: none; }
