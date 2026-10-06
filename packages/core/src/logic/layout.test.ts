@@ -11,6 +11,7 @@ import {
   rangeLabel,
   shiftDate,
   slotAt,
+  snapLongHours,
   viewDays,
   viewRange
 } from './layout'
@@ -112,6 +113,26 @@ describe('layoutDayLong', () => {
       day, 0, { mode: 'allday', hours: 6 }
     )
     expect(r.busy).toEqual([{ start: 0, end: 900 }, { start: 930, end: 1380 }])
+  })
+
+  it('takes a half-hour threshold', () => {
+    const r = layoutDayLong([ev('six', at(9), at(15, 30)), ev('more', at(9), at(15, 31))], day, 0, { mode: 'rails', hours: 6.5 })
+    expect(r.rails.map((p) => p.item.id)).toEqual(['more'])
+  })
+})
+
+describe('snapLongHours', () => {
+  it('rounds to half hours within 1–12', () => {
+    expect(snapLongHours(6.3)).toBe(6.5)
+    expect(snapLongHours(8)).toBe(8)
+    expect(snapLongHours(0)).toBe(1)
+    expect(snapLongHours(99)).toBe(12)
+  })
+
+  it('falls back to the default on garbage', () => {
+    expect(snapLongHours(NaN)).toBe(6)
+    expect(snapLongHours('8')).toBe(6)
+    expect(snapLongHours(undefined)).toBe(6)
   })
 })
 

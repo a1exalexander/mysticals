@@ -1,5 +1,4 @@
 import { test, expect, _electron as electron, type Page } from '@playwright/test'
-import { choose } from './choose'
 
 /** Opens Settings → Events, runs `fn`, closes the sheet. */
 async function inEventsSettings(page: Page, fn: () => Promise<void>): Promise<void> {
@@ -56,7 +55,7 @@ test('long events: rails by default, all-day, cascade or blocks from Settings', 
   // Cascade: every block nearly full width, each later one shifted right and on top; no threshold.
   await inEventsSettings(page, async () => {
     await page.getByTestId('long-mode-cascade').click()
-    await expect(page.getByTestId('long-hours')).toBeDisabled()
+    await expect(page.getByTestId('long-hours')).toHaveAttribute('aria-disabled', 'true')
   })
   const busy = blocks.filter({ hasText: 'busy' })
   await expect(busy).toHaveCount(2)
@@ -70,21 +69,43 @@ test('long events: rails by default, all-day, cascade or blocks from Settings', 
   // Expand to fill: ordinary blocks side by side; the threshold doesn't apply.
   await inEventsSettings(page, async () => {
     await page.getByTestId('long-mode-expand').click()
-    await expect(page.getByTestId('long-hours')).toBeDisabled()
+    await expect(page.getByTestId('long-hours')).toHaveAttribute('aria-disabled', 'true')
   })
   await expect(blocks.filter({ hasText: 'busy' })).toHaveCount(2)
   await expect(chips).toHaveCount(0)
   await expect(page.getByTestId('busy-band')).toHaveCount(0)
   await page.screenshot({ path: 'e2e/screens/long-expand.png' })
 
-  // Rails again, with a 12h threshold: an 11h event is no longer long.
+  // Rails again, with the threshold dragged to 12h: an 11h event is no longer long.
   await inEventsSettings(page, async () => {
     await page.getByTestId('long-mode-rails').click()
-    await choose(page.getByTestId('long-hours'), '12')
+    const slider = page.getByTestId('long-hours')
+    await expect(slider).toHaveAttribute('aria-valuenow', '6')
+    const track = (await page.locator('.mrange-track').boundingBox())!
+    const thumb = (await slider.boundingBox())!
+    await page.mouse.move(thumb.x + thumb.width / 2, thumb.y + thumb.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(track.x + track.width * 0.3, thumb.y, { steps: 4 })
+    await expect(slider).toHaveAttribute('aria-valuenow', '4.5')
+    await page.mouse.move(track.x + track.width + 40, thumb.y, { steps: 4 })
+    await page.mouse.up()
+    await expect(slider).toHaveAttribute('aria-valuenow', '12')
+    await expect(page.getByTestId('long-hours-value')).toHaveText('12 h')
+    await page.screenshot({ path: 'e2e/screens/settings-events-slider.png' })
   })
   await expect(rails).toHaveCount(0)
   await expect(blocks.filter({ hasText: 'busy' })).toHaveCount(2)
-  await inEventsSettings(page, async () => choose(page.getByTestId('long-hours'), '6'))
+  // Back to 6h from the keyboard: half-hour arrow steps, whole hours with Page keys.
+  await inEventsSettings(page, async () => {
+    const slider = page.getByTestId('long-hours')
+    await slider.focus()
+    await page.keyboard.press('ArrowLeft')
+    await expect(slider).toHaveAttribute('aria-valuenow', '11.5')
+    await expect(page.getByTestId('long-hours-value')).toHaveText('11.5 h')
+    await page.keyboard.press('Home')
+    for (let i = 0; i < 5; i++) await page.keyboard.press('PageUp')
+    await expect(slider).toHaveAttribute('aria-valuenow', '6')
+  })
   await expect(rails).toHaveCount(2)
 
   // The choice survives a reload.

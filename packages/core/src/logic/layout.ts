@@ -126,8 +126,15 @@ export interface LongEvents {
 export const LONG_MODES: readonly LongMode[] = ['rails', 'allday', 'cascade', 'expand']
 /** Modes that use the length threshold. */
 export const usesThreshold = (mode: LongMode): boolean => mode === 'rails' || mode === 'allday'
-export const LONG_HOURS = [3, 4, 5, 6, 8, 10, 12] as const
+/** The threshold's slider: from 1 to 12 hours in half-hour steps. */
+export const LONG_RANGE = { min: 1, max: 12, step: 0.5 } as const
 export const LONG_DEFAULT: LongEvents = { mode: 'rails', hours: 6 }
+/** A stored or dragged threshold, clamped to LONG_RANGE and rounded to its step; garbage gives the default. */
+export function snapLongHours(n: unknown): number {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return LONG_DEFAULT.hours
+  const { min, max, step } = LONG_RANGE
+  return Math.min(max, Math.max(min, Math.round(n / step) * step))
+}
 
 export interface DayLayout {
   /**

@@ -25,7 +25,7 @@ test('reminders: Settings choice and a banner with a join button before the even
   })
 
   await page.getByRole('button', { name: 'Settings' }).click()
-  await page.getByTestId('settings-tab-notifications').click()
+  await page.getByTestId('settings-tab-accounts').click()
   const select = page.getByTestId('reminder-select')
   await expect(select).toContainText('2 min before')
   expect(await optionLabels(select)).toEqual(['Off', '1 min before', '2 min before', '5 min before', '10 min before', '15 min before'])
@@ -45,7 +45,7 @@ test('reminders: Settings choice and a banner with a join button before the even
   // The choice is kept.
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Settings' }).click()
-  await page.getByTestId('settings-tab-notifications').click()
+  await page.getByTestId('settings-tab-accounts').click()
   await expect(page.getByTestId('reminder-select')).toContainText('10 min before')
   await page.screenshot({ path: 'e2e/screens/settings-notifications.png' })
 
@@ -68,7 +68,7 @@ test('reminders: a switched-off account stays silent, the others still notify', 
   const shown = (): Promise<string[]> => app.evaluate(() => (globalThis as unknown as { shown: string[] }).shown)
 
   await page.getByRole('button', { name: 'Settings' }).click()
-  await page.getByTestId('settings-tab-notifications').click()
+  await page.getByTestId('settings-tab-accounts').click()
   const work = page.getByTestId('notify-account-work')
   await expect(work).toBeChecked()
   await work.uncheck()

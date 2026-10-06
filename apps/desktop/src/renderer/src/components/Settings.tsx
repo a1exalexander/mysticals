@@ -4,23 +4,20 @@ import { bus } from '../bus'
 import { THEMES, applyTheme, themeName, useTheme } from '../theme'
 import { KindIcon, Sheet, Swatches, errorText } from './AccountsShared'
 import { SegTabs } from './ui/SegTabs'
-import { setLanguage, t, useLocale } from '../i18n'
+import { currentLocale, setLanguage, t, useLocale } from '../i18n'
 import { LOCALE_NAME, LOCALES, type Key, type LocaleSetting } from '@mysticals/core/i18n'
-import { extraEmail } from '@mysticals/core/logic/details'
 import { REMINDER_CHOICES } from '@mysticals/core/logic/reminders'
-import { LONG_HOURS, LONG_MODES, usesThreshold, type LongMode } from '@mysticals/core/logic/layout'
+import { LONG_RANGE, LONG_MODES, usesThreshold, type LongMode } from '@mysticals/core/logic/layout'
 import { setLongEvents, useLongEvents } from '../longEvents'
 import { Select } from './ui/Select'
+import { Range } from './ui/Range'
 import './ui/ui.css'
 
 const TABS = [
   { id: 'accounts', name: 'settings.tab.accounts' },
   { id: 'themes', name: 'settings.tab.themes' },
   { id: 'events', name: 'settings.tab.events' },
-  { id: 'language', name: 'settings.tab.language' },
-  { id: 'sync', name: 'settings.tab.sync' },
-  { id: 'notifications', name: 'settings.tab.notifications' },
-  { id: 'privacy', name: 'settings.tab.privacy' }
+  { id: 'general', name: 'settings.tab.general' }
 ] as const satisfies readonly { id: string; name: Key }[]
 type TabId = (typeof TABS)[number]['id']
 /** Last selected tab; survives closing the sheet while the app runs. */
@@ -74,35 +71,24 @@ export function SettingsHost(): React.JSX.Element | null {
         </nav>
         <div className="set-panel" role="tabpanel" id="settings-panel" aria-labelledby={`settings-tab-${tab}`}>
           {tab === 'accounts' && (
-            <>
-              {accounts.length === 0 ? (
-                <p className="acc-note">{t('settings.noAccounts')}</p>
-              ) : (
-                <ul className="acc-list">
-                  {accounts.map((a) => (
-                    <AccountRow key={a.id} account={a} />
-                  ))}
-                </ul>
-              )}
-              <div className="acc-actions">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpen(false)
-                    bus.emit('accounts:open', {})
-                  }}
-                >
-                  {t('settings.addAccount')}
-                </button>
-              </div>
-            </>
+            <AccountsPanel
+              accounts={accounts}
+              onAdd={() => {
+                setOpen(false)
+                bus.emit('accounts:open', {})
+              }}
+            />
           )}
           {tab === 'themes' && <ThemePicker />}
           {tab === 'events' && <EventsPanel />}
-          {tab === 'language' && <LanguagePicker />}
-          {tab === 'sync' && <SyncPanel accounts={accounts} />}
-          {tab === 'notifications' && <RemindersPanel accounts={accounts} />}
-          {tab === 'privacy' && <PrivacyPanel />}
+          {tab === 'general' && (
+            <>
+              <h3 className="set-heading set-heading-first">{t('settings.language.title')}</h3>
+              <LanguagePicker />
+              <h3 className="set-heading">{t('settings.privacy.title')}</h3>
+              <PrivacyPanel />
+            </>
+          )}
         </div>
       </div>
     </Sheet>
@@ -123,7 +109,7 @@ function LanguagePicker(): React.JSX.Element {
   ]
   return (
     <>
-      <div className="lang-list" role="radiogroup" aria-label={t('settings.tab.language')}>
+      <div className="lang-list" role="radiogroup" aria-label={t('settings.language.title')}>
         {options.map((o) => (
           <label key={o.id} className="set-check lang-opt" data-testid={`language-${o.id}`}>
             <input type="radio" className="mc-radio" name="language" checked={setting === o.id} onChange={() => pick(o.id)} />
@@ -143,6 +129,9 @@ const MODE_TEXT = {
   cascade: ['settings.events.cascade', 'settings.events.cascadeHint'],
   expand: ['settings.events.expand', 'settings.events.expandHint']
 } as const satisfies Record<LongMode, readonly [Key, Key]>
+
+/** "6.5 h" / "6,5 год": the threshold in the UI language. */
+const hoursText = (n: number): string => t('settings.events.hours', { n: n.toLocaleString(currentLocale()) })
 
 /** How timed events longer than a threshold show in the day grids; a per-device preference. */
 function EventsPanel(): React.JSX.Element {
@@ -171,16 +160,21 @@ function EventsPanel(): React.JSX.Element {
           </button>
         ))}
       </div>
-      <div className="set-check long-threshold">
-        <span>{t('settings.events.longer')}</span>
-        <Select
-          compact
+      <div className={`long-threshold${usesThreshold(long.mode) ? '' : ' is-off'}`}>
+        <div className="long-threshold-head">
+          <span>{t('settings.events.longer')}</span>
+          <b data-testid="long-hours-value">{hoursText(long.hours)}</b>
+        </div>
+        <Range
           data-testid="long-hours"
           aria-label={t('settings.events.longer')}
           disabled={!usesThreshold(long.mode)}
-          value={String(long.hours)}
-          options={LONG_HOURS.map((n) => ({ value: String(n), label: t('settings.events.hours', { n }) }))}
-          onChange={(v) => setLongEvents({ hours: Number(v) })}
+          {...LONG_RANGE}
+          bigStep={1}
+          ticks={[1, 3, 6, 9, 12]}
+          value={long.hours}
+          format={hoursText}
+          onChange={(hours) => setLongEvents({ hours })}
         />
       </div>
       {!usesThreshold(long.mode) && <p className="acc-note">{t('settings.events.noThreshold')}</p>}
@@ -237,49 +231,24 @@ function ThemePicker(): React.JSX.Element {
   )
 }
 
-function SyncPanel({ accounts }: { accounts: Account[] }): React.JSX.Element {
+/**
+ * Everything per account in one card: label, colour, sync state, notifications, removal.
+ * Above the cards sit the settings that apply to every account: reminder lead time and "Sync all".
+ */
+function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => void }): React.JSX.Element {
+  useLocale()
   const [all, setAll] = useState(false)
+  const [min, setMin] = useState<number>()
+  const [muted, setMuted] = useState<string[]>()
+  const [error, setError] = useState('')
+  useEffect(() => void window.reminders.get().then(setMin, () => {}), [])
+  useEffect(() => void window.reminders.muted().then(setMuted, () => {}), [])
   const syncAll = async (): Promise<void> => {
     setAll(true)
     // Never rejects; per-account failures land on account.error.
     await window.api.sync.now().catch(() => {})
     setAll(false)
   }
-  return (
-    <>
-      <p className="acc-note">{t('settings.sync.note')}</p>
-      {accounts.length === 0 ? (
-        <p className="acc-note">{t('settings.noAccounts')}</p>
-      ) : (
-        <ul className="acc-list">
-          {accounts.map((a) => (
-            <SyncRow key={a.id} account={a} busy={all} />
-          ))}
-        </ul>
-      )}
-      <div className="acc-actions">
-        <button
-          type="button"
-          className="acc-primary"
-          data-testid="sync-all"
-          onClick={syncAll}
-          disabled={all || accounts.length === 0}
-        >
-          {all ? t('settings.sync.syncing') : t('settings.sync.all')}
-        </button>
-      </div>
-    </>
-  )
-}
-
-/** How many minutes before an event its reminder pops up, or off; and which accounts notify at all. */
-function RemindersPanel({ accounts }: { accounts: Account[] }): React.JSX.Element {
-  useLocale()
-  const [min, setMin] = useState<number>()
-  const [muted, setMuted] = useState<string[]>()
-  const [error, setError] = useState('')
-  useEffect(() => void window.reminders.get().then(setMin, () => {}), [])
-  useEffect(() => void window.reminders.muted().then(setMuted, () => {}), [])
   const toggle = (id: string, on: boolean): void => {
     const prev = muted
     setMuted((m) => (on ? m?.filter((x) => x !== id) : [...(m ?? []), id]))
@@ -300,53 +269,48 @@ function RemindersPanel({ accounts }: { accounts: Account[] }): React.JSX.Elemen
   }
   return (
     <>
-      <p className="acc-note">{t('settings.reminders.note')}</p>
-      <div className="set-check">
-        <span>{t('settings.reminders.label')}</span>
-        <Select
-          compact
-          data-testid="reminder-select"
-          aria-label={t('settings.reminders.label')}
-          disabled={min === undefined}
-          value={min === undefined ? '' : String(min)}
-          options={REMINDER_CHOICES.map((n) => ({
-            value: String(n),
-            label: n ? t('settings.reminders.min', { n }) : t('settings.reminders.off')
-          }))}
-          onChange={(v) => pick(Number(v))}
-        />
+      <p className="acc-note">{t('settings.accounts.note')}</p>
+      <div className="acc-strip">
+        <div className="set-check">
+          <span>{t('settings.reminders.label')}</span>
+          <Select
+            compact
+            data-testid="reminder-select"
+            aria-label={t('settings.reminders.label')}
+            disabled={min === undefined}
+            value={min === undefined ? '' : String(min)}
+            options={REMINDER_CHOICES.map((n) => ({
+              value: String(n),
+              label: n ? t('settings.reminders.min', { n }) : t('settings.reminders.off')
+            }))}
+            onChange={(v) => pick(Number(v))}
+          />
+        </div>
+        <button type="button" data-testid="sync-all" onClick={syncAll} disabled={all || accounts.length === 0}>
+          {all ? t('settings.sync.syncing') : t('settings.sync.all')}
+        </button>
       </div>
-      {accounts.length > 0 && (
-        <>
-          <h3 className="set-heading">{t('settings.reminders.accounts')}</h3>
-          <p className="acc-note">{t('settings.reminders.accountsNote')}</p>
-          <ul className="acc-list">
-            {accounts.map((a) => (
-              <li key={a.id} className="acc-item">
-                <label className="acc-item-head set-notify">
-                  <span className="acc-dot" style={{ background: a.color }} />
-                  <KindIcon kind={a.kind} />
-                  <span className="acc-item-id">
-                    <span className="set-sync-label">{a.label}</span>
-                    {extraEmail(a.label, a.email) && <span className="acc-email">{a.email}</span>}
-                  </span>
-                  <input
-                    type="checkbox"
-                    role="switch"
-                    className="mc-switch"
-                    data-testid={`notify-account-${a.id}`}
-                    aria-label={t('settings.reminders.accountFor', { name: a.label })}
-                    checked={muted !== undefined && !muted.includes(a.id)}
-                    disabled={muted === undefined}
-                    onChange={(e) => toggle(a.id, e.target.checked)}
-                  />
-                </label>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
       {error && <p className="acc-error" role="alert">{error}</p>}
+      {accounts.length === 0 ? (
+        <p className="acc-note">{t('settings.noAccounts')}</p>
+      ) : (
+        <ul className="acc-list">
+          {accounts.map((a) => (
+            <AccountCard
+              key={a.id}
+              account={a}
+              syncingAll={all}
+              notify={muted === undefined ? undefined : !muted.includes(a.id)}
+              onNotify={(on) => toggle(a.id, on)}
+            />
+          ))}
+        </ul>
+      )}
+      <div className="acc-actions">
+        <button type="button" onClick={onAdd}>
+          {t('settings.addAccount')}
+        </button>
+      </div>
     </>
   )
 }
@@ -381,61 +345,27 @@ function PrivacyPanel(): React.JSX.Element {
   )
 }
 
-function SyncRow({ account: a, busy }: { account: Account; busy: boolean }): React.JSX.Element {
-  const [syncing, setSyncing] = useState(false)
-  const [error, setError] = useState('')
-  // "Sync all" supersedes a stale per-row error; its outcome lands on a.error.
-  useEffect(() => {
-    if (busy) setError('')
-  }, [busy])
-  const sync = async (): Promise<void> => {
-    setSyncing(true)
-    setError('')
-    try {
-      await window.api.sync.now(a.id)
-    } catch (e) {
-      setError(errorText(e))
-    }
-    setSyncing(false)
-  }
-  const failed = Boolean(error || a.error)
-  return (
-    <li className="acc-item" data-testid={`sync-${a.id}`}>
-      <div className="acc-item-head">
-        <span className="acc-dot" style={{ background: a.color }} />
-        <KindIcon kind={a.kind} />
-        <div className="acc-item-id">
-          <span className="set-sync-label">{a.label}</span>
-          {extraEmail(a.label, a.email) && <span className="acc-email">{a.email}</span>}
-        </div>
-        <span className={failed ? 'set-status err' : 'set-status'}>
-          {syncing || busy ? t('settings.sync.stateSyncing') : failed ? t('settings.sync.stateError') : t('settings.sync.stateOk')}
-        </span>
-        {a.authError ? (
-          <button type="button" className="acc-primary" onClick={() => bus.emit('reauth:open', { accountId: a.id })}>
-            {t('settings.reconnect')}
-          </button>
-        ) : (
-          <button type="button" onClick={sync} disabled={syncing || busy}>
-            {t('settings.sync.now')}
-          </button>
-        )}
-      </div>
-      {failed && (
-        <p className="acc-error" role="alert">
-          {error || t('settings.sync.lastFailed', { error: a.error ?? '' })}
-        </p>
-      )}
-    </li>
-  )
+interface CardProps {
+  account: Account
+  /** "Sync all" is running. */
+  syncingAll: boolean
+  /** Whether this account notifies; undefined while loading. */
+  notify: boolean | undefined
+  onNotify: (on: boolean) => void
 }
 
-function AccountRow({ account: a }: { account: Account }): React.JSX.Element {
+function AccountCard({ account: a, syncingAll, notify, onNotify }: CardProps): React.JSX.Element {
   const [label, setLabel] = useState(a.label)
   const [confirm, setConfirm] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [syncError, setSyncError] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => setLabel(a.label), [a.label])
+  // "Sync all" supersedes a stale per-card error; its outcome lands on a.error.
+  useEffect(() => {
+    if (syncingAll) setSyncError('')
+  }, [syncingAll])
 
   const run = async (fn: () => Promise<unknown>): Promise<void> => {
     setError('')
@@ -450,6 +380,17 @@ function AccountRow({ account: a }: { account: Account }): React.JSX.Element {
     if (!next) return setLabel(a.label)
     if (next !== a.label) void run(() => window.api.accounts.update(a.id, { label: next }))
   }
+  const sync = async (): Promise<void> => {
+    setSyncing(true)
+    setSyncError('')
+    try {
+      await window.api.sync.now(a.id)
+    } catch (e) {
+      setSyncError(errorText(e))
+    }
+    setSyncing(false)
+  }
+  const failed = Boolean(syncError || a.error)
 
   return (
     <li className="acc-item" data-testid={`account-${a.id}`}>
@@ -474,17 +415,48 @@ function AccountRow({ account: a }: { account: Account }): React.JSX.Element {
           />
           <span className="acc-email">{a.email}</span>
         </div>
-        <button type="button" className="acc-danger" onClick={() => setConfirm(true)}>
-          {t('settings.account.remove')}
-        </button>
+        <div className="acc-sync" data-testid={`sync-${a.id}`}>
+          <span className={failed ? 'set-status err' : 'set-status'}>
+            {syncing || syncingAll ? t('settings.sync.stateSyncing') : failed ? t('settings.sync.stateError') : t('settings.sync.stateOk')}
+          </span>
+          {a.authError ? (
+            <button type="button" className="acc-primary" onClick={() => bus.emit('reauth:open', { accountId: a.id })}>
+              {t('settings.reconnect')}
+            </button>
+          ) : (
+            <button type="button" onClick={sync} disabled={syncing || syncingAll}>
+              {t('settings.sync.now')}
+            </button>
+          )}
+        </div>
       </div>
-      <Swatches
-        value={a.color}
-        name={t('settings.account.colourFor', { email: a.email })}
-        onChange={(color) => void run(() => window.api.accounts.update(a.id, { color }))}
-      />
+      {failed && (
+        <p className="acc-error" role="alert">
+          {syncError || t('settings.sync.lastFailed', { error: a.error ?? '' })}
+        </p>
+      )}
+      <div className="acc-item-body">
+        <Swatches
+          value={a.color}
+          name={t('settings.account.colourFor', { email: a.email })}
+          onChange={(color) => void run(() => window.api.accounts.update(a.id, { color }))}
+        />
+        <label className="set-check set-notify">
+          {t('settings.reminders.accountSwitch')}
+          <input
+            type="checkbox"
+            role="switch"
+            className="mc-switch"
+            data-testid={`notify-account-${a.id}`}
+            aria-label={t('settings.reminders.accountFor', { name: a.label })}
+            checked={notify ?? false}
+            disabled={notify === undefined}
+            onChange={(e) => onNotify(e.target.checked)}
+          />
+        </label>
+      </div>
       {error && <p className="acc-error" role="alert">{error}</p>}
-      {confirm && (
+      {confirm ? (
         <div className="acc-confirm">
           <p>{t('settings.account.removeNote', { email: a.email })}</p>
           <button type="button" onClick={() => setConfirm(false)}>{t('common.cancel')}</button>
@@ -495,6 +467,12 @@ function AccountRow({ account: a }: { account: Account }): React.JSX.Element {
             onClick={() => void run(() => window.api.accounts.remove(a.id))}
           >
             {t('settings.account.removeConfirm')}
+          </button>
+        </div>
+      ) : (
+        <div className="acc-item-foot">
+          <button type="button" className="acc-danger acc-remove" onClick={() => setConfirm(true)}>
+            {t('settings.account.remove')}
           </button>
         </div>
       )}

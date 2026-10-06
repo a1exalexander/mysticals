@@ -1,6 +1,6 @@
 import { test, expect, _electron as electron } from '@playwright/test'
 
-test('settings tabs: accounts, themes, sync', async () => {
+test('settings tabs: accounts (with sync and notifications), themes, general', async () => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()
 
@@ -10,7 +10,12 @@ test('settings tabs: accounts, themes, sync', async () => {
   await expect(page.getByTestId('settings-tab-accounts')).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByTestId('account-label-work')).toBeVisible()
   await expect(panel.getByRole('button', { name: 'Add account…' })).toBeVisible()
-  await expect(panel.getByRole('button', { name: 'Sync now' })).toHaveCount(0)
+  // Sync and notifications live on each account's one card, not in tabs of their own.
+  await expect(page.getByTestId('sync-work')).toContainText('ok')
+  await expect(page.getByTestId('account-work').getByTestId('notify-account-work')).toBeVisible()
+  await expect(page.getByTestId('reminder-select')).toBeVisible()
+  await expect(page.getByTestId('settings-tab-sync')).toHaveCount(0)
+  await expect(page.getByTestId('settings-tab-notifications')).toHaveCount(0)
   const box = await settings.boundingBox()
   await page.waitForTimeout(250)
   await page.screenshot({ path: 'e2e/screens/settings-accounts.png' })
@@ -40,34 +45,34 @@ test('settings tabs: accounts, themes, sync', async () => {
   }
   await page.getByTestId('theme-dracula').click()
 
-  await page.getByTestId('settings-tab-sync').click()
-  await expect(page.getByTestId('sync-work')).toContainText('ok')
+  await page.getByTestId('settings-tab-events').click()
   // The thumb slides under the active tab, and the sheet keeps its size across tabs.
   await page.waitForTimeout(500)
-  const tabBox = await page.getByTestId('settings-tab-sync').boundingBox()
+  const tabBox = await page.getByTestId('settings-tab-events').boundingBox()
   const thumbBox = await settings.locator('.set-tabs .seg-thumb').boundingBox()
   expect(thumbBox?.y).toBeCloseTo(tabBox?.y ?? 0, 0)
   expect(thumbBox?.height).toBeCloseTo(tabBox?.height ?? 0, 0)
   expect(thumbBox?.width).toBeCloseTo(tabBox?.width ?? 0, 0)
   expect((await settings.boundingBox())?.height).toBeCloseTo(box?.height ?? 0, 0)
+  await page.getByTestId('settings-tab-accounts').click()
   await page.getByTestId('sync-all').click()
   await expect(page.getByTestId('sync-all')).toHaveText('Sync all')
   await expect(page.getByTestId('sync-work')).toContainText('ok')
-  await page.screenshot({ path: 'e2e/screens/settings-sync.png' })
+  await page.getByTestId('settings-tab-events').click()
 
   // Last tab is kept after reopening.
   await page.keyboard.press('Escape')
   await expect(settings).toBeHidden()
   await page.getByRole('button', { name: 'Settings' }).click()
-  await expect(page.getByTestId('settings-tab-sync')).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByTestId('settings-tab-events')).toHaveAttribute('aria-selected', 'true')
   await app.close()
 })
 
-test('privacy tab: usage stats toggle is on by default and persists', async () => {
+test('general tab: usage stats toggle is on by default and persists', async () => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()
   await page.getByRole('button', { name: 'Settings' }).click()
-  await page.getByTestId('settings-tab-privacy').click()
+  await page.getByTestId('settings-tab-general').click()
   const toggle = page.getByTestId('telemetry-toggle')
   await expect(toggle).toBeChecked()
   // Drawn as a square box, not stretched by the sheet's text-field styles.
@@ -79,7 +84,7 @@ test('privacy tab: usage stats toggle is on by default and persists', async () =
   // A fresh renderer reads it back from main (prefs.json in userData).
   await page.reload()
   await page.getByRole('button', { name: 'Settings' }).click()
-  await page.getByTestId('settings-tab-privacy').click()
+  await page.getByTestId('settings-tab-general').click()
   await expect(page.getByTestId('telemetry-toggle')).not.toBeChecked()
   await app.close()
 })
