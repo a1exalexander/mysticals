@@ -3,6 +3,7 @@ import { addDays, format, isSameDay, isToday, startOfDay } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
+import { eventMenu, slotMenu } from '../components/EventMenu'
 import { eventMeetingUrl, eventPlace } from '@mysticals/core/logic/meeting'
 import { nav } from './nav'
 import { dragRange, eventBounds, eventsOnDay, isPast, layoutDay, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
@@ -222,6 +223,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                 key={d.getTime()}
                 className="tg-allday-cell"
                 onDoubleClick={() => bus.emit('event:create', { start: ymd(d), end: ymd(addDays(d, 1)), allDay: true })}
+                {...slotMenu(() => ({ slot: { start: ymd(d), allDay: true }, end: ymd(addDays(d, 1)) }))}
               >
                 {list
                   .slice(0, list.length - more)
@@ -235,6 +237,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                       onClick={open(e)}
                       onDoubleClick={stop}
                       {...tooltipHover(e)}
+                      {...eventMenu(e)}
                     >
                       <span className="ev-title">{e.title}</span>
                     </div>
@@ -280,6 +283,10 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
             style={{ '--hour': `${HOUR}px` } as React.CSSProperties}
             onMouseDown={onMouseDown(d)}
             onDoubleClick={onDoubleClick(d)}
+            {...slotMenu((e) => {
+              const m = minuteAt(e.clientY, e.currentTarget)
+              return { slot: { start: atMinute(d, m).toISOString(), allDay: false }, end: atMinute(d, Math.min(1440, m + 60)).toISOString() }
+            })}
           >
             {layoutDay(events, d, MIN_DUR).map(({ item: e, start, end, col, cols }) => {
               const b = eventBounds(e)
@@ -307,6 +314,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                   onDoubleClick={stop}
                   onClick={open(e)}
                   {...tooltipHover(e)}
+                  {...eventMenu(e)}
                 >
                   <span className="ev-title">{e.title}</span>
                   <span className="ev-meta">
