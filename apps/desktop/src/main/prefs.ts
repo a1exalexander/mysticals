@@ -7,6 +7,8 @@ import type { LocaleSetting } from '@mysticals/core/i18n'
 export interface Prefs {
   telemetry?: boolean
   language?: LocaleSetting
+  /** Minutes before an event its reminder pops up; 0 = off. */
+  reminderMin?: number
 }
 
 const prefsFile = (dir = app.getPath('userData')): string => join(dir, 'prefs.json')

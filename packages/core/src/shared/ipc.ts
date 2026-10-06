@@ -73,6 +73,12 @@ export interface TelemetryApi {
   setEnabled(on: boolean): Promise<void>
 }
 
+/** Desktop-only Settings > Notifications: minutes before an event its reminder pops up (0 = off). Exposed as `window.reminders`. */
+export interface ReminderApi {
+  get(): Promise<number>
+  set(min: number): Promise<void>
+}
+
 /** UI language: the Settings choice, the language in use and what the OS asks for (shown next to "Automatic"). */
 export interface LocaleState {
   setting: LocaleSetting
@@ -120,6 +126,8 @@ export const IPC = {
   update: 'update',
   telemetryGet: 'telemetry:get',
   telemetrySet: 'telemetry:set',
+  remindersGet: 'reminders:get',
+  remindersSet: 'reminders:set',
   themeSet: 'theme:set',
   localeGet: 'locale:get',
   localeSet: 'locale:set',

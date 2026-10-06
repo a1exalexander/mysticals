@@ -8,9 +8,19 @@ export function meetingUrl(location?: string): string | undefined {
   return location?.match(/https?:\/\/[^\s<>"]+/i)?.[0].replace(/[.,;:!?)\]}'>]+$/, '')
 }
 
-/** The event's call link: the provider's conference (Google Meet) first, else the first link in its location. */
-export function eventMeetingUrl(e: Pick<CalEvent, 'conferenceUrl' | 'location'>): string | undefined {
-  return e.conferenceUrl ?? meetingUrl(e.location)
+const CALL_KINDS: readonly LinkKind[] = ['meet', 'zoom', 'teams', 'video']
+
+/** First video-call link in a description (plain text or HTML, links in `href`s included); other links are ignored. */
+export function descriptionCallUrl(description?: string): string | undefined {
+  if (!description) return undefined
+  const hrefs = [...description.matchAll(/href\s*=\s*["']([^"']+)["']/gi)].map((m) => m[1].replace(/&amp;/g, '&'))
+  const urls = [...hrefs, ...linkify(description.replace(/<[^>]*>/g, ' ')).flatMap((p) => (p.href ? [p.href] : []))]
+  return urls.find((u) => /^https?:\/\//i.test(u) && CALL_KINDS.includes(linkKind(u)))
+}
+
+/** The event's call link: the provider's conference (Google Meet) first, then the first link in its location, then a call link in its description. */
+export function eventMeetingUrl(e: Pick<CalEvent, 'conferenceUrl' | 'location' | 'description'>): string | undefined {
+  return e.conferenceUrl ?? meetingUrl(e.location) ?? descriptionCallUrl(e.description)
 }
 
 /** Location without its links ("Room 3 / https://…" → "Room 3"); empty when it is only links. */

@@ -63,6 +63,8 @@ export const en = {
   'notify.changed': 'Event changed',
   'notify.cancelled': 'Event cancelled',
   'notify.many': { one: '{n} calendar update', other: '{n} calendar updates' },
+  'reminder.in': 'in {n} min',
+  'reminder.now': 'starting now',
 
   // ---- desktop: menus, dialogs, update ----
   'menu.file': 'File',
@@ -134,6 +136,11 @@ export const en = {
   'settings.tab.language': 'Language',
   'settings.tab.sync': 'Sync',
   'settings.tab.privacy': 'Privacy',
+  'settings.tab.notifications': 'Notifications',
+  'settings.reminders.label': 'Remind me before events',
+  'settings.reminders.off': 'Off',
+  'settings.reminders.min': '{n} min before',
+  'settings.reminders.note': 'A notification pops up before each event while Mysticals is open, with a button to join the call when the event has a link. Declined, all-day and hidden-calendar events stay silent.',
   'settings.noAccounts': 'No accounts yet.',
   'settings.addAccount': 'Add account…',
   'settings.theme': 'Theme',

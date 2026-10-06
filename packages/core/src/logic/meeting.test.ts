@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CalEvent } from '../shared/types'
-import { eventLinks, eventMeetingUrl, eventPlace, joinable, linkKind, linkLabel, meetingUrl, place } from './meeting'
+import { descriptionCallUrl, eventLinks, eventMeetingUrl, eventPlace, joinable, linkKind, linkLabel, meetingUrl, place } from './meeting'
 
 describe('meetingUrl', () => {
   it('extracts the first http(s) url', () => {
@@ -100,5 +100,23 @@ describe('eventLinks', () => {
       { url: 'https://maps.app.goo.gl/x', kind: 'map' }
     ])
     expect(eventLinks({ location: 'Kyiv' })).toEqual([])
+  })
+})
+
+describe('descriptionCallUrl', () => {
+  it('finds a call link in plain or HTML descriptions', () => {
+    expect(descriptionCallUrl('Agenda: https://docs.example.com/a\nJoin Zoom: https://zoom.us/j/9?pwd=x.')).toBe('https://zoom.us/j/9?pwd=x')
+    expect(descriptionCallUrl('<p><a href="https://teams.microsoft.com/l/meetup-join/1?a=1&amp;b=2">Click here</a></p>')).toBe(
+      'https://teams.microsoft.com/l/meetup-join/1?a=1&b=2'
+    )
+  })
+  it('ignores links that are not calls', () => {
+    expect(descriptionCallUrl('See https://docs.example.com/a')).toBeUndefined()
+    expect(descriptionCallUrl(undefined)).toBeUndefined()
+  })
+  it('comes after the conference and the location', () => {
+    const description = 'https://meet.google.com/zzz-zzzz-zzz'
+    expect(eventMeetingUrl({ location: 'https://zoom.us/j/1', description })).toBe('https://zoom.us/j/1')
+    expect(eventMeetingUrl({ location: 'Room 3', description })).toBe(description)
   })
 })

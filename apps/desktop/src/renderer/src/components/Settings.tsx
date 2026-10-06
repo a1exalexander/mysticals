@@ -7,6 +7,8 @@ import { SegTabs } from './ui/SegTabs'
 import { setLanguage, t, useLocale } from '../i18n'
 import { LOCALE_NAME, LOCALES, type Key, type LocaleSetting } from '@mysticals/core/i18n'
 import { extraEmail } from '@mysticals/core/logic/details'
+import { REMINDER_CHOICES } from '@mysticals/core/logic/reminders'
+import { Select } from './ui/Select'
 import './ui/ui.css'
 
 const TABS = [
@@ -14,6 +16,7 @@ const TABS = [
   { id: 'themes', name: 'settings.tab.themes' },
   { id: 'language', name: 'settings.tab.language' },
   { id: 'sync', name: 'settings.tab.sync' },
+  { id: 'notifications', name: 'settings.tab.notifications' },
   { id: 'privacy', name: 'settings.tab.privacy' }
 ] as const satisfies readonly { id: string; name: Key }[]
 type TabId = (typeof TABS)[number]['id']
@@ -79,6 +82,7 @@ export function SettingsHost(): React.JSX.Element | null {
         {tab === 'themes' && <ThemePicker />}
         {tab === 'language' && <LanguagePicker />}
         {tab === 'sync' && <SyncPanel accounts={accounts} />}
+        {tab === 'notifications' && <RemindersPanel />}
         {tab === 'privacy' && <PrivacyPanel />}
       </div>
       <p className="set-made" data-testid="made-in-ukraine">
@@ -180,6 +184,44 @@ function SyncPanel({ accounts }: { accounts: Account[] }): React.JSX.Element {
           {all ? t('settings.sync.syncing') : t('settings.sync.all')}
         </button>
       </div>
+    </>
+  )
+}
+
+/** How many minutes before an event its reminder pops up, or off. */
+function RemindersPanel(): React.JSX.Element {
+  useLocale()
+  const [min, setMin] = useState<number>()
+  const [error, setError] = useState('')
+  useEffect(() => void window.reminders.get().then(setMin, () => {}), [])
+  const pick = (next: number): void => {
+    const prev = min
+    setMin(next)
+    setError('')
+    window.reminders.set(next).catch((e) => {
+      setMin(prev)
+      setError(errorText(e))
+    })
+  }
+  return (
+    <>
+      <p className="acc-note">{t('settings.reminders.note')}</p>
+      <div className="set-check">
+        <span>{t('settings.reminders.label')}</span>
+        <Select
+          compact
+          data-testid="reminder-select"
+          aria-label={t('settings.reminders.label')}
+          disabled={min === undefined}
+          value={min === undefined ? '' : String(min)}
+          options={REMINDER_CHOICES.map((n) => ({
+            value: String(n),
+            label: n ? t('settings.reminders.min', { n }) : t('settings.reminders.off')
+          }))}
+          onChange={(v) => pick(Number(v))}
+        />
+      </div>
+      {error && <p className="acc-error" role="alert">{error}</p>}
     </>
   )
 }
