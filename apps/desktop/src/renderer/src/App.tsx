@@ -40,20 +40,20 @@ export function App(): React.JSX.Element {
   return (
     <div className="app" data-sidebar={collapsed ? 'collapsed' : 'expanded'}>
       <Sidebar collapsed={collapsed} />
-      {!collapsed && (
-        <button
-          type="button"
-          className="sidebar-handle"
-          data-testid="sidebar-handle"
-          aria-label={t('toolbar.hideSidebar')}
-          title={`${t('toolbar.hideSidebar')} (${document.documentElement.dataset.platform === 'darwin' ? '⌘' : 'Ctrl+'}\\)`}
-          onClick={toggleSidebar}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M15 6l-6 6 6 6" />
-          </svg>
-        </button>
-      )}
+      {/* One handle on the sidebar's edge both hides and shows it; it rides the column as it folds. */}
+      <button
+        type="button"
+        className="sidebar-handle"
+        data-testid="sidebar-handle"
+        aria-expanded={!collapsed}
+        aria-label={t(collapsed ? 'toolbar.showSidebar' : 'toolbar.hideSidebar')}
+        title={`${t(collapsed ? 'toolbar.showSidebar' : 'toolbar.hideSidebar')} (${document.documentElement.dataset.platform === 'darwin' ? '⌘' : 'Ctrl+'}\\)`}
+        onClick={toggleSidebar}
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M15 6l-6 6 6 6" />
+        </svg>
+      </button>
       <main className="main">
         <CalendarView />
       </main>
