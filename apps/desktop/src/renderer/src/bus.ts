@@ -1,4 +1,5 @@
 import type { CalEvent, DeleteScope } from '@shared/types'
+import type { PasteSlot } from '@mysticals/core/logic/copy'
 
 /** Tiny UI event bus that decouples views (unit 6), editor/details (unit 7), accounts (unit 8). */
 export interface BusEvents {
@@ -8,6 +9,9 @@ export interface BusEvents {
   'event:open': { event: CalEvent; anchor?: DOMRect; el?: HTMLElement }
   /** Open the edit form for an existing event. */
   'event:edit': { event: CalEvent }
+  /** Right-click menu at the pointer: an event's actions, or a free time / day (paste, new event). */
+  'menu:event': { event: CalEvent; x: number; y: number }
+  'menu:slot': { slot: PasteSlot; end: string; x: number; y: number }
   'accounts:open': Record<string, never>
   'settings:open': Record<string, never>
   /** Ask for new credentials of an account the server stopped accepting (`authError`). */

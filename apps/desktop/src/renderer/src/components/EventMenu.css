@@ -1,0 +1,23 @@
+/* Right-click menu on events and free slots (EventMenu.tsx): the Select popover's look, at the pointer. */
+.ev-menu {
+  position: fixed; z-index: 70; min-width: 168px; max-width: 300px; padding: 4px;
+  display: flex; flex-direction: column;
+  background: var(--surface-2); color: var(--fg);
+  border: 1px solid var(--line-strong); border-radius: 6px;
+  box-shadow: 0 12px 32px rgb(var(--shadow) / calc(0.5 * var(--shadow-k)));
+  -webkit-app-region: no-drag;
+  animation: mc-pop 110ms ease-out;
+}
+.ev-menu-item {
+  display: flex; align-items: center; gap: 9px; height: 28px; padding: 0 10px 0 8px;
+  border: 0; border-radius: 4px; background: none; text-align: left; white-space: nowrap;
+}
+.ev-menu-item span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ev-menu-icon { flex: none; color: var(--muted); }
+.ev-menu-item:hover:not(:disabled), .ev-menu-item:focus-visible { background: var(--hover); outline: none; }
+.ev-menu-item:hover:not(:disabled) .ev-menu-icon, .ev-menu-item:focus-visible .ev-menu-icon { color: var(--fg); }
+.ev-menu-item.danger, .ev-menu-item.danger .ev-menu-icon { color: var(--red); }
+.ev-menu-item.danger:hover:not(:disabled), .ev-menu-item.danger:focus-visible { background: color-mix(in srgb, var(--red) 12%, transparent); }
+.ev-menu-item:disabled, .ev-menu-item:disabled .ev-menu-icon { color: var(--faint); }
+.ev-menu-sep { height: 1px; margin: 4px 6px; background: var(--line); }
+@media (prefers-reduced-motion: reduce) { .ev-menu { animation: none; } }
