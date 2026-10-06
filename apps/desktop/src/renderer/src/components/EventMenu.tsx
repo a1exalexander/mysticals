@@ -48,8 +48,11 @@ function createCopy(e: CalEvent, at: PasteSlot | undefined, done: 'toast.duplica
   )
 }
 
-/** A recurring event first asks which part of the series goes; a single one goes at once. Undo brings a single one back. */
-function remove(e: CalEvent): void {
+/**
+ * Deletes an event, the same from the menu and the details popover: a recurring event first asks which part
+ * of the series goes; a single one goes at once. Undo brings a single one back.
+ */
+export function deleteEvent(e: CalEvent): void {
   const run = (scope: DeleteScope): void =>
     void window.api.events.delete(e, scope).then(
       () =>
@@ -157,7 +160,7 @@ export function EventMenuHost(): React.JSX.Element | null {
         }
       },
       'sep',
-      { id: 'delete', label: t('common.delete'), icon: <DeleteIcon />, danger: true, disabled: !editable, run: () => remove(e) }
+      { id: 'delete', label: t('common.delete'), icon: <DeleteIcon />, danger: true, disabled: !editable, run: () => deleteEvent(e) }
     )
   } else {
     const { slot, end } = menu

@@ -71,6 +71,27 @@ test('right-click an event: edit, duplicate, copy and paste, delete with undo', 
   await app.close()
 })
 
+test('details popover: Delete works like the menu, at once with Undo', async () => {
+  const { app, page } = await launch()
+  const gym = page.getByTestId('event-block').filter({ hasText: 'Gym' })
+  const details = page.getByTestId('details')
+  const toast = page.getByTestId('toast')
+  // Click until the popover stays: the day view's scroll-to-now may close it.
+  await expect(async () => {
+    await gym.click()
+    await page.waitForTimeout(150)
+    await expect(details).toBeVisible({ timeout: 100 })
+  }).toPass()
+  await details.getByRole('button', { name: 'Delete' }).click()
+  await expect(page.getByTestId('details')).toBeHidden()
+  await expect(page.getByTestId('scope-prompt')).toHaveCount(0)
+  await expect(toast).toContainText('Deleted “Gym”')
+  await expect(gym).toHaveCount(0)
+  await toast.getByRole('button').click()
+  await expect(gym).toHaveCount(1)
+  await app.close()
+})
+
 test('right-click: a recurring event asks what to delete; a read-only one offers nothing', async () => {
   const { app, page } = await launch()
   const menu = page.getByTestId('event-menu')
