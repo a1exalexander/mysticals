@@ -85,6 +85,15 @@ describe('layoutDayLong', () => {
     expect(r.busy).toEqual([{ start: 600, end: 1380 }])
   })
 
+  it('cascade: every block full width, indented past the ones it overlaps, longer first', () => {
+    const r = layoutDayLong([...day6, ev('later', at(23), at(23, 30))], day, 0, { mode: 'cascade', hours: 6 })
+    expect(r.timed.map((p) => [p.item.id, p.level, p.cols])).toEqual([
+      ['n1', 0, 1], ['n2', 1, 1], ['n3', 2, 1], ['quiz', 3, 1], ['later', 0, 1]
+    ])
+    expect(r.rails).toEqual([])
+    expect(r.busy).toEqual([])
+  })
+
   it('expand: everything stays a block', () => {
     const r = layoutDayLong(day6, day, 0, { mode: 'expand', hours: 6 })
     expect(r.timed).toHaveLength(4)

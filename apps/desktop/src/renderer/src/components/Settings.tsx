@@ -8,7 +8,7 @@ import { setLanguage, t, useLocale } from '../i18n'
 import { LOCALE_NAME, LOCALES, type Key, type LocaleSetting } from '@mysticals/core/i18n'
 import { extraEmail } from '@mysticals/core/logic/details'
 import { REMINDER_CHOICES } from '@mysticals/core/logic/reminders'
-import { LONG_HOURS, LONG_MODES, type LongMode } from '@mysticals/core/logic/layout'
+import { LONG_HOURS, LONG_MODES, usesThreshold, type LongMode } from '@mysticals/core/logic/layout'
 import { setLongEvents, useLongEvents } from '../longEvents'
 import { Select } from './ui/Select'
 import './ui/ui.css'
@@ -140,6 +140,7 @@ function LanguagePicker(): React.JSX.Element {
 const MODE_TEXT = {
   rails: ['settings.events.rails', 'settings.events.railsHint'],
   allday: ['settings.events.allday', 'settings.events.alldayHint'],
+  cascade: ['settings.events.cascade', 'settings.events.cascadeHint'],
   expand: ['settings.events.expand', 'settings.events.expandHint']
 } as const satisfies Record<LongMode, readonly [Key, Key]>
 
@@ -176,13 +177,13 @@ function EventsPanel(): React.JSX.Element {
           compact
           data-testid="long-hours"
           aria-label={t('settings.events.longer')}
-          disabled={long.mode === 'expand'}
+          disabled={!usesThreshold(long.mode)}
           value={String(long.hours)}
           options={LONG_HOURS.map((n) => ({ value: String(n), label: t('settings.events.hours', { n }) }))}
           onChange={(v) => setLongEvents({ hours: Number(v) })}
         />
       </div>
-      {long.mode === 'expand' && <p className="acc-note">{t('settings.events.noThreshold')}</p>}
+      {!usesThreshold(long.mode) && <p className="acc-note">{t('settings.events.noThreshold')}</p>}
     </>
   )
 }
@@ -197,9 +198,10 @@ function LongPreview({ mode }: { mode: LongMode }): React.JSX.Element {
         </span>
       )}
       <span className="lp-grid">
-        {mode !== 'expand' && <span className="lp-busy" />}
+        {usesThreshold(mode) && <span className="lp-busy" />}
         {mode === 'rails' && [0, 1].map((i) => <span key={i} className="lp-rail" style={{ left: 2 + i * 6 }} />)}
         {mode === 'expand' && [0, 1].map((i) => <span key={i} className="lp-long" style={{ left: `${i * 33.3}%` }} />)}
+        {mode === 'cascade' && [0, 1].map((i) => <span key={i} className="lp-long lp-stack" style={{ left: 2 + i * 9 }} />)}
         <span className="lp-meet" />
       </span>
     </span>

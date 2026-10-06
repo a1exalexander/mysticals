@@ -508,6 +508,13 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
   border-left: 2px solid var(--c); border-radius: 0;
 }
 .ev-timed:hover { z-index: 2; filter: brightness(1.15); }
+/* Cascade mode: blocks overlap in start order; a 1px ground-coloured ring keeps stacked edges apart. */
+.ev-timed.is-cascade { z-index: var(--z); box-shadow: 0 0 0 1px var(--bg); }
+.ev-timed.is-cascade:hover { z-index: 1000; }
+/* Stacked blocks must stay opaque, or the titles underneath show through: dim past ones without opacity. */
+.ev.ev-timed.is-cascade.is-past { opacity: 1; filter: brightness(0.6) saturate(0.7); }
+.ev.ev-timed.is-cascade.is-past:hover { filter: brightness(0.9); }
+.ev.ev-timed.is-cascade.is-declined { opacity: 1; filter: brightness(0.5) saturate(0.5); }
 /* Long events in rails mode: a thin square bar per event at the left edge; the details open on click. */
 .ev-rail {
   position: absolute; z-index: 1; width: 6px; border-radius: 0; cursor: pointer;

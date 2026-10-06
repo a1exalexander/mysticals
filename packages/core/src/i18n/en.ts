@@ -145,6 +145,8 @@ export const en = {
   'settings.events.railsHint': 'A thin bar at the left of the day. Other events get the full width.',
   'settings.events.allday': 'Move to all-day',
   'settings.events.alldayHint': 'A chip in the all-day row with its hours. The grid shows the busy time.',
+  'settings.events.cascade': 'Cascade',
+  'settings.events.cascadeHint': 'Blocks overlap, each later one shifted right and drawn on top.',
   'settings.events.expand': 'Expand to fill',
   'settings.events.expandHint': 'Ordinary blocks, side by side, widening into free space.',
   'settings.events.longer': 'Long means longer than',

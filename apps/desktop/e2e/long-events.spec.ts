@@ -10,7 +10,7 @@ async function inEventsSettings(page: Page, fn: () => Promise<void>): Promise<vo
   await expect(page.getByTestId('settings-sheet')).toBeHidden()
 }
 
-test('long events: rails by default, all-day or blocks from Settings', async () => {
+test('long events: rails by default, all-day, cascade or blocks from Settings', async () => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()
   await page.setViewportSize({ width: 1200, height: 800 })
@@ -40,6 +40,7 @@ test('long events: rails by default, all-day or blocks from Settings', async () 
   // Move to all-day: chips with their hours in the all-day row; the busy hatch stays.
   await inEventsSettings(page, async () => {
     await expect(page.getByTestId('long-mode-rails')).toHaveAttribute('aria-checked', 'true')
+    await page.waitForTimeout(500) // the tab thumb settles
     await page.screenshot({ path: 'e2e/screens/settings-events.png' })
     await page.getByTestId('long-mode-allday').click()
     await expect(page.getByTestId('long-mode-allday')).toHaveAttribute('aria-checked', 'true')
@@ -51,6 +52,20 @@ test('long events: rails by default, all-day or blocks from Settings', async () 
   await expect(page.getByTestId('busy-band')).toHaveCount(1)
   expect((await review.boundingBox())!.width).toBeGreaterThan(col.width * 0.9)
   await page.screenshot({ path: 'e2e/screens/long-allday.png' })
+
+  // Cascade: every block nearly full width, each later one shifted right and on top; no threshold.
+  await inEventsSettings(page, async () => {
+    await page.getByTestId('long-mode-cascade').click()
+    await expect(page.getByTestId('long-hours')).toBeDisabled()
+  })
+  const busy = blocks.filter({ hasText: 'busy' })
+  await expect(busy).toHaveCount(2)
+  await expect(page.getByTestId('busy-band')).toHaveCount(0)
+  const [b1, b2] = [(await busy.nth(0).boundingBox())!, (await busy.nth(1).boundingBox())!]
+  expect(Math.abs(b2.x - b1.x)).toBeGreaterThan(8)
+  expect((await review.boundingBox())!.width).toBeGreaterThan(col.width * 0.8)
+  await expect(review).toHaveClass(/is-cascade/)
+  await page.screenshot({ path: 'e2e/screens/long-cascade.png' })
 
   // Expand to fill: ordinary blocks side by side; the threshold doesn't apply.
   await inEventsSettings(page, async () => {

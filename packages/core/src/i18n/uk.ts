@@ -146,6 +146,8 @@ export const uk: Record<Key, Msg> = {
   'settings.events.railsHint': 'Тонка смужка зліва в дні. Інші події отримують усю ширину.',
   'settings.events.allday': 'У рядок «весь день»',
   'settings.events.alldayHint': 'Плашка в рядку «весь день» з годинами. У сітці видно зайнятий час.',
+  'settings.events.cascade': 'Каскад',
+  'settings.events.cascadeHint': 'Блоки накладаються, кожен наступний трохи правіше й поверх попереднього.',
   'settings.events.expand': 'Розширювати',
   'settings.events.expandHint': 'Звичайні блоки поруч, що розширюються на вільне місце.',
   'settings.events.longer': 'Довга — це більше ніж',

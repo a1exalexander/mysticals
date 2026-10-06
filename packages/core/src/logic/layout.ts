@@ -114,21 +114,27 @@ export function layoutDay(events: CalEvent[], day: Date, minDur = 0): Placed<Cal
 
 /**
  * How timed events longer than a threshold show in the day grid: thin rails at the left edge,
- * chips in the all-day row, or ordinary blocks.
+ * chips in the all-day row, or ordinary blocks. `cascade` overlaps every block instead of
+ * sharing lanes, each later one shifted right and drawn on top; it has no threshold.
  */
-export type LongMode = 'rails' | 'allday' | 'expand'
+export type LongMode = 'rails' | 'allday' | 'cascade' | 'expand'
 export interface LongEvents {
   mode: LongMode
   /** An event is long when its part on a day is longer than this. */
   hours: number
 }
-export const LONG_MODES: readonly LongMode[] = ['rails', 'allday', 'expand']
+export const LONG_MODES: readonly LongMode[] = ['rails', 'allday', 'cascade', 'expand']
+/** Modes that use the length threshold. */
+export const usesThreshold = (mode: LongMode): boolean => mode === 'rails' || mode === 'allday'
 export const LONG_HOURS = [3, 4, 5, 6, 8, 10, 12] as const
 export const LONG_DEFAULT: LongEvents = { mode: 'rails', hours: 6 }
 
 export interface DayLayout {
-  /** Ordinary blocks; `inset` is how many rail lanes sit to their left. */
-  timed: (Placed<CalEvent> & { inset: number })[]
+  /**
+   * Ordinary blocks; `inset` is how many rail lanes sit to their left. In cascade mode each block
+   * is full width (`cols` 1) with `level` steps of indent, in paint order (later on top).
+   */
+  timed: (Placed<CalEvent> & { inset: number; level?: number })[]
   rails: Placed<CalEvent>[]
   /** Long events moved to the all-day row, with their part of the day. */
   allDay: { item: CalEvent; start: number; end: number }[]
@@ -139,7 +145,8 @@ export interface DayLayout {
 /** layoutDay, with long events split off per `long.mode`. */
 export function layoutDayLong(events: CalEvent[], day: Date, minDur: number, long: LongEvents): DayLayout {
   const items = clipDay(events, day)
-  const isLong = (it: { start: number; end: number }): boolean => long.mode !== 'expand' && it.end - it.start > long.hours * 60
+  if (long.mode === 'cascade') return { timed: cascade(items, minDur), rails: [], allDay: [], busy: [] }
+  const isLong = (it: { start: number; end: number }): boolean => usesThreshold(long.mode) && it.end - it.start > long.hours * 60
   const longs = items.filter(isLong)
   const rails = long.mode === 'rails' ? packColumns(longs) : []
   const timed = packColumns(items.filter((it) => !isLong(it)), minDur).map((p) => {
@@ -154,6 +161,16 @@ export function layoutDayLong(events: CalEvent[], day: Date, minDur: number, lon
     else busy.push({ start: it.start, end: it.end })
   }
   return { timed, rails, allDay: long.mode === 'allday' ? longs : [], busy }
+}
+
+/** Earlier (and, at the same start, longer) blocks first; each one indents one step past the deepest it overlaps. */
+function cascade(items: { item: CalEvent; start: number; end: number }[], minDur: number): DayLayout['timed'] {
+  const out: (DayLayout['timed'][number] & { last: number })[] = []
+  for (const it of [...items].sort((a, b) => a.start - b.start || b.end - a.end)) {
+    const level = out.filter((p) => p.start < Math.max(it.end, it.start + minDur) && it.start < p.last).reduce((m, p) => Math.max(m, p.level! + 1), 0)
+    out.push({ ...it, col: 0, cols: 1, span: 1, inset: 0, level, last: Math.max(it.end, it.start + minDur) })
+  }
+  return out.map(({ last: _, ...p }) => p)
 }
 
 /** 6-week grid (42 days) covering the month of `date`. */

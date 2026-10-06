@@ -15,6 +15,7 @@ const HOUR = 48 // px per hour
 const MAX_ALLDAY = 3 // all-day events per day before the row collapses
 const MIN_DUR = 22 // minutes; shorter events render (and pack) as if this long
 const RAIL = 8 // px per rail lane (6px bar + gap) for long events in rails mode
+const CASCADE = 14 // px each overlapping block steps right in cascade mode
 const pxOf = (min: number): number => (min / 60) * HOUR
 
 const hhmm = (d: Date): string => format(d, 'HH:mm')
@@ -317,25 +318,31 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                 {...tooltipHover(e)}
               />
             ))}
-            {layouts[dayIdx].timed.map(({ item: e, start, end, col, cols, span, inset }) => {
+            {layouts[dayIdx].timed.map(({ item: e, start, end, col, cols, span, inset, level }, order) => {
               const b = eventBounds(e)
               const h = pxOf(Math.max(end - start, MIN_DUR))
               const short = h < 34
               const draggable = !!moveTo && !!canDrag?.(e) && !!sameDaySpan(e, d)
               const dragged = moving?.key === keyOf(e)
+              // cascade: full width less a step per overlapped block, painted in order (later on top)
+              const indent = level === undefined ? null : `min(${level * CASCADE}px, 45%)`
               return (
                 <div
                   key={e.id}
                   data-testid="event-block"
                   data-account-id={e.accountId}
-                  className={`ev ev-timed${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}${short ? ' is-short' : ''}${draggable ? ' is-draggable' : ''}${dragged ? ' is-dragged' : ''}`}
+                  className={`ev ev-timed${indent ? ' is-cascade' : ''}${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}${short ? ' is-short' : ''}${draggable ? ' is-draggable' : ''}${dragged ? ' is-dragged' : ''}`}
                   style={
                     {
                       '--c': colorOf(e),
                       top: pxOf(start),
                       height: h - 1,
-                      left: `calc(${inset * RAIL}px + (100% - ${inset * RAIL}px) * ${col / cols} + 1px)`,
-                      width: `calc((100% - ${inset * RAIL}px) * ${span / cols} - 3px)`
+                      ...(indent
+                        ? ({ left: `calc(${indent} + 1px)`, width: `calc(100% - ${indent} - 3px)`, '--z': order + 1 } as React.CSSProperties)
+                        : {
+                            left: `calc(${inset * RAIL}px + (100% - ${inset * RAIL}px) * ${col / cols} + 1px)`,
+                            width: `calc((100% - ${inset * RAIL}px) * ${span / cols} - 3px)`
+                          })
                     } as React.CSSProperties
                   }
                   title={eventMeetingUrl(e) ? undefined : `${e.title}\n${hhmm(b.start)} – ${hhmm(b.end)}`}
