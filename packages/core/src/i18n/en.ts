@@ -163,6 +163,7 @@ export const en = {
   'settings.privacy.note': 'Mysticals sends two anonymous events: when the app is first installed and when an account is added (provider only). Never emails, server addresses, calendars or events.',
   'settings.privacy.policy': 'Privacy policy',
   'settings.privacy.share': 'Share anonymous usage stats',
+  'settings.donate': 'Support on Ko-fi',
   'settings.account.labelFor': 'Label for {email}',
   'settings.account.colourFor': 'Colour for {email}',
   'settings.account.remove': 'Remove',

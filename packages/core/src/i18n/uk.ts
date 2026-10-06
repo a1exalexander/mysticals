@@ -164,6 +164,7 @@ export const uk: Record<Key, Msg> = {
   'settings.privacy.note': 'Mysticals надсилає дві анонімні події: коли застосунок установлено вперше і коли додано обліковий запис (лише тип сервісу). Ніколи не надсилає адреси пошти чи серверів, календарі або події.',
   'settings.privacy.policy': 'Політика конфіденційності',
   'settings.privacy.share': 'Надсилати анонімну статистику використання',
+  'settings.donate': 'Підтримати на Ko-fi',
   'settings.account.labelFor': 'Назва для {email}',
   'settings.account.colourFor': 'Колір для {email}',
   'settings.account.remove': 'Видалити',

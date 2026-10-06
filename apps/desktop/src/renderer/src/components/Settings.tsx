@@ -91,6 +91,10 @@ export function SettingsHost(): React.JSX.Element | null {
           <rect y="1" width="3" height="1" fill="#FFD700" />
         </svg>
         Made in Ukraine
+        <span aria-hidden>·</span>
+        <a href="https://ko-fi.com/a1exalexander" target="_blank" rel="noreferrer" data-testid="donate-link">
+          {t('settings.donate')}
+        </a>
       </p>
     </Sheet>
   )
