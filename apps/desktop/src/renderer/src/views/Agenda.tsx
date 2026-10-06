@@ -7,7 +7,7 @@ import { pickNowNext, startsLabel } from '@mysticals/core/logic/status'
 import { eventBounds, isPast, overlapsDay } from '@mysticals/core/logic/layout'
 import { bus } from '../bus'
 import { useDirectory } from '../components/ui/useDirectory'
-import { PARTSTAT } from '../components/EventDetails'
+import { Notes, PARTSTAT } from '../components/EventDetails'
 import { STATUS_ICON } from '@mysticals/core/logic/details'
 import { nav } from './nav'
 import '../components/EventDetails.css'
@@ -95,8 +95,10 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
   const { current, next } = isToday ? pickNowNext(timed, now) : { current: [], next: undefined }
   const [picked, setPicked] = useState<string>()
   const focus = walk.find((e) => keyOf(e) === picked) ?? current[0] ?? next
-  // The now line goes before the first event still to start (after the running ones).
-  const nowAt = isToday ? timed.findIndex((e) => eventBounds(e).start > now) : -2
+  // While an event runs, the now line crosses that row where "now" falls within it (the latest-started one when
+  // several overlap), so it never reads as "already over"; otherwise it goes before the first event still to start.
+  const liveAt = timed.reduce((at, e, i) => (current.includes(e) ? i : at), -1)
+  const nowAt = !isToday || liveAt >= 0 ? -2 : timed.findIndex((e) => eventBounds(e).start > now)
   const nowIndex = nowAt === -1 ? timed.length : nowAt
   const gaps = useMemo(() => breaksBefore(timed), [timed])
   const pick = (e: CalEvent): void => setPicked(focus === e ? undefined : keyOf(e))
@@ -151,7 +153,7 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
               return [
                 gap && <Gap key={`gap-${i}`} m={gap} />,
                 i === nowIndex && <NowLine key="now" now={now} />,
-                <Row key={keyOf(e)} e={e} i={i} now={now} color={colorOf(e)} focused={focus === e} next={e === next} onPick={pick} />
+                <Row key={keyOf(e)} e={e} i={i} now={now} color={colorOf(e)} focused={focus === e} next={e === next} nowLine={i === liveAt} onPick={pick} />
               ]
             })}
             {timed.length > 0 && nowIndex === timed.length && <NowLine now={now} />}
@@ -198,8 +200,8 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
 }
 
 /** One timed event: time, calendar bar, title and status; click selects it into the focus card, double click opens details. */
-function Row({ e, i, now, color, focused, next, onPick }: {
-  e: CalEvent; i: number; now: Date; color: string; focused: boolean; next?: boolean; onPick: (e: CalEvent) => void
+function Row({ e, i, now, color, focused, next, nowLine, onPick }: {
+  e: CalEvent; i: number; now: Date; color: string; focused: boolean; next?: boolean; nowLine?: boolean; onPick: (e: CalEvent) => void
 }): React.JSX.Element {
   const st = statusOf(e, now)
   const url = joinable(e, now)
@@ -232,16 +234,32 @@ function Row({ e, i, now, color, focused, next, onPick }: {
           {t('agenda.joinShort')}
         </button>
       )}
+      {nowLine && <NowLine now={now} at={progress(e, now)} />}
     </li>
   )
 }
 
-/** Where we are in the day: a line between the events that have started and the ones still to come. */
-function NowLine({ now }: { now: Date }): React.JSX.Element {
-  return (
+/** How far into the event `now` is, 0..1. */
+function progress(e: CalEvent, now: Date): number {
+  const { start, end } = eventBounds(e)
+  const len = +end - +start
+  return len > 0 ? Math.min(Math.max((+now - +start) / len, 0), 1) : 0
+}
+
+/**
+ * Where we are in the day: a line between the events that have started and the ones still to come, or, given `at`
+ * (0..1), drawn across the running event's row at that point.
+ */
+function NowLine({ now, at }: { now: Date; at?: number }): React.JSX.Element {
+  const clock = <span className="ag-now-clock">{format(now, 'HH:mm')}</span>
+  return at === undefined ? (
     <li className="ag-now" aria-hidden data-testid="agenda-now">
-      <span className="ag-now-clock">{format(now, 'HH:mm')}</span>
+      {clock}
     </li>
+  ) : (
+    <span className="ag-now ag-now-over" style={{ top: `${at * 100}%` }} aria-hidden data-testid="agenda-now">
+      {clock}
+    </span>
   )
 }
 
@@ -267,6 +285,12 @@ function Focus({ e, now, color, calendar }: { e: CalEvent; now: Date; color: str
             <dd>
               <span className="ag-dot" /> {calendar}
             </dd>
+          </>
+        )}
+        {e.organizer && (
+          <>
+            <dt>{t('agenda.fact.organizer')}</dt>
+            <dd title={e.organizer.email} data-testid="agenda-organizer">{e.organizer.name || e.organizer.email}</dd>
           </>
         )}
         {where && (
@@ -307,10 +331,13 @@ function Focus({ e, now, color, calendar }: { e: CalEvent; now: Date; color: str
         {url && (
           <>
             <dt>{t('agenda.fact.link')}</dt>
-            <dd className="ag-url">{url}</dd>
+            <dd className="ag-url">
+              <a href={url} target="_blank" rel="noreferrer" data-testid="agenda-link">{url}</a>
+            </dd>
           </>
         )}
       </dl>
+      <Notes text={e.description} className="ag-notes" />
       <div className="ag-actions">
         {ready ? (
           <button type="button" className="ag-join" data-testid="agenda-join" onClick={() => join(ready)}>

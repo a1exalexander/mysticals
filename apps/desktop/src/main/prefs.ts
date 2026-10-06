@@ -9,6 +9,8 @@ export interface Prefs {
   language?: LocaleSetting
   /** Minutes before an event its reminder pops up; 0 = off. */
   reminderMin?: number
+  /** Accounts whose reminders and invite/change banners are off. */
+  notifyOff?: string[]
 }
 
 const prefsFile = (dir = app.getPath('userData')): string => join(dir, 'prefs.json')

@@ -55,8 +55,8 @@
 .mc-dot { display: inline-block; width: 7px; height: 7px; border-radius: 2px; background: var(--accent); flex: none; }
 .mc-muted { color: var(--muted); }
 
-/* Switch and checkbox: native inputs (keyboard, labels, a11y) drawn in the app's style. */
-.mc-switch, .mc-check { appearance: none; -webkit-appearance: none; margin: 0; flex: none; }
+/* Switch, checkbox and radio: native inputs (keyboard, labels, a11y) drawn in the app's style. */
+.mc-switch, .mc-check, .mc-radio { appearance: none; -webkit-appearance: none; margin: 0; flex: none; }
 .mc-switch {
   position: relative; width: 28px; height: 16px; border-radius: 8px;
   background: var(--line-strong); transition: background-color 120ms ease;
@@ -82,7 +82,23 @@
 .mc-check:checked { background: var(--c); border-color: var(--c); }
 .mc-check:checked::after { transform: rotate(-45deg) scale(1); }
 .mc-check:disabled { opacity: 0.5; }
-@media (prefers-reduced-motion: reduce) { .mc-switch, .mc-switch::after, .mc-check, .mc-check::after { transition: none; } }
+.mc-radio {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1.5px solid var(--line-strong); background: transparent;
+  display: inline-grid; place-content: center; transition: border-color 90ms ease;
+}
+.mc-radio:hover:not(:disabled) { border-color: var(--muted); }
+.mc-radio::after {
+  content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+  transform: scale(0); transition: transform 90ms ease;
+}
+.mc-radio:checked { border-color: var(--accent); }
+.mc-radio:checked::after { transform: scale(1); }
+.mc-radio:disabled { opacity: 0.5; }
+:is(.mc-switch, .mc-check, .mc-radio):focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+@media (prefers-reduced-motion: reduce) {
+  .mc-switch, .mc-switch::after, .mc-check, .mc-check::after, .mc-radio, .mc-radio::after { transition: none; }
+}
 
 /* Integer field with −/+ steppers (no native spinners). */
 .mnum {

@@ -65,6 +65,9 @@ test('privacy tab: usage stats toggle is on by default and persists', async () =
   await page.getByTestId('settings-tab-privacy').click()
   const toggle = page.getByTestId('telemetry-toggle')
   await expect(toggle).toBeChecked()
+  // Drawn as a square box, not stretched by the sheet's text-field styles.
+  const box = (await toggle.boundingBox())!
+  expect(box.width).toBe(box.height)
   await toggle.uncheck()
   await page.screenshot({ path: 'e2e/screens/settings-privacy.png' })
 

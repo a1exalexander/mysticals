@@ -51,7 +51,12 @@ contextBridge.exposeInMainWorld('update', update)
 const telemetry: TelemetryApi = { enabled: call(IPC.telemetryGet), setEnabled: call(IPC.telemetrySet) } as TelemetryApi
 contextBridge.exposeInMainWorld('telemetry', telemetry)
 
-const reminders: ReminderApi = { get: call(IPC.remindersGet), set: call(IPC.remindersSet) } as ReminderApi
+const reminders: ReminderApi = {
+  get: call(IPC.remindersGet),
+  set: call(IPC.remindersSet),
+  muted: call(IPC.remindersMutedGet),
+  setMuted: call(IPC.remindersMutedSet)
+} as ReminderApi
 contextBridge.exposeInMainWorld('reminders', reminders)
 
 const locale: LocaleApi = {

@@ -82,7 +82,7 @@ export function SettingsHost(): React.JSX.Element | null {
         {tab === 'themes' && <ThemePicker />}
         {tab === 'language' && <LanguagePicker />}
         {tab === 'sync' && <SyncPanel accounts={accounts} />}
-        {tab === 'notifications' && <RemindersPanel />}
+        {tab === 'notifications' && <RemindersPanel accounts={accounts} />}
         {tab === 'privacy' && <PrivacyPanel />}
       </div>
       <p className="set-made" data-testid="made-in-ukraine">
@@ -117,7 +117,7 @@ function LanguagePicker(): React.JSX.Element {
       <div className="lang-list" role="radiogroup" aria-label={t('settings.tab.language')}>
         {options.map((o) => (
           <label key={o.id} className="set-check lang-opt" data-testid={`language-${o.id}`}>
-            <input type="radio" name="language" checked={setting === o.id} onChange={() => pick(o.id)} />
+            <input type="radio" className="mc-radio" name="language" checked={setting === o.id} onChange={() => pick(o.id)} />
             {o.name}
             {o.hint && <span className="acc-email">{o.hint}</span>}
           </label>
@@ -192,12 +192,23 @@ function SyncPanel({ accounts }: { accounts: Account[] }): React.JSX.Element {
   )
 }
 
-/** How many minutes before an event its reminder pops up, or off. */
-function RemindersPanel(): React.JSX.Element {
+/** How many minutes before an event its reminder pops up, or off; and which accounts notify at all. */
+function RemindersPanel({ accounts }: { accounts: Account[] }): React.JSX.Element {
   useLocale()
   const [min, setMin] = useState<number>()
+  const [muted, setMuted] = useState<string[]>()
   const [error, setError] = useState('')
   useEffect(() => void window.reminders.get().then(setMin, () => {}), [])
+  useEffect(() => void window.reminders.muted().then(setMuted, () => {}), [])
+  const toggle = (id: string, on: boolean): void => {
+    const prev = muted
+    setMuted((m) => (on ? m?.filter((x) => x !== id) : [...(m ?? []), id]))
+    setError('')
+    window.reminders.setMuted(id, !on).catch((e) => {
+      setMuted(prev)
+      setError(errorText(e))
+    })
+  }
   const pick = (next: number): void => {
     const prev = min
     setMin(next)
@@ -225,6 +236,36 @@ function RemindersPanel(): React.JSX.Element {
           onChange={(v) => pick(Number(v))}
         />
       </div>
+      {accounts.length > 0 && (
+        <>
+          <h3 className="set-heading">{t('settings.reminders.accounts')}</h3>
+          <p className="acc-note">{t('settings.reminders.accountsNote')}</p>
+          <ul className="acc-list">
+            {accounts.map((a) => (
+              <li key={a.id} className="acc-item">
+                <label className="acc-item-head set-notify">
+                  <span className="acc-dot" style={{ background: a.color }} />
+                  <KindIcon kind={a.kind} />
+                  <span className="acc-item-id">
+                    <span className="set-sync-label">{a.label}</span>
+                    {extraEmail(a.label, a.email) && <span className="acc-email">{a.email}</span>}
+                  </span>
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    className="mc-switch"
+                    data-testid={`notify-account-${a.id}`}
+                    aria-label={t('settings.reminders.accountFor', { name: a.label })}
+                    checked={muted !== undefined && !muted.includes(a.id)}
+                    disabled={muted === undefined}
+                    onChange={(e) => toggle(a.id, e.target.checked)}
+                  />
+                </label>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {error && <p className="acc-error" role="alert">{error}</p>}
     </>
   )

@@ -122,3 +122,48 @@ test('agenda: no stale card after the day, a now line, people toggle, and other 
   await expect(page.getByTestId('agenda-now')).toBeVisible()
   await app.close()
 })
+
+test('agenda: the now line crosses a running event instead of sitting below it', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 1200, height: 800 })
+  await expect(page.locator('.app-loader')).toBeHidden()
+  // Halfway through the mock's sync (11:30–12:00).
+  const today = new Date()
+  await page.clock.setFixedTime(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 11, 45))
+
+  await page.keyboard.press('a')
+  const row = page.locator('.ag-rows > li').filter({ has: page.locator('.ag-row[data-live="true"]') })
+  await expect(row.getByTestId('agenda-now')).toBeVisible()
+  await expect(page.getByTestId('agenda-now')).toHaveCount(1)
+  const line = (await row.getByTestId('agenda-now').boundingBox())!
+  const box = (await row.boundingBox())!
+  expect(line.y).toBeGreaterThan(box.y + box.height * 0.3)
+  expect(line.y).toBeLessThan(box.y + box.height * 0.7)
+  await page.screenshot({ path: 'e2e/screens/agenda-now-running.png' })
+  await app.close()
+})
+
+test('agenda: the focus card shows the organizer, the description and a clickable link', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 1200, height: 800 })
+  await expect(page.locator('.app-loader')).toBeHidden()
+  await page.evaluate(async () => {
+    const at = (min: number): string => new Date(Date.now() + min * 60_000).toISOString()
+    await window.api.events.create({
+      accountId: 'work', calendarId: 'work-main', allDay: false, start: at(1), end: at(2), title: 'Card check',
+      location: 'https://meet.google.com/aqp-oxgt-gmm', description: 'Agenda: <b>roadmap</b> and notes https://example.com/doc'
+    })
+  })
+
+  await page.keyboard.press('a')
+  await page.locator('.ag-row').filter({ hasText: 'Card check' }).click()
+  const card = page.getByTestId('agenda-focus')
+  await expect(card.getByTestId('agenda-organizer')).toHaveText('me@work.example')
+  await expect(card.getByTestId('agenda-link')).toHaveAttribute('href', 'https://meet.google.com/aqp-oxgt-gmm')
+  await expect(card.locator('.ag-notes')).toContainText('roadmap')
+  await expect(card.locator('.ag-notes a')).toHaveAttribute('href', 'https://example.com/doc')
+  await page.screenshot({ path: 'e2e/screens/agenda-focus-notes.png' })
+  await app.close()
+})

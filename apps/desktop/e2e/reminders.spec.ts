@@ -53,3 +53,40 @@ test('reminders: Settings choice and a banner with a join button before the even
   await expect(page.getByTestId('reminder-select')).toContainText('Off')
   await app.close()
 })
+
+test('reminders: a switched-off account stays silent, the others still notify', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await app.evaluate(({ Notification }) => {
+    const g = globalThis as unknown as { shown: unknown[] }
+    g.shown = []
+    Notification.isSupported = () => true
+    Notification.prototype.show = function (this: Electron.Notification) {
+      g.shown.push(this.title)
+    }
+  })
+  const shown = (): Promise<string[]> => app.evaluate(() => (globalThis as unknown as { shown: string[] }).shown)
+
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByTestId('settings-tab-notifications').click()
+  const work = page.getByTestId('notify-account-work')
+  await expect(work).toBeChecked()
+  await work.uncheck()
+  await expect(work).not.toBeChecked()
+  await page.screenshot({ path: 'e2e/screens/settings-notifications-accounts.png' })
+
+  await page.evaluate(async () => {
+    const at = (min: number): string => new Date(Date.now() + min * 60_000).toISOString()
+    await window.api.events.create({ accountId: 'work', calendarId: 'work-main', allDay: false, start: at(1), end: at(30), title: 'Muted call' })
+  })
+  await choose(page.getByTestId('reminder-select'), '5')
+  await page.waitForTimeout(500)
+  expect(await shown()).not.toContain('Muted call')
+
+  // Back on: the next tick picks the event up.
+  await work.check()
+  await choose(page.getByTestId('reminder-select'), '10')
+  await expect.poll(shown).toContain('Muted call')
+  await choose(page.getByTestId('reminder-select'), '2')
+  await app.close()
+})

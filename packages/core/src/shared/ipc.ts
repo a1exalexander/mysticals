@@ -77,6 +77,9 @@ export interface TelemetryApi {
 export interface ReminderApi {
   get(): Promise<number>
   set(min: number): Promise<void>
+  /** Ids of the accounts whose reminders and invite/change banners are off. */
+  muted(): Promise<string[]>
+  setMuted(accountId: string, muted: boolean): Promise<void>
 }
 
 /** UI language: the Settings choice, the language in use and what the OS asks for (shown next to "Automatic"). */
@@ -128,6 +131,8 @@ export const IPC = {
   telemetrySet: 'telemetry:set',
   remindersGet: 'reminders:get',
   remindersSet: 'reminders:set',
+  remindersMutedGet: 'reminders:muted-get',
+  remindersMutedSet: 'reminders:muted-set',
   themeSet: 'theme:set',
   localeGet: 'locale:get',
   localeSet: 'locale:set',
