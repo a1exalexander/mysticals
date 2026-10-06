@@ -13,13 +13,20 @@ export const reminderMin = (): number => {
   return isReminderMin(v) ? v : DEFAULT_REMINDER_MIN
 }
 
+/** Settings > Notifications: ids of the accounts that stay silent (reminders and invite/change banners). */
+export const mutedAccounts = (): Set<string> => {
+  const v = readPrefs().notifyOff
+  return new Set(Array.isArray(v) ? v.filter((id): id is string => typeof id === 'string') : [])
+}
+
 // Held until closed/clicked: a GC'd Notification drops its click/action handlers.
 const banners = new Set<Notification>()
 
 /**
  * Pops a system notification `reminderMin` minutes before each upcoming event while the app runs. Clicking it (or its
  * macOS "Join" button) opens the event's call link; without one it brings the app forward. Polls the cached events,
- * so synced changes and moved events need no re-arming. Hidden calendars, declined and all-day events stay silent.
+ * so synced changes and moved events need no re-arming. Muted accounts, hidden calendars, declined and all-day events stay
+ * silent.
  */
 export function startReminders(api: Pick<Api, 'events' | 'calendars'>, showMain: () => void): void {
   ipcMain.handle(IPC.remindersGet, reminderMin)
@@ -27,6 +34,14 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars'>, showMain:
     if (!isReminderMin(min)) throw new Error(`Invalid reminder: ${String(min)}`)
     writePrefs({ reminderMin: min })
     void tick()
+  })
+  ipcMain.handle(IPC.remindersMutedGet, () => [...mutedAccounts()])
+  ipcMain.handle(IPC.remindersMutedSet, (_e, id: unknown, muted: unknown) => {
+    if (typeof id !== 'string' || typeof muted !== 'boolean') throw new Error('Invalid account mute')
+    const off = mutedAccounts()
+    if (muted) off.add(id)
+    else off.delete(id)
+    writePrefs({ notifyOff: [...off] })
   })
 
   const sent = new Map<string, number>() // reminder key → event start (ms), to forget old ones
@@ -40,7 +55,9 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars'>, showMain:
       const range = { start: new Date(now.getTime() - 60 * 60_000).toISOString(), end: new Date(now.getTime() + (lead + 1) * 60_000).toISOString() }
       const [events, calendars] = await Promise.all([api.events.list(range), api.calendars.list()])
       for (const [k, start] of sent) if (start < now.getTime() - 60 * 60_000) sent.delete(k)
-      for (const e of dueReminders(visibleEvents(events, calendars), now, lead, new Set(sent.keys()))) {
+      const muted = mutedAccounts()
+      const shown = visibleEvents(events, calendars).filter((e) => !muted.has(e.accountId))
+      for (const e of dueReminders(shown, now, lead, new Set(sent.keys()))) {
         sent.set(reminderKey(e), new Date(e.start).getTime())
         show(reminderText(e, now, currentLocale()))
       }

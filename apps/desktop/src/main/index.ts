@@ -16,7 +16,7 @@ import { registerApi } from './ipc/register'
 import { currentLocale, startLocale } from './locale'
 import { startUpdater } from './update'
 import { startDesktopTelemetry } from './telemetry'
-import { startReminders } from './reminders'
+import { mutedAccounts, startReminders } from './reminders'
 import { electronTriggers } from './sync/electronTriggers'
 
 const MOCK = process.env.MYSTICALS_MOCK === '1'
@@ -54,10 +54,10 @@ function broadcast(accountId: string): void {
 // Held until closed/clicked: a GC'd Notification drops its click handler.
 const banners = new Set<Notification>()
 
-/** System banners for invites/changes; events in hidden calendars stay silent. */
+/** System banners for invites/changes; muted accounts and events in hidden calendars stay silent. */
 function notify(store: AccountStore, accountId: string, notes: Note[]): void {
   const account = store.list().find((a) => a.id === accountId)
-  if (!account || !Notification.isSupported()) return
+  if (!account || !Notification.isSupported() || mutedAccounts().has(accountId)) return
   const hidden = new Set(store.hiddenCalendars(accountId))
   const shown = notes.filter((n) => !hidden.has(n.event.calendarId))
   for (const { title, body } of noteText(shown, account.label, new Date(), currentLocale())) {
