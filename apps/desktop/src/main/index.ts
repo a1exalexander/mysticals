@@ -16,6 +16,7 @@ import { registerApi } from './ipc/register'
 import { currentLocale, startLocale } from './locale'
 import { startUpdater } from './update'
 import { startDesktopTelemetry } from './telemetry'
+import { startReminders } from './reminders'
 import { electronTriggers } from './sync/electronTriggers'
 
 const MOCK = process.env.MYSTICALS_MOCK === '1'
@@ -192,7 +193,9 @@ app.whenReady().then(() => {
   if (app.isPackaged && !MOCK) app.setAsDefaultProtocolClient(PROTOCOL)
   const track = startDesktopTelemetry()
   if (MOCK) {
-    registerApi(createMockApi(broadcast))
+    const api = createMockApi(broadcast)
+    registerApi(api)
+    startReminders(api, showMain)
   } else {
     setClientConfig({
       clientId: import.meta.env.MYSTICALS_GOOGLE_CLIENT_ID,
@@ -230,7 +233,9 @@ app.whenReady().then(() => {
           }
         })
       const onAccountAdded = (info: AccountAdded): void => track?.('account_added', info)
-      registerApi(createApi(store, sync, { verifyCaldav, googleSignIn: signIn, onChanged: broadcast, onAccountAdded }))
+      const api = createApi(store, sync, { verifyCaldav, googleSignIn: signIn, onChanged: broadcast, onAccountAdded })
+      registerApi(api)
+      startReminders(api, showMain)
       sync.start()
     } catch (e) {
       console.error('backend not ready', e)

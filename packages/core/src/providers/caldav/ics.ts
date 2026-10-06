@@ -94,6 +94,12 @@ function mapPeople(vevent: ICAL.Component, email: string) {
   return { organizer, attendees, myStatus: attendees.find((a) => a.self)?.status }
 }
 
+/** Video call of an event: RFC 7986 CONFERENCE (first http(s) one) or Google's X-GOOGLE-CONFERENCE. */
+function conferenceOf(vevent: ICAL.Component): string | undefined {
+  const urls = [...vevent.getAllProperties('conference'), ...vevent.getAllProperties('x-google-conference')].map((p) => String(p.getFirstValue() ?? '').trim())
+  return urls.find((u) => /^https?:\/\//i.test(u))
+}
+
 /** Parse one calendar object into CalEvents, expanding recurrences inside `range`. */
 export function parseEvents(ics: string, href: string, etag: string | undefined, ctx: MapCtx, range: TimeRange): CalEvent[] {
   const root = parse(ics)
@@ -109,6 +115,7 @@ export function parseEvents(ics: string, href: string, etag: string | undefined,
   const build = (item: ICAL.Event, start: ICAL.Time, end: ICAL.Time, recurrenceId?: ICAL.Time): CalEvent => {
     const rid = recurrenceId?.toString()
     const raw: CaldavRaw = { href, ics, ...(rid ? { recurrenceId: rid } : {}) }
+    const conference = conferenceOf(item.component)
     return {
       id: rid ? `${href}#${rid}` : href,
       accountId: ctx.accountId,
@@ -119,6 +126,7 @@ export function parseEvents(ics: string, href: string, etag: string | undefined,
       allDay: start.isDate,
       location: item.location || undefined,
       description: item.description || undefined,
+      ...(conference ? { conferenceUrl: conference } : {}),
       ...mapPeople(item.component, ctx.email),
       etag,
       raw,

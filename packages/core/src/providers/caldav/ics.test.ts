@@ -46,6 +46,16 @@ const ALLDAY = wrap(
 )
 
 describe('parseEvents', () => {
+  it('keeps the video call from CONFERENCE or X-GOOGLE-CONFERENCE', () => {
+    const ev = (...props: string[]) =>
+      parseEvents(
+        wrap(['BEGIN:VEVENT', 'UID:c-1', 'DTSTAMP:20251201T000000Z', 'DTSTART:20260105T090000Z', 'DTEND:20260105T091500Z', ...props, 'END:VEVENT'].join('\r\n')),
+        HREF, undefined, ctx, JAN
+      )[0]
+    expect(ev('CONFERENCE;VALUE=URI;FEATURE=PHONE:tel:+1-555', 'CONFERENCE;VALUE=URI;FEATURE=VIDEO:https://zoom.us/j/1').conferenceUrl).toBe('https://zoom.us/j/1')
+    expect(ev('X-GOOGLE-CONFERENCE:https://meet.google.com/abc-defg-hij').conferenceUrl).toBe('https://meet.google.com/abc-defg-hij')
+    expect(ev().conferenceUrl).toBeUndefined()
+  })
   it('expands RRULE with EXDATE and RECURRENCE-ID override', () => {
     const evs = parseEvents(DAILY, HREF, '"e1"', ctx, JAN)
     expect(evs.map((e) => e.start)).toEqual([

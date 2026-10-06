@@ -64,6 +64,8 @@ export const uk: Record<Key, Msg> = {
   'notify.changed': 'Подію змінено',
   'notify.cancelled': 'Подію скасовано',
   'notify.many': { one: '{n} зміна в календарі', few: '{n} зміни в календарі', many: '{n} змін у календарі', other: '{n} зміни в календарі' },
+  'reminder.in': 'через {n} хв',
+  'reminder.now': 'починається зараз',
 
   // ---- desktop: menus, dialogs, update ----
   'menu.file': 'Файл',
@@ -135,6 +137,11 @@ export const uk: Record<Key, Msg> = {
   'settings.tab.language': 'Мова',
   'settings.tab.sync': 'Синхронізація',
   'settings.tab.privacy': 'Конфіденційність',
+  'settings.tab.notifications': 'Сповіщення',
+  'settings.reminders.label': 'Нагадувати перед подіями',
+  'settings.reminders.off': 'Вимкнено',
+  'settings.reminders.min': 'за {n} хв',
+  'settings.reminders.note': 'Поки Mysticals відкритий, перед кожною подією з’являється сповіщення з кнопкою, щоб приєднатися до дзвінка, якщо в події є посилання. Відхилені, цілоденні події та події з прихованих календарів без сповіщень.',
   'settings.noAccounts': 'Облікових записів ще немає.',
   'settings.addAccount': 'Додати обліковий запис…',
   'settings.theme': 'Тема',

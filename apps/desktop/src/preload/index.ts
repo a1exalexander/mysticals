@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { Api, LocaleApi, LocaleState, MenuCommand, TelemetryApi, ThemeApi, UpdateApi, UpdateState } from '@shared/ipc'
+import type { Api, LocaleApi, LocaleState, MenuCommand, ReminderApi, TelemetryApi, ThemeApi, UpdateApi, UpdateState } from '@shared/ipc'
 import { IPC } from '@shared/ipc'
 
 const call =
@@ -50,6 +50,9 @@ contextBridge.exposeInMainWorld('update', update)
 
 const telemetry: TelemetryApi = { enabled: call(IPC.telemetryGet), setEnabled: call(IPC.telemetrySet) } as TelemetryApi
 contextBridge.exposeInMainWorld('telemetry', telemetry)
+
+const reminders: ReminderApi = { get: call(IPC.remindersGet), set: call(IPC.remindersSet) } as ReminderApi
+contextBridge.exposeInMainWorld('reminders', reminders)
 
 const locale: LocaleApi = {
   get: call(IPC.localeGet),
