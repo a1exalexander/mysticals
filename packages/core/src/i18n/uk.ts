@@ -148,6 +148,8 @@ export const uk: Record<Key, Msg> = {
   'theme.amber': 'Бурштиновий люмінофор',
   'theme.mono': 'Чорно-біла',
   'theme.toon': 'Мультяшна',
+  'theme.cloud': 'Хмаринка',
+  'theme.light': 'Світла',
   'settings.language.auto': 'Автоматично',
   'settings.language.system': 'системна: {name}',
   'settings.sync.note': 'Облікові записи синхронізуються автоматично кожні 2 хвилини та коли застосунок знову стає активним.',

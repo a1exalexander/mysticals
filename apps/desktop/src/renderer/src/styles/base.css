@@ -165,6 +165,44 @@
   --red: #f0263c;
   --yellow: #f5c400;
 }
+/* Cloud: airy light cyan around #e0ffff. */
+:root[data-theme='cloud'] {
+  --bg: #f2fefe;
+  --surface: #e0ffff;
+  --surface-2: #ffffff;
+  --hover: #d2f6f7;
+  --line: #c8eff1;
+  --line-strong: #9fdde2;
+  --fg: #1d3b40;
+  --muted: #55848b;
+  --faint: #b3e3e7;
+  --accent: #1f9fb0;
+  --pink: #e98fb6;
+  --green: #36b08c;
+  --cyan: #5aa8e6;
+  --orange: #f2a26c;
+  --red: #e15b6b;
+  --yellow: #e0b13f;
+}
+/* Light: Black & White inverted, plain white paper and black ink. */
+:root[data-theme='light'] {
+  --bg: #ffffff;
+  --surface: #f7f7f7;
+  --surface-2: #ffffff;
+  --hover: #efefef;
+  --line: #e5e5e5;
+  --line-strong: #d4d4d4;
+  --fg: #111111;
+  --muted: #737373;
+  --faint: #d4d4d4;
+  --accent: #111111;
+  --pink: #111111;
+  --green: #262626;
+  --cyan: #404040;
+  --orange: #525252;
+  --red: #dc2626;
+  --yellow: #171717;
+}
 :root {
   color-scheme: dark;
   --on-accent: var(--bg);
@@ -190,6 +228,8 @@
 }
 :root[data-theme='bubble'] { --shadow: 230 90 160; --shadow-k: 0.3; }
 :root[data-theme='toon'] { --shadow: 43 33 64; --shadow-k: 0.5; }
+:root[data-theme='cloud'] { --shadow: 40 130 145; --shadow-k: 0.28; }
+:root[data-theme='light'] { --shadow: 0 0 0; --shadow-k: 0.12; }
 /* Matrix: everything in mono with a barely-there phosphor glow. */
 :root[data-theme='matrix'] { --shadow: 0 0 0; font-family: var(--mono); }
 :root[data-theme='matrix'] :is(input, textarea, .invites-panel) { font-family: var(--mono); }

@@ -121,7 +121,8 @@
   display: flex; justify-content: space-between; align-items: center; gap: 4px; font: 500 11.5px/1.25 var(--mono);
 }
 .theme-name .on { color: var(--accent); }
-.set-panel .theme-swatch { height: 40px; }
+/* Four rows of themes fit the panel without growing the sheet. */
+.set-panel .theme-swatch { height: 32px; }
 
 /* Settings tabs: the toolbar .seg (sliding thumb), a bit taller; undo the generic .acc-sheet button look. */
 /* Five tabs, some long in Ukrainian: the Settings sheet is a bit wider than the add-account one. */
