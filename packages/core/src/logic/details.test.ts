@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Account, Calendar, CalEvent } from '../shared/types'
-import { canEdit, cleanNotes, extraEmail, formatWhen, htmlToText, isHtml, linkify, ownerLine, pendingInvites } from './details'
+import { accountName, canEdit, cleanNotes, extraEmail, formatWhen, htmlToText, isHtml, linkify, ownerLine, pendingInvites } from './details'
 
 const account: Account = { id: 'work', kind: 'caldav', label: 'Work', email: 'me@work.example', color: '#000' }
 const cal: Calendar = { id: 'w', accountId: 'work', name: 'Work', color: '#000', readOnly: false }
@@ -131,5 +131,20 @@ describe('htmlToText', () => {
   })
   it('drops scripts and styles and decodes entities', () => {
     expect(htmlToText('<script>alert(1)</script><style>p{}</style>a&nbsp;&lt;b&gt; &#39;c&#x27;')).toBe("a <b> 'c'")
+  })
+})
+
+describe('accountName', () => {
+  it('keeps a real label', () => {
+    expect(accountName('Work', 'me@work.example')).toBe('Work')
+  })
+  it('falls back to the mail domain when the label is the email or empty', () => {
+    expect(accountName('alexander.ratushnyi@gmail.com', 'alexander.ratushnyi@gmail.com')).toBe('gmail')
+    expect(accountName('Me@Namecheap.com', 'me@namecheap.com')).toBe('namecheap')
+    expect(accountName('', 'me@foo.co.uk')).toBe('foo')
+    expect(accountName('me@mail.example.org', 'me@mail.example.org')).toBe('example')
+  })
+  it('keeps the label when there is no usable email', () => {
+    expect(accountName('me@x', undefined)).toBe('me@x')
   })
 })

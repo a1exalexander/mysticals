@@ -7,6 +7,16 @@ const same = (a?: string, b?: string): boolean => !!a && !!b && a.trim().toLower
 /** The account's email when it adds something to its label (Google labels are often the email itself). */
 export const extraEmail = (label: string, email?: string): string | undefined => (same(email, label) ? undefined : email)
 
+const SLD = new Set(['ac', 'co', 'com', 'edu', 'gov', 'net', 'org'])
+/** The label to show: a label that is just the email (Google's default) becomes the mail domain, e.g. "gmail". */
+export function accountName(label: string, email?: string): string {
+  if (label.trim() && !same(label, email)) return label
+  const parts = (email?.split('@')[1] ?? '').trim().toLowerCase().split('.').filter(Boolean)
+  if (parts.length > 1) parts.pop()
+  if (parts.length > 1 && SLD.has(parts[parts.length - 1])) parts.pop()
+  return parts.pop() ?? label
+}
+
 /** "<calendar> in <label> · <email>" minus parts repeating an earlier one (Google: label = primary calendar = email). */
 export function ownerLine(calendar: string | undefined, label: string, email?: string): { calendar?: string; label: string; email?: string } {
   return { calendar: same(calendar, label) || same(calendar, email) ? undefined : calendar, label, email: extraEmail(label, email) }

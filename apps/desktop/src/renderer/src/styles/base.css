@@ -262,31 +262,46 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
   height: 100%; display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto;
   transition: grid-template-columns 180ms ease;
 }
-.main { grid-area: 1 / 2; background: var(--bg); min-width: 0; min-height: 0; border-left: 1px solid var(--line); }
+.main {
+  grid-area: 1 / 2; background: var(--bg); min-width: 0; min-height: 0; border-left: 1px solid var(--line);
+  /* Above the sidebar, which keeps its full width and slides under the calendar while its column folds. */
+  position: relative; z-index: 1;
+}
 /* Collapsed sidebar (sidebar.ts): the column folds to nothing; on macOS the toolbar clears the traffic lights. */
 .app[data-sidebar='collapsed'] { grid-template-columns: 0 minmax(0, 1fr); }
-.app[data-sidebar='collapsed'] .sidebar { visibility: hidden; }
+/* Hidden (and out of the tab order) only once the fold has finished, so it slides under the calendar. */
+.app[data-sidebar='collapsed'] .sidebar { visibility: hidden; transition: visibility 0s linear 180ms; }
 .app[data-sidebar='collapsed'] .main { border-left: 0; }
-:root[data-platform='darwin'] .app[data-sidebar='collapsed'] .toolbar { padding-left: 84px; }
+:root[data-platform='darwin'] .app[data-sidebar='collapsed'] .toolbar { padding-left: 122px; }
+/* The one sidebar toggle (App.tsx): a quiet borderless button centred on the sidebar's right edge, level with
+   the toolbar. It rides the column as it folds and, collapsed, settles a little to the right with the title
+   making room for it (on macOS past the traffic lights). Open, the icon's left pane is filled and its chevron
+   points left; collapsed, the pane empties and the chevron turns around. */
 .sidebar-toggle {
-  flex: none; width: 26px; height: 26px; margin-right: -6px; display: grid; place-items: center; padding: 0;
-  border: 0; border-radius: 4px; background: none; color: var(--muted);
+  grid-area: 1 / 1; justify-self: end; align-self: start; position: relative; z-index: 2;
+  width: 26px; height: 26px; margin: 13px -13px 0 0; display: grid; place-items: center; padding: 0;
+  -webkit-app-region: no-drag; border: 0; border-radius: 6px; background: var(--bg); color: var(--muted);
+  transition: margin-right 180ms ease, color 120ms ease, background-color 120ms ease;
 }
 .sidebar-toggle:hover { background: var(--hover); color: var(--fg); }
-/* Expanded sidebar: a round handle straddling its right edge, halfway down the column. */
-.sidebar-handle {
-  grid-area: 1 / 1; justify-self: end; align-self: center; position: relative; z-index: 5; margin-right: -11px;
-  width: 22px; height: 22px; display: grid; place-items: center; padding: 0; -webkit-app-region: no-drag;
-  border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); color: var(--muted);
-  box-shadow: 0 1px 3px rgb(var(--shadow) / calc(0.2 * var(--shadow-k)));
-  opacity: 0.7; animation: fade-in 180ms ease-out;
+.sidebar-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sidebar-toggle-pane { opacity: 0.45; transition: opacity 180ms ease; }
+.sidebar-toggle-chev { transform-box: fill-box; transform-origin: center; transition: transform 180ms ease; }
+.app[data-sidebar='collapsed'] .sidebar-toggle { margin-right: -34px; }
+.app[data-sidebar='collapsed'] .sidebar-toggle-pane { opacity: 0; }
+.app[data-sidebar='collapsed'] .sidebar-toggle-chev { transform: rotate(180deg); }
+.app[data-sidebar='collapsed'] .toolbar { padding-left: 46px; }
+:root[data-platform='darwin'] .app[data-sidebar='collapsed'] .sidebar-toggle { margin-right: -110px; }
+.toolbar { transition: padding-left 180ms ease; }
+@media (prefers-reduced-motion: reduce) {
+  .app, .sidebar, .app[data-sidebar='collapsed'] .sidebar, .toolbar, .sidebar-toggle, .sidebar-toggle-pane, .sidebar-toggle-chev {
+    transition: none;
+  }
 }
-.sidebar-handle:hover { opacity: 1; background: var(--hover); color: var(--fg); border-color: var(--muted); }
-@media (prefers-reduced-motion: reduce) { .app { transition: none; } }
 
 /* ---------- Sidebar ---------- */
 .sidebar {
-  grid-area: 1 / 1; display: flex; flex-direction: column; min-height: 0;
+  grid-area: 1 / 1; display: flex; flex-direction: column; min-height: 0; width: 240px;
   padding: 44px 0 0; background: var(--surface); overflow: hidden;
 }
 /* Hidden title bar is macOS-only; inside a native frame drag regions swallow clicks. */

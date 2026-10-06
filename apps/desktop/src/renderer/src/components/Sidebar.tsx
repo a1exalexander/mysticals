@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { extraEmail } from '@mysticals/core/logic/details'
+import { accountName, extraEmail } from '@mysticals/core/logic/details'
 import { bus } from '../bus'
 import { setCalendarVisible, useCalendarData } from '../hooks/useCalendarData'
 import { MiniMonth } from './MiniMonth'
@@ -38,6 +38,7 @@ export function Sidebar({ collapsed: hidden = false }: { collapsed?: boolean }):
       <div className="sb-accounts">
         {accounts.map((a) => {
           const open = !collapsed.includes(a.id)
+          const name = accountName(a.label, a.email)
           const cals = calendars.filter((c) => c.accountId === a.id)
           // Before its first sync lands an account has no calendars yet: say so instead of showing nothing.
           const loading = !a.synced && !cals.length && !!a.syncing
@@ -55,7 +56,7 @@ export function Sidebar({ collapsed: hidden = false }: { collapsed?: boolean }):
                   <path d="M3.5 2l3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <span className="sb-dot" style={{ background: a.color }} />
-                <span className="sb-label">{a.label}</span>
+                <span className="sb-label">{name}</span>
                 {loading ? (
                   <span className="sb-spin" aria-hidden />
                 ) : (
@@ -65,7 +66,7 @@ export function Sidebar({ collapsed: hidden = false }: { collapsed?: boolean }):
                     </span>
                   )
                 )}
-                {extraEmail(a.label, a.email) && <span className="sb-email">{a.email}</span>}
+                {extraEmail(name, a.email) && <span className="sb-email">{a.email}</span>}
               </button>
               {open && loading && (
                 <div className="sb-loading" role="status" data-testid={`sidebar-loading-${a.id}`}>
