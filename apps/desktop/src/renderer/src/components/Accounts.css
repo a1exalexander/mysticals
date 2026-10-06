@@ -108,7 +108,7 @@
 .acc-sheet button.acc-link:hover { background: none; text-decoration: underline; }
 
 /* Theme picker */
-.theme-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .acc-sheet button.theme-opt {
   height: auto; display: grid; gap: 8px; padding: 10px; text-align: left; border-radius: 6px; background: var(--bg);
 }
@@ -122,21 +122,22 @@
   display: flex; justify-content: space-between; align-items: center; gap: 4px; font: 500 11.5px/1.25 var(--mono);
 }
 .theme-name .on { color: var(--accent); }
-/* Four rows of themes fit the panel without growing the sheet. */
+/* Four themes a row on the wide Settings sheet; three rows fit the panel without growing it. */
 .set-panel .theme-swatch { height: 32px; }
 
 /* Settings tabs: the toolbar .seg (sliding thumb), a bit taller; undo the generic .acc-sheet button look. */
-/* Five tabs, some long in Ukrainian: the Settings sheet is a bit wider than the add-account one. */
-.acc-sheet:has(.set-tabs) { width: min(560px, calc(100vw - 32px)); }
-.acc-sheet .set-tabs { width: max-content; max-width: 100%; margin: 6px 0 16px; }
+/* Six tabs, long in Ukrainian (Конфіденційність, Синхронізація…): the Settings sheet is much wider than the add-account
+   one, the tabs share the full track, and a label that still doesn't fit (narrow window) ellipsizes inside its tab. */
+.acc-sheet:has(.set-tabs) { width: min(720px, calc(100vw - 32px)); }
+.acc-sheet .set-tabs { width: 100%; margin: 6px 0 16px; }
 .acc-sheet .set-tabs .seg-thumb { height: 26px; }
 .acc-sheet .set-tabs button {
-  height: 26px; padding: 0 9px; border: 0; border-radius: 4px; background: none; color: var(--muted); font: 12px/26px var(--mono);
-  white-space: nowrap;
+  flex: 1 1 auto; min-width: 0; height: 26px; padding: 0 9px; border: 0; border-radius: 4px; background: none;
+  color: var(--muted); font: 12px/26px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .acc-sheet .set-tabs button:hover:not(:disabled) { background: none; color: var(--fg); }
 .acc-sheet .set-tabs button.active { color: var(--accent); }
-.set-panel { min-height: 340px; }
+.set-panel { min-height: 380px; }
 .set-made { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 12px 0 0; font-size: 11px; color: var(--muted); }
 .set-made svg { width: 12px; height: 8px; border-radius: 1px; }
 .set-made a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
