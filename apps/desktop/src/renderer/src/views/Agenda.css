@@ -94,8 +94,12 @@
 
 /* Now line between the events that have started and the ones still to come (the time grid's .tg-now look). */
 .ag-rows .ag-now { position: relative; height: 0; margin: 5px 0 5px 52px; border-top: 2px solid var(--pink); animation: none; }
-/* Over a running event: crosses its row at the current time, above the row's hover/selection background. */
-.ag-rows .ag-now-over { position: absolute; left: 52px; right: 0; margin: -1px 0 0; z-index: 1; pointer-events: none; }
+/* Over a running event: crosses its row at the current time, above the row's hover/selection background. The line is
+   faint so the title and meta under it stay readable; the dot and the clock stay solid. */
+.ag-rows .ag-now-over {
+  position: absolute; left: 52px; right: 0; margin: -1px 0 0; z-index: 1; pointer-events: none;
+  border-top-color: color-mix(in srgb, var(--pink) 35%, transparent);
+}
 /* Stops short of the Join pill (in the row's right padding) so the clock never covers it. */
 .ag-rows li:has(.ag-join-pill) .ag-now-over { right: 64px; }
 .ag-now::before {
