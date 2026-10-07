@@ -80,6 +80,29 @@ export interface ReminderApi {
   /** Ids of the accounts whose reminders and invite/change banners are off. */
   muted(): Promise<string[]>
   setMuted(accountId: string, muted: boolean): Promise<void>
+  /** Full-screen reminder for events with a Call link instead of a Banner; off by default. */
+  fullscreen(): Promise<boolean>
+  setFullscreen(on: boolean): Promise<void>
+}
+
+/** One meeting on the full-screen reminder (ISO start/end, calendar colour, account label, its Call link). */
+export interface ReminderMeeting {
+  key: string
+  title: string
+  start: string
+  end: string
+  color: string
+  account: string
+  url: string
+}
+
+/** Desktop-only, in the full-screen reminder window (`#reminder` route): its meetings, and closing it. Exposed as `window.reminderScreen`. */
+export interface ReminderScreenApi {
+  meetings(): Promise<ReminderMeeting[]>
+  /** Fires when meetings are added to or dropped from the screen. Returns unsubscribe. */
+  onMeetings(cb: (list: ReminderMeeting[]) => void): () => void
+  /** Closes the screen; with one of its meetings' `url`, opens that call in the browser first. */
+  close(url?: string): Promise<void>
 }
 
 /** UI language: the Settings choice, the language in use and what the OS asks for (shown next to "Automatic"). */
@@ -133,6 +156,10 @@ export const IPC = {
   remindersSet: 'reminders:set',
   remindersMutedGet: 'reminders:muted-get',
   remindersMutedSet: 'reminders:muted-set',
+  remindersFullscreenGet: 'reminders:fullscreen-get',
+  remindersFullscreenSet: 'reminders:fullscreen-set',
+  reminderScreenMeetings: 'reminder-screen:meetings',
+  reminderScreenClose: 'reminder-screen:close',
   themeSet: 'theme:set',
   localeGet: 'locale:get',
   localeSet: 'locale:set',

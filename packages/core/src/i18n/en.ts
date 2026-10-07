@@ -65,6 +65,11 @@ export const en = {
   'notify.many': { one: '{n} calendar update', other: '{n} calendar updates' },
   'reminder.in': 'in {n} min',
   'reminder.now': 'starting now',
+  'reminder.screen': 'Upcoming calls',
+  'reminder.link': 'Call link',
+  'reminder.copy': 'Copy',
+  'reminder.copied': 'Copied',
+  'reminder.dismiss': 'Esc or Backspace to dismiss',
 
   // ---- desktop: menus, dialogs, update ----
   'menu.file': 'File',
@@ -163,6 +168,7 @@ export const en = {
   'settings.reminders.label': 'Remind me before events',
   'settings.reminders.accountSwitch': 'Notifications',
   'settings.reminders.off': 'Off',
+  'settings.reminders.fullscreen': 'Full-screen reminder for calls',
   'settings.reminders.min': '{n} min before',
   'settings.reminders.accountFor': 'Notifications for {name}',
   'settings.reminders.hint': 'Pops up while Mysticals is open, with a Join button when the event has a link. Declined, all-day and hidden-calendar events stay silent.',

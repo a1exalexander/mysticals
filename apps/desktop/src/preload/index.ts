@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { Api, LocaleApi, LocaleState, MenuCommand, ReminderApi, TelemetryApi, ThemeApi, UpdateApi, UpdateState } from '@shared/ipc'
+import type { Api, LocaleApi, LocaleState, MenuCommand, ReminderApi, ReminderMeeting, ReminderScreenApi, TelemetryApi, ThemeApi, UpdateApi, UpdateState } from '@shared/ipc'
 import { IPC } from '@shared/ipc'
 
 const call =
@@ -55,9 +55,18 @@ const reminders: ReminderApi = {
   get: call(IPC.remindersGet),
   set: call(IPC.remindersSet),
   muted: call(IPC.remindersMutedGet),
-  setMuted: call(IPC.remindersMutedSet)
+  setMuted: call(IPC.remindersMutedSet),
+  fullscreen: call(IPC.remindersFullscreenGet),
+  setFullscreen: call(IPC.remindersFullscreenSet)
 } as ReminderApi
 contextBridge.exposeInMainWorld('reminders', reminders)
+
+const reminderScreen: ReminderScreenApi = {
+  meetings: call(IPC.reminderScreenMeetings),
+  onMeetings: (cb) => on<ReminderMeeting[]>(IPC.reminderScreenMeetings, cb),
+  close: call(IPC.reminderScreenClose)
+} as ReminderScreenApi
+contextBridge.exposeInMainWorld('reminderScreen', reminderScreen)
 
 const locale: LocaleApi = {
   get: call(IPC.localeGet),

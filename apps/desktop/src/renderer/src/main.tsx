@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './styles/base.css'
 import { App } from './App'
+import { ReminderScreen } from './components/ReminderScreen'
 import { applyTheme } from './theme'
 import { initLocale } from './i18n'
 
@@ -11,7 +12,7 @@ applyTheme()
 void initLocale().then(() =>
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <App />
+      {location.hash === '#reminder' ? <ReminderScreen /> : <App />}
     </StrictMode>
   )
 )

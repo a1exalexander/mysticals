@@ -2,7 +2,7 @@ import { format } from 'date-fns'
 import { t, type Locale } from '../i18n'
 import type { CalEvent } from '../shared/types'
 import { eventBounds } from './layout'
-import { eventMeetingUrl, eventPlace, linkKind, linkLabel } from './meeting'
+import { CALL_KINDS, eventMeetingUrl, eventPlace, linkKind, linkLabel } from './meeting'
 
 /** Minutes before an event its reminder pops up; 0 turns reminders off. */
 export const REMINDER_CHOICES = [0, 1, 2, 5, 10, 15] as const
@@ -16,6 +16,24 @@ export const REMINDER_GRACE_MS = 60_000
 /** Identity of one reminder: the start is part of it, so a moved event reminds again. */
 export const reminderKey = (e: CalEvent): string => `${e.accountId}/${e.calendarId}/${e.id}@${e.start}`
 
+/** How long a reminded key is remembered past its event start; older ones can never be due again. */
+export const REMINDED_KEEP_MS = 60 * 60_000
+
+/** Reminded keys from the stored `{ key: startMs }` object, minus junk and expired ones. */
+export function loadReminded(stored: unknown, now: number): Map<string, number> {
+  const sent = new Map<string, number>()
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return sent
+  for (const [k, start] of Object.entries(stored)) if (typeof start === 'number' && start >= now - REMINDED_KEEP_MS) sent.set(k, start)
+  return sent
+}
+
+/** Drops expired keys from `sent` in place; true when any went (so the stored copy needs a write). */
+export function pruneReminded(sent: Map<string, number>, now: number): boolean {
+  const before = sent.size
+  for (const [k, start] of sent) if (start < now - REMINDED_KEEP_MS) sent.delete(k)
+  return sent.size !== before
+}
+
 /** Events whose reminder is due at `now`: timed, not declined, starting within `leadMin` and not reminded yet. */
 export function dueReminders(events: CalEvent[], now: Date, leadMin: number, sent: ReadonlySet<string>): CalEvent[] {
   if (leadMin <= 0) return []
@@ -25,6 +43,29 @@ export function dueReminders(events: CalEvent[], now: Date, leadMin: number, sen
     const start = eventBounds(e).start.getTime()
     return start - leadMin * 60_000 <= n && n < start + REMINDER_GRACE_MS
   })
+}
+
+/** Due reminders by delivery: events with a Call link go full-screen when `fullscreen` is on, the rest get a Banner. */
+export function splitReminders(due: CalEvent[], fullscreen: boolean): { fullscreen: CalEvent[]; banner: CalEvent[] } {
+  const isCall = (e: CalEvent): boolean => {
+    const url = eventMeetingUrl(e)
+    return fullscreen && !!url && CALL_KINDS.includes(linkKind(url))
+  }
+  return { fullscreen: due.filter(isCall), banner: due.filter((e) => !isCall(e)) }
+}
+
+/**
+ * What the open full-screen reminder holds after a tick: its meetings as `listed` now (dropping cancelled, moved,
+ * declined and ended ones), plus the newly `due` ones.
+ */
+export function screenMeetings(open: CalEvent[], due: CalEvent[], listed: CalEvent[], now: Date): CalEvent[] {
+  const byKey = new Map(listed.map((e) => [reminderKey(e), e]))
+  const kept = open.flatMap((e) => {
+    const cur = byKey.get(reminderKey(e))
+    return cur && cur.myStatus !== 'declined' && now < eventBounds(cur).end ? [cur] : []
+  })
+  const on = new Set(kept.map(reminderKey))
+  return [...kept, ...due.filter((e) => !on.has(reminderKey(e)))]
 }
 
 export interface ReminderText {

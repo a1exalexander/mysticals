@@ -61,6 +61,11 @@ export function applyTheme(id: ThemeId = current): void {
   subs.forEach((f) => f())
 }
 
+/** `storage` listener: follows a theme picked in another window (Settings while the full-screen reminder is open). */
+export const followTheme = (e: StorageEvent): void => {
+  if (e.key === KEY && isTheme(e.newValue) && e.newValue !== current) applyTheme(e.newValue)
+}
+
 export const useTheme = (): ThemeId =>
   useSyncExternalStore(
     (cb) => {
