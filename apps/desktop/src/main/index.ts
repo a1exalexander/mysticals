@@ -18,6 +18,7 @@ import { startUpdater } from './update'
 import { startDesktopTelemetry } from './telemetry'
 import { mutedAccounts, startReminders } from './reminders'
 import { electronTriggers } from './sync/electronTriggers'
+import { loadRenderer, lockDown, themeBg, webPreferences } from './window'
 
 const MOCK = process.env.MYSTICALS_MOCK === '1'
 const MAC = process.platform === 'darwin'
@@ -38,9 +39,12 @@ app.on('open-url', (e) => {
   if (started) showMain()
 })
 
+// Not getAllWindows()[0]: the full-screen reminder is a window too.
+let mainWin: BrowserWindow | null = null
+
 /** Brings the main window forward, or opens one. */
 function showMain(): void {
-  const win = BrowserWindow.getAllWindows()[0]
+  const win = mainWin
   if (!win) return createWindow()
   if (win.isMinimized()) win.restore()
   win.show()
@@ -118,21 +122,12 @@ function createWindow(): void {
     ...(MAC ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 16, y: 18 } } : {}),
     // Solid dark window (no vibrancy); matches --bg so there is no flash before first paint.
     backgroundColor: '#0b0b10',
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      sandbox: true,
-      nodeIntegration: false
-    }
+    webPreferences
   })
+  mainWin = win
+  win.on('closed', () => mainWin === win && (mainWin = null))
   win.once('ready-to-show', () => win.show())
-
-  // The renderer never navigates or opens windows; external http(s) links go to the system browser.
-  win.webContents.on('will-navigate', (e) => e.preventDefault())
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
-    return { action: 'deny' }
-  })
+  lockDown(win)
 
   // Right-click: copy selected text and links, the usual edit actions in fields.
   win.webContents.on('context-menu', (_e, p) => {
@@ -172,8 +167,7 @@ function createWindow(): void {
       }
     })
 
-  if (process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL)
-  else win.loadFile(join(__dirname, '../renderer/index.html'))
+  loadRenderer(win)
 }
 
 app.whenReady().then(() => {
@@ -184,7 +178,9 @@ app.whenReady().then(() => {
   // Settings > Themes: light palettes get a light native frame; the window bg follows --bg (no flash on resize).
   ipcMain.handle(IPC.themeSet, (e, scheme: unknown, bg: unknown) => {
     nativeTheme.themeSource = scheme === 'light' ? 'light' : 'dark'
-    if (typeof bg === 'string' && /^#[0-9a-f]{6}$/i.test(bg)) BrowserWindow.fromWebContents(e.sender)?.setBackgroundColor(bg)
+    if (typeof bg !== 'string' || !/^#[0-9a-f]{6}$/i.test(bg)) return
+    themeBg.current = bg
+    BrowserWindow.fromWebContents(e.sender)?.setBackgroundColor(bg)
   })
   // Packaged builds get the icon from electron-builder; in dev the dock would show Electron's.
   if (!app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'build/icon.png'))
@@ -244,7 +240,7 @@ app.whenReady().then(() => {
   startUpdater()
   started = true
   createWindow()
-  app.on('activate', () => BrowserWindow.getAllWindows().length === 0 && createWindow())
+  app.on('activate', () => !mainWin && createWindow())
 })
 
 app.on('window-all-closed', () => !MAC && app.quit())

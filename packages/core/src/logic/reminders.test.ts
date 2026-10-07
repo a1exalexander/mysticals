@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CalEvent } from '../shared/types'
-import { dueReminders, isReminderMin, loadReminded, pruneReminded, reminderKey, reminderText, splitReminders } from './reminders'
+import { dueReminders, isReminderMin, loadReminded, pruneReminded, reminderKey, reminderText, screenMeetings, splitReminders } from './reminders'
 
 const ev = (id: string, p: Partial<CalEvent> = {}): CalEvent => ({
   id, accountId: 'a', calendarId: 'c', title: id, start: '2026-10-02T10:00:00', end: '2026-10-02T10:30:00',
@@ -99,5 +99,26 @@ describe('splitReminders', () => {
   })
   it('sends everything as a banner when it is off', () => {
     expect(splitReminders(es, false)).toEqual({ fullscreen: [], banner: es })
+  })
+})
+
+describe('screenMeetings', () => {
+  it('adds newly due meetings to the open screen, once each', () => {
+    const a = ev('a'), b = ev('b')
+    expect(ids(screenMeetings([], [a], [a, b], at('09:58:00')))).toEqual(['a'])
+    expect(ids(screenMeetings([a], [b], [a, b], at('09:59:00')))).toEqual(['a', 'b'])
+    expect(ids(screenMeetings([a, b], [b], [a, b], at('09:59:20')))).toEqual(['a', 'b'])
+  })
+  it('drops a meeting once it ends', () => {
+    const a = ev('a'), b = ev('b', { end: '2026-10-02T11:00:00' })
+    expect(ids(screenMeetings([a, b], [], [a, b], at('10:29:59')))).toEqual(['a', 'b'])
+    expect(ids(screenMeetings([a, b], [], [a, b], at('10:30:00')))).toEqual(['b'])
+  })
+  it('drops a meeting that was cancelled, moved or declined, and keeps the latest copy of the rest', () => {
+    const a = ev('a'), b = ev('b'), c = ev('c')
+    const renamed = ev('a', { title: 'Renamed' })
+    const moved = ev('c', { start: '2026-10-02T10:15:00' })
+    const next = screenMeetings([a, b, c], [], [renamed, ev('b', { myStatus: 'declined' }), moved], at('09:59:00'))
+    expect(next).toEqual([renamed])
   })
 })

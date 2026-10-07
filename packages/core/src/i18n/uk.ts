@@ -66,6 +66,11 @@ export const uk: Record<Key, Msg> = {
   'notify.many': { one: '{n} зміна в календарі', few: '{n} зміни в календарі', many: '{n} змін у календарі', other: '{n} зміни в календарі' },
   'reminder.in': 'через {n} хв',
   'reminder.now': 'починається зараз',
+  'reminder.screen': 'Найближчі дзвінки',
+  'reminder.link': 'Посилання на дзвінок',
+  'reminder.copy': 'Копіювати',
+  'reminder.copied': 'Скопійовано',
+  'reminder.dismiss': 'Esc або Backspace, щоб закрити',
 
   // ---- desktop: menus, dialogs, update ----
   'menu.file': 'Файл',

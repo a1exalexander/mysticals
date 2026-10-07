@@ -54,6 +54,20 @@ export function splitReminders(due: CalEvent[], fullscreen: boolean): { fullscre
   return { fullscreen: due.filter(isCall), banner: due.filter((e) => !isCall(e)) }
 }
 
+/**
+ * What the open full-screen reminder holds after a tick: its meetings as `listed` now (dropping cancelled, moved,
+ * declined and ended ones), plus the newly `due` ones.
+ */
+export function screenMeetings(open: CalEvent[], due: CalEvent[], listed: CalEvent[], now: Date): CalEvent[] {
+  const byKey = new Map(listed.map((e) => [reminderKey(e), e]))
+  const kept = open.flatMap((e) => {
+    const cur = byKey.get(reminderKey(e))
+    return cur && cur.myStatus !== 'declined' && now < eventBounds(cur).end ? [cur] : []
+  })
+  const on = new Set(kept.map(reminderKey))
+  return [...kept, ...due.filter((e) => !on.has(reminderKey(e)))]
+}
+
 export interface ReminderText {
   title: string
   body: string

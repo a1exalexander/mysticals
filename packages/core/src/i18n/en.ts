@@ -65,6 +65,11 @@ export const en = {
   'notify.many': { one: '{n} calendar update', other: '{n} calendar updates' },
   'reminder.in': 'in {n} min',
   'reminder.now': 'starting now',
+  'reminder.screen': 'Upcoming calls',
+  'reminder.link': 'Call link',
+  'reminder.copy': 'Copy',
+  'reminder.copied': 'Copied',
+  'reminder.dismiss': 'Esc or Backspace to dismiss',
 
   // ---- desktop: menus, dialogs, update ----
   'menu.file': 'File',

@@ -1,0 +1,26 @@
+/* Full-screen reminder: opaque in the theme's --bg (body), cards on --surface-2, hairline borders only. */
+.rs {
+  height: 100%; box-sizing: border-box; overflow: auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px;
+  padding: 48px 24px;
+}
+.rs-heading { margin: 0; font: 600 12px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.rs-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; max-width: 100%; }
+.rs-card {
+  width: 380px; max-width: 100%; box-sizing: border-box; padding: 22px 24px;
+  display: flex; flex-direction: column; gap: 10px;
+  background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 10px;
+}
+.rs-meta { display: flex; align-items: center; gap: 8px; font: 500 12px/1.2 var(--mono); color: var(--muted); }
+.rs-account { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rs-when { margin-left: auto; color: var(--accent); white-space: nowrap; }
+.rs-title { margin: 2px 0 0; font-size: 22px; line-height: 1.25; font-weight: 650; overflow-wrap: anywhere; user-select: text; }
+.rs-time { font: 14px/1 var(--mono); color: var(--muted); }
+.rs-join.mc-btn { height: 44px; margin-top: 6px; font-size: 14px; }
+.rs-link { display: flex; gap: 6px; }
+.rs-url {
+  flex: 1; min-width: 0; height: 26px; box-sizing: border-box; padding: 0 8px;
+  font: 12px/1 var(--mono); color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 4px;
+}
+.rs-url:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.rs-hint { margin: 0; font: 12px/1 var(--mono); color: var(--faint); }
