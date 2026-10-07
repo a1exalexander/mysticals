@@ -69,7 +69,8 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars'>, showMain:
   }
 
   const show = ({ title, body, join }: ReturnType<typeof reminderText>): void => {
-    const n = new Notification({ title, body, actions: join ? [{ type: 'button', text: join.label }] : [] })
+    // Stays until dismissed on Windows/Linux (critical: GNOME ignores timeouts); macOS takes it from Info.plist.
+    const n = new Notification({ title, body, actions: join ? [{ type: 'button', text: join.label }] : [], timeoutType: 'never', urgency: 'critical' })
     banners.add(n)
     const open = (): void => {
       banners.delete(n)
