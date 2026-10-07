@@ -30,7 +30,8 @@ describe('pendingInvites', () => {
         ev({ id: 'past', myStatus: 'needsAction', end: '2026-09-24T12:00:00.000Z' }),
         ev({ id: 'b', myStatus: 'needsAction', start: '2026-09-26T10:00:00.000Z', end: '2026-09-26T11:00:00.000Z' }),
         ev({ id: 'a', myStatus: 'needsAction' }),
-        ev({ id: 'ok', myStatus: 'accepted' })
+        ev({ id: 'ok', myStatus: 'accepted' }),
+        ev({ id: 'mine', myStatus: 'needsAction', attendees: [{ email: 'me@work.example', status: 'needsAction', self: true, organizer: true }] })
       ],
       now
     )

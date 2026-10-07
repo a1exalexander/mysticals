@@ -29,11 +29,14 @@ export function canEdit(e: CalEvent, account?: Account, calendar?: Calendar): bo
   return same(e.organizer?.email, account.email) || e.attendees.some((a) => a.self && a.organizer)
 }
 
+/** An invite this account still has to answer: never one it organizes itself (its own guest entry may stay unanswered). */
+export const awaitsReply = (e: CalEvent): boolean => e.myStatus === 'needsAction' && !e.attendees.some((a) => a.self && a.organizer)
+
 /** Upcoming invites this account still has to answer, soonest first. */
 const at = (iso: string, allDay: boolean): number => (allDay ? parseISO(iso) : new Date(iso)).getTime()
 export const pendingInvites = (events: CalEvent[], now = new Date()): CalEvent[] =>
   events
-    .filter((e) => e.myStatus === 'needsAction' && at(e.end, e.allDay) > now.getTime())
+    .filter((e) => awaitsReply(e) && at(e.end, e.allDay) > now.getTime())
     .sort((a, b) => at(a.start, a.allDay) - at(b.start, b.allDay))
 
 export function formatWhen(e: CalEvent, locale: Locale = 'en'): string {

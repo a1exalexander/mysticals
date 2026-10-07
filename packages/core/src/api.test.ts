@@ -88,6 +88,7 @@ describe('createApi isolation', () => {
     const { api, providers, invite } = setup()
     await api.events.respond({ ...invite, raw: 'forged', etag: 'forged' }, 'accepted')
     expect(providers.work.respond).toHaveBeenCalledWith(expect.objectContaining({ raw: 'ICS', etag: 'e1' }), 'accepted')
+    expect(providers.personal.respond).not.toHaveBeenCalled()
   })
 
   it('update merges only allowed edits onto the cached event', async () => {

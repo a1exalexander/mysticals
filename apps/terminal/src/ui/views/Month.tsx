@@ -10,6 +10,7 @@
 import { Box, Text } from 'ink'
 import { format, isSameDay, isSameMonth, startOfDay } from 'date-fns'
 import { eventBounds, eventsOnDay, isPast, monthGrid } from '@mysticals/core/logic/layout'
+import { awaitsReply } from '@mysticals/core/logic/details'
 import type { CalEvent } from '@mysticals/core/shared/types'
 import { eventKey, type ViewProps } from '../hooks'
 import { Clickable } from '../mouse'
@@ -43,7 +44,7 @@ export function EventLine({ e, day, now, selected, time, onSelect, onOpen }: {
         wrap="truncate-end"
         inverse={selected}
         bold={selected}
-        italic={e.myStatus === 'needsAction'}
+        italic={awaitsReply(e)}
         strikethrough={e.myStatus === 'declined'}
         color={selected ? C.accent : isPast(e, now) || e.myStatus === 'declined' ? C.muted : live ? C.green : e.allDay ? C.yellow : undefined}
       >
