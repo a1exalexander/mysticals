@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CalEvent } from '../shared/types'
-import { dueReminders, isReminderMin, reminderKey, reminderText } from './reminders'
+import { dueReminders, isReminderMin, loadReminded, pruneReminded, reminderKey, reminderText } from './reminders'
 
 const ev = (id: string, p: Partial<CalEvent> = {}): CalEvent => ({
   id, accountId: 'a', calendarId: 'c', title: id, start: '2026-10-02T10:00:00', end: '2026-10-02T10:30:00',
@@ -60,5 +60,25 @@ describe('isReminderMin', () => {
   it('accepts only the offered choices', () => {
     expect([0, 2, 15].every(isReminderMin)).toBe(true)
     expect([3, -1, '2', undefined].some(isReminderMin)).toBe(false)
+  })
+})
+
+describe('reminded keys', () => {
+  const now = at('10:00:00').getTime()
+  const hourAgo = now - 60 * 60_000
+  it('loads stored keys, dropping junk and ones older than an hour', () => {
+    const stored = { fresh: now - 60_000, edge: hourAgo, old: hourAgo - 1, bad: 'x', nan: null }
+    expect(loadReminded(stored, now)).toEqual(new Map([['fresh', now - 60_000], ['edge', hourAgo]]))
+  })
+  it('loads nothing from a missing or broken file', () => {
+    expect(loadReminded(undefined, now)).toEqual(new Map())
+    expect(loadReminded(null, now)).toEqual(new Map())
+    expect(loadReminded([1, 2], now)).toEqual(new Map())
+  })
+  it('prunes keys older than an hour and says whether any went', () => {
+    const sent = new Map([['a', now], ['edge', hourAgo], ['b', hourAgo - 1]])
+    expect(pruneReminded(sent, now)).toBe(true)
+    expect([...sent.keys()]).toEqual(['a', 'edge'])
+    expect(pruneReminded(sent, now)).toBe(false)
   })
 })

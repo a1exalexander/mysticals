@@ -16,6 +16,24 @@ export const REMINDER_GRACE_MS = 60_000
 /** Identity of one reminder: the start is part of it, so a moved event reminds again. */
 export const reminderKey = (e: CalEvent): string => `${e.accountId}/${e.calendarId}/${e.id}@${e.start}`
 
+/** How long a reminded key is remembered past its event start; older ones can never be due again. */
+export const REMINDED_KEEP_MS = 60 * 60_000
+
+/** Reminded keys from the stored `{ key: startMs }` object, minus junk and expired ones. */
+export function loadReminded(stored: unknown, now: number): Map<string, number> {
+  const sent = new Map<string, number>()
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return sent
+  for (const [k, start] of Object.entries(stored)) if (typeof start === 'number' && start >= now - REMINDED_KEEP_MS) sent.set(k, start)
+  return sent
+}
+
+/** Drops expired keys from `sent` in place; true when any went (so the stored copy needs a write). */
+export function pruneReminded(sent: Map<string, number>, now: number): boolean {
+  const before = sent.size
+  for (const [k, start] of sent) if (start < now - REMINDED_KEEP_MS) sent.delete(k)
+  return sent.size !== before
+}
+
 /** Events whose reminder is due at `now`: timed, not declined, starting within `leadMin` and not reminded yet. */
 export function dueReminders(events: CalEvent[], now: Date, leadMin: number, sent: ReadonlySet<string>): CalEvent[] {
   if (leadMin <= 0) return []

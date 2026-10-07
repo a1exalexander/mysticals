@@ -1,6 +1,8 @@
-import { ipcMain, Notification, powerMonitor, shell } from 'electron'
+import { readFileSync, writeFileSync } from 'fs'
+import { join } from 'path'
+import { app, ipcMain, Notification, powerMonitor, shell } from 'electron'
 import { IPC, type Api } from '@shared/ipc'
-import { DEFAULT_REMINDER_MIN, dueReminders, isReminderMin, reminderKey, reminderText } from '@mysticals/core/logic/reminders'
+import { DEFAULT_REMINDER_MIN, dueReminders, isReminderMin, loadReminded, pruneReminded, reminderKey, reminderText } from '@mysticals/core/logic/reminders'
 import { visibleEvents } from '@mysticals/core/logic/visible'
 import { currentLocale } from './locale'
 import { readPrefs, writePrefs } from './prefs'
@@ -17,6 +19,14 @@ export const reminderMin = (): number => {
 export const mutedAccounts = (): Set<string> => {
   const v = readPrefs().notifyOff
   return new Set(Array.isArray(v) ? v.filter((id): id is string => typeof id === 'string') : [])
+}
+
+const readJson = (file: string): unknown => {
+  try {
+    return JSON.parse(readFileSync(file, 'utf8'))
+  } catch {
+    return undefined
+  }
 }
 
 // Held until closed/clicked: a GC'd Notification drops its click/action handlers.
@@ -44,7 +54,16 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars'>, showMain:
     writePrefs({ notifyOff: [...off] })
   })
 
-  const sent = new Map<string, number>() // reminder key → event start (ms), to forget old ones
+  // reminder key → event start (ms), to forget old ones. On disk so a restart inside the reminder window stays quiet.
+  const sentFile = join(app.getPath('userData'), 'reminded.json')
+  const sent = loadReminded(readJson(sentFile), Date.now())
+  const saveSent = (): void => {
+    try {
+      writeFileSync(sentFile, JSON.stringify(Object.fromEntries(sent)))
+    } catch (e) {
+      console.error('saving reminded keys failed', e)
+    }
+  }
   let busy = false
   const tick = async (): Promise<void> => {
     const lead = reminderMin()
@@ -54,13 +73,15 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars'>, showMain:
       const now = new Date()
       const range = { start: new Date(now.getTime() - 60 * 60_000).toISOString(), end: new Date(now.getTime() + (lead + 1) * 60_000).toISOString() }
       const [events, calendars] = await Promise.all([api.events.list(range), api.calendars.list()])
-      for (const [k, start] of sent) if (start < now.getTime() - 60 * 60_000) sent.delete(k)
+      let changed = pruneReminded(sent, now.getTime())
       const muted = mutedAccounts()
       const shown = visibleEvents(events, calendars).filter((e) => !muted.has(e.accountId))
       for (const e of dueReminders(shown, now, lead, new Set(sent.keys()))) {
         sent.set(reminderKey(e), new Date(e.start).getTime())
+        changed = true
         show(reminderText(e, now, currentLocale()))
       }
+      if (changed) saveSent()
     } catch (e) {
       console.error('reminders failed', e)
     } finally {
