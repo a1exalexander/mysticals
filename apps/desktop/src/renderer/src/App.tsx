@@ -40,7 +40,12 @@ export function App(): React.JSX.Element {
   return (
     <div className="app" data-sidebar={collapsed ? 'collapsed' : 'expanded'}>
       <Sidebar collapsed={collapsed} />
-      {/* The one sidebar toggle, on the sidebar's right edge at toolbar height; it rides the column as it folds. */}
+      <main className="main">
+        <CalendarView />
+      </main>
+      {/* The one sidebar toggle, on the sidebar's right edge at toolbar height; it rides the column as it folds.
+          After <main>: app-regions resolve in DOM order, so placed earlier the toolbar's drag region would
+          swallow clicks once the toggle sits over it (collapsed, on macOS). */}
       <button
         type="button"
         className="sidebar-toggle"
@@ -57,9 +62,6 @@ export function App(): React.JSX.Element {
           <path className="sidebar-toggle-chev" d="M16.5 9l-3 3 3 3" />
         </svg>
       </button>
-      <main className="main">
-        <CalendarView />
-      </main>
       <StatusBar />
       <EventEditorHost />
       <EventDetailsHost />
