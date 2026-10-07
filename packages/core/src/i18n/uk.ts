@@ -164,6 +164,7 @@ export const uk: Record<Key, Msg> = {
   'settings.reminders.label': 'Нагадувати перед подіями',
   'settings.reminders.accountSwitch': 'Сповіщення',
   'settings.reminders.off': 'Вимкнено',
+  'settings.reminders.fullscreen': 'Повноекранне нагадування для дзвінків',
   'settings.reminders.min': 'за {n} хв',
   'settings.reminders.accountFor': 'Сповіщення для {name}',
   'settings.reminders.hint': 'З’являється, поки Mysticals відкритий, з кнопкою «Приєднатися», якщо в події є посилання. Відхилені, цілоденні події та події з прихованих календарів без сповіщень.',

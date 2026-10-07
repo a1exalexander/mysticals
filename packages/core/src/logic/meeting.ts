@@ -8,7 +8,7 @@ export function meetingUrl(location?: string): string | undefined {
   return location?.match(/https?:\/\/[^\s<>"]+/i)?.[0].replace(/[.,;:!?)\]}'>]+$/, '')
 }
 
-const CALL_KINDS: readonly LinkKind[] = ['meet', 'zoom', 'teams', 'video']
+export const CALL_KINDS: readonly LinkKind[] = ['meet', 'zoom', 'teams', 'video']
 
 /** First video-call link in a description (plain text or HTML, links in `href`s included); other links are ignored. */
 export function descriptionCallUrl(description?: string): string | undefined {

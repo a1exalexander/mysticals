@@ -163,6 +163,7 @@ export const en = {
   'settings.reminders.label': 'Remind me before events',
   'settings.reminders.accountSwitch': 'Notifications',
   'settings.reminders.off': 'Off',
+  'settings.reminders.fullscreen': 'Full-screen reminder for calls',
   'settings.reminders.min': '{n} min before',
   'settings.reminders.accountFor': 'Notifications for {name}',
   'settings.reminders.hint': 'Pops up while Mysticals is open, with a Join button when the event has a link. Declined, all-day and hidden-calendar events stay silent.',
