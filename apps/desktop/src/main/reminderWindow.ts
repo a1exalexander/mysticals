@@ -2,24 +2,44 @@ import { app, BrowserWindow, ipcMain, screen, shell } from 'electron'
 import { IPC, type ReminderMeeting } from '@shared/ipc'
 import { loadRenderer, lockDown, themeBg, webPreferences } from './window'
 
+/** A dismiss this soon after the screen appears came from keys meant for another app. */
+const KEY_GUARD_MS = 1000
+
 let win: BrowserWindow | null = null
 let meetings: ReminderMeeting[] = []
+let shownAt = Infinity
+let onClosed = (): void => {}
 
-ipcMain.handle(IPC.reminderScreenMeetings, () => meetings)
-ipcMain.handle(IPC.reminderScreenClose, (e, url: unknown) => {
-  if (!win || e.sender !== win.webContents) return
-  // Only a link that is on the screen: the renderer can't make main open anything else.
-  if (typeof url === 'string' && /^https?:\/\//i.test(url) && meetings.some((m) => m.url === url)) void shell.openExternal(url)
-  win.close()
-})
+/** Detaches the open screen at once (its 'closed' comes later), so a tick in between opens a new one. */
+const drop = (): void => {
+  const w = win
+  win = null
+  meetings = []
+  w?.close()
+}
+
+/** Wires the Full-screen reminder's IPC. `closed` runs whenever the user dismisses the screen, however it went. */
+export function startReminderScreen(closed: () => void): void {
+  onClosed = closed
+  ipcMain.handle(IPC.reminderScreenMeetings, (e) => (win && e.sender === win.webContents ? meetings : []))
+  ipcMain.handle(IPC.reminderScreenClose, (e, url: unknown) => {
+    if (!win || e.sender !== win.webContents) return
+    const join = typeof url === 'string'
+    if (!join && Date.now() - shownAt < KEY_GUARD_MS) return
+    // Only a link that is on the screen: the renderer can't make main open anything else.
+    if (join && /^https?:\/\//i.test(url) && meetings.some((m) => m.url === url)) void shell.openExternal(url)
+    drop()
+    onClosed()
+  })
+}
 
 /**
  * Puts `list` on the Full-screen reminder: opens it over the display under the cursor (fullscreen Spaces included) or
- * updates the open one; an empty list closes it. `onClosed` runs when this window goes, however it was closed.
+ * updates the open one; an empty list closes it.
  */
-export function showReminderScreen(list: ReminderMeeting[], onClosed: () => void): void {
+export function showReminderScreen(list: ReminderMeeting[]): void {
+  if (!list.length) return drop()
   meetings = list
-  if (!list.length) return void win?.close()
   if (win) return win.webContents.send(IPC.reminderScreenMeetings, list)
 
   // Focus goes back where it was on dismiss: if another app had it, hide Mysticals so that app is in front again.
@@ -42,19 +62,24 @@ export function showReminderScreen(list: ReminderMeeting[], onClosed: () => void
     webPreferences
   })
   w.setAlwaysOnTop(true, 'screen-saver')
-  w.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  w.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true })
   lockDown(w)
+  shownAt = Infinity
   w.once('ready-to-show', () => {
     w.show()
+    // macOS: focus() alone leaves another app frontmost, and Esc/Backspace go there.
+    if (process.platform === 'darwin') app.focus({ steal: true })
     w.focus()
+    shownAt = Date.now()
   })
   w.on('closed', () => {
+    // Still current: closed some other way than drop(), so the screen state goes too.
     if (win === w) {
       win = null
       meetings = []
+      onClosed()
     }
-    onClosed()
-    if (process.platform === 'darwin' && !hadFocus) app.hide()
+    if (process.platform === 'darwin' && !hadFocus && !win) app.hide()
   })
   win = w
   loadRenderer(w, 'reminder')

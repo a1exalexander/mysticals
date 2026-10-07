@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react'
 import type { ReminderMeeting } from '@shared/ipc'
 import { linkKind, linkLabel } from '@mysticals/core/logic/meeting'
 import { currentLocale, fmt, t, useLocale } from '../i18n'
+import { followTheme } from '../theme'
 import './ReminderScreen.css'
-
-/** Keys pressed this soon after the screen appears were meant for another app. */
-const KEY_GUARD_MS = 1000
 
 /** The Full-screen reminder window (`#reminder`): every due meeting with a Call link, until Join, Esc or Backspace. */
 export function ReminderScreen(): React.JSX.Element {
@@ -16,18 +14,19 @@ export function ReminderScreen(): React.JSX.Element {
     void window.reminderScreen.meetings().then(setMeetings, () => {})
     const off = window.reminderScreen.onMeetings(setMeetings)
     const timer = setInterval(() => setNow(Date.now()), 10_000)
-    const shown = performance.now()
     const onKey = (e: KeyboardEvent): void => {
-      if (performance.now() - shown < KEY_GUARD_MS) return e.preventDefault()
       if (e.key !== 'Escape' && e.key !== 'Backspace') return
       e.preventDefault()
+      // Main ignores this in the first second after the window shows: those keys were meant for another app.
       void window.reminderScreen.close()
     }
     window.addEventListener('keydown', onKey, true)
+    window.addEventListener('storage', followTheme)
     return () => {
       off()
       clearInterval(timer)
       window.removeEventListener('keydown', onKey, true)
+      window.removeEventListener('storage', followTheme)
     }
   }, [])
   return (

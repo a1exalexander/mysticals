@@ -3,12 +3,12 @@ import { join } from 'path'
 import { app, ipcMain, Notification, powerMonitor, shell } from 'electron'
 import { IPC, type Api, type ReminderMeeting } from '@shared/ipc'
 import type { Account, Calendar, CalEvent } from '@shared/types'
-import { DEFAULT_REMINDER_MIN, dueReminders, isReminderMin, loadReminded, pruneReminded, reminderKey, reminderText, screenMeetings, splitReminders } from '@mysticals/core/logic/reminders'
+import { DEFAULT_REMINDER_MIN, dueReminders, isReminderMin, loadReminded, pruneReminded, REMINDED_KEEP_MS, reminderKey, reminderText, screenMeetings, splitReminders } from '@mysticals/core/logic/reminders'
 import { visibleEvents } from '@mysticals/core/logic/visible'
 import { eventMeetingUrl } from '@mysticals/core/logic/meeting'
 import { currentLocale } from './locale'
 import { readPrefs, writePrefs } from './prefs'
-import { showReminderScreen } from './reminderWindow'
+import { showReminderScreen, startReminderScreen } from './reminderWindow'
 
 const TICK_MS = 20_000
 
@@ -84,16 +84,17 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts
     }
   }
   // Meetings on the open full-screen reminder; empty while it is closed.
-  let screen: CalEvent[] = []
+  let onScreen: CalEvent[] = []
+  startReminderScreen(() => (onScreen = []))
   let busy = false
   const tick = async (): Promise<void> => {
     const lead = reminderMin()
     // An open screen still needs ticks to drop ended or cancelled meetings.
-    if (busy || (!lead && !screen.length)) return
+    if (busy || (!lead && !onScreen.length)) return
     busy = true
     try {
       const now = new Date()
-      const range = { start: new Date(now.getTime() - 60 * 60_000).toISOString(), end: new Date(now.getTime() + (lead + 1) * 60_000).toISOString() }
+      const range = { start: new Date(now.getTime() - REMINDED_KEEP_MS).toISOString(), end: new Date(now.getTime() + (lead + 1) * 60_000).toISOString() }
       const [events, calendars, accounts] = await Promise.all([api.events.list(range), api.calendars.list(), api.accounts.list()])
       const changed = pruneReminded(sent, now.getTime())
       const muted = mutedAccounts()
@@ -104,15 +105,15 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts
       if (due.length || changed) saveSent()
       const split = splitReminders(due, fullscreenReminder())
       if (Notification.isSupported()) for (const e of split.banner) show(reminderText(e, now, currentLocale()))
-      const next = screenMeetings(screen, split.fullscreen, shown, now)
-      if (!screen.length && !next.length) return
+      const next = screenMeetings(onScreen, split.fullscreen, shown, now)
+      if (!onScreen.length && !next.length) return
       // No await from here on: a dismiss in between would be undone.
-      screen = next
+      onScreen = next
       const list = next.flatMap((e) => {
         const url = eventMeetingUrl(e)
         return url ? [meeting(e, url, calendars, accounts)] : []
       })
-      showReminderScreen(list, () => (screen = []))
+      showReminderScreen(list)
     } catch (e) {
       console.error('reminders failed', e)
     } finally {
