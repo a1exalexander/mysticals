@@ -232,17 +232,19 @@ function ThemePicker(): React.JSX.Element {
 }
 
 /**
- * Everything per account in one card: label, colour, sync state, notifications, removal.
- * Above the cards sit the settings that apply to every account: reminder lead time and "Sync all".
+ * Settings that apply to every account (reminder lead time) on top; below, the accounts listed on the left
+ * with "Add account" and "Sync all", and the selected one's details on the right.
  */
 function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => void }): React.JSX.Element {
   useLocale()
   const [all, setAll] = useState(false)
   const [min, setMin] = useState<number>()
   const [muted, setMuted] = useState<string[]>()
+  const [selected, setSelected] = useState<string>()
   const [error, setError] = useState('')
   useEffect(() => void window.reminders.get().then(setMin, () => {}), [])
   useEffect(() => void window.reminders.muted().then(setMuted, () => {}), [])
+  const current = accounts.find((a) => a.id === selected) ?? accounts[0]
   const syncAll = async (): Promise<void> => {
     setAll(true)
     // Never rejects; per-account failures land on account.error.
@@ -268,10 +270,9 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
     })
   }
   return (
-    <>
-      <p className="acc-note">{t('settings.accounts.note')}</p>
-      <div className="acc-strip">
-        <div className="set-check">
+    <div className="acc-panel">
+      <div className="acc-reminders">
+        <div className="acc-reminders-row">
           <span>{t('settings.reminders.label')}</span>
           <Select
             compact
@@ -286,34 +287,67 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
             onChange={(v) => pick(Number(v))}
           />
         </div>
-        <button type="button" data-testid="sync-all" onClick={syncAll} disabled={all || accounts.length === 0}>
-          {all ? t('settings.sync.syncing') : t('settings.sync.all')}
-        </button>
+        <p className="acc-hint-line">{t('settings.reminders.hint')}</p>
       </div>
       {error && <p className="acc-error" role="alert">{error}</p>}
-      {accounts.length === 0 ? (
-        <p className="acc-note">{t('settings.noAccounts')}</p>
-      ) : (
-        <ul className="acc-list">
-          {accounts.map((a) => (
-            <AccountCard
-              key={a.id}
-              account={a}
-              syncingAll={all}
-              notify={muted === undefined ? undefined : !muted.includes(a.id)}
-              onNotify={(on) => toggle(a.id, on)}
-            />
-          ))}
-        </ul>
-      )}
-      <div className="acc-actions">
-        <button type="button" onClick={onAdd}>
-          {t('settings.addAccount')}
-        </button>
+      <div className="acc-md">
+        <div className="acc-md-list">
+          <h3 className="set-heading">{t('settings.accounts.title')}</h3>
+          <ul aria-label={t('settings.accounts.title')}>
+            {accounts.map((a) => (
+              <li key={a.id}>
+                <button
+                  type="button"
+                  className="acc-md-item"
+                  aria-current={a.id === current?.id ? 'true' : undefined}
+                  data-testid={`account-item-${a.id}`}
+                  onClick={() => setSelected(a.id)}
+                >
+                  <span className="acc-dot" style={{ background: a.color }} />
+                  <span className="acc-md-name">
+                    <span>{a.label}</span>
+                    <span className="acc-md-sub">
+                      {a.email.split('@')[1] ?? a.email} · {a.kind === 'google' ? 'Google' : 'CalDAV'}
+                    </span>
+                  </span>
+                  <span className={`acc-state is-${stateOf(a)}`} aria-hidden />
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="acc-md-add" onClick={onAdd}>
+            + {t('settings.addAccount')}
+          </button>
+          <div className="acc-md-foot">
+            <span>{t('settings.accounts.note')}</span>
+            <button type="button" data-testid="sync-all" onClick={syncAll} disabled={all || accounts.length === 0}>
+              {all ? t('settings.sync.syncing') : t('settings.sync.all')}
+            </button>
+          </div>
+        </div>
+        {current ? (
+          <AccountDetail
+            key={current.id}
+            account={current}
+            syncingAll={all}
+            notify={muted === undefined ? undefined : !muted.includes(current.id)}
+            onNotify={(on) => toggle(current.id, on)}
+          />
+        ) : (
+          <div className="acc-md-detail acc-md-empty">
+            <p className="acc-note">{t('settings.noAccounts')}</p>
+            <button type="button" className="acc-primary" onClick={onAdd}>
+              {t('settings.addAccount')}
+            </button>
+          </div>
+        )}
       </div>
-    </>
+    </div>
   )
 }
+
+/** The list dot: ok, syncing, failed or signed out. */
+const stateOf = (a: Account): 'ok' | 'syncing' | 'err' => (a.syncing ? 'syncing' : a.error || a.authError ? 'err' : 'ok')
 
 function PrivacyPanel(): React.JSX.Element {
   const [on, setOn] = useState<boolean>()
@@ -345,7 +379,7 @@ function PrivacyPanel(): React.JSX.Element {
   )
 }
 
-interface CardProps {
+interface DetailProps {
   account: Account
   /** "Sync all" is running. */
   syncingAll: boolean
@@ -354,7 +388,7 @@ interface CardProps {
   onNotify: (on: boolean) => void
 }
 
-function AccountCard({ account: a, syncingAll, notify, onNotify }: CardProps): React.JSX.Element {
+function AccountDetail({ account: a, syncingAll, notify, onNotify }: DetailProps): React.JSX.Element {
   const [label, setLabel] = useState(a.label)
   const [confirm, setConfirm] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -362,7 +396,7 @@ function AccountCard({ account: a, syncingAll, notify, onNotify }: CardProps): R
   const [error, setError] = useState('')
 
   useEffect(() => setLabel(a.label), [a.label])
-  // "Sync all" supersedes a stale per-card error; its outcome lands on a.error.
+  // "Sync all" supersedes a stale per-account error; its outcome lands on a.error.
   useEffect(() => {
     if (syncingAll) setSyncError('')
   }, [syncingAll])
@@ -391,58 +425,45 @@ function AccountCard({ account: a, syncingAll, notify, onNotify }: CardProps): R
     setSyncing(false)
   }
   const failed = Boolean(syncError || a.error)
+  const busy = syncing || syncingAll
 
   return (
-    <li className="acc-item" data-testid={`account-${a.id}`}>
-      <div className="acc-item-head">
-        <span className="acc-dot" style={{ background: a.color }} />
-        <KindIcon kind={a.kind} />
+    <section className="acc-md-detail" data-testid={`account-${a.id}`} aria-label={a.label}>
+      <header className="acc-md-head">
+        <span className="acc-avatar" style={{ '--acc': a.color } as React.CSSProperties}>
+          <KindIcon kind={a.kind} />
+        </span>
         <div className="acc-item-id">
-          <input
-            className="acc-rename"
-            aria-label={t('settings.account.labelFor', { email: a.email })}
-            data-testid={`account-label-${a.id}`}
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            onBlur={rename}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') e.currentTarget.blur()
-              if (e.key === 'Escape') {
-                e.preventDefault()
-                setLabel(a.label)
-              }
-            }}
-          />
+          <strong>{a.label}</strong>
           <span className="acc-email">{a.email}</span>
         </div>
-        <div className="acc-sync" data-testid={`sync-${a.id}`}>
-          <span className={failed ? 'set-status err' : 'set-status'}>
-            {syncing || syncingAll ? t('settings.sync.stateSyncing') : failed ? t('settings.sync.stateError') : t('settings.sync.stateOk')}
-          </span>
-          {a.authError ? (
-            <button type="button" className="acc-primary" onClick={() => bus.emit('reauth:open', { accountId: a.id })}>
-              {t('settings.reconnect')}
-            </button>
-          ) : (
-            <button type="button" onClick={sync} disabled={syncing || syncingAll}>
-              {t('settings.sync.now')}
-            </button>
-          )}
-        </div>
-      </div>
-      {failed && (
-        <p className="acc-error" role="alert">
-          {syncError || t('settings.sync.lastFailed', { error: a.error ?? '' })}
-        </p>
-      )}
-      <div className="acc-item-body">
+      </header>
+      <div className="acc-fields">
+        <label htmlFor={`account-label-${a.id}`}>{t('settings.account.name')}</label>
+        <input
+          id={`account-label-${a.id}`}
+          className="acc-name"
+          aria-label={t('settings.account.labelFor', { email: a.email })}
+          data-testid={`account-label-${a.id}`}
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          onBlur={rename}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur()
+            if (e.key === 'Escape') {
+              e.preventDefault()
+              setLabel(a.label)
+            }
+          }}
+        />
+        <span>{t('settings.account.colour')}</span>
         <Swatches
           value={a.color}
           name={t('settings.account.colourFor', { email: a.email })}
           onChange={(color) => void run(() => window.api.accounts.update(a.id, { color }))}
         />
+        <span>{t('settings.reminders.accountSwitch')}</span>
         <label className="set-check set-notify">
-          {t('settings.reminders.accountSwitch')}
           <input
             type="checkbox"
             role="switch"
@@ -453,8 +474,29 @@ function AccountCard({ account: a, syncingAll, notify, onNotify }: CardProps): R
             disabled={notify === undefined}
             onChange={(e) => onNotify(e.target.checked)}
           />
+          <span className="acc-hint-line">{t('settings.reminders.accountHint')}</span>
         </label>
+        <span>{t('settings.account.sync')}</span>
+        <div className="acc-sync" data-testid={`sync-${a.id}`}>
+          <span className={`set-status${busy ? ' busy' : failed ? ' err' : ''}`}>
+            {busy ? t('settings.sync.stateSyncing') : failed ? t('settings.sync.stateError') : t('settings.sync.stateOk')}
+          </span>
+          {a.authError ? (
+            <button type="button" className="acc-primary" onClick={() => bus.emit('reauth:open', { accountId: a.id })}>
+              {t('settings.reconnect')}
+            </button>
+          ) : (
+            <button type="button" onClick={sync} disabled={busy}>
+              {t('settings.sync.now')}
+            </button>
+          )}
+        </div>
       </div>
+      {failed && (
+        <p className="acc-error" role="alert">
+          {syncError || t('settings.sync.lastFailed', { error: a.error ?? '' })}
+        </p>
+      )}
       {error && <p className="acc-error" role="alert">{error}</p>}
       {confirm ? (
         <div className="acc-confirm">
@@ -470,12 +512,12 @@ function AccountCard({ account: a, syncingAll, notify, onNotify }: CardProps): R
           </button>
         </div>
       ) : (
-        <div className="acc-item-foot">
+        <div className="acc-md-danger">
           <button type="button" className="acc-danger acc-remove" onClick={() => setConfirm(true)}>
             {t('settings.account.remove')}
           </button>
         </div>
       )}
-    </li>
+    </section>
   )
 }

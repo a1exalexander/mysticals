@@ -11,7 +11,7 @@ test('settings tabs: accounts (with sync and notifications), themes, general', a
   await expect(page.getByTestId('account-label-work')).toBeVisible()
   await expect(panel.getByRole('button', { name: 'Add account…' })).toBeVisible()
   // Sync and notifications live on each account's one card, not in tabs of their own.
-  await expect(page.getByTestId('sync-work')).toContainText('ok')
+  await expect(page.getByTestId('sync-work')).toContainText('Up to date')
   await expect(page.getByTestId('account-work').getByTestId('notify-account-work')).toBeVisible()
   await expect(page.getByTestId('reminder-select')).toBeVisible()
   await expect(page.getByTestId('settings-tab-sync')).toHaveCount(0)
@@ -57,7 +57,7 @@ test('settings tabs: accounts (with sync and notifications), themes, general', a
   await page.getByTestId('settings-tab-accounts').click()
   await page.getByTestId('sync-all').click()
   await expect(page.getByTestId('sync-all')).toHaveText('Sync all')
-  await expect(page.getByTestId('sync-work')).toContainText('ok')
+  await expect(page.getByTestId('sync-work')).toContainText('Up to date')
   await page.getByTestId('settings-tab-events').click()
 
   // Last tab is kept after reopening.
