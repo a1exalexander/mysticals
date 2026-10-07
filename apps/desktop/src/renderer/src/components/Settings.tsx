@@ -240,10 +240,12 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
   const [all, setAll] = useState(false)
   const [min, setMin] = useState<number>()
   const [muted, setMuted] = useState<string[]>()
+  const [full, setFull] = useState<boolean>()
   const [selected, setSelected] = useState<string>()
   const [error, setError] = useState('')
   useEffect(() => void window.reminders.get().then(setMin, () => {}), [])
   useEffect(() => void window.reminders.muted().then(setMuted, () => {}), [])
+  useEffect(() => void window.reminders.fullscreen().then(setFull, () => {}), [])
   const current = accounts.find((a) => a.id === selected) ?? accounts[0]
   const syncAll = async (): Promise<void> => {
     setAll(true)
@@ -269,6 +271,15 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
       setError(errorText(e))
     })
   }
+  const pickFull = (on: boolean): void => {
+    const prev = full
+    setFull(on)
+    setError('')
+    window.reminders.setFullscreen(on).catch((e) => {
+      setFull(prev)
+      setError(errorText(e))
+    })
+  }
   return (
     <div className="acc-panel">
       <div className="acc-reminders">
@@ -287,6 +298,17 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
             onChange={(v) => pick(Number(v))}
           />
         </div>
+        <label className="set-check">
+          <input
+            type="checkbox"
+            className="mc-check"
+            data-testid="fullscreen-reminder-toggle"
+            checked={full ?? false}
+            disabled={full === undefined || !min}
+            onChange={(e) => pickFull(e.target.checked)}
+          />
+          {t('settings.reminders.fullscreen')}
+        </label>
         <p className="acc-hint-line">{t('settings.reminders.hint')}</p>
       </div>
       {error && <p className="acc-error" role="alert">{error}</p>}

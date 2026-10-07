@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CalEvent } from '../shared/types'
-import { dueReminders, isReminderMin, loadReminded, pruneReminded, reminderKey, reminderText } from './reminders'
+import { dueReminders, isReminderMin, loadReminded, pruneReminded, reminderKey, reminderText, splitReminders } from './reminders'
 
 const ev = (id: string, p: Partial<CalEvent> = {}): CalEvent => ({
   id, accountId: 'a', calendarId: 'c', title: id, start: '2026-10-02T10:00:00', end: '2026-10-02T10:30:00',
@@ -80,5 +80,24 @@ describe('reminded keys', () => {
     expect(pruneReminded(sent, now)).toBe(true)
     expect([...sent.keys()]).toEqual(['a', 'edge'])
     expect(pruneReminded(sent, now)).toBe(false)
+  })
+})
+
+describe('splitReminders', () => {
+  const es = [
+    ev('meet', { conferenceUrl: 'https://meet.google.com/abc-defg-hij' }),
+    ev('zoom', { location: 'https://zoom.us/j/1' }),
+    ev('teams', { location: 'https://teams.microsoft.com/l/meetup-join/x' }),
+    ev('map', { location: 'https://maps.google.com/?q=Kyiv' }),
+    ev('link', { location: 'https://example.com/agenda' }),
+    ev('none', { location: 'Room 3' })
+  ]
+  it('puts call-link events on the full-screen reminder when it is on', () => {
+    const { fullscreen, banner } = splitReminders(es, true)
+    expect(ids(fullscreen)).toEqual(['meet', 'zoom', 'teams'])
+    expect(ids(banner)).toEqual(['map', 'link', 'none'])
+  })
+  it('sends everything as a banner when it is off', () => {
+    expect(splitReminders(es, false)).toEqual({ fullscreen: [], banner: es })
   })
 })

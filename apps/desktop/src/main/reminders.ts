@@ -29,6 +29,9 @@ const readJson = (file: string): unknown => {
   }
 }
 
+/** Settings > Notifications: full-screen reminder for events with a Call link, off by default. */
+export const fullscreenReminder = (): boolean => readPrefs().fullscreenReminder === true
+
 // Held until closed/clicked: a GC'd Notification drops its click/action handlers.
 const banners = new Set<Notification>()
 
@@ -52,6 +55,11 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars'>, showMain:
     if (muted) off.add(id)
     else off.delete(id)
     writePrefs({ notifyOff: [...off] })
+  })
+  ipcMain.handle(IPC.remindersFullscreenGet, fullscreenReminder)
+  ipcMain.handle(IPC.remindersFullscreenSet, (_e, on: unknown) => {
+    if (typeof on !== 'boolean') throw new Error('Invalid full-screen reminder')
+    writePrefs({ fullscreenReminder: on })
   })
 
   // reminder key → event start (ms), to forget old ones. On disk so a restart inside the reminder window stays quiet.

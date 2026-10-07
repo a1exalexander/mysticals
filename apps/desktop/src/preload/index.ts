@@ -55,7 +55,9 @@ const reminders: ReminderApi = {
   get: call(IPC.remindersGet),
   set: call(IPC.remindersSet),
   muted: call(IPC.remindersMutedGet),
-  setMuted: call(IPC.remindersMutedSet)
+  setMuted: call(IPC.remindersMutedSet),
+  fullscreen: call(IPC.remindersFullscreenGet),
+  setFullscreen: call(IPC.remindersFullscreenSet)
 } as ReminderApi
 contextBridge.exposeInMainWorld('reminders', reminders)
 

@@ -11,6 +11,8 @@ export interface Prefs {
   reminderMin?: number
   /** Accounts whose reminders and invite/change banners are off. */
   notifyOff?: string[]
+  /** Full-screen reminder instead of a Banner for events with a Call link; off by default. */
+  fullscreenReminder?: boolean
 }
 
 const prefsFile = (dir = app.getPath('userData')): string => join(dir, 'prefs.json')

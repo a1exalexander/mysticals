@@ -80,6 +80,9 @@ export interface ReminderApi {
   /** Ids of the accounts whose reminders and invite/change banners are off. */
   muted(): Promise<string[]>
   setMuted(accountId: string, muted: boolean): Promise<void>
+  /** Full-screen reminder for events with a Call link instead of a Banner; off by default. */
+  fullscreen(): Promise<boolean>
+  setFullscreen(on: boolean): Promise<void>
 }
 
 /** UI language: the Settings choice, the language in use and what the OS asks for (shown next to "Automatic"). */
@@ -133,6 +136,8 @@ export const IPC = {
   remindersSet: 'reminders:set',
   remindersMutedGet: 'reminders:muted-get',
   remindersMutedSet: 'reminders:muted-set',
+  remindersFullscreenGet: 'reminders:fullscreen-get',
+  remindersFullscreenSet: 'reminders:fullscreen-set',
   themeSet: 'theme:set',
   localeGet: 'locale:get',
   localeSet: 'locale:set',

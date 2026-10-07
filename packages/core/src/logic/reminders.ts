@@ -2,7 +2,7 @@ import { format } from 'date-fns'
 import { t, type Locale } from '../i18n'
 import type { CalEvent } from '../shared/types'
 import { eventBounds } from './layout'
-import { eventMeetingUrl, eventPlace, linkKind, linkLabel } from './meeting'
+import { CALL_KINDS, eventMeetingUrl, eventPlace, linkKind, linkLabel } from './meeting'
 
 /** Minutes before an event its reminder pops up; 0 turns reminders off. */
 export const REMINDER_CHOICES = [0, 1, 2, 5, 10, 15] as const
@@ -43,6 +43,15 @@ export function dueReminders(events: CalEvent[], now: Date, leadMin: number, sen
     const start = eventBounds(e).start.getTime()
     return start - leadMin * 60_000 <= n && n < start + REMINDER_GRACE_MS
   })
+}
+
+/** Due reminders by delivery: events with a Call link go full-screen when `fullscreen` is on, the rest get a Banner. */
+export function splitReminders(due: CalEvent[], fullscreen: boolean): { fullscreen: CalEvent[]; banner: CalEvent[] } {
+  const isCall = (e: CalEvent): boolean => {
+    const url = eventMeetingUrl(e)
+    return fullscreen && !!url && CALL_KINDS.includes(linkKind(url))
+  }
+  return { fullscreen: due.filter(isCall), banner: due.filter((e) => !isCall(e)) }
 }
 
 export interface ReminderText {
