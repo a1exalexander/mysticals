@@ -19,6 +19,7 @@ import { useMemo, type ReactNode } from 'react'
 import { Box, Text } from 'ink'
 import { format, isSameDay } from 'date-fns'
 import { eventBounds, eventsOnDay, isPast, layoutDay, packColumns, type Placed } from '@mysticals/core/logic/layout'
+import { awaitsReply } from '@mysticals/core/logic/details'
 import type { CalEvent } from '@mysticals/core/shared/types'
 import { eventKey, type ViewProps } from '../hooks'
 import { Clickable } from '../mouse'
@@ -142,7 +143,7 @@ export function TimeGrid({ days, events, now, cursor, selectedKey, width, height
             inverse // block in the calendar's color, text in the terminal background
             color={selected ? C.accent : past ? C.muted : colorOf(e)}
             bold={selected || h === first}
-            italic={e.myStatus === 'needsAction'}
+            italic={awaitsReply(e)}
             strikethrough={e.myStatus === 'declined'}
             underline={h === p.end / 60 - 1 && joined.has(p)}
           >

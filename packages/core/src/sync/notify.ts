@@ -1,5 +1,6 @@
 import { format, isSameDay, parseISO } from 'date-fns'
 import { fmt, t, type Key, type Locale } from '../i18n'
+import { awaitsReply } from '../logic/details'
 import type { CalEvent } from '../shared/types'
 
 export type NoteKind = 'invite' | 'changed' | 'cancelled'
@@ -22,7 +23,7 @@ export function diffEvents(prev: CalEvent[], next: CalEvent[], now = new Date())
     if (!live(e)) continue
     const old = before.get(key(e))
     if (!old) {
-      if (e.myStatus === 'needsAction') notes.push({ kind: 'invite', event: e })
+      if (awaitsReply(e)) notes.push({ kind: 'invite', event: e })
     } else if (WATCHED.some((f) => (old[f] ?? '') !== (e[f] ?? ''))) notes.push({ kind: 'changed', event: e })
   }
   for (const e of prev) if (live(e) && !after.has(key(e))) notes.push({ kind: 'cancelled', event: e })

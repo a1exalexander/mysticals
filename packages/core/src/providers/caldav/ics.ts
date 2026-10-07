@@ -100,7 +100,10 @@ function conferenceOf(vevent: ICAL.Component): string | undefined {
   return urls.find((u) => /^https?:\/\//i.test(u))
 }
 
-/** Parse one calendar object into CalEvents, expanding recurrences inside `range`. */
+/** STATUS:CANCELLED: the organizer called it off (iTIP CANCEL); the server keeps the object, we hide it. */
+const isCancelled = (v: ICAL.Component): boolean => String(v.getFirstPropertyValue('status') ?? '').toUpperCase() === 'CANCELLED'
+
+/** Parse one calendar object into CalEvents, expanding recurrences inside `range`. Cancelled events/instances are dropped. */
 export function parseEvents(ics: string, href: string, etag: string | undefined, ctx: MapCtx, range: TimeRange): CalEvent[] {
   const root = parse(ics)
   const vevents = root.getAllSubcomponents('vevent')
@@ -138,11 +141,13 @@ export function parseEvents(ics: string, href: string, etag: string | undefined,
   if (!master) {
     // Orphan overrides (invited to single instances only): treat each as standalone.
     return vevents
+      .filter((v) => !isCancelled(v))
       .map((v) => new ICAL.Event(v))
       .filter((e) => inRange(e.startDate, e.endDate))
       .map((e) => build(e, e.startDate, e.endDate, e.recurrenceId))
   }
 
+  if (isCancelled(master)) return []
   const event = new ICAL.Event(master)
   for (const v of vevents) if (v !== master) event.relateException(v)
   if (!event.isRecurring()) return inRange(event.startDate, event.endDate) ? [build(event, event.startDate, event.endDate)] : []
@@ -158,7 +163,7 @@ export function parseEvents(ics: string, href: string, etag: string | undefined,
     const ms = next.toJSDate().getTime()
     if (ms >= rangeEnd && ms > lastOverride) break
     const d = event.getOccurrenceDetails(next)
-    if (inRange(d.startDate, d.endDate)) out.push(build(d.item, d.startDate, d.endDate, d.recurrenceId))
+    if (inRange(d.startDate, d.endDate) && !isCancelled(d.item.component)) out.push(build(d.item, d.startDate, d.endDate, d.recurrenceId))
   }
   return out
 }

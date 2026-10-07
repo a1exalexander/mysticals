@@ -10,6 +10,7 @@ import {
   startOfWeek
 } from 'date-fns'
 import { fmt, type Locale } from '../i18n'
+import { awaitsReply } from './details'
 import type { CalEvent, TimeRange } from '../shared/types'
 
 // ponytail: Monday week start is hardcoded; move to settings when someone needs Sunday.
@@ -224,7 +225,7 @@ export function dragRange(a: number, b: number): { start: number; end: number } 
 
 /** CSS modifier for invite state: pending invites are striped, declined ones faded. */
 export function statusClass(e: CalEvent): string {
-  if (e.myStatus === 'needsAction') return ' is-pending'
+  if (awaitsReply(e)) return ' is-pending'
   if (e.myStatus === 'declined') return ' is-declined'
   return ''
 }

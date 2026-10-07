@@ -74,6 +74,15 @@ describe('parseEvents', () => {
     expect((evs[0].raw as CaldavRaw).ics).toBe(DAILY)
   })
 
+  it('drops cancelled events and cancelled instances', () => {
+    const one = wrap(['BEGIN:VEVENT', 'UID:x-1', 'DTSTAMP:20251201T000000Z', 'DTSTART:20260105T090000Z', 'DTEND:20260105T091500Z', 'STATUS:CANCELLED', 'END:VEVENT'].join('\r\n'))
+    expect(parseEvents(one, HREF, undefined, ctx, JAN)).toEqual([])
+    expect(parseEvents(DAILY.replace('RRULE:', 'STATUS:CANCELLED\r\nRRULE:'), HREF, undefined, ctx, JAN)).toEqual([])
+    const instance = DAILY.replace('SUMMARY:Standup (moved)', 'SUMMARY:Standup (moved)\r\nSTATUS:CANCELLED')
+    expect(parseEvents(instance, HREF, undefined, ctx, JAN).map((e) => e.start)).not.toContain('2026-01-08T10:00:00.000Z')
+    expect(parseEvents(instance, HREF, undefined, ctx, JAN)).toHaveLength(3)
+  })
+
   it('limits instances to the range', () => {
     const evs = parseEvents(DAILY, HREF, undefined, ctx, { start: '2026-01-06T00:00:00Z', end: '2026-01-07T00:00:00Z' })
     expect(evs).toHaveLength(1)

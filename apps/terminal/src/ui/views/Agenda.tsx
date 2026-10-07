@@ -19,7 +19,7 @@ import { useMemo, useReducer, useRef, type ReactNode } from 'react'
 import { Box, Text } from 'ink'
 import { addDays, differenceInCalendarDays, differenceInMinutes, format, isSameDay, startOfDay } from 'date-fns'
 import { eventBounds, eventsOnDay, isPast, ymd } from '@mysticals/core/logic/layout'
-import { STATUS_ICON } from '@mysticals/core/logic/details'
+import { awaitsReply, STATUS_ICON } from '@mysticals/core/logic/details'
 import { eventPlace } from '@mysticals/core/logic/meeting'
 import { startsLabel } from '@mysticals/core/logic/status'
 import type { CalEvent } from '@mysticals/core/shared/types'
@@ -267,7 +267,7 @@ export function Agenda({ events, date, now, selectedKey, width, height, onSelect
     const badges: Part[] = []
     if (running) badges.push({ text: `  ● now · ends in ${span(Math.max(differenceInMinutes(end, now, { roundingMethod: 'ceil' }), 1))}`, color: C.green, bold: true })
     else if (e === upNext) badges.push({ text: `  ${startsLabel(e.start, now)}`, color: C.yellow })
-    if (e.myStatus === 'needsAction') badges.push({ text: '  RSVP', color: C.yellow, bold: true })
+    if (awaitsReply(e)) badges.push({ text: '  RSVP', color: C.yellow, bold: true })
     if (e.myStatus === 'tentative') badges.push({ text: '  maybe', color: C.yellow })
     if (e.myStatus === 'declined') badges.push({ text: '  declined', color: C.muted })
     const dur = e.allDay ? '' : duration(e)
