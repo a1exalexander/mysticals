@@ -276,7 +276,8 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 /* The one sidebar toggle (App.tsx): a quiet borderless button centred on the sidebar's right edge, level with
    the toolbar. It rides the column as it folds and, collapsed, settles a little to the right with the title
    making room for it (on macOS past the traffic lights). Open, the icon's left pane is filled and its chevron
-   points left; collapsed, the pane empties and the chevron turns around. */
+   points left; collapsed, the pane empties and the chevron turns around. It must follow .main in the DOM:
+   app-regions resolve in DOM order, so the toolbar's drag region would otherwise override its no-drag. */
 .sidebar-toggle {
   grid-area: 1 / 1; justify-self: end; align-self: start; position: relative; z-index: 2;
   width: 26px; height: 26px; margin: 13px -13px 0 0; display: grid; place-items: center; padding: 0;
