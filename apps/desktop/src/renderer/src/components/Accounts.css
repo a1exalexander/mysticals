@@ -129,7 +129,8 @@
 .acc-md-head { display: flex; align-items: center; gap: 12px; }
 .acc-md-head strong { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .acc-avatar { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 9px; background: color-mix(in srgb, var(--acc) 16%, transparent); }
-.acc-avatar .acc-kind { width: auto; height: auto; background: none; color: var(--acc); font-size: 11px; }
+/* Mixed with the text colour so pale account colours (cyan, yellow) stay readable on light themes. */
+.acc-avatar .acc-kind { width: auto; height: auto; background: none; color: color-mix(in srgb, var(--acc) 55%, var(--fg)); font-size: 11px; }
 .acc-item-id { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .acc-fields { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 14px 12px; }
 .acc-fields > span, .acc-fields > label:not(.set-check) { color: var(--muted); font-size: 12px; }
