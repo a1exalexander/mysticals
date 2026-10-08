@@ -13,6 +13,8 @@ export interface Prefs {
   notifyOff?: string[]
   /** Full-screen reminder instead of a Banner for events with a Call link; off by default. */
   fullscreenReminder?: boolean
+  /** A sound with each reminder; on by default. */
+  reminderSound?: boolean
 }
 
 const prefsFile = (dir = app.getPath('userData')): string => join(dir, 'prefs.json')
