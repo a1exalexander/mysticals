@@ -115,3 +115,81 @@ export interface CaldavAccountInput {
 export type Credentials =
   | { kind: 'google'; refreshToken: string; accessToken?: string; expiresAt?: number }
   | { kind: 'caldav'; serverUrl: string; username: string; password: string }
+
+/** What an activity-log entry records (desktop Settings → Logs). */
+export type LogKind =
+  | 'account.add'
+  | 'account.update'
+  | 'account.reauth'
+  | 'account.remove'
+  | 'calendar.visible'
+  | 'event.create'
+  | 'event.update'
+  | 'event.delete'
+  | 'event.respond'
+  | 'sync'
+  | 'sync.fail'
+  | 'remote.add'
+  | 'remote.change'
+  | 'remote.remove'
+  | 'notify'
+  | 'reminder'
+
+/** An event as the log keeps it: everything but provider payloads and etags. */
+export interface EventSnap {
+  id: string
+  calendarId: string
+  title: string
+  start: string
+  end: string
+  allDay: boolean
+  location?: string
+  conferenceUrl?: string
+  description?: string
+  organizer?: { email: string; name?: string }
+  attendees: Attendee[]
+  myStatus?: PartStat
+  recurringEventId?: string
+  recurrence?: Recurrence | null
+}
+
+/** One field of an event before and after (absent side: undefined). Attendees are `attendee:<email>` with the RSVP status. */
+export interface LogChange {
+  field: string
+  from?: string
+  to?: string
+}
+
+export interface LogEntry {
+  /** ISO time it happened. */
+  at: string
+  accountId: string
+  /** Kept on every entry so a removed account's history still says whose it was. */
+  email: string
+  kind: LogKind
+  ok: boolean
+  error?: string
+  scope?: DeleteScope
+  status?: PartStat
+  event?: EventSnap
+  changes?: LogChange[]
+  /** Recurring instances collapsed into this entry. */
+  instances?: number
+  /** Small extra facts (sync counts, calendar id, reminder mode, …). */
+  detail?: Record<string, string | number | boolean>
+}
+
+export interface LogQuery {
+  accountId?: string
+  kinds?: LogKind[]
+  /** Only entries strictly older than this ISO time (paging). */
+  before?: string
+  limit?: number
+}
+
+export interface LogPage {
+  entries: LogEntry[]
+  /** Every account seen in the kept logs, current or removed. */
+  accounts: { id: string; email: string }[]
+  more: boolean
+}

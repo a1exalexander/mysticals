@@ -21,7 +21,11 @@ export interface SyncOptions {
   onEvents?: (accountId: string, notes: Note[]) => void
   /** An account started or finished syncing (see `isSyncing`). */
   onSyncing?: (accountId: string) => void
+  /** Every finished sync of an account: the caches before and after, or why it failed (activity log). */
+  onResult?: (accountId: string, result: SyncResult) => void
 }
+
+export type SyncResult = { ok: true; prev?: AccountCache; next: AccountCache } | { ok: false; error: string; auth: boolean }
 
 const MIN = 60_000
 
@@ -173,6 +177,7 @@ export class SyncEngine {
         !prev || JSON.stringify([prev.calendars, prev.events]) !== JSON.stringify([next.calendars, next.events])
       await this.store.writeCache(id, next)
       this.failures.delete(id)
+      this.opts.onResult?.(id, { ok: true, prev, next })
       if (hadError) await this.store.update(id, { error: undefined, authError: false })
       if (changed || hadError) this.onChanged(id)
       if (changed && !quiet && prev?.syncedAt && this.opts.onEvents) {
@@ -186,6 +191,7 @@ export class SyncEngine {
       const auth = e instanceof AuthError
       await this.store.update(id, { error: message, ...(auth ? { authError: true } : {}) }).catch(() => {})
       if (!hadError || (auth && !acc?.authError)) this.onChanged(id)
+      this.opts.onResult?.(id, { ok: false, error: message, auth })
       throw e
     }
   }

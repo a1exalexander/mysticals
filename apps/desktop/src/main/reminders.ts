@@ -2,7 +2,8 @@ import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { app, ipcMain, Notification, powerMonitor, shell } from 'electron'
 import { IPC, type Api, type ReminderMeeting } from '@shared/ipc'
-import type { Account, Calendar, CalEvent } from '@shared/types'
+import type { Account, Calendar, CalEvent, LogEntry } from '@shared/types'
+import { snap } from '@mysticals/core/logic/activity'
 import { DEFAULT_REMINDER_MIN, dueReminders, isReminderMin, loadReminded, pruneReminded, REMINDED_KEEP_MS, reminderKey, reminderText, screenMeetings, splitReminders } from '@mysticals/core/logic/reminders'
 import { visibleEvents } from '@mysticals/core/logic/visible'
 import { eventMeetingUrl } from '@mysticals/core/logic/meeting'
@@ -51,7 +52,7 @@ const banners = new Set<Notification>()
  * so synced changes and moved events need no re-arming. Muted accounts, hidden calendars, declined and all-day events stay
  * silent.
  */
-export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts'>, showMain: () => void): void {
+export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts'>, showMain: () => void, log?: (e: LogEntry) => void): void {
   ipcMain.handle(IPC.remindersGet, reminderMin)
   ipcMain.handle(IPC.remindersSet, (_e, min: unknown) => {
     if (!isReminderMin(min)) throw new Error(`Invalid reminder: ${String(min)}`)
@@ -104,6 +105,10 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts
       for (const e of due) sent.set(reminderKey(e), new Date(e.start).getTime())
       if (due.length || changed) saveSent()
       const split = splitReminders(due, fullscreenReminder())
+      const record = (e: CalEvent, mode: string): void =>
+        log?.({ at: now.toISOString(), accountId: e.accountId, email: accounts.find((a) => a.id === e.accountId)?.email ?? '', kind: 'reminder', ok: true, event: snap(e), detail: { mode, minutes: lead } })
+      for (const e of split.banner) record(e, 'banner')
+      for (const e of split.fullscreen) record(e, 'fullscreen')
       if (Notification.isSupported()) for (const e of split.banner) show(reminderText(e, now, currentLocale()))
       const next = screenMeetings(onScreen, split.fullscreen, shown, now)
       if (!onScreen.length && !next.length) return

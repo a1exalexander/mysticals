@@ -11,13 +11,15 @@ import { LONG_RANGE, LONG_MODES, usesThreshold, type LongMode } from '@mysticals
 import { setLongEvents, useLongEvents } from '../longEvents'
 import { Select } from './ui/Select'
 import { Range } from './ui/Range'
+import { LogsPanel } from './LogsPanel'
 import './ui/ui.css'
 
 const TABS = [
   { id: 'accounts', name: 'settings.tab.accounts' },
   { id: 'themes', name: 'settings.tab.themes' },
   { id: 'events', name: 'settings.tab.events' },
-  { id: 'general', name: 'settings.tab.general' }
+  { id: 'general', name: 'settings.tab.general' },
+  { id: 'logs', name: 'settings.tab.logs' }
 ] as const satisfies readonly { id: string; name: Key }[]
 type TabId = (typeof TABS)[number]['id']
 /** Last selected tab; survives closing the sheet while the app runs. */
@@ -89,6 +91,7 @@ export function SettingsHost(): React.JSX.Element | null {
               <PrivacyPanel />
             </>
           )}
+          {tab === 'logs' && <LogsPanel accounts={accounts} />}
         </div>
       </div>
     </Sheet>

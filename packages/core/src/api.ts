@@ -1,10 +1,11 @@
 import { z } from 'zod'
 import type { Api } from './shared/ipc'
-import type { CaldavAccountInput, CalEvent, Credentials } from './shared/types'
+import type { CaldavAccountInput, CalEvent, Credentials, LogEntry, LogKind, PartStat } from './shared/types'
 import type { AccountStore } from './accounts/store'
 import { queryEvents, type SyncEngine } from './sync/engine'
 import { caldavPreset, type AccountAdded } from './telemetry'
 import { conferenceUrlOf, type GEvent } from './providers/google/provider'
+import { fieldChanges, snap } from './logic/activity'
 
 export interface ApiDeps {
   verifyCaldav(input: CaldavAccountInput): Promise<{ email: string }>
@@ -13,7 +14,13 @@ export interface ApiDeps {
   onChanged?(accountId: string): void
   /** An account was added (telemetry); gets only the provider kind and CalDAV preset, never account data. */
   onAccountAdded?(info: AccountAdded): void
+  /** A change the user asked for finished or failed (activity log). */
+  onAction?(entry: LogEntry): void
 }
+
+export type CoreApi = Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'>
+/** What the activity log reads before a change: the account's email and its cached events. */
+export type ActivityStore = Pick<AccountStore, 'get' | 'readCache'>
 
 const PALETTE = ['#bd93f9', '#50fa7b', '#8be9fd', '#ff79c6', '#ffb86c', '#f1fa8c']
 
@@ -95,7 +102,7 @@ const RsvpStatus = z.enum(['accepted', 'declined', 'tentative'])
 // null too: the terminal daemon's JSON line protocol turns an omitted argument into null.
 const Scope = z.enum(['one', 'following', 'all']).nullish().transform((s) => s ?? 'one')
 
-export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps): Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'> {
+export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps): CoreApi {
   const account = (accountId: unknown) => {
     const a = store.get(id.parse(accountId))
     if (!a) throw new Error('unknown account')
@@ -140,7 +147,7 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
     return ev
   }
 
-  return {
+  const api: CoreApi = {
     accounts: {
       list: async () =>
         store.list().map((a) => ({ ...a, syncing: sync.isSyncing(a.id), synced: !!store.readCache(a.id).syncedAt })),
@@ -271,6 +278,7 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
       }
     }
   }
+  return deps.onAction ? withActivityLog(api, store, deps.onAction) : api
 }
 
 /** Whether deleting `target` with `scope` removes `e` (a recurring series' other instances for 'all'/'following'). */
@@ -279,4 +287,96 @@ export function deletedBy(target: CalEvent, scope: z.infer<typeof Scope>, e: Cal
   const series = target.recurringEventId
   if (!series || scope === 'one' || e.recurringEventId !== series || e.calendarId !== target.calendarId) return false
   return scope === 'all' || Date.parse(e.start) >= Date.parse(target.start)
+}
+
+/**
+ * The same API, recording every change the user asks for (accounts, calendars, events) with its outcome. Reads the
+ * cached event before the change, so the entry holds what it was; inputs are still validated by `api` itself.
+ */
+export function withActivityLog(api: CoreApi, store: ActivityStore, onAction: (e: LogEntry) => void): CoreApi {
+  const field = (raw: unknown, k: string): string => {
+    const v = raw && typeof raw === 'object' ? (raw as Record<string, unknown>)[k] : undefined
+    return typeof v === 'string' ? v : ''
+  }
+  const cached = (raw: unknown): CalEvent | undefined => {
+    try {
+      return store.readCache(field(raw, 'accountId')).events.find((e) => e.id === field(raw, 'id') && e.calendarId === field(raw, 'calendarId'))
+    } catch {
+      return undefined
+    }
+  }
+  const run = async <T>(kind: LogKind, accountId: string, entry: Partial<LogEntry>, fn: () => Promise<T>, after?: (r: T) => Partial<LogEntry>): Promise<T> => {
+    const base = { at: new Date().toISOString(), accountId, email: store.get(accountId)?.email ?? '', kind, ...entry }
+    try {
+      const r = await fn()
+      onAction({ ...base, ok: true, ...after?.(r) })
+      return r
+    } catch (e) {
+      onAction({ ...base, ok: false, error: e instanceof Error ? e.message : String(e) })
+      throw e
+    }
+  }
+  const added = (a: { id: string; email: string; label: string }): Partial<LogEntry> => ({ accountId: a.id, email: a.email, detail: { label: a.label } })
+
+  return {
+    ...api,
+    accounts: {
+      ...api.accounts,
+      addGoogle: () => run('account.add', '', { detail: { provider: 'google' } }, () => api.accounts.addGoogle(), added),
+      addCaldav: (raw) => run('account.add', '', { email: field(raw, 'username'), detail: { provider: 'caldav' } }, () => api.accounts.addCaldav(raw), added),
+      update: (accountId, patch) => {
+        const a = store.get(String(accountId))
+        const changes = (['label', 'color'] as const).flatMap((f) => {
+          const to = field(patch, f)
+          return a && to && to !== a[f] ? [{ field: f, from: a[f], to }] : []
+        })
+        return run('account.update', String(accountId), { changes }, () => api.accounts.update(accountId, patch))
+      },
+      reauth: (accountId, raw) => run('account.reauth', String(accountId), {}, () => api.accounts.reauth(accountId, raw)),
+      remove: (accountId) =>
+        run('account.remove', String(accountId), { detail: { label: store.get(String(accountId))?.label ?? '' } }, () => api.accounts.remove(accountId))
+    },
+    calendars: {
+      ...api.calendars,
+      setVisible: (accountId, calendarId, visible) => {
+        let name = String(calendarId)
+        try {
+          name = store.readCache(String(accountId)).calendars.find((c) => c.id === calendarId)?.name ?? name
+        } catch {
+          // unknown account: api.calendars.setVisible refuses it
+        }
+        const detail = { calendar: name, visible: visible === true }
+        return run('calendar.visible', String(accountId), { detail }, () => api.calendars.setVisible(accountId, calendarId, visible))
+      }
+    },
+    events: {
+      ...api.events,
+      create: (raw) => run('event.create', field(raw, 'accountId'), {}, () => api.events.create(raw), (ev) => ({ event: snap(ev) })),
+      update: (raw, scope) => {
+        const old = cached(raw)
+        const recurrence = raw && typeof raw === 'object' ? (raw as Partial<CalEvent>).recurrence : undefined
+        return run(
+          'event.update',
+          field(raw, 'accountId'),
+          { event: old && snap(old), scope: old?.recurringEventId ? (scope ?? 'one') : undefined },
+          () => api.events.update(raw, scope),
+          (ev) => ({ event: snap(ev), changes: old ? fieldChanges(old, { ...ev, recurrence }) : undefined })
+        )
+      },
+      delete: (raw, scope) => {
+        const old = cached(raw)
+        return run('event.delete', field(raw, 'accountId'), { event: old && snap(old), scope: scope ?? 'one' }, () => api.events.delete(raw, scope))
+      },
+      respond: (raw, status) => {
+        const old = cached(raw)
+        return run(
+          'event.respond',
+          field(raw, 'accountId'),
+          { event: old && snap(old), status: status as PartStat },
+          () => api.events.respond(raw, status),
+          (ev) => ({ event: snap(ev) })
+        )
+      }
+    }
+  }
 }

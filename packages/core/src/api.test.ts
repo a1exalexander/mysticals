@@ -43,7 +43,8 @@ function setup() {
     vi.spyOn(p, 'respond')
     vi.spyOn(p, 'updateEvent')
   }
-  return { api: createApi(store, sync, deps), providers, store, sync, deps, invite, hidden }
+  const onAction = vi.fn()
+  return { api: createApi(store, sync, { ...deps, onAction }), providers, store, sync, deps, invite, hidden, onAction }
 }
 
 const newEvent = { title: 'X', start: '2026-09-24T10:00:00Z', end: '2026-09-24T11:00:00Z', allDay: false }
@@ -230,5 +231,35 @@ describe('createApi validation', () => {
       [{ provider: 'caldav', preset: 'custom' }],
       [{ provider: 'google' }]
     ])
+  })
+})
+
+describe('createApi activity log', () => {
+  it('records an RSVP with the event as it was cached', async () => {
+    const { api, onAction, invite } = setup()
+    await api.events.respond(invite, 'accepted')
+    expect(onAction).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ kind: 'event.respond', accountId: 'work', email: 'me@work.example', ok: true, status: 'accepted', event: expect.objectContaining({ id: 'inv-1', title: 'Daily' }) })
+    )
+    expect(onAction.mock.calls[0][0].event).not.toHaveProperty('raw')
+  })
+
+  it('records an edit with its field changes', async () => {
+    const { api, onAction, invite } = setup()
+    await api.events.update({ ...invite, title: 'Renamed' })
+    expect(onAction.mock.calls[0][0]).toMatchObject({ kind: 'event.update', ok: true, changes: [{ field: 'title', from: 'Daily', to: 'Renamed' }] })
+  })
+
+  it('records a refused change with its error and still throws', async () => {
+    const { api, onAction } = setup()
+    await expect(api.events.create({ ...newEvent, accountId: 'personal', calendarId: 'p-holidays' })).rejects.toThrow(/read-only/)
+    expect(onAction).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ kind: 'event.create', accountId: 'personal', ok: false, error: 'calendar is read-only' }))
+  })
+
+  it('keeps the email of a removed account', async () => {
+    const { api, onAction, store } = setup()
+    ;(store as unknown as { remove: () => Promise<void> }).remove = vi.fn(async () => {})
+    await api.accounts.remove('personal')
+    expect(onAction.mock.calls[0][0]).toMatchObject({ kind: 'account.remove', email: 'me@gmail.example', ok: true, detail: { label: 'Personal' } })
   })
 })
