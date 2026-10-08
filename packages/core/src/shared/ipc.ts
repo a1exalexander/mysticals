@@ -85,6 +85,9 @@ export interface ReminderApi {
   /** Full-screen reminder for events with a Call link instead of a Banner; off by default. */
   fullscreen(): Promise<boolean>
   setFullscreen(on: boolean): Promise<void>
+  /** A sound with each reminder (Banner chime, Full-screen reminder bell); on by default. */
+  sound(): Promise<boolean>
+  setSound(on: boolean): Promise<void>
 }
 
 /** One meeting on the full-screen reminder (ISO start/end, calendar colour, account label, its Call link). */
@@ -169,6 +172,8 @@ export const IPC = {
   remindersMutedSet: 'reminders:muted-set',
   remindersFullscreenGet: 'reminders:fullscreen-get',
   remindersFullscreenSet: 'reminders:fullscreen-set',
+  remindersSoundGet: 'reminders:sound-get',
+  remindersSoundSet: 'reminders:sound-set',
   reminderScreenMeetings: 'reminder-screen:meetings',
   reminderScreenClose: 'reminder-screen:close',
   themeSet: 'theme:set',

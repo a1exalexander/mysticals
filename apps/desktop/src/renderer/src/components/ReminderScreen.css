@@ -24,3 +24,22 @@
 }
 .rs-url:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .rs-hint { margin: 0; font: 12px/1 var(--mono); color: var(--faint); }
+
+.rs-close {
+  position: fixed; top: 20px; right: 20px; width: 48px; height: 48px; padding: 0;
+  display: grid; place-items: center; cursor: pointer;
+  color: var(--muted); background: transparent; border: 1px solid var(--line-strong); border-radius: 50%;
+}
+.rs-close:hover { color: var(--fg); background: var(--surface-2); }
+.rs-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Enter: backdrop fades, heading and hint follow, cards rise and settle one after another. Paused until the window is shown. */
+.rs { animation: rs-fade 260ms ease-out both; }
+.rs-heading, .rs-hint, .rs-close { animation: rs-fade 400ms 120ms ease-out both; }
+.rs-card { animation: rs-rise 520ms calc(140ms + var(--i, 0) * 60ms) cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.rs:not([data-shown]), .rs:not([data-shown]) * { animation-play-state: paused; }
+@keyframes rs-fade { from { opacity: 0; } }
+@keyframes rs-rise { from { opacity: 0; transform: translateY(12px) scale(0.96); } }
+@media (prefers-reduced-motion: reduce) {
+  .rs, .rs-heading, .rs-hint, .rs-close, .rs-card { animation: none; }
+}

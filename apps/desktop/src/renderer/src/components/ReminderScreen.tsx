@@ -10,6 +10,19 @@ export function ReminderScreen(): React.JSX.Element {
   useLocale()
   const [meetings, setMeetings] = useState<ReminderMeeting[]>([])
   const [now, setNow] = useState(Date.now)
+  // The window opens hidden and main focuses it once shown: the enter animation waits for that, or it plays unseen.
+  const [shown, setShown] = useState(() => document.hasFocus())
+  useEffect(() => {
+    if (shown) return
+    const show = (): void => setShown(true)
+    window.addEventListener('focus', show, { once: true })
+    // Never stay invisible if focus doesn't come (some Linux window managers refuse it).
+    const late = setTimeout(show, 1500)
+    return () => {
+      window.removeEventListener('focus', show)
+      clearTimeout(late)
+    }
+  }, [shown])
   useEffect(() => {
     void window.reminderScreen.meetings().then(setMeetings, () => {})
     const off = window.reminderScreen.onMeetings(setMeetings)
@@ -30,11 +43,16 @@ export function ReminderScreen(): React.JSX.Element {
     }
   }, [])
   return (
-    <main className="rs" aria-label={t('reminder.screen')}>
+    <main className="rs" data-shown={shown || undefined} aria-label={t('reminder.screen')}>
+      <button type="button" className="rs-close" aria-label={t('reminder.close')} title={t('reminder.close')} onClick={() => void window.reminderScreen.close()}>
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
       <h1 className="rs-heading">{t('reminder.screen')}</h1>
       <div className="rs-list">
-        {meetings.map((m) => (
-          <Card key={m.key} m={m} now={now} />
+        {meetings.map((m, i) => (
+          <Card key={m.key} m={m} now={now} i={i} />
         ))}
       </div>
       <p className="rs-hint">{t('reminder.dismiss')}</p>
@@ -42,7 +60,7 @@ export function ReminderScreen(): React.JSX.Element {
   )
 }
 
-function Card({ m, now }: { m: ReminderMeeting; now: number }): React.JSX.Element {
+function Card({ m, now, i }: { m: ReminderMeeting; now: number; i: number }): React.JSX.Element {
   const [copied, setCopied] = useState(false)
   const start = new Date(m.start)
   const min = Math.ceil((start.getTime() - now) / 60_000)
@@ -52,7 +70,7 @@ function Card({ m, now }: { m: ReminderMeeting; now: number }): React.JSX.Elemen
       () => {}
     )
   return (
-    <article className="rs-card">
+    <article className="rs-card" style={{ '--i': i } as React.CSSProperties}>
       <div className="rs-meta">
         <span className="mc-dot" style={{ background: m.color || undefined }} />
         <span className="rs-account">{m.account}</span>

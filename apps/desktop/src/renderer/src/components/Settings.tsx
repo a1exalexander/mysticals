@@ -244,11 +244,13 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
   const [min, setMin] = useState<number>()
   const [muted, setMuted] = useState<string[]>()
   const [fullscreen, setFullscreen] = useState<boolean>()
+  const [sound, setSound] = useState<boolean>()
   const [selected, setSelected] = useState<string>()
   const [error, setError] = useState('')
   useEffect(() => void window.reminders.get().then(setMin, () => {}), [])
   useEffect(() => void window.reminders.muted().then(setMuted, () => {}), [])
   useEffect(() => void window.reminders.fullscreen().then(setFullscreen, () => {}), [])
+  useEffect(() => void window.reminders.sound().then(setSound, () => {}), [])
   const current = accounts.find((a) => a.id === selected) ?? accounts[0]
   const syncAll = async (): Promise<void> => {
     setAll(true)
@@ -283,6 +285,15 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
       setError(errorText(e))
     })
   }
+  const pickSound = (on: boolean): void => {
+    const prev = sound
+    setSound(on)
+    setError('')
+    window.reminders.setSound(on).catch((e) => {
+      setSound(prev)
+      setError(errorText(e))
+    })
+  }
   return (
     <div className="acc-panel">
       <div className="acc-reminders">
@@ -311,6 +322,17 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
             onChange={(e) => pickFullscreen(e.target.checked)}
           />
           {t('settings.reminders.fullscreen')}
+        </label>
+        <label className="set-check">
+          <input
+            type="checkbox"
+            className="mc-check"
+            data-testid="reminder-sound-toggle"
+            checked={sound ?? false}
+            disabled={sound === undefined || !min}
+            onChange={(e) => pickSound(e.target.checked)}
+          />
+          {t('settings.reminders.sound')}
         </label>
         <p className="acc-hint-line">{t('settings.reminders.hint')}</p>
       </div>

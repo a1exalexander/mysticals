@@ -10,6 +10,7 @@ import { eventMeetingUrl } from '@mysticals/core/logic/meeting'
 import { currentLocale } from './locale'
 import { readPrefs, writePrefs } from './prefs'
 import { showReminderScreen, startReminderScreen } from './reminderWindow'
+import { playSound, reminderSound } from './sound'
 
 const TICK_MS = 20_000
 
@@ -73,6 +74,11 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts
     writePrefs({ fullscreenReminder: on })
     void tick()
   })
+  ipcMain.handle(IPC.remindersSoundGet, reminderSound)
+  ipcMain.handle(IPC.remindersSoundSet, (_e, on: unknown) => {
+    if (typeof on !== 'boolean') throw new Error('Invalid reminder sound')
+    writePrefs({ reminderSound: on })
+  })
 
   // reminder key → event start (ms), to forget old ones. On disk so a restart inside the reminder window stays quiet.
   const sentFile = join(app.getPath('userData'), 'reminded.json')
@@ -109,7 +115,11 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts
         log?.({ at: now.toISOString(), accountId: e.accountId, email: accounts.find((a) => a.id === e.accountId)?.email ?? '', kind: 'reminder', ok: true, event: snap(e), detail: { mode, minutes: lead } })
       for (const e of split.banner) record(e, 'banner')
       for (const e of split.fullscreen) record(e, 'fullscreen')
-      if (Notification.isSupported()) for (const e of split.banner) show(reminderText(e, now, currentLocale()))
+      const popped = Notification.isSupported() ? split.banner : []
+      for (const e of popped) show(reminderText(e, now, currentLocale()))
+      // One sound per tick, however many are due; the screen's bell wins over the Banner chime.
+      if (split.fullscreen.length) playSound('bell')
+      else if (popped.length) playSound('chime')
       const next = screenMeetings(onScreen, split.fullscreen, shown, now)
       if (!onScreen.length && !next.length) return
       // No await from here on: a dismiss in between would be undone.
@@ -127,8 +137,8 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts
   }
 
   const show = ({ title, body, join }: ReturnType<typeof reminderText>): void => {
-    // Stays until dismissed on Windows/Linux (critical: GNOME ignores timeouts); macOS takes it from Info.plist.
-    const n = new Notification({ title, body, actions: join ? [{ type: 'button', text: join.label }] : [], timeoutType: 'never', urgency: 'critical' })
+    // Stays until dismissed on Windows/Linux (critical: GNOME ignores timeouts); macOS takes it from Info.plist. Silent: playSound() rings instead.
+    const n = new Notification({ title, body, actions: join ? [{ type: 'button', text: join.label }] : [], timeoutType: 'never', urgency: 'critical', silent: true })
     banners.add(n)
     const open = (): void => {
       banners.delete(n)
