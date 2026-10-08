@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 // nav.ts reads the clock at import, so each test pins the time before a fresh import.
 const load = async (at: string): Promise<typeof import('./nav')> => {
@@ -9,6 +9,8 @@ const load = async (at: string): Promise<typeof import('./nav')> => {
 }
 
 describe('rollover', () => {
+  // Cold first import (react, date-fns) can exceed the 5s test timeout on CI runners; pay it once here.
+  beforeAll(() => import('./nav'), 30_000)
   afterEach(() => vi.useRealTimers())
 
   it('moves a view on today to the new day', async () => {
