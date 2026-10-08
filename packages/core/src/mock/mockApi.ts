@@ -1,6 +1,7 @@
 import { addDays, format } from 'date-fns'
 import type { Api } from '../shared/ipc'
-import type { Account, CalEvent } from '../shared/types'
+import type { Account, CalEvent, LogEntry } from '../shared/types'
+import { withActivityLog, type ActivityStore } from '../api'
 import { MockProvider } from './MockProvider'
 
 const iso = (dayOffset: number, h: number, m = 0): string => {
@@ -11,7 +12,7 @@ const iso = (dayOffset: number, h: number, m = 0): string => {
 }
 
 /** Two isolated fake accounts with seeded events. Used when MYSTICALS_MOCK=1. */
-export function createMockApi(onChanged: (accountId: string) => void): Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'> {
+export function createMockApi(onChanged: (accountId: string) => void, onAction?: (e: LogEntry) => void): Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'> {
   const accounts: Account[] = [
     {
       id: 'work', kind: 'caldav', label: 'Work', email: 'me@work.example', color: '#8be9fd',
@@ -83,7 +84,7 @@ export function createMockApi(onChanged: (accountId: string) => void): Omit<Api,
     return p
   }
 
-  return {
+  const api: Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'> = {
     accounts: {
       list: async () => structuredClone(accounts),
       addGoogle: async () => { throw new Error('Not available in mock mode') },
@@ -151,4 +152,13 @@ export function createMockApi(onChanged: (accountId: string) => void): Omit<Api,
     },
     sync: { now: async () => {} }
   }
+  const store: ActivityStore = {
+    get: (id) => accounts.find((a) => a.id === id),
+    readCache: (id) => {
+      const p = providers.get(id)
+      if (!p) throw new Error('unknown account')
+      return { calendars: p.calendars, events: p.events }
+    }
+  }
+  return onAction ? withActivityLog(api, store, onAction) : api
 }

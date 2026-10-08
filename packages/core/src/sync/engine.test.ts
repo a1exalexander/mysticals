@@ -120,6 +120,23 @@ describe('SyncEngine', () => {
     expect(onEvents).toHaveBeenCalledExactlyOnceWith('work', [expect.objectContaining({ kind: 'invite', event: expect.objectContaining({ id: 'i2' }) })])
   })
 
+  it('reports each sync result with the caches before and after, or the failure', async () => {
+    const work = store.add('work')
+    const onResult = vi.fn()
+    const engine = new SyncEngine(store, () => {}, { triggers: noTriggers, onResult })
+    await engine.syncNow('work')
+    expect(onResult).toHaveBeenLastCalledWith('work', expect.objectContaining({ ok: true, next: expect.objectContaining({ events: [] }) }))
+    expect(onResult.mock.lastCall![1].prev?.syncedAt).toBeUndefined() // never synced before
+    work.events.push(ev('w1', 'work-cal', '2026-09-23T09:00:00Z', '2026-09-23T10:00:00Z'))
+    await engine.syncNow('work')
+    const last = onResult.mock.lastCall![1]
+    expect(last.prev.events).toEqual([])
+    expect(last.next.events.map((e: CalEvent) => e.id)).toEqual(['w1'])
+    vi.spyOn(work, 'listCalendars').mockRejectedValue(new AuthError('expired'))
+    await expect(engine.syncNow('work')).rejects.toThrow('expired')
+    expect(onResult).toHaveBeenLastCalledWith('work', { ok: false, error: 'expired', auth: true })
+  })
+
   it('does not run concurrent syncs for the same account', async () => {
     const work = store.add('work')
     const spy = vi.spyOn(work, 'listCalendars')

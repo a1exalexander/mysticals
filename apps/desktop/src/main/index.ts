@@ -6,7 +6,9 @@ import { IPC } from '@shared/ipc'
 import { createMockApi } from '@mysticals/core/mock/mockApi'
 import { createApi } from '@mysticals/core/api'
 import { AccountStore, type SecretCrypto } from '@mysticals/core/accounts/store'
-import { SyncEngine } from '@mysticals/core/sync/engine'
+import { SyncEngine, type SyncResult } from '@mysticals/core/sync/engine'
+import { remoteChanges, snap } from '@mysticals/core/logic/activity'
+import type { LogEntry } from '@shared/types'
 import { noteText, type Note } from '@mysticals/core/sync/notify'
 import { t } from '@mysticals/core/i18n'
 import type { AccountAdded } from '@mysticals/core/telemetry'
@@ -17,6 +19,7 @@ import { currentLocale, startLocale } from './locale'
 import { startUpdater } from './update'
 import { startDesktopTelemetry } from './telemetry'
 import { mutedAccounts, startReminders } from './reminders'
+import { createActivityLog, registerActivityLog, type ActivityLog } from './activityLog'
 import { electronTriggers } from './sync/electronTriggers'
 import { loadRenderer, lockDown, themeBg, webPreferences } from './window'
 
@@ -58,11 +61,19 @@ function broadcast(accountId: string): void {
 // Held until closed/clicked: a GC'd Notification drops its click handler.
 const banners = new Set<Notification>()
 
-/** System banners for invites/changes; muted accounts and events in hidden calendars stay silent. */
-function notify(store: AccountStore, accountId: string, notes: Note[]): void {
+/** System banners for invites/changes; muted accounts and events in hidden calendars stay silent. Each note is logged. */
+function notify(store: AccountStore, log: ActivityLog, accountId: string, notes: Note[]): void {
   const account = store.list().find((a) => a.id === accountId)
-  if (!account || !Notification.isSupported() || mutedAccounts().has(accountId)) return
+  if (!account) return
+  const muted = mutedAccounts().has(accountId)
+  const supported = Notification.isSupported()
   const hidden = new Set(store.hiddenCalendars(accountId))
+  const at = new Date().toISOString()
+  for (const n of notes) {
+    const reason = muted ? 'muted' : hidden.has(n.event.calendarId) ? 'hidden calendar' : !supported ? 'unsupported' : undefined
+    log.append({ at, accountId, email: account.email, kind: 'notify', ok: true, event: snap(n.event), detail: { note: n.kind, shown: !reason, ...(reason ? { reason } : {}) } })
+  }
+  if (!supported || muted) return
   const shown = notes.filter((n) => !hidden.has(n.event.calendarId))
   for (const { title, body } of noteText(shown, account.label, new Date(), currentLocale())) {
     const n = new Notification({ title, body })
@@ -79,6 +90,41 @@ function notify(store: AccountStore, accountId: string, notes: Note[]): void {
     })
     n.show()
   }
+}
+
+/**
+ * A finished sync in the activity log: failures always; successes when they brought changes, were the first sync or
+ * ended an error (a quiet pass every 2 minutes would bury the rest). Each remote change gets its own entry.
+ */
+function logSync(store: AccountStore, log: ActivityLog, accountId: string, r: SyncResult): void {
+  const account = store.get(accountId)
+  const base = { at: new Date().toISOString(), accountId, email: account?.email ?? '' }
+  if (!r.ok) return log.append({ ...base, kind: 'sync.fail', ok: false, error: r.error, detail: { auth: r.auth } })
+  const first = !r.prev?.syncedAt
+  const changes = first ? [] : remoteChanges(r.prev!, r.next)
+  if (!first && !changes.length && !account?.error) return
+  const count = (k: LogEntry['kind']): number => changes.filter((c) => c.kind === k).length
+  log.append({
+    ...base,
+    kind: 'sync',
+    ok: true,
+    detail: {
+      calendars: r.next.calendars.length,
+      events: r.next.events.length,
+      ...(first ? { first: true } : { added: count('remote.add'), changed: count('remote.change'), removed: count('remote.remove') }),
+      ...(account?.error ? { recovered: account.error } : {})
+    }
+  })
+  for (const c of changes) log.append({ ...base, ok: true, ...c })
+}
+
+/** Tells open windows (Settings > Logs) to re-read, at most twice a second: a sync can append hundreds of entries. */
+let logTimer: ReturnType<typeof setTimeout> | undefined
+function logsAppended(): void {
+  logTimer ??= setTimeout(() => {
+    logTimer = undefined
+    for (const w of BrowserWindow.getAllWindows()) w.webContents.send(IPC.logsAppended)
+  }, 500)
 }
 
 /**
@@ -188,10 +234,12 @@ app.whenReady().then(() => {
   // Dev runs would register the bare Electron binary; electron-builder's `protocols` covers installed builds too.
   if (app.isPackaged && !MOCK) app.setAsDefaultProtocolClient(PROTOCOL)
   const track = startDesktopTelemetry()
+  const activity = createActivityLog(join(app.getPath('userData'), 'logs'), logsAppended)
+  registerActivityLog(activity)
   if (MOCK) {
-    const api = createMockApi(broadcast)
+    const api = createMockApi(broadcast, activity.append)
     registerApi(api)
-    startReminders(api, showMain)
+    startReminders(api, showMain, activity.append)
   } else {
     setClientConfig({
       clientId: import.meta.env.MYSTICALS_GOOGLE_CLIENT_ID,
@@ -213,8 +261,9 @@ app.whenReady().then(() => {
     }
     const sync = new SyncEngine(store, broadcast, {
       triggers: electronTriggers,
-      onEvents: (id, notes) => notify(store, id, notes),
-      onSyncing: broadcast // renderer re-reads accounts.list for the `syncing` flag
+      onEvents: (id, notes) => notify(store, activity, id, notes),
+      onSyncing: broadcast, // renderer re-reads accounts.list for the `syncing` flag
+      onResult: (id, r) => logSync(store, activity, id, r)
     })
     try {
       // The user finishes sign-in in the browser: bring Mysticals back right away so they see the account connect
@@ -229,9 +278,9 @@ app.whenReady().then(() => {
           }
         })
       const onAccountAdded = (info: AccountAdded): void => track?.('account_added', info)
-      const api = createApi(store, sync, { verifyCaldav, googleSignIn: signIn, onChanged: broadcast, onAccountAdded })
+      const api = createApi(store, sync, { verifyCaldav, googleSignIn: signIn, onChanged: broadcast, onAccountAdded, onAction: activity.append })
       registerApi(api)
-      startReminders(api, showMain)
+      startReminders(api, showMain, activity.append)
       sync.start()
     } catch (e) {
       console.error('backend not ready', e)

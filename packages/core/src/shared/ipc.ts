@@ -5,6 +5,8 @@ import type {
   CalEvent,
   CaldavAccountInput,
   DeleteScope,
+  LogPage,
+  LogQuery,
   NewEventInput,
   PartStat,
   Recurrence,
@@ -125,6 +127,15 @@ export interface ThemeApi {
   set(scheme: 'dark' | 'light', bg: string): Promise<void>
 }
 
+/** Desktop-only Settings > Logs: what happened per account, kept 30 days. Exposed as `window.logs`. */
+export interface LogApi {
+  list(q: LogQuery): Promise<LogPage>
+  /** Opens the folder with the daily log files. */
+  openFolder(): Promise<void>
+  /** Fires when entries are added. Returns unsubscribe. */
+  onAppended(cb: () => void): () => void
+}
+
 export type MenuCommand = 'new-event' | 'today' | 'toggle-sidebar' | 'view-agenda' | 'view-day' | 'view-3day' | 'view-week' | 'view-month'
 
 export const IPC = {
@@ -163,5 +174,8 @@ export const IPC = {
   themeSet: 'theme:set',
   localeGet: 'locale:get',
   localeSet: 'locale:set',
-  locale: 'locale'
+  locale: 'locale',
+  logsList: 'logs:list',
+  logsOpen: 'logs:open',
+  logsAppended: 'logs:appended'
 } as const

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { Api, LocaleApi, LocaleState, MenuCommand, ReminderApi, ReminderMeeting, ReminderScreenApi, TelemetryApi, ThemeApi, UpdateApi, UpdateState } from '@shared/ipc'
+import type { Api, LocaleApi, LogApi, LocaleState, MenuCommand, ReminderApi, ReminderMeeting, ReminderScreenApi, TelemetryApi, ThemeApi, UpdateApi, UpdateState } from '@shared/ipc'
 import { IPC } from '@shared/ipc'
 
 const call =
@@ -74,6 +74,13 @@ const locale: LocaleApi = {
   onChange: (cb) => on<LocaleState>(IPC.locale, cb)
 } as LocaleApi
 contextBridge.exposeInMainWorld('locale', locale)
+
+const logs: LogApi = {
+  list: call(IPC.logsList),
+  openFolder: call(IPC.logsOpen),
+  onAppended: (cb) => on<void>(IPC.logsAppended, cb)
+} as LogApi
+contextBridge.exposeInMainWorld('logs', logs)
 
 const appTheme: ThemeApi = { set: call(IPC.themeSet) } as ThemeApi
 contextBridge.exposeInMainWorld('appTheme', appTheme)
