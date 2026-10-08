@@ -252,7 +252,7 @@ export const uk: Record<Key, Msg> = {
   'settings.privacy.policy': 'Політика конфіденційності',
   'settings.privacy.title': 'Конфіденційність',
   'settings.privacy.share': 'Надсилати анонімну статистику використання',
-  'settings.donate': 'Підтримати на Ko-fi',
+  'settings.donate': 'Підтримати',
   'settings.account.labelFor': 'Назва для {email}',
   'settings.account.colourFor': 'Колір для {email}',
   'settings.account.remove': 'Видалити',

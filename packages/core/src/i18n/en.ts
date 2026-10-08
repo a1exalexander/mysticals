@@ -251,7 +251,7 @@ export const en = {
   'settings.privacy.policy': 'Privacy policy',
   'settings.privacy.title': 'Privacy',
   'settings.privacy.share': 'Share anonymous usage stats',
-  'settings.donate': 'Support on Ko-fi',
+  'settings.donate': 'Donate',
   'settings.account.labelFor': 'Label for {email}',
   'settings.account.colourFor': 'Colour for {email}',
   'settings.account.remove': 'Remove',

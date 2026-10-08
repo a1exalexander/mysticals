@@ -18,7 +18,7 @@ import { AddCaldav, PALETTE, cycle, editText, useKeyState } from './AddCaldav'
 import { Spinner } from '../StatusLine'
 import { openUrl } from '../../daemon/google'
 
-const DONATE_URL = 'https://ko-fi.com/a1exalexander'
+const DONATE_URL = 'https://base.monobank.ua/4VzJ6ms12UeMhR#donate'
 
 export interface AccountsProps {
   onClose(): void
@@ -301,9 +301,9 @@ export function Accounts({ onClose }: AccountsProps) {
         <Box marginTop={1}>
           <Text color={C.muted}>Made in Ukraine · </Text>
           <Clickable onClick={() => void openUrl(DONATE_URL).catch(() => {})}>
-            <Text color={C.muted}>Support on Ko-fi: </Text>
+            <Text color={C.magenta}>♥ </Text>
             <Text color={C.cyan} underline>
-              {DONATE_URL}
+              Donate on monobank Base
             </Text>
           </Clickable>
         </Box>

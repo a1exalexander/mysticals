@@ -12,6 +12,7 @@ import { setLongEvents, useLongEvents } from '../longEvents'
 import { Select } from './ui/Select'
 import { Range } from './ui/Range'
 import { LogsPanel } from './LogsPanel'
+import baseIcon from '../assets/monobank-base.png'
 import './ui/ui.css'
 
 const TABS = [
@@ -66,7 +67,8 @@ export function SettingsHost(): React.JSX.Element | null {
             </svg>
             Made in Ukraine
             <span aria-hidden>·</span>
-            <a href="https://ko-fi.com/a1exalexander" target="_blank" rel="noreferrer" data-testid="donate-link">
+            <a className="set-donate" href="https://base.monobank.ua/4VzJ6ms12UeMhR#donate" target="_blank" rel="noreferrer" data-testid="donate-link">
+              <img src={baseIcon} alt="" />
               {t('settings.donate')}
             </a>
           </p>

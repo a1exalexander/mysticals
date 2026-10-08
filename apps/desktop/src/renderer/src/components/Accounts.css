@@ -186,8 +186,7 @@
 .acc-sheet .set-tabs button.active { color: var(--accent); }
 .set-panel { min-height: 0; overflow-y: auto; padding-right: 6px; }
 .set-side .set-made { margin-top: auto; justify-content: flex-start; flex-wrap: wrap; padding: 12px 0 0 6px; }
-.set-side .set-made > span { display: none; } /* the dot; the link takes its own line */
-.set-side .set-made a { flex-basis: 100%; }
+.set-side .set-made > span { flex-basis: 100%; height: 0; overflow: hidden; } /* the dot becomes a line break: the button takes its own line */
 /* Narrow windows: the sections go back to one row above the panel. */
 @media (max-width: 640px) {
   .set-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 14px; }
@@ -248,6 +247,10 @@
 .set-made svg { width: 12px; height: 8px; border-radius: 1px; }
 .set-made a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .set-made a:hover { color: var(--fg); }
+/* Donate: a small button in monobank Base's own purple, not a theme colour. */
+.set-made a.set-donate { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 5px; border-radius: 6px; background: #7b4bf8; color: #fff; font-weight: 600; text-decoration: none; }
+.set-made a.set-donate:hover { background: #8d63ff; color: #fff; }
+.set-donate img { width: 14px; height: 14px; border-radius: 3px; box-shadow: 0 0 0 1px rgb(255 255 255 / 35%); }
 .set-sync-label { font-weight: 600; line-height: 24px; }
 .set-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--green); white-space: nowrap; }
 .set-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }

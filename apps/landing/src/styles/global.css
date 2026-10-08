@@ -39,7 +39,11 @@ body > header { border-bottom: 1px solid var(--line); }
 @media (max-width: 860px) { .nav .sec { display: none; } }
 @media (max-width: 420px) { .nav .gh { display: none; } }
 .foot { min-height: 96px; margin-top: 0; padding-block: 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 28px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
-.foot nav { display: flex; flex-wrap: wrap; gap: 8px 28px; }
+.foot nav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 28px; }
+/* Donate: small button in monobank Base's own purple */
+.foot nav a.donate { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px; border-radius: 8px; background: #7b4bf8; color: #fff; font-weight: 600; font-size: 13px; }
+.foot nav a.donate:hover { background: #8d63ff; color: #fff; }
+.donate img { border-radius: 4px; box-shadow: 0 0 0 1px rgb(255 255 255 / 35%); }
 
 /* type */
 h1, h2, h3 { margin: 0; font-family: var(--mono); font-weight: 600; text-wrap: balance; }
