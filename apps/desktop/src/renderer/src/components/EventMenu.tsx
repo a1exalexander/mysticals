@@ -128,12 +128,14 @@ export function EventMenuHost(): React.JSX.Element | null {
   const [menu, setMenu] = useState<Opened | null>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   const ref = useRef<HTMLDivElement>(null)
-  // What had focus before the menu opened (an event pill, say); it gets it back when the menu closes.
+  // What had keyboard focus when the menu opened (an event pill, say); it gets it back when the menu closes. Only
+  // :focus-visible counts: a right-click focuses the pill too, and a mouse user wants no ring and tooltip after.
   const back = useRef<Element | null>(null)
 
   useEffect(() => {
     const open = (m: Opened): void => {
-      if (!ref.current?.contains(document.activeElement)) back.current = document.activeElement
+      const was = document.activeElement
+      if (!ref.current?.contains(was)) back.current = was?.matches(':focus-visible') ? was : null
       setMenu(m)
     }
     const offs = [

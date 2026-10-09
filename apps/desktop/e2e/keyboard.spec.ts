@@ -51,8 +51,27 @@ test('week view events work from the keyboard: Tab, Enter, the menu key, ↑/↓
   await page.keyboard.press('Enter')
   await expect(menu).toBeHidden()
   await expect(stop).toBeFocused()
+  const rightClick = (): Promise<void> =>
+    expect(async () => {
+      await stop.click({ button: 'right' })
+      await page.waitForTimeout(150)
+      await expect(menu).toBeVisible({ timeout: 100 })
+    }).toPass()
+  // A right-click on the pill that already has keyboard focus: it gets it back.
+  await rightClick()
+  await page.keyboard.press('Escape')
+  await expect(stop).toBeFocused()
+  // A mouse user's right-click leaves no focus behind: no ring, and no tooltip a second later.
+  await stop.evaluate((el) => (el as HTMLElement).blur())
+  await rightClick()
+  await page.keyboard.press('Escape')
+  await expect(menu).toBeHidden()
+  await expect(stop).not.toBeFocused()
+  await page.waitForTimeout(1200)
+  await expect(page.getByTestId('event-tooltip')).toHaveCount(0)
 
   // ↓ steps to the day's next event, Space opens it.
+  await stop.focus()
   const top = await stop.evaluate((el) => (el as HTMLElement).offsetTop)
   await page.keyboard.press('ArrowDown')
   const next = today.locator(':focus')
