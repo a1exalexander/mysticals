@@ -127,7 +127,7 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
   /** Replaces (or adds) one event, stamped with the owner like everything the sync stores. */
   const upsert = (ev: CalEvent, accountId: string, calendarId: string): void => {
     const own = { ...ev, accountId, calendarId }
-    applyLocal(accountId, (events) => [...events.filter((e) => e.id !== own.id), own])
+    applyLocal(accountId, (events) => [...events.filter((e) => !sameEvent(e, own)), own])
   }
 
   const nextColor = (): string => PALETTE[store.list().length % PALETTE.length]
@@ -135,7 +135,7 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
   /** The cached copy is the source of truth for account/calendar ownership of an event. */
   const cachedEvent = (ref: z.infer<typeof EventRef>): CalEvent => {
     account(ref.accountId)
-    const ev = store.readCache(ref.accountId).events.find((e) => e.id === ref.id)
+    const ev = store.readCache(ref.accountId).events.find((e) => sameEvent(e, ref))
     if (!ev || ev.accountId !== ref.accountId || ev.calendarId !== ref.calendarId)
       throw new Error('event does not belong to this account/calendar')
     return ev
@@ -247,7 +247,7 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
         else {
           // The series' other instances moved or split; drop the stale ones until the sync below refills them.
           const own = { ...ev, accountId: cached.accountId, calendarId: cached.calendarId }
-          applyLocal(cached.accountId, (events) => [...events.filter((e) => e.id !== own.id && !deletedBy(cached, how, e)), own])
+          applyLocal(cached.accountId, (events) => [...events.filter((e) => !sameEvent(e, own) && !deletedBy(cached, how, e)), own])
         }
         syncOne(cached.accountId)
         return ev
@@ -281,9 +281,13 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
   return deps.onAction ? withActivityLog(api, store, deps.onAction) : api
 }
 
+/** One account's copy of an event: a meeting shown in two of its calendars has the same id in both. */
+const sameEvent = (a: Pick<CalEvent, 'id' | 'calendarId'>, b: Pick<CalEvent, 'id' | 'calendarId'>): boolean =>
+  a.id === b.id && a.calendarId === b.calendarId
+
 /** Whether deleting `target` with `scope` removes `e` (a recurring series' other instances for 'all'/'following'). */
 export function deletedBy(target: CalEvent, scope: z.infer<typeof Scope>, e: CalEvent): boolean {
-  if (e.id === target.id) return true
+  if (sameEvent(e, target)) return true
   const series = target.recurringEventId
   if (!series || scope === 'one' || e.recurringEventId !== series || e.calendarId !== target.calendarId) return false
   return scope === 'all' || Date.parse(e.start) >= Date.parse(target.start)
