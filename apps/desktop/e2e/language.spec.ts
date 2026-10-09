@@ -14,6 +14,7 @@ test('language: switch to Ukrainian in Settings and back', async () => {
   await page.getByTestId('language-uk').click()
   await expect(page.getByTestId('settings-tab-general')).toHaveText('Загальні')
   await expect(page.getByTestId('settings-tab-accounts')).toHaveText('Облікові записи')
+  await expect(page.getByTestId('made-in-ukraine')).toContainText('Зроблено в Україні')
   await expect(page.getByTestId('view-switch-week')).toHaveText('Тиждень')
   await expect(page.getByTestId('new-event')).toHaveText('+ нова')
   await expect(page.locator('html')).toHaveAttribute('lang', 'uk')
@@ -41,6 +42,9 @@ test('language: MYSTICALS_LANG=uk shows Ukrainian dates', async () => {
   await page.getByTestId('view-switch-month').click()
   const months = ['січень', 'лютий', 'березень', 'квітень', 'травень', 'червень', 'липень', 'серпень', 'вересень', 'жовтень', 'листопад', 'грудень']
   await expect(page.locator('.toolbar-title')).toContainText(new RegExp(months[new Date().getMonth()], 'i'))
+  // The status bar's month starts with a capital, like the title.
+  const month = months[new Date().getMonth()]
+  await expect(page.getByTestId('statusbar')).toContainText(month[0].toUpperCase() + month.slice(1))
   await expect(page.locator('.mg-dows')).toContainText('пн')
   await page.getByTestId('new-event').click()
   await expect(page.getByTestId('editor-save')).toHaveText('Додати подію')

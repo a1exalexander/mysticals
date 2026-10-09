@@ -251,6 +251,7 @@ export const en = {
   'settings.privacy.policy': 'Privacy policy',
   'settings.privacy.title': 'Privacy',
   'settings.privacy.share': 'Share anonymous usage stats',
+  'settings.madeIn': 'Made in Ukraine',
   'settings.donate': 'Donate',
   'settings.account.labelFor': 'Label for {email}',
   'settings.account.colourFor': 'Colour for {email}',

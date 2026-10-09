@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { Account, Calendar, EventSnap, LogChange, LogEntry, LogKind } from '@shared/types'
+import type { Account, Calendar, EventSnap, LogChange, LogEntry, LogKind, PartStat } from '@shared/types'
 import type { Key } from '@mysticals/core/i18n'
 import { STATUS_ICON } from '@mysticals/core/logic/details'
 import { errorText } from './AccountsShared'
@@ -204,13 +204,13 @@ function Details({ e, email, calName }: { e: LogEntry; email: string; calName: (
       {e.scope && (
         <>
           <dt>{t('logs.scope')}</dt>
-          <dd>{e.scope}</dd>
+          <dd>{t(`scope.${e.scope}`)}</dd>
         </>
       )}
       {e.status && (
         <>
           <dt>{t('logs.answer')}</dt>
-          <dd>{e.status}</dd>
+          <dd>{t(`partstat.${e.status}`)}</dd>
         </>
       )}
       {!!e.changes?.length && (
@@ -255,7 +255,7 @@ function EventRows({ ev, calName }: { ev: EventSnap; calName: (id: string) => st
   if (ev.organizer) rows.push(['logs.organizer', ev.organizer.name ? `${ev.organizer.name} <${ev.organizer.email}>` : ev.organizer.email])
   if (ev.location) rows.push(['logs.location', ev.location])
   if (ev.conferenceUrl) rows.push(['logs.call', ev.conferenceUrl])
-  if (ev.myStatus) rows.push(['logs.myStatus', `${STATUS_ICON[ev.myStatus]} ${ev.myStatus}`])
+  if (ev.myStatus) rows.push(['logs.myStatus', `${STATUS_ICON[ev.myStatus]} ${t(`partstat.${ev.myStatus}`)}`])
   if (ev.recurringEventId) rows.push(['logs.series', ev.recurringEventId])
   if (ev.attendees.length)
     rows.push([
@@ -263,7 +263,7 @@ function EventRows({ ev, calName }: { ev: EventSnap; calName: (id: string) => st
       <ul className="log-people" key="people">
         {ev.attendees.map((a) => (
           <li key={a.email}>
-            <span className={`log-rsvp is-${a.status}`} title={a.status}>
+            <span className={`log-rsvp is-${a.status}`} title={t(`partstat.${a.status}`)}>
               {STATUS_ICON[a.status]}
             </span>{' '}
             {a.name ? `${a.name} <${a.email}>` : a.email}
@@ -299,5 +299,6 @@ function fieldName(field: string): string {
 function value(c: LogChange, v: string | undefined, allDay = false): string {
   if (v === undefined) return '—'
   if ((c.field === 'start' || c.field === 'end') && !Number.isNaN(Date.parse(v))) return time(v, allDay)
+  if (c.field === 'myStatus' || c.field.startsWith('attendee:')) return t(`partstat.${v as PartStat}`)
   return v
 }

@@ -34,3 +34,33 @@ test('settings logs list a change and an RSVP with their details', async () => {
   await page.screenshot({ path: 'e2e/screens/logs.png' })
   await app.close()
 })
+
+test('settings logs show answers and series scopes in the UI language', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1', MYSTICALS_LANG: 'uk' } })
+  const page = await app.firstWindow()
+
+  await page.evaluate(async () => {
+    const day = new Date()
+    const range = { start: new Date(day.getTime() - 7 * 864e5).toISOString(), end: new Date(day.getTime() + 14 * 864e5).toISOString() }
+    const all = await window.api.events.list(range)
+    await window.api.events.respond(all.find((e) => e.title === 'Sprint planning')!, 'accepted')
+    await window.api.events.delete(all.find((e) => e.title === 'Morning run')!, 'following')
+  })
+
+  await page.getByRole('button', { name: 'Налаштування' }).click()
+  await page.getByTestId('settings-tab-logs').click()
+  const rows = page.getByTestId('log-entry')
+  const details = page.getByTestId('log-details')
+  await expect(rows).toHaveCount(2)
+
+  await rows.first().click()
+  await expect(details).toContainText('Ця й наступні')
+  await expect(details).not.toContainText('following')
+
+  await rows.nth(1).click()
+  await expect(details).toContainText('Sprint planning')
+  await expect(details).toContainText('прийнято')
+  await expect(details).not.toContainText(/accepted|needsAction/)
+  await expect(details.locator('.log-rsvp').first()).toHaveAttribute('title', 'прийнято')
+  await app.close()
+})

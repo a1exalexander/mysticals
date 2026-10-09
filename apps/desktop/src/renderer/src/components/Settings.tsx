@@ -72,7 +72,7 @@ export function SettingsHost(): React.JSX.Element | null {
               <rect width="3" height="1" fill="#0057B7" />
               <rect y="1" width="3" height="1" fill="#FFD700" />
             </svg>
-            Made in Ukraine
+            {t('settings.madeIn')}
             <span aria-hidden>·</span>
             <a className="set-donate" href="https://base.monobank.ua/4VzJ6ms12UeMhR#donate" target="_blank" rel="noreferrer" data-testid="donate-link">
               <img src={baseIcon} alt="" />

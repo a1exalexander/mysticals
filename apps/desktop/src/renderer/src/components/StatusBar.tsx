@@ -11,7 +11,7 @@ import type { UpdateState } from '@shared/ipc'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
 import { pickNowNext, startsLabel } from '@mysticals/core/logic/status'
-import { currentLocale, fmt, t, useLocale } from '../i18n'
+import { cap, currentLocale, fmt, t, useLocale } from '../i18n'
 
 /** Events happening now (max 2, then +N) and the next one within 24h; click opens details. */
 function NowNext(): React.JSX.Element {
@@ -126,7 +126,7 @@ export function StatusBar(): React.JSX.Element {
     view === 'agenda' || view === 'day'
       ? fmt(date, 'EEE d MMM yyyy')
       : view === 'month'
-        ? fmt(date, 'LLLL yyyy')
+        ? cap(fmt(date, 'LLLL yyyy'))
         : rangeLabel(days[0], days[days.length - 1], locale)
 
   return (
