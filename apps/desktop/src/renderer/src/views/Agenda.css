@@ -1,6 +1,8 @@
 /* Agenda: today's list (left) + focus card with the join button (right). Flat like the rest of the app:
    colour lives in straight bars, dots and status text, never in gradients or glows. */
-.ag-wrap { flex: 1; min-height: 0; display: flex; container-type: inline-size; border-top: 1px solid var(--line); }
+.ag-wrap { flex: 1; min-height: 0; display: flex; container-type: inline-size; border-top: 1px solid var(--line); --ag-time: 44px; }
+/* The rows' time column fits "12:45 PM" / "12:45 ПП" (8 mono characters, ~58px) with a 12-hour clock. */
+[data-clock='12'] .ag-wrap { --ag-time: 62px; }
 .ag {
   flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
   grid-template-rows: minmax(0, 1fr); gap: 24px; padding: 14px 20px 20px;
@@ -26,7 +28,7 @@
 .ag-item:has(> .ag-row:hover) { background: var(--hover); }
 .ag-item:has(> .ag-row[aria-current='true']) { background: color-mix(in srgb, var(--ink) 10%, transparent); }
 .ag-row {
-  flex: 1; min-width: 0; display: grid; grid-template-columns: 44px 3px minmax(0, 1fr); align-items: center; gap: 10px;
+  flex: 1; min-width: 0; display: grid; grid-template-columns: var(--ag-time) 3px minmax(0, 1fr); align-items: center; gap: 10px;
   padding: 7px 8px; border: 0; border-radius: var(--r-sm); background: none; color: var(--fg); text-align: left;
 }
 .ag-row[data-past='true'], .ag-row[data-declined='true'] { opacity: 0.45; }
@@ -104,15 +106,13 @@
 .ag[data-other-day] .ag-row[data-past='true'] { opacity: 1; }
 
 /* Now line between the events that have started and the ones still to come (the time grid's .tg-now look). */
-.ag-rows .ag-now { position: relative; height: 0; margin: 5px 0 5px 52px; border-top: 2px solid var(--pink); animation: none; }
+.ag-rows .ag-now { position: relative; height: 0; margin: 5px 0 5px calc(8px + var(--ag-time)); border-top: 2px solid var(--pink); animation: none; }
 /* Over a running event: marks the current time in the time column, above the row's hover/selection background. The
    line stops before the title and the clock sits over the start time, so neither strikes through the title nor reaches
-   the Join pill. Tied to .ag-row's geometry: 52px = 8px padding + 44px time column; the title starts at 75px (then a
-   10px gap, the 3px bar and a 10px gap), so 20px ends just short of it. */
-.ag-rows .ag-now-over { position: absolute; left: 52px; width: 20px; margin: -1px 0 0; z-index: 1; pointer-events: none; }
+   the Join pill. Tied to .ag-row's geometry: 8px padding + the time column; the title starts 23px after that (a 10px
+   gap, the 3px bar and a 10px gap), so 20px ends just short of it. */
+.ag-rows .ag-now-over { position: absolute; left: calc(8px + var(--ag-time)); width: 20px; margin: -1px 0 0; z-index: 1; pointer-events: none; }
 .ag-rows .ag-now-over .ag-now-clock { right: calc(100% + 6px); }
-/* "11:45 AM" is wider than the time column: it starts where the start time does and runs over the line instead. */
-[data-clock='12'] .ag-rows .ag-now-over .ag-now-clock { right: auto; left: -44px; }
 .ag-now::before {
   content: ''; position: absolute; left: -4px; top: -5px; width: 8px; height: 8px; border-radius: 50%; background: var(--pink);
 }
@@ -122,7 +122,7 @@
 }
 
 /* Free time between two events, tiny and grey, under the title column. */
-.ag-rows .ag-gap { margin: 0 0 0 62px; padding: 1px 0; font: 10px/12px var(--mono); color: color-mix(in srgb, var(--muted) 70%, transparent); animation: none; }
+.ag-rows .ag-gap { margin: 0 0 0 calc(18px + var(--ag-time)); padding: 1px 0; font: 10px/12px var(--mono); color: color-mix(in srgb, var(--muted) 70%, transparent); animation: none; }
 
 /* "Next 7 days" / "Hide upcoming": stays at the end of the day, the next days open below it. */
 .ag-ahead {

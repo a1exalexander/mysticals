@@ -148,6 +148,10 @@ test('general tab: 12-hour times and a Sunday week start', async () => {
   await page.getByTestId('view-switch-month').click()
   await expect(page.locator('.mg-dows div').first()).toHaveText('Sun')
   await expect(page.locator('.mg-time').first()).toHaveText(/^\d{1,2}:\d\d [AP]M$/)
+  // The agenda's time column fits "10:00 AM" on one line.
+  await page.getByTestId('view-switch-agenda').click()
+  await expect(page.locator('.ag-time').first()).toHaveText(/^\d{1,2}:\d\d [AP]M$/)
+  for (const time of await page.locator('.ag-time').all()) expect((await time.boundingBox())!.height).toBeLessThan(16)
 
   // A fresh renderer reads both back from main (prefs.json in userData).
   await page.reload()
