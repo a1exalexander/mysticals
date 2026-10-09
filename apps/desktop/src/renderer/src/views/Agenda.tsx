@@ -44,19 +44,20 @@ const Gap = ({ m }: { m: number }): React.JSX.Element => (
   </li>
 )
 
-/** "now · ends in 25m" / "starts in 12m" / "ended 14:30". */
-function statusOf(e: CalEvent, now: Date): { text: string; live?: boolean } {
+/** "now · ends in 25m" / "starts in 12m" / "ended 14:30", and the state screen readers hear (soon: within JOIN_EARLY_MIN). */
+function statusOf(e: CalEvent, now: Date): { text: string; state?: 'soon' | 'live' | 'ended' } {
   const { start, end } = eventBounds(e)
-  if (end <= now) return { text: t('agenda.ended', { time: format(end, 'HH:mm') }) }
-  if (start <= now) return { text: t('agenda.endsIn', { n: Math.max(differenceInMinutes(end, now, { roundingMethod: 'ceil' }), 1) }), live: true }
-  return { text: t('agenda.starts', { when: startsLabel(e.start, now, currentLocale()) }) }
+  if (end <= now) return { text: t('agenda.ended', { time: format(end, 'HH:mm') }), state: 'ended' }
+  if (start <= now) return { text: t('agenda.endsIn', { n: Math.max(differenceInMinutes(end, now, { roundingMethod: 'ceil' }), 1) }), state: 'live' }
+  return { text: t('agenda.starts', { when: startsLabel(e.start, now, currentLocale()) }), state: +start - +now <= JOIN_EARLY_MIN * 60_000 ? 'soon' : undefined }
 }
 
-/** Ticks every 15s, so join buttons appear on time. */
+const TICK = 15_000
+/** Ticks every TICK, so join buttons appear on time. */
 function useNow(): Date {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 15_000)
+    const id = window.setInterval(() => setNow(new Date()), TICK)
     return () => window.clearInterval(id)
   }, [])
   return now
@@ -103,6 +104,13 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
   const nowIndex = nowAt === -1 ? timed.length : nowAt
   const gaps = useMemo(() => breaksBefore(timed), [timed])
   const pick = (e: CalEvent): void => setPicked(focus === e ? undefined : keyOf(e))
+  // Read out from a live region outside the keyed card, so it persists while focus moves: today's call starting soon,
+  // starting and ending (the one live on the previous tick, which focus has already left), never the minute countdown.
+  // ponytail: assumes ticks TICK apart; a throttled timer (hidden window) can skip an end, keep the previous tick's live
+  // event in state if that matters.
+  const ended = isToday ? pickNowNext(timed, new Date(+now - TICK)).current.find((e) => eventBounds(e).end <= now) : undefined
+  const told = ended ?? current[0] ?? next
+  const toldState = told && statusOf(told, now).state
 
   useEffect(() => {
     const onKey = (ev: KeyboardEvent): void => {
@@ -137,6 +145,9 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
 
   return (
     <div className="ag-wrap">
+      <div className="ag-sr" role="status" data-testid="agenda-announce">
+        {told && toldState && t(`agenda.state.${toldState}`, { title: told.title || t('common.untitled') })}
+      </div>
       <div className="ag" data-testid="agenda" data-other-day={!isToday || undefined}>
         <section className="ag-list" aria-label={isToday ? t('common.today') : cap(fmt(day, 'EEEE, d MMMM'))}>
           {!isToday && (
@@ -217,7 +228,7 @@ function Row({ e, i, now, color, focused, next, nowLine, onPick }: {
         data-testid={`agenda-row-${e.id}`}
         aria-current={focused}
         data-past={past}
-        data-live={st.live}
+        data-live={st.state === 'live'}
         data-declined={e.myStatus === 'declined'}
         onClick={() => onPick(e)}
         onDoubleClick={(ev) => open(e, ev.currentTarget)}
@@ -228,7 +239,7 @@ function Row({ e, i, now, color, focused, next, nowLine, onPick }: {
         <span className="ag-main">
           <span className="ag-title">{e.title || t('common.untitled')}</span>
           <span className="ag-meta">
-            {st.live ? <span className="ag-live">{t('agenda.now')}</span> : !past && next ? startsLabel(e.start, now, currentLocale()) : dur(e)}
+            {st.state === 'live' ? <span className="ag-live">{t('agenda.now')}</span> : !past && next ? startsLabel(e.start, now, currentLocale()) : dur(e)}
             {eventPlace(e, currentLocale()) && ` · ${eventPlace(e, currentLocale())}`}
           </span>
         </span>
@@ -275,12 +286,9 @@ function Focus({ e, now, color, calendar }: { e: CalEvent; now: Date; color: str
   const where = locationText(e.location)
   const people = e.attendees.length
   const [showPeople, setShowPeople] = useState(false)
-  // Announced on its own, so screen readers hear the call start soon, start and end, not the minute countdown above.
-  const state = end <= now ? 'ended' : st.live ? 'live' : +start - +now <= JOIN_EARLY_MIN * 60_000 ? 'soon' : undefined
   return (
     <section className="ag-focus" style={{ '--c': color } as React.CSSProperties} data-testid="agenda-focus">
-      <div className="ag-sr" role="status">{state && t(`agenda.state.${state}`, { title: e.title || t('common.untitled') })}</div>
-      <div className={st.live ? 'ag-status live' : 'ag-status'}>{st.text}</div>
+      <div className={st.state === 'live' ? 'ag-status live' : 'ag-status'}>{st.text}</div>
       <h2 className="ag-focus-title">{e.title || t('common.untitled')}</h2>
       <div className="ag-focus-when">
         {format(start, 'HH:mm')} – {format(end, 'HH:mm')} <span>· {dur(e)}</span>

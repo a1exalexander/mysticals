@@ -27,7 +27,7 @@ test('agenda lists today and offers Join from 5 minutes before a call', async ()
   expect(await padRight(page.locator('.ag-row').filter({ hasText: 'Daily standup' }))).toBe('8px')
   // Screen readers hear state changes, not the card's minute countdown.
   await expect(focus).not.toHaveAttribute('aria-live')
-  await expect(focus.getByRole('status')).toHaveText('Starting soon: Quarterly roadmap sync with design')
+  await expect(page.getByTestId('agenda-announce')).toHaveText('Starting soon: Quarterly roadmap sync with design')
   await page.screenshot({ path: 'e2e/screens/agenda.png' })
 
   // The slider sits under the active tab.
@@ -157,8 +157,30 @@ test('agenda: the now line crosses a running event instead of sitting below it',
   expect(line.x + line.width).toBeLessThanOrEqual(title.x)
   expect(clock.x + clock.width).toBeLessThanOrEqual(title.x)
   expect(clock.x + clock.width).toBeLessThanOrEqual(pill.x)
-  await expect(page.getByTestId('agenda-focus').getByRole('status')).toHaveText('Started: Quarterly roadmap sync with design')
+  await expect(page.getByTestId('agenda-announce')).toHaveText('Started: Quarterly roadmap sync with design')
   await page.screenshot({ path: 'e2e/screens/agenda-now-running.png' })
+  await app.close()
+})
+
+test('agenda: the end of a running call is announced after the card has moved on', async () => {
+  test.setTimeout(60_000)
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 1200, height: 800 })
+  await expect(page.locator('.app-loader')).toBeHidden()
+  // The last seconds of the mock's sync (11:30–12:00); Gym (19:00) is next.
+  const today = new Date()
+  await page.clock.setFixedTime(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 11, 59, 50))
+
+  await page.keyboard.press('a')
+  const said = page.getByTestId('agenda-announce')
+  await expect(said).toHaveText('Started: Quarterly roadmap sync with design')
+  await said.evaluate((el) => el.setAttribute('data-kept', ''))
+  // On the next tick the card shows Gym, and the same live region (not a remounted one) says the sync ended.
+  await page.clock.setFixedTime(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 5))
+  await expect(page.getByTestId('agenda-focus')).toContainText('Gym', { timeout: 20_000 })
+  await expect(said).toHaveText('Ended: Quarterly roadmap sync with design')
+  await expect(said).toHaveAttribute('data-kept', '')
   await app.close()
 })
 
