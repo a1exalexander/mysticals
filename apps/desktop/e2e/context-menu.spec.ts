@@ -95,6 +95,27 @@ test('details popover: Delete works like the menu, at once with Undo', async () 
   await app.close()
 })
 
+test('a toast stays on top of the editor opened after it: Undo still works', async () => {
+  const { app, page } = await launch()
+  const gym = page.getByTestId('event-block').filter({ hasText: 'Gym' })
+  const toast = page.getByTestId('toast')
+  await rightClick(page, 'Gym')
+  await page.getByTestId('event-menu').getByTestId('menu-delete').click()
+  await expect(toast).toContainText('Deleted “Gym”')
+  await expect(gym).toHaveCount(0)
+
+  await page.keyboard.press('n')
+  await expect(page.getByTestId('editor')).toBeVisible()
+  // Inside the editor's top-layer dialog, not dimmed and inert under it.
+  await expect(page.getByRole('dialog', { name: 'New Event' }).getByTestId('toast')).toBeVisible()
+  await page.waitForTimeout(200)
+  await page.screenshot({ path: 'e2e/screens/toast-over-editor.png' })
+  await toast.getByRole('button', { name: 'Undo' }).click({ timeout: 3000 })
+  await expect(gym).toHaveCount(1)
+  await expect(page.getByTestId('editor')).toBeVisible()
+  await app.close()
+})
+
 test('right-click: a recurring event asks what to delete; a read-only one offers nothing', async () => {
   const { app, page } = await launch()
   const menu = page.getByTestId('event-menu')
