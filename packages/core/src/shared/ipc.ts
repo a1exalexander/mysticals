@@ -1,4 +1,5 @@
 import type { Locale, LocaleSetting } from '../i18n'
+import type { TimeFormat, WeekStart } from '../logic/clock'
 import type {
   Account,
   Calendar,
@@ -125,6 +126,23 @@ export interface LocaleApi {
   onChange(cb: (s: LocaleState) => void): () => void
 }
 
+/** Clock: the Settings choices, what is in use and what Auto means here (from the OS region, shown next to "Auto"). */
+export interface ClockState {
+  timeFormat: TimeFormat
+  weekStart: WeekStart
+  hour12: boolean
+  weekStartsOn: 0 | 1
+  system: { hour12: boolean; weekStartsOn: 0 | 1 }
+}
+
+/** Desktop-only Settings > General time format and first day of the week, exposed as `window.clock`. */
+export interface ClockApi {
+  get(): Promise<ClockState>
+  set(patch: { timeFormat?: TimeFormat; weekStart?: WeekStart }): Promise<ClockState>
+  /** Fires when either changes. Returns unsubscribe. */
+  onChange(cb: (s: ClockState) => void): () => void
+}
+
 /** Desktop-only: matches the native window (title bar, background) to the picked theme. Exposed as `window.appTheme`. */
 export interface ThemeApi {
   set(scheme: 'dark' | 'light', bg: string): Promise<void>
@@ -180,6 +198,9 @@ export const IPC = {
   localeGet: 'locale:get',
   localeSet: 'locale:set',
   locale: 'locale',
+  clockGet: 'clock:get',
+  clockSet: 'clock:set',
+  clock: 'clock',
   logsList: 'logs:list',
   logsOpen: 'logs:open',
   logsAppended: 'logs:appended'

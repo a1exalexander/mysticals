@@ -11,6 +11,7 @@ import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
 import { moveRange, resizeEnd, resizeStart } from './drag'
 import { currentLocale, fmt, t } from '../i18n'
 import { useLongEvents } from '../longEvents'
+import { hm, hour12, hourLabel } from '../clock'
 
 const HOUR = 48 // px per hour
 const MAX_ALLDAY = 3 // all-day events per day before the row collapses
@@ -24,10 +25,11 @@ const beside = (col: number, cols: number, span: number, inset: number): React.C
   width: `calc((100% - ${inset * RAIL}px) * ${span / cols} - 3px)`
 })
 
-const hhmm = (d: Date): string => format(d, 'HH:mm')
-/** "10–23", "9:30–20": the hours a long event covers on a day, for its all-day chip. */
+const hhmm = hm
+/** "10–23", "9:30–20" (or "10 AM–11 PM"): the hours a long event covers on a day, for its all-day chip. */
 const hourSpan = (a: number, b: number): string => {
-  const h = (m: number): string => (m % 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : String(m / 60))
+  const h = (m: number): string =>
+    hour12() ? (m % 60 ? hm : hourLabel)(new Date(2000, 0, 1, 0, m)) : m % 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : String(m / 60)
   return `${h(a)}–${h(b)}`
 }
 
@@ -309,7 +311,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
               // the now clock takes the place of an hour label it would overlap
               style={{ top: pxOf(h * 60), visibility: showsToday && Math.abs(nowMin - h * 60) < 12 ? 'hidden' : undefined }}
             >
-              {String(h).padStart(2, '0')}:00
+              {hourLabel(new Date(2000, 0, 1, h))}
             </span>
           ))}
           {showsToday && (

@@ -5,6 +5,7 @@
 }
 .dtf-trigger:first-child { flex: 1; }
 .dtf-time { width: 64px; text-align: center; }
+[data-clock='12'] .dtf-time { width: 84px; }
 .dtf-trigger:hover { background: var(--hover); }
 .dtf-trigger:focus-visible, .dtf-trigger[aria-expanded='true'] {
   outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);

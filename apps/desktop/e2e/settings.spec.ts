@@ -1,4 +1,5 @@
 import { test, expect, _electron as electron } from '@playwright/test'
+import { choose } from './choose'
 
 test('settings tabs: accounts (with sync and notifications), themes, general', async () => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
@@ -118,6 +119,54 @@ test('general tab: usage stats toggle is on by default and persists', async () =
   await page.getByRole('button', { name: 'Settings' }).click()
   await page.getByTestId('settings-tab-general').click()
   await expect(page.getByTestId('telemetry-toggle')).not.toBeChecked()
+  await app.close()
+})
+
+test('general tab: 12-hour times and a Sunday week start', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  // Mock runs see a 24-hour, Monday-first region.
+  const hours = page.locator('.tg-hour')
+  await expect(hours.nth(8)).toHaveText('09:00')
+  await expect(page.locator('.tg-dayhead .dow').first()).toHaveText('Mon')
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByTestId('settings-tab-general').click()
+  await expect(page.getByTestId('time-format-select')).toHaveText('Auto (24-hour)')
+  await expect(page.getByTestId('week-start-select')).toHaveText('Auto (Monday)')
+  await choose(page.getByTestId('time-format-select'), '12')
+  await choose(page.getByTestId('week-start-select'), 'sun')
+  await expect(page.getByTestId('time-format-select')).toHaveText('12-hour')
+  await page.screenshot({ path: 'e2e/screens/settings-clock.png' })
+  await page.keyboard.press('Escape')
+
+  await expect(hours.nth(8)).toHaveText('9 AM')
+  await expect(hours.nth(12)).toHaveText('1 PM')
+  await expect(page.getByTestId('now-clock')).toHaveText(/^\d{1,2}:\d\d [AP]M$/)
+  await expect(page.locator('.tg-dayhead .dow').first()).toHaveText('Sun')
+  await expect(page.locator('.tg-dayhead .dow').last()).toHaveText('Sat')
+  await page.screenshot({ path: 'e2e/screens/week-12h-sunday.png' })
+  await page.getByTestId('view-switch-month').click()
+  await expect(page.locator('.mg-dows div').first()).toHaveText('Sun')
+  await expect(page.locator('.mg-time').first()).toHaveText(/^\d{1,2}:\d\d [AP]M$/)
+
+  // A fresh renderer reads both back from main (prefs.json in userData).
+  await page.reload()
+  await page.getByTestId('view-switch-week').click()
+  await expect(hours.nth(8)).toHaveText('9 AM')
+  await expect(page.locator('.tg-dayhead .dow').first()).toHaveText('Sun')
+
+  // The editor's pickers: 12-hour slots that fit the trigger, typed "9:30 pm", a Sunday-first calendar.
+  await page.getByTestId('new-event').click()
+  const editor = page.getByTestId('editor')
+  const starts = editor.getByRole('button', { name: 'Starts time' })
+  await starts.click()
+  await expect(page.getByRole('dialog', { name: 'Starts time' }).getByRole('option').nth(54)).toHaveText('1:30 PM')
+  await page.getByLabel('Starts time, h:mm AM/PM').fill('9:30 pm')
+  await page.keyboard.press('Enter')
+  await expect(starts).toHaveText('9:30 PM')
+  expect(await starts.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+  await editor.getByRole('button', { name: 'Starts date' }).click()
+  await expect(page.locator('.rdp-weekday').first()).toHaveText('Su')
   await app.close()
 })
 

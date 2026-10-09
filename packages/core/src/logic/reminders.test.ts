@@ -42,6 +42,7 @@ describe('reminderText', () => {
       body: 'in 2 min · 10:00–10:30 · Room 3',
       join: { url: 'https://zoom.us/j/1', label: 'Join Zoom' }
     })
+    expect(reminderText(e, at('09:58:00'), 'en', true).body).toBe('in 2 min · 10:00 AM–10:30 AM · Room 3')
   })
   it('finds the call in the description and speaks Ukrainian', () => {
     const e = ev('', { description: '<a href="https://teams.microsoft.com/l/meetup-join/1">Join</a>' })

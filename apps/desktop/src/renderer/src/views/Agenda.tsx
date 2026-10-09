@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { addDays, differenceInMinutes, format, isSameDay } from 'date-fns'
+import { addDays, differenceInMinutes, isSameDay } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import { eventMeetingUrl, eventPlace, JOIN_EARLY_MIN, joinable, linkKind, locationText } from '@mysticals/core/logic/meeting'
 import { LinkIcon } from '../components/LinkIcon'
@@ -15,6 +15,7 @@ import '../components/EventDetails.css'
 import type { ColorOf } from './CalendarView'
 import './Agenda.css'
 import { cap, currentLocale, fmt, t } from '../i18n'
+import { hm, hour12 } from '../clock'
 
 /** How far "show upcoming" looks past the shown day. */
 export const AHEAD_DAYS = 7
@@ -46,9 +47,9 @@ const Gap = ({ m }: { m: number }): React.JSX.Element => (
 /** "now · ends in 25m" / "starts in 12m" / "ended 14:30", and the state screen readers hear (soon: within JOIN_EARLY_MIN). */
 function statusOf(e: CalEvent, now: Date): { text: string; state?: 'soon' | 'live' | 'ended' } {
   const { start, end } = eventBounds(e)
-  if (end <= now) return { text: t('agenda.ended', { time: format(end, 'HH:mm') }), state: 'ended' }
+  if (end <= now) return { text: t('agenda.ended', { time: hm(end) }), state: 'ended' }
   if (start <= now) return { text: t('agenda.endsIn', { n: Math.max(differenceInMinutes(end, now, { roundingMethod: 'ceil' }), 1) }), state: 'live' }
-  return { text: t('agenda.starts', { when: startsLabel(e.start, now, currentLocale()) }), state: +start - +now <= JOIN_EARLY_MIN * 60_000 ? 'soon' : undefined }
+  return { text: t('agenda.starts', { when: startsLabel(e.start, now, currentLocale(), hour12()) }), state: +start - +now <= JOIN_EARLY_MIN * 60_000 ? 'soon' : undefined }
 }
 
 const TICK = 15_000
@@ -233,12 +234,12 @@ function Row({ e, i, now, color, focused, next, nowLine, onPick }: {
         onDoubleClick={(ev) => open(e, ev.currentTarget)}
         {...eventMenu(e)}
       >
-        <span className="ag-time">{format(eventBounds(e).start, 'HH:mm')}</span>
+        <span className="ag-time">{hm(eventBounds(e).start)}</span>
         <span className="ag-bar" />
         <span className="ag-main">
           <span className="ag-title">{e.title || t('common.untitled')}</span>
           <span className="ag-meta">
-            {st.state === 'live' ? <span className="ag-live">{t('agenda.now')}</span> : !past && next ? startsLabel(e.start, now, currentLocale()) : dur(e)}
+            {st.state === 'live' ? <span className="ag-live">{t('agenda.now')}</span> : !past && next ? startsLabel(e.start, now, currentLocale(), hour12()) : dur(e)}
             {eventPlace(e, currentLocale()) && ` · ${eventPlace(e, currentLocale())}`}
           </span>
         </span>
@@ -265,7 +266,7 @@ function progress(e: CalEvent, now: Date): number {
  * (0..1), drawn across the running event's row at that point.
  */
 function NowLine({ now, at }: { now: Date; at?: number }): React.JSX.Element {
-  const clock = <span className="ag-now-clock">{format(now, 'HH:mm')}</span>
+  const clock = <span className="ag-now-clock">{hm(now)}</span>
   return at === undefined ? (
     <li className="ag-now" aria-hidden data-testid="agenda-now">
       {clock}
@@ -290,7 +291,7 @@ function Focus({ e, now, color, calendar }: { e: CalEvent; now: Date; color: str
       <div className={st.state === 'live' ? 'ag-status live' : 'ag-status'}>{st.text}</div>
       <h2 className="ag-focus-title">{e.title || t('common.untitled')}</h2>
       <div className="ag-focus-when">
-        {format(start, 'HH:mm')} – {format(end, 'HH:mm')} <span>· {dur(e)}</span>
+        {hm(start)} – {hm(end)} <span>· {dur(e)}</span>
       </div>
       <dl className="ag-facts">
         {calendar && (

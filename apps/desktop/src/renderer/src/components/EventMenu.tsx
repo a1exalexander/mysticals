@@ -6,6 +6,7 @@ import { canEdit, formatWhen } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
 import { copyInput, type PasteSlot } from '@mysticals/core/logic/copy'
 import { currentLocale, t, useLocale } from '../i18n'
+import { hour12 } from '../clock'
 import './EventMenu.css'
 
 type Opened = ({ kind: 'event' } & BusEvents['menu:event']) | ({ kind: 'slot' } & BusEvents['menu:slot'])
@@ -40,7 +41,7 @@ export function eventButton(
   return {
     role: 'button',
     tabIndex: tabbable ? 0 : -1,
-    'aria-label': `${name(event)}, ${formatWhen(event, currentLocale())}`,
+    'aria-label': `${name(event)}, ${formatWhen(event, currentLocale(), hour12())}`,
     onKeyDown: (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return
       const el = e.currentTarget

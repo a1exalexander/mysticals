@@ -11,6 +11,7 @@ import { usePopoverFocus } from './ui/usePopover'
 import './ui/ui.css'
 import './Invites.css'
 import { currentLocale, t, useLocale } from '../i18n'
+import { hour12 } from '../clock'
 
 // Status-bar inbox of unanswered invites (next 60 days). Each reply goes through the invite's own account.
 export function InvitesPanel(): React.JSX.Element {
@@ -89,7 +90,7 @@ export function InvitesPanel(): React.JSX.Element {
                     onClick={(ev) => bus.emit('event:open', { event: e, anchor: ev.currentTarget.getBoundingClientRect(), el: ev.currentTarget })}
                   >
                     <span className="invites-name">{e.title || t('common.untitled')}</span>
-                    <span className="mc-muted">{formatWhen(e, currentLocale())}</span>
+                    <span className="mc-muted">{formatWhen(e, currentLocale(), hour12())}</span>
                     <span className="invites-acc"><span className="mc-dot" /> {o.label}{o.email && <> · {o.email}</>}</span>
                   </button>
                   <div className="invites-actions">

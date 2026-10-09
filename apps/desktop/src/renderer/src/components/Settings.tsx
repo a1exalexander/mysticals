@@ -5,7 +5,8 @@ import { THEMES, applyTheme, themeName, useTheme } from '../theme'
 import { KindIcon, Sheet, Swatches, errorText } from './AccountsShared'
 import { SegTabs } from './ui/SegTabs'
 import { useRadioGroup } from './ui/roving'
-import { currentLocale, setLanguage, t, useLocale } from '../i18n'
+import { cap, currentLocale, fmt, setLanguage, t, useLocale } from '../i18n'
+import { setClock, useClock } from '../clock'
 import { LOCALE_NAME, LOCALES, type Key, type LocaleSetting } from '@mysticals/core/i18n'
 import { REMINDER_CHOICES } from '@mysticals/core/logic/reminders'
 import { LONG_RANGE, LONG_MODES, usesThreshold, type LongMode } from '@mysticals/core/logic/layout'
@@ -97,6 +98,8 @@ export function SettingsHost(): React.JSX.Element | null {
             <>
               <h3 className="set-heading set-heading-first">{t('settings.language.title')}</h3>
               <LanguagePicker />
+              <h3 className="set-heading">{t('settings.clock.title')}</h3>
+              <ClockPicker />
               <h3 className="set-heading">{t('settings.privacy.title')}</h3>
               <PrivacyPanel />
             </>
@@ -130,6 +133,56 @@ function LanguagePicker(): React.JSX.Element {
             {o.hint && <span className="acc-email">{o.hint}</span>}
           </label>
         ))}
+      </div>
+      {error && <p className="acc-error" role="alert">{error}</p>}
+    </>
+  )
+}
+
+/** 24- or 12-hour times and the first day of the week; Auto follows the OS region and says what that is. */
+function ClockPicker(): React.JSX.Element {
+  const { timeFormat, weekStart, system } = useClock()
+  const [error, setError] = useState('')
+  const pick = (patch: Parameters<typeof setClock>[0]): void => {
+    setError('')
+    setClock(patch).catch((e) => setError(errorText(e)))
+  }
+  const hours = (h12: boolean): string => t(h12 ? 'settings.clock.12' : 'settings.clock.24')
+  // 2 Jan 2000 was a Sunday: the weekday named in the UI language.
+  const day = (d: 0 | 1): string => cap(fmt(new Date(2000, 0, 2 + d), 'EEEE'))
+  return (
+    <>
+      <div className="acc-reminders">
+        <div className="acc-reminders-row">
+          <span>{t('settings.clock.time')}</span>
+          <Select
+            compact
+            data-testid="time-format-select"
+            aria-label={t('settings.clock.time')}
+            value={timeFormat}
+            options={[
+              { value: 'auto', label: t('settings.clock.auto', { name: hours(system.hour12) }) },
+              { value: '24', label: hours(false) },
+              { value: '12', label: hours(true) }
+            ]}
+            onChange={(timeFormat) => pick({ timeFormat })}
+          />
+        </div>
+        <div className="acc-reminders-row">
+          <span>{t('settings.clock.week')}</span>
+          <Select
+            compact
+            data-testid="week-start-select"
+            aria-label={t('settings.clock.week')}
+            value={weekStart}
+            options={[
+              { value: 'auto', label: t('settings.clock.auto', { name: day(system.weekStartsOn) }) },
+              { value: 'mon', label: day(1) },
+              { value: 'sun', label: day(0) }
+            ]}
+            onChange={(weekStart) => pick({ weekStart })}
+          />
+        </div>
       </div>
       {error && <p className="acc-error" role="alert">{error}</p>}
     </>

@@ -1,6 +1,6 @@
-import { format } from 'date-fns'
-import { t, type Locale } from '../i18n'
+import { fmt, t, type Locale } from '../i18n'
 import type { CalEvent } from '../shared/types'
+import { timePattern } from './clock'
 import { eventBounds } from './layout'
 import { CALL_KINDS, eventMeetingUrl, eventPlace, linkKind, linkLabel } from './meeting'
 
@@ -76,11 +76,12 @@ export interface ReminderText {
 }
 
 /** Banner text: the title, then "in 2 min · 10:00–10:30 · Room 3", plus the event's call link when it has one. */
-export function reminderText(e: CalEvent, now: Date, locale: Locale = 'en'): ReminderText {
+export function reminderText(e: CalEvent, now: Date, locale: Locale = 'en', hour12 = false): ReminderText {
   const { start, end } = eventBounds(e)
   const min = Math.ceil((start.getTime() - now.getTime()) / 60_000)
   const when = min > 0 ? t(locale, 'reminder.in', { n: min }) : t(locale, 'reminder.now')
-  const body = [when, `${format(start, 'HH:mm')}–${format(end, 'HH:mm')}`, eventPlace(e, locale)].filter(Boolean).join(' · ')
+  const hm = timePattern(hour12)
+  const body = [when, `${fmt(locale, start, hm)}–${fmt(locale, end, hm)}`, eventPlace(e, locale)].filter(Boolean).join(' · ')
   const url = eventMeetingUrl(e)
   const kind = url ? linkKind(url) : undefined
   const label = kind === 'meet' || kind === 'zoom' || kind === 'teams' || kind === 'map' ? linkLabel(url!, kind, locale) : t(locale, 'agenda.joinShort')

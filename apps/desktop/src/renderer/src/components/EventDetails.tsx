@@ -15,6 +15,7 @@ import './ui/ui.css'
 import './EventDetails.css'
 import type { Key } from '@mysticals/core/i18n'
 import { currentLocale, t, useLocale } from '../i18n'
+import { hour12 } from '../clock'
 
 type Reply = Exclude<PartStat, 'needsAction'>
 const REPLIES: [Reply, Key][] = [['accepted', 'rsvp.accept'], ['tentative', 'rsvp.maybe'], ['declined', 'rsvp.decline']]
@@ -181,7 +182,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
           <span className="mc-dot details-dot" />
           <h2 tabIndex={-1}>{name(event)}</h2>
         </div>
-        <div className="details-when">{formatWhen(event, currentLocale())}</div>
+        <div className="details-when">{formatWhen(event, currentLocale(), hour12())}</div>
         <div className="details-owner mc-muted">
           {owner.calendar && <>{t('details.calendarIn', { calendar: owner.calendar })} </>}<b>{owner.label}</b>
           {owner.email && <> · {owner.email}</>}

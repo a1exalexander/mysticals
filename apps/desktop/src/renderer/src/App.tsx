@@ -13,12 +13,14 @@ import { EventMenuHost } from './components/EventMenu'
 import { ReauthHost } from './components/Reauth'
 import { useDirectory } from './components/ui/useDirectory'
 import { t, useLocale } from './i18n'
+import { useClock } from './clock'
 import { toggleSidebar, useSidebarCollapsed } from './sidebar'
 
 // Layout shell. Each child is owned by a different unit; communicate via ./bus.
 export function App(): React.JSX.Element {
   const { loaded } = useDirectory()
   useLocale()
+  useClock()
   // Never trap the UI behind the loader if the first load fails.
   const [timedOut, setTimedOut] = useState(false)
   useEffect(() => {

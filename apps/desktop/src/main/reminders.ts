@@ -8,6 +8,7 @@ import { DEFAULT_REMINDER_MIN, dueReminders, isReminderMin, loadReminded, pruneR
 import { visibleEvents } from '@mysticals/core/logic/visible'
 import { eventMeetingUrl } from '@mysticals/core/logic/meeting'
 import { currentLocale } from './locale'
+import { hour12 } from './clock'
 import { readPrefs, writePrefs } from './prefs'
 import { showReminderScreen, startReminderScreen } from './reminderWindow'
 import { playSound, reminderSound } from './sound'
@@ -116,7 +117,7 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts
       for (const e of split.banner) record(e, 'banner')
       for (const e of split.fullscreen) record(e, 'fullscreen')
       const popped = Notification.isSupported() ? split.banner : []
-      for (const e of popped) show(reminderText(e, now, currentLocale()))
+      for (const e of popped) show(reminderText(e, now, currentLocale(), hour12()))
       // One sound per tick, however many are due; the screen's bell wins over the Banner chime.
       if (split.fullscreen.length) playSound('bell')
       else if (popped.length) playSound('chime')

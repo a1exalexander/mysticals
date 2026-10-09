@@ -5,6 +5,8 @@ import { STATUS_ICON } from '@mysticals/core/logic/details'
 import { errorText } from './AccountsShared'
 import { Select } from './ui/Select'
 import { cap, fmt, t, useLocale } from '../i18n'
+import { hour12 } from '../clock'
+import { timePattern } from '@mysticals/core/logic/clock'
 
 const GROUPS = {
   all: undefined,
@@ -29,7 +31,7 @@ const FIELD: Record<string, Key> = {
   recurrence: 'logs.series'
 }
 
-const time = (iso: string, allDay = false): string => fmt(new Date(allDay ? `${iso}T00:00:00` : iso), allDay ? 'd MMM yyyy' : 'd MMM yyyy, HH:mm')
+const time = (iso: string, allDay = false): string => fmt(new Date(allDay ? `${iso}T00:00:00` : iso), allDay ? 'd MMM yyyy' : `d MMM yyyy, ${timePattern(hour12())}`)
 const entryKey = (e: LogEntry, i: number): string => `${e.at}|${e.kind}|${i}`
 // A scope or answer read from the log file; an old or malformed one shows as it is.
 const known = (group: 'scope' | 'partstat', v: string): string => {
@@ -151,7 +153,7 @@ export function LogsPanel({ accounts }: { accounts: Account[] }): React.JSX.Elem
                     data-kind={e.kind}
                     onClick={() => setOpen(expanded ? undefined : key)}
                   >
-                    <span className="log-time">{fmt(new Date(e.at), 'HH:mm:ss')}</span>
+                    <span className="log-time">{fmt(new Date(e.at), hour12() ? 'h:mm:ss a' : 'HH:mm:ss')}</span>
                     <span className="log-kind">
                       {t(`logs.kind.${e.kind}` as Key)}
                       {!e.ok && <b> · {t('logs.failed')}</b>}

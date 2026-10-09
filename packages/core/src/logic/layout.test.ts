@@ -251,6 +251,15 @@ describe('monthGrid', () => {
     expect(g[0]).toEqual(new Date(2026, 7, 31)) // Mon Aug 31
     expect(viewRange('month', day).start).toBe(g[0].toISOString())
   })
+  it('starts on Sunday with weekStartsOn 0', () => {
+    const g = monthGrid(new Date(2026, 8, 15), 0)
+    expect(g[0]).toEqual(new Date(2026, 7, 30)) // Sun Aug 30
+    expect(viewRange('month', day, 0).start).toBe(g[0].toISOString())
+    const week = viewDays('week', new Date(2026, 8, 16), 0)
+    expect(week[0]).toEqual(new Date(2026, 8, 13)) // Sun Sep 13
+    expect(week[6]).toEqual(new Date(2026, 8, 19))
+    expect(viewDays('week', new Date(2026, 8, 16))[0]).toEqual(new Date(2026, 8, 14)) // Mon by default
+  })
 })
 
 describe('3day view', () => {

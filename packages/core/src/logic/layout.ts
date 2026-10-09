@@ -13,7 +13,7 @@ import { fmt, type Locale } from '../i18n'
 import { awaitsReply } from './details'
 import type { CalEvent, TimeRange } from '../shared/types'
 
-// ponytail: Monday week start is hardcoded; move to settings when someone needs Sunday.
+/** Default first day of the week (Monday); the desktop passes its Settings choice, 0 for Sunday. */
 export const WEEK_STARTS_ON = 1 as const
 export const SLOT_MIN = 15
 export type View = 'day' | '3day' | 'week' | 'month'
@@ -253,21 +253,21 @@ export function monthShown(height: number, n: number): number {
 }
 
 /** 6-week grid (42 days) covering the month of `date`. */
-export function monthGrid(date: Date): Date[] {
-  const first = startOfWeek(startOfMonth(date), { weekStartsOn: WEEK_STARTS_ON })
+export function monthGrid(date: Date, weekStartsOn: 0 | 1 = WEEK_STARTS_ON): Date[] {
+  const first = startOfWeek(startOfMonth(date), { weekStartsOn })
   return Array.from({ length: 42 }, (_, i) => addDays(first, i))
 }
 
-export function viewDays(view: View, date: Date): Date[] {
-  if (view === 'month') return monthGrid(date)
+export function viewDays(view: View, date: Date, weekStartsOn: 0 | 1 = WEEK_STARTS_ON): Date[] {
+  if (view === 'month') return monthGrid(date, weekStartsOn)
   if (view === 'day') return [startOfDay(date)]
   if (view === '3day') return [0, 1, 2].map((i) => addDays(startOfDay(date), i))
-  const first = startOfWeek(date, { weekStartsOn: WEEK_STARTS_ON })
+  const first = startOfWeek(date, { weekStartsOn })
   return Array.from({ length: 7 }, (_, i) => addDays(first, i))
 }
 
-export function viewRange(view: View, date: Date): TimeRange {
-  const days = viewDays(view, date)
+export function viewRange(view: View, date: Date, weekStartsOn: 0 | 1 = WEEK_STARTS_ON): TimeRange {
+  const days = viewDays(view, date, weekStartsOn)
   return { start: days[0].toISOString(), end: addDays(days[days.length - 1], 1).toISOString() }
 }
 

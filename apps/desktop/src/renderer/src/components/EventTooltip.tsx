@@ -5,6 +5,7 @@ import { eventMeetingUrl } from '@mysticals/core/logic/meeting'
 import { formatWhen } from '@mysticals/core/logic/details'
 import { placeTip } from './EventTooltip.logic'
 import { currentLocale, t } from '../i18n'
+import { hour12 } from '../clock'
 import './EventTooltip.css'
 
 const SHOW_MS = 1000
@@ -97,7 +98,7 @@ export function EventTooltipHost(): React.JSX.Element | null {
       onMouseLeave={hideSoon}
     >
       <div className="ett-title">{tip.event.title || t('common.untitled')}</div>
-      <div className="ett-when">{formatWhen(tip.event, currentLocale())}</div>
+      <div className="ett-when">{formatWhen(tip.event, currentLocale(), hour12())}</div>
       {url && (
         <a href={url} target="_blank" rel="noreferrer" onClick={hide}>
           {url}

@@ -9,6 +9,7 @@ import { eventBounds, eventKey, eventsOnDay, isPast, monthGrid, monthShown, stat
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
 import { shiftDays } from './drag'
 import { fmt, t } from '../i18n'
+import { hm, weekStartsOn } from '../clock'
 
 interface Props {
   date: Date
@@ -19,7 +20,7 @@ interface Props {
 }
 
 export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): React.JSX.Element {
-  const days = monthGrid(date)
+  const days = monthGrid(date, weekStartsOn())
   const [now, setNow] = useState(() => new Date())
   // Dragging an event to another day: its key and the cell (index in `days`) under the pointer.
   const [moving, setMoving] = useState<{ key: string; over: number } | null>(null)
@@ -122,7 +123,7 @@ export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): Re
                 >
                   {!e.allDay && <span className="mg-dot" />}
                   <span className="ev-title">{name(e)}</span>
-                  {!e.allDay && <span className="mg-time">{format(eventBounds(e).start, 'HH:mm')}</span>}
+                  {!e.allDay && <span className="mg-time">{hm(eventBounds(e).start)}</span>}
                 </div>
               ))}
               {dragged && moving.over === idx && (

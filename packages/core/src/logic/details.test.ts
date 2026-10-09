@@ -50,6 +50,11 @@ describe('formatWhen', () => {
     expect(formatWhen(ev({ allDay: true, start: '2026-09-24', end: '2026-09-26' }))).toBe('Thu, 24 Sep – Fri, 25 Sep · all day')
     expect(formatWhen(ev({ allDay: true, start: '2026-09-24', end: '2026-09-25' }), 'uk')).toBe('чт, 24 верес. · весь день')
   })
+  it('formats times in 24 or 12 hours', () => {
+    const e = ev({ start: new Date(2026, 8, 24, 9, 30).toISOString(), end: new Date(2026, 8, 24, 14, 0).toISOString() })
+    expect(formatWhen(e)).toBe('Thu, 24 Sep · 09:30 – 14:00')
+    expect(formatWhen(e, 'en', true)).toBe('Thu, 24 Sep · 9:30 AM – 2:00 PM')
+  })
 })
 
 describe('linkify', () => {

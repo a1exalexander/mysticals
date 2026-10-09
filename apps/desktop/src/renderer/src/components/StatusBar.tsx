@@ -1,4 +1,3 @@
-import { format } from 'date-fns'
 import { useCalendarData } from '../hooks/useCalendarData'
 import { visibleEvents } from '@mysticals/core/logic/visible'
 import { useNav } from '../views/nav'
@@ -13,6 +12,7 @@ import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
 import { pickNowNext, startsLabel } from '@mysticals/core/logic/status'
 import { cap, currentLocale, fmt, t, useLocale } from '../i18n'
+import { hm, hour12, weekStartsOn } from '../clock'
 
 /** Events happening now (max 2, then +N) and the next one within 24h; click opens details. */
 function NowNext(): React.JSX.Element {
@@ -67,7 +67,7 @@ function NowNext(): React.JSX.Element {
           e,
           <>
             <span className="sbar-dot" aria-hidden>●</span>
-            <span className="sbar-title">{name(e)}</span>· {t('sbar.until', { time: format(new Date(e.end), 'HH:mm') })}
+            <span className="sbar-title">{name(e)}</span>· {t('sbar.until', { time: hm(new Date(e.end)) })}
           </>
         )
       )}
@@ -77,7 +77,7 @@ function NowNext(): React.JSX.Element {
           next,
           <>
             <span className="sbar-dim">{t('sbar.next')}</span>
-            <span className="sbar-title">{name(next)}</span>· {startsLabel(next.start, now, currentLocale())}
+            <span className="sbar-title">{name(next)}</span>· {startsLabel(next.start, now, currentLocale(), hour12())}
           </>
         )}
       {!current.length && !next && <span className="sbar-seg sbar-dim">{t('sbar.noUpcoming')}</span>}
@@ -122,7 +122,7 @@ export function StatusBar(): React.JSX.Element {
   const { view, date } = useNav()
   const { accounts } = useCalendarData()
   const { locale } = useLocale()
-  const days = viewDays(view === 'agenda' ? 'day' : view, date)
+  const days = viewDays(view === 'agenda' ? 'day' : view, date, weekStartsOn())
   const range =
     view === 'agenda' || view === 'day'
       ? fmt(date, 'EEE d MMM yyyy')

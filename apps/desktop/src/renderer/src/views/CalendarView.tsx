@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { addDays, format, getISOWeek, isToday, startOfDay } from 'date-fns'
+import { addDays, format, isToday, startOfDay } from 'date-fns'
 import type { CalEvent, DeleteScope } from '@shared/types'
 import type { MenuCommand } from '@shared/ipc'
 import { useCalendarData } from '../hooks/useCalendarData'
@@ -13,6 +13,7 @@ import { TimeGrid } from './TimeGrid'
 import { MonthGrid } from './MonthGrid'
 import { AHEAD_DAYS, Agenda } from './Agenda'
 import { cap, currentLocale, fmt, t, useLocale } from '../i18n'
+import { useClock, weekNo } from '../clock'
 import type { Key } from '@mysticals/core/i18n'
 import { SegTabs } from '../components/ui/SegTabs'
 import { toggleSidebar } from '../sidebar'
@@ -60,6 +61,7 @@ const readAhead = (): boolean => {
 export function CalendarView(): React.JSX.Element {
   const { date: navDate, view: deskView } = useNav()
   useLocale()
+  const { weekStartsOn } = useClock()
   const agenda = deskView === 'agenda'
   // The agenda shows one day (today unless stepped away); underneath it loads like the day view.
   const view: View = agenda ? 'day' : deskView
@@ -75,10 +77,10 @@ export function CalendarView(): React.JSX.Element {
   }, [])
   const range = useMemo(
     () =>
-      agenda && ahead ? { start: date.toISOString(), end: addDays(date, AHEAD_DAYS + 1).toISOString() } : viewRange(view, date),
-    [view, date.getTime(), agenda, ahead]
+      agenda && ahead ? { start: date.toISOString(), end: addDays(date, AHEAD_DAYS + 1).toISOString() } : viewRange(view, date, weekStartsOn),
+    [view, date.getTime(), agenda, ahead, weekStartsOn]
   )
-  const days = useMemo(() => viewDays(view, date), [view, date.getTime()])
+  const days = useMemo(() => viewDays(view, date, weekStartsOn), [view, date.getTime(), weekStartsOn])
   const { accounts, calendars, events: all } = useCalendarData(range)
   // Dropped events show at their new time at once; an entry goes when the data has caught up or the save fails.
   const [moved, setMoved] = useState<Map<string, { start: string; end: string }>>(() => new Map())
@@ -197,8 +199,8 @@ export function CalendarView(): React.JSX.Element {
                 {view !== '3day' && (week?.year ?? format(date, 'yyyy'))}
                 {view === 'day' && ` · ${fmt(date, 'EEE')}`}
                 {view === '3day' &&
-                  [...new Set(days.map((d) => t('toolbar.weekNo', { n: getISOWeek(d) })))].join('–')}
-                {(view === 'day' || view === 'week') && ` · ${t('toolbar.weekNo', { n: getISOWeek(date) })}`}
+                  [...new Set(days.map((d) => t('toolbar.weekNo', { n: weekNo(d) })))].join('–')}
+                {(view === 'day' || view === 'week') && ` · ${t('toolbar.weekNo', { n: weekNo(date) })}`}
               </>
             )}
           </span>

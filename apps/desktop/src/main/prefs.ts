@@ -2,11 +2,14 @@ import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
 import type { LocaleSetting } from '@mysticals/core/i18n'
+import type { TimeFormat, WeekStart } from '@mysticals/core/logic/clock'
 
 /** App-wide preferences in `<userData>/prefs.json`. Every key is optional; absent means the default. */
 export interface Prefs {
   telemetry?: boolean
   language?: LocaleSetting
+  timeFormat?: TimeFormat
+  weekStart?: WeekStart
   /** Minutes before an event its reminder pops up; 0 = off. */
   reminderMin?: number
   /** Accounts whose reminders and invite/change banners are off. */
