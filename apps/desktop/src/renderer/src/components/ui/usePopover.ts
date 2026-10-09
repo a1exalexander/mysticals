@@ -58,9 +58,10 @@ export function usePopover(
 
 /**
  * While `open`, focus moves to `target()` (a heading with tabIndex -1, or a control); on close it goes back to
- * what had it before, unless the user put it somewhere else meanwhile.
+ * `opener` while it's still there, else to what had it before, unless the user put it somewhere else meanwhile.
+ * Pass the opener when known: what had focus before can be unrelated (grid blocks don't take focus on click).
  */
-export function usePopoverFocus(open: boolean, target: () => HTMLElement | null | undefined): void {
+export function usePopoverFocus(open: boolean, target: () => HTMLElement | null | undefined, opener?: HTMLElement): void {
   const back = useRef<Element | null>(null)
   useEffect(() => {
     if (!open) return
@@ -70,7 +71,9 @@ export function usePopoverFocus(open: boolean, target: () => HTMLElement | null 
     el?.focus()
     return () => {
       // Focus inside the closed popover fell back to <body>.
-      if (document.activeElement === document.body && back.current instanceof HTMLElement) back.current.focus()
+      if (document.activeElement !== document.body) return
+      const to = opener?.isConnected ? opener : back.current
+      if (to instanceof HTMLElement) to.focus()
     }
-  }, [open])
+  }, [open, opener])
 }

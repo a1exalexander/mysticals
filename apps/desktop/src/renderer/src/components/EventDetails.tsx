@@ -86,7 +86,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
     setPos((p) => (p && p.left === left && p.top === top ? p : { left, top }))
   }, [opened])
   useLayoutEffect(place, [place])
-  usePopoverFocus(!!opened, () => ref.current?.querySelector('h2'))
+  usePopoverFocus(!!opened, () => ref.current?.querySelector('h2'), opened?.el)
   useEffect(() => {
     const el = ref.current
     if (!opened || !el) return

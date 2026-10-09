@@ -45,6 +45,15 @@ test('the editor and the scope prompt keep focus inside; popovers take it and gi
   await page.keyboard.press('Escape')
   await expect(prompt).toHaveCount(0)
 
+  // Opened from a grid block (which doesn't take focus), closing doesn't jump back to whatever had focus before.
+  await page.getByRole('button', { name: 'today', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'today', exact: true })).toBeFocused()
+  await page.getByTestId('event-block').filter({ hasText: 'Gym' }).first().click()
+  await expect(page.getByTestId('details').getByRole('heading')).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('details')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'today', exact: true })).not.toBeFocused()
+
   // Details: focus moves to its heading, and back to the row that opened it on close.
   await page.keyboard.press('a')
   const row = page.locator('.ag-row').filter({ hasText: 'Quarterly roadmap sync' })
