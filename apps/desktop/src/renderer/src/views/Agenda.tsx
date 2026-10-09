@@ -221,7 +221,7 @@ function Row({ e, i, now, color, focused, next, nowLine, onPick }: {
   const url = joinable(e, now)
   const past = isPast(e, now)
   return (
-    <li style={{ '--c': color, '--i': i } as React.CSSProperties}>
+    <li className="ag-item" style={{ '--c': color, '--i': i } as React.CSSProperties}>
       <button
         type="button"
         className="ag-row"

@@ -1,5 +1,10 @@
 import { test, expect, _electron as electron, type Locator } from '@playwright/test'
 
+const rightOf = async (l: Locator): Promise<number> => {
+  const box = (await l.boundingBox())!
+  return box.x + box.width
+}
+
 test('agenda lists today and offers Join from 5 minutes before a call', async () => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()
@@ -21,10 +26,10 @@ test('agenda lists today and offers Join from 5 minutes before a call', async ()
   await expect(focus).toContainText('Quarterly roadmap sync with design')
   await expect(focus).toContainText('https://zoom.us/j/1234567890?pwd=abc')
   await expect(page.getByTestId('agenda-join')).toBeVisible()
-  // Only rows with a Join pill keep room for it.
-  const padRight = (l: Locator): Promise<string> => l.evaluate((el) => getComputedStyle(el).paddingRight)
-  expect(await padRight(row)).toBe('64px')
-  expect(await padRight(page.locator('.ag-row').filter({ hasText: 'Daily standup' }))).toBe('8px')
+  // Only a row with a Join pill gives up room for it, as much as the pill takes.
+  const pill = (await page.locator('.ag-join-pill').boundingBox())!
+  expect(await rightOf(row.locator('.ag-title'))).toBeLessThanOrEqual(pill.x)
+  expect(await rightOf(page.locator('.ag-row').filter({ hasText: 'Daily standup' }).locator('.ag-title'))).toBeCloseTo(pill.x + pill.width, 0)
   // Screen readers hear state changes, not the card's minute countdown.
   await expect(focus).not.toHaveAttribute('aria-live')
   await expect(page.getByTestId('agenda-announce')).toHaveText('Starting soon: Quarterly roadmap sync with design')
@@ -36,6 +41,24 @@ test('agenda lists today and offers Join from 5 minutes before a call', async ()
   const tab = (await page.getByTestId('view-switch-week').boundingBox())!
   await expect.poll(async () => Math.abs((await page.locator('.seg-thumb').boundingBox())!.x - tab.x)).toBeLessThan(1.5)
   await page.screenshot({ path: 'e2e/screens/tabs.png', clip: { x: 0, y: 0, width: 1200, height: 60 } })
+  await app.close()
+})
+
+test('agenda in Ukrainian: the longer Join pill never covers the title', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1', MYSTICALS_LANG: 'uk' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 1200, height: 800 })
+  await expect(page.locator('.app-loader')).toBeHidden()
+  // The mock's sync (11:30, Zoom link) can be joined from 11:25.
+  const today = new Date()
+  await page.clock.setFixedTime(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 11, 26))
+
+  await page.keyboard.press('a')
+  const pill = page.locator('.ag-join-pill')
+  await expect(pill).toHaveText('Приєднатися')
+  const row = page.locator('.ag-item').filter({ has: pill })
+  expect(await rightOf(row.locator('.ag-title'))).toBeLessThanOrEqual((await pill.boundingBox())!.x)
+  await page.screenshot({ path: 'e2e/screens/agenda-uk.png' })
   await app.close()
 })
 
