@@ -3,5 +3,7 @@
   background: var(--surface); border: 1px solid var(--line-strong); border-radius: 0;
   font: 11.5px/1.4 var(--mono); box-shadow: 0 4px 14px rgb(var(--shadow) / calc(0.35 * var(--shadow-k)));
 }
+.ett-title { font-weight: 600; overflow-wrap: anywhere; }
+.ett-when { color: var(--muted); }
 .ett a { color: var(--cyan); text-decoration: none; overflow-wrap: anywhere; cursor: pointer; }
 .ett a:hover { text-decoration: underline; }

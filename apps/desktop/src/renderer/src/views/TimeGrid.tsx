@@ -4,7 +4,7 @@ import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
 import { eventButton, eventMenu, slotMenu } from '../components/EventMenu'
-import { eventMeetingUrl, eventPlace } from '@mysticals/core/logic/meeting'
+import { eventPlace } from '@mysticals/core/logic/meeting'
 import { nav } from './nav'
 import { dragRange, eventBounds, eventsOnDay, isPast, layoutDayLong, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
@@ -359,7 +359,6 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                           })
                     } as React.CSSProperties
                   }
-                  title={eventMeetingUrl(e) ? undefined : `${e.title}\n${hhmm(b.start)} – ${hhmm(b.end)}`}
                   onMouseDown={onEventDown(e, dayIdx, 'move')}
                   onDoubleClick={stop}
                   onClick={open(e)}
