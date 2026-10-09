@@ -63,6 +63,7 @@ test('switches on light themes: the off knob is white, not the ink that reads as
   await page.evaluate(() => localStorage.setItem('mysticals-theme', 'light'))
   await page.reload()
   await expect(page.locator('html')).toHaveAttribute('data-scheme', 'light')
+  await expect(page.getByTestId('calendar-view')).toBeVisible()
 
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.send('menu', 'new-event'))
   const allDay = page.getByTestId('editor').getByRole('switch', { name: 'All-day' })
