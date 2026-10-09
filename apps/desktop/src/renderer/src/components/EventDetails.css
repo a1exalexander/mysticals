@@ -69,10 +69,10 @@
 .details-rsvp [data-status='tentative'] { --accent: var(--orange); }
 .details-rsvp [data-status='declined'] { --accent: var(--red); }
 
-/* Deleted elsewhere while open: a notice on top, the rest dimmed and inert. */
+/* Deleted elsewhere while open: a notice on top, the rest dimmed and inert. Square like the popover around it. */
 .details-gone {
   display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: 8px;
-  margin: -2px 0 12px; padding: 8px 10px; border-radius: var(--r-md);
+  margin: -2px 0 12px; padding: 8px 10px; border-radius: 0;
   background: color-mix(in srgb, var(--red) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
   animation: mc-pop 160ms ease-out;

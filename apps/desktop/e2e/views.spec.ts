@@ -98,6 +98,7 @@ test('calendar views: week/month/day, visibility toggle, screenshots', async () 
   await expect(page.getByTestId('statusbar')).toContainText('week')
   await page.keyboard.press('i')
   await expect(page.locator('.invites-panel')).toBeVisible()
+  await expect(page.locator('.invites-panel')).toHaveCSS('border-radius', '6px') // popovers share one corner
   await page.keyboard.press('Escape')
   await page.keyboard.press('n')
   await expect(page.getByTestId('editor')).toBeVisible()

@@ -44,6 +44,7 @@ test('right-click an event: edit, duplicate, copy and paste, delete with undo', 
   await blocks('Gym').first().click({ button: 'right' })
   await menu.getByTestId('menu-duplicate').click()
   await expect(toast).toContainText('Duplicated “Gym”')
+  await expect(toast).toHaveCSS('border-radius', '6px') // the menus' and popovers' corner
   await expect(blocks('Gym')).toHaveCount(2)
   await toast.getByRole('button').click()
   await expect(blocks('Gym')).toHaveCount(1)

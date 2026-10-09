@@ -22,6 +22,7 @@ test('details follow the window and say when the event was deleted elsewhere', a
     await window.api.events.delete(all.find((e) => e.title === 'Dinner with friends')!)
   })
   await expect(page.getByTestId('details-gone')).toContainText('This event was deleted')
+  await expect(page.getByTestId('details-gone')).toHaveCSS('border-radius', '0px') // square like the popover
   await expect(details.getByRole('button', { name: 'Edit' })).toHaveCount(0)
   await page.getByTestId('details-gone').getByRole('button', { name: 'Close' }).click()
   await expect(details).toHaveCount(0)
