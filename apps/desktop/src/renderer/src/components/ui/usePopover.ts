@@ -55,3 +55,22 @@ export function usePopover(
 
   return pos ?? { visibility: 'hidden', left: 0, top: 0 }
 }
+
+/**
+ * While `open`, focus moves to `target()` (a heading with tabIndex -1, or a control); on close it goes back to
+ * what had it before, unless the user put it somewhere else meanwhile.
+ */
+export function usePopoverFocus(open: boolean, target: () => HTMLElement | null | undefined): void {
+  const back = useRef<Element | null>(null)
+  useEffect(() => {
+    if (!open) return
+    const el = target()
+    // StrictMode runs this twice: the second time focus is already on el.
+    if (document.activeElement !== el) back.current = document.activeElement
+    el?.focus()
+    return () => {
+      // Focus inside the closed popover fell back to <body>.
+      if (document.activeElement === document.body && back.current instanceof HTMLElement) back.current.focus()
+    }
+  }, [open])
+}

@@ -30,6 +30,7 @@ export function EventEditorHost(): React.JSX.Element | null {
   const [askScope, setAskScope] = useState(false)
   const [repeatFailed, setRepeatFailed] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
+  const dialog = useRef<HTMLDialogElement>(null)
   const session = useRef(0) // bumps on every open/close so a late save can't touch a newer editor
 
   useEffect(() => {
@@ -104,6 +105,7 @@ export function EventEditorHost(): React.JSX.Element | null {
     if (!opened) return
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
+        e.preventDefault() // not the dialog's own cancel: that would close it behind React's back
         if (askScope) setAskScope(false)
         else close()
       } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -113,6 +115,12 @@ export function EventEditorHost(): React.JSX.Element | null {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  })
+
+  // A modal dialog: Tab stays inside and the app behind is inert.
+  useEffect(() => {
+    const d = dialog.current
+    if (d && !d.open) d.showModal()
   })
 
   if (!opened || !form) return null
@@ -129,7 +137,12 @@ export function EventEditorHost(): React.JSX.Element | null {
   const cal = account?.color ?? 'var(--muted)'
 
   return (
-    <div className="mc-overlay" onMouseDown={(e) => e.target === e.currentTarget && close()}>
+    <dialog
+      ref={dialog}
+      className="mc-overlay"
+      onCancel={(e) => e.preventDefault()}
+      onMouseDown={(e) => e.target === e.currentTarget && close()}
+    >
       <form
         className="mc-sheet editor"
         data-testid="editor"
@@ -267,6 +280,6 @@ export function EventEditorHost(): React.JSX.Element | null {
           </div>
         )}
       </form>
-    </div>
+    </dialog>
   )
 }

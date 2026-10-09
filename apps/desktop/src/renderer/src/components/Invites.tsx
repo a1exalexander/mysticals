@@ -6,6 +6,7 @@ import { useDirectory } from './ui/useDirectory'
 import { visibleEvents } from '@mysticals/core/logic/visible'
 import { formatWhen, ownerLine, pendingInvites } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
+import { usePopoverFocus } from './ui/usePopover'
 import './ui/ui.css'
 import './Invites.css'
 import { currentLocale, t, useLocale } from '../i18n'
@@ -21,6 +22,7 @@ export function InvitesPanel(): React.JSX.Element {
   const [error, setError] = useState('')
   const [sending, setSending] = useState<Set<string>>(new Set())
   const ref = useRef<HTMLDivElement>(null)
+  usePopoverFocus(open, () => ref.current?.querySelector<HTMLElement>('.invites-title'))
 
   useEffect(() => {
     let live = true
@@ -73,7 +75,7 @@ export function InvitesPanel(): React.JSX.Element {
     <div className="invites" ref={ref}>
       {open && (
         <div className="mc-popover invites-panel">
-          <div className="invites-title">{t('invites.title')}</div>
+          <div className="invites-title" tabIndex={-1}>{t('invites.title')}</div>
           {invites.length === 0 && <div className="mc-muted invites-empty">{t('invites.empty')}</div>}
           <ul>
             {invites.map((e) => {

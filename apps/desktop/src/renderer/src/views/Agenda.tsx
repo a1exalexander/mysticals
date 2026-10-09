@@ -115,7 +115,7 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
   useEffect(() => {
     const onKey = (ev: KeyboardEvent): void => {
       if (ev.metaKey || ev.ctrlKey || ev.altKey || (ev.target as HTMLElement).closest('input, textarea, select')) return
-      if (document.querySelector('dialog[open], .mc-overlay, [data-testid="details"]')) return
+      if (document.querySelector('dialog[open], [data-testid="details"]')) return
       const step = ev.key === 'j' || ev.key === 'ArrowDown' ? 1 : ev.key === 'k' || ev.key === 'ArrowUp' ? -1 : 0
       const url = focus && joinable(focus, now)
       // Enter on a button or link activates it; the rows are the list j/k walks, so Enter there joins the selected call.

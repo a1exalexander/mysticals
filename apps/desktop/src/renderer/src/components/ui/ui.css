@@ -1,11 +1,13 @@
 /* Shared bits for sheets/popovers. Solid surfaces, hairline borders, no blur. */
+/* A full-window modal <dialog> (showModal: focus trap, inert background, Esc) that holds a .mc-sheet. */
 .mc-overlay {
-  position: fixed; inset: 0; z-index: 50;
+  position: fixed; inset: 0; width: auto; height: auto; max-width: none; max-height: none;
+  margin: 0; padding: 0; border: 0; background: transparent; color: inherit;
   display: flex; justify-content: center; align-items: flex-start;
-  background: color-mix(in srgb, var(--bg) 60%, transparent);
   -webkit-app-region: no-drag;
-  animation: mc-fade 120ms ease-out;
 }
+.mc-overlay:not([open]) { display: none; }
+.mc-overlay::backdrop { background: color-mix(in srgb, var(--bg) 60%, transparent); animation: mc-fade 120ms ease-out; }
 .mc-sheet, .mc-popover {
   background: var(--surface-2); color: var(--fg);
   border: 1px solid var(--line-strong);
@@ -23,7 +25,7 @@
 @keyframes mc-fade { from { opacity: 0; } }
 @keyframes mc-pop { from { opacity: 0; transform: translateY(-3px) scale(0.985); } }
 @keyframes mc-drop { from { opacity: 0; transform: translateY(-6px); } }
-@media (prefers-reduced-motion: reduce) { .mc-overlay, .mc-sheet, .mc-popover { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .mc-overlay::backdrop, .mc-sheet, .mc-popover { animation: none; } }
 
 .mc-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .mc-scope { flex-direction: column; align-items: stretch; gap: 6px; }

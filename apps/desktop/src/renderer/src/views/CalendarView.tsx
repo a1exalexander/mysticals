@@ -148,7 +148,7 @@ export function CalendarView(): React.JSX.Element {
         (t instanceof HTMLInputElement && !['checkbox', 'radio', 'button'].includes(t.type))
       if (e.metaKey || e.ctrlKey || e.altKey || typing) return
       // Keys belong to the open sheet/popover, not the grid.
-      if (document.querySelector('dialog[open], .mc-overlay, [data-testid="details"]')) return
+      if (document.querySelector('dialog[open], [data-testid="details"]')) return
       const k = e.key
       // A new period or view would unmount a focused event pill or day header (keyed by date) and drop the focus. Pills
       // take ←/→/h/l themselves (EventMenu's eventButton).

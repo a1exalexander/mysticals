@@ -15,6 +15,7 @@
 .invites-title {
   padding: 0 14px 8px; font: 600 10.5px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
 }
+.invites-title:focus { outline: none; } /* where focus lands on open, not a control */
 .invites-empty { padding: 6px 14px 10px; }
 .invites-panel ul { list-style: none; margin: 0; padding: 0; }
 .invites-panel li { padding: 9px 14px; border-top: 1px solid var(--line); border-left: 2px solid var(--cal, var(--accent)); }

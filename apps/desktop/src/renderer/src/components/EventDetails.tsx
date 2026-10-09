@@ -10,6 +10,7 @@ import { eventBounds } from '@mysticals/core/logic/layout'
 import { eventLinks, linkLabel, locationText } from '@mysticals/core/logic/meeting'
 import { LinkIcon } from './LinkIcon'
 import { notesFragment } from './notesHtml'
+import { usePopoverFocus } from './ui/usePopover'
 import './ui/ui.css'
 import './EventDetails.css'
 import type { Key } from '@mysticals/core/i18n'
@@ -85,6 +86,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
     setPos((p) => (p && p.left === left && p.top === top ? p : { left, top }))
   }, [opened])
   useLayoutEffect(place, [place])
+  usePopoverFocus(!!opened, () => ref.current?.querySelector('h2'))
   useEffect(() => {
     const el = ref.current
     if (!opened || !el) return
@@ -178,7 +180,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
         )}
         <div className="details-head">
           <span className="mc-dot details-dot" />
-          <h2>{event.title || t('common.untitled')}</h2>
+          <h2 tabIndex={-1}>{event.title || t('common.untitled')}</h2>
         </div>
         <div className="details-when">{formatWhen(event, currentLocale())}</div>
         <div className="details-owner mc-muted">
