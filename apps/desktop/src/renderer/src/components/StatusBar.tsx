@@ -2,7 +2,7 @@ import { format } from 'date-fns'
 import { useCalendarData } from '../hooks/useCalendarData'
 import { visibleEvents } from '@mysticals/core/logic/visible'
 import { useNav } from '../views/nav'
-import { rangeLabel, viewDays } from '@mysticals/core/logic/layout'
+import { eventKey, rangeLabel, viewDays } from '@mysticals/core/logic/layout'
 import { InvitesPanel } from './Invites'
 import { useEffect, useState } from 'react'
 import { addHours } from 'date-fns'
@@ -48,7 +48,7 @@ function NowNext(): React.JSX.Element {
   const { current, next } = pickNowNext(loaded ? visibleEvents(events, calendars) : [], now)
   const item = (e: CalEvent, label: React.ReactNode): React.JSX.Element => (
     <button
-      key={`${e.accountId}/${e.id}`}
+      key={eventKey(e)}
       type="button"
       className="sbar-seg sbar-ev"
       style={{ '--c': colorOf(e) } as React.CSSProperties}

@@ -18,6 +18,9 @@ export const WEEK_STARTS_ON = 1 as const
 export const SLOT_MIN = 15
 export type View = 'day' | '3day' | 'week' | 'month'
 
+/** Identity of an event on screen: Google gives every copy of a meeting (one per account or calendar) the same id. */
+export const eventKey = (e: Pick<CalEvent, 'accountId' | 'calendarId' | 'id'>): string => `${e.accountId}/${e.calendarId}/${e.id}`
+
 /** Parsed bounds; all-day end is exclusive, zero/negative lengths are widened so the event still shows. */
 export function eventBounds(e: CalEvent): { start: Date; end: Date } {
   const start = parseISO(e.start)

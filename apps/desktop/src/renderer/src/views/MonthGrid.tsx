@@ -5,7 +5,7 @@ import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
 import { eventButton, eventMenu, slotMenu } from '../components/EventMenu'
 import { nav } from './nav'
-import { eventBounds, eventsOnDay, isPast, monthGrid, monthShown, statusClass, ymd } from '@mysticals/core/logic/layout'
+import { eventBounds, eventKey, eventsOnDay, isPast, monthGrid, monthShown, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
 import { shiftDays } from './drag'
 import { fmt, t } from '../i18n'
@@ -17,8 +17,6 @@ interface Props {
   canDrag?: CanDrag
   moveTo?: MoveTo
 }
-
-const keyOf = (e: CalEvent): string => `${e.accountId}/${e.id}`
 
 export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): React.JSX.Element {
   const days = monthGrid(date)
@@ -49,7 +47,7 @@ export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): Re
       if (over === null && Math.hypot(m.clientX - x0, m.clientY - y0) < 4) return
       const cell = document.elementFromPoint(m.clientX, m.clientY)?.closest<HTMLElement>('.mg-cell')
       over = cell ? Number(cell.dataset.idx) : (over ?? from)
-      setMoving({ key: keyOf(e), over })
+      setMoving({ key: eventKey(e), over })
       document.body.dataset.dragging = 'move'
     }
     const finish = (commit: boolean): void => {
@@ -77,7 +75,7 @@ export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): Re
     window.addEventListener('mouseup', up)
     window.addEventListener('keydown', key, true)
   }
-  const dragged = moving && events.find((e) => keyOf(e) === moving.key)
+  const dragged = moving && events.find((e) => eventKey(e) === moving.key)
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 60_000)
     return () => clearInterval(t)
@@ -107,10 +105,10 @@ export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): Re
               </div>
               {shown.map((e, n) => (
                 <div
-                  key={e.id}
+                  key={eventKey(e)}
                   data-testid="event-block"
                   data-account-id={e.accountId}
-                  className={`ev mg-ev${e.allDay ? ' ev-allday' : ''}${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}${moving?.key === keyOf(e) ? ' is-dragged' : ''}`}
+                  className={`ev mg-ev${e.allDay ? ' ev-allday' : ''}${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}${moving?.key === eventKey(e) ? ' is-dragged' : ''}`}
                   style={{ '--c': colorOf(e) } as React.CSSProperties}
                   onMouseDown={onEventDown(e, idx)}
                   onDoubleClick={(ev) => ev.stopPropagation()}

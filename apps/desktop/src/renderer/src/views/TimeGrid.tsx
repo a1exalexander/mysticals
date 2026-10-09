@@ -6,7 +6,7 @@ import { tooltipHover } from '../components/EventTooltip'
 import { eventButton, eventMenu, slotMenu } from '../components/EventMenu'
 import { eventPlace } from '@mysticals/core/logic/meeting'
 import { nav } from './nav'
-import { dragRange, eventBounds, eventsOnDay, fitColumns, isPast, layoutDayLong, RAIL, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
+import { dragRange, eventBounds, eventKey, eventsOnDay, fitColumns, isPast, layoutDayLong, RAIL, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
 import { moveRange, resizeEnd, resizeStart } from './drag'
 import { currentLocale, fmt, t } from '../i18n'
@@ -47,7 +47,6 @@ const emitTimed = (day: Date, start: number, end: number): void =>
 
 const stop = (e: React.MouseEvent): void => e.stopPropagation()
 const minutesOf = (d: Date): number => d.getHours() * 60 + d.getMinutes()
-const keyOf = (e: CalEvent): string => `${e.accountId}/${e.id}`
 
 /** Minutes of `day` an event covers, when it starts that day and ends that day (or at the next midnight). */
 function sameDaySpan(e: CalEvent, day: Date): { start: number; end: number } | null {
@@ -125,7 +124,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
           : mode === 'resize'
             ? { start: span.start, end: resizeEnd(span.start, pointer) }
             : { start: resizeStart(span.end, pointer), end: span.end }
-      to = { key: keyOf(e), mode, day, ...r }
+      to = { key: eventKey(e), mode, day, ...r }
       setMoving(to)
       document.body.dataset.dragging = mode
     }
@@ -270,7 +269,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
                   .slice(0, list.length - more)
                   .map(({ e, tag }, n) => (
                     <div
-                      key={e.id}
+                      key={eventKey(e)}
                       data-testid="event-block"
                       data-account-id={e.accountId}
                       className={`ev ev-allday${tag ? ' is-promoted' : ''}${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}`}
@@ -341,7 +340,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
             ))}
             {layouts[dayIdx].rails.map(({ item: e, start, end, col }) => (
               <div
-                key={e.id}
+                key={eventKey(e)}
                 data-testid="event-rail"
                 data-account-id={e.accountId}
                 className={`ev-rail${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}`}
@@ -359,12 +358,12 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
               const h = pxOf(Math.max(end - start, MIN_DUR))
               const short = h < 34
               const draggable = !!moveTo && !!canDrag?.(e) && !!sameDaySpan(e, d)
-              const dragged = moving?.key === keyOf(e)
+              const dragged = moving?.key === eventKey(e)
               // cascade: full width less a step per overlapped block, painted in order (later on top)
               const indent = level === undefined ? null : `min(${level * CASCADE}px, 45%)`
               return (
                 <div
-                  key={e.id}
+                  key={eventKey(e)}
                   data-testid="event-block"
                   data-account-id={e.accountId}
                   className={`ev ev-timed${indent ? ' is-cascade' : ''}${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}${short ? ' is-short' : ''}${draggable ? ' is-draggable' : ''}${dragged ? ' is-dragged' : ''}`}
@@ -417,7 +416,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
             ))}
             {moving?.day === dayIdx &&
               (() => {
-                const e = events.find((x) => keyOf(x) === moving.key)
+                const e = events.find((x) => eventKey(x) === moving.key)
                 if (!e) return null
                 return (
                   <div

@@ -4,7 +4,7 @@ import type { CalEvent } from '@shared/types'
 import { eventMeetingUrl, eventPlace, JOIN_EARLY_MIN, joinable, linkKind, locationText } from '@mysticals/core/logic/meeting'
 import { LinkIcon } from '../components/LinkIcon'
 import { pickNowNext, startsLabel } from '@mysticals/core/logic/status'
-import { eventBounds, isPast, overlapsDay } from '@mysticals/core/logic/layout'
+import { eventBounds, eventKey, isPast, overlapsDay } from '@mysticals/core/logic/layout'
 import { bus } from '../bus'
 import { useDirectory } from '../components/ui/useDirectory'
 import { Notes, PARTSTAT } from '../components/EventDetails'
@@ -16,7 +16,6 @@ import type { ColorOf } from './CalendarView'
 import './Agenda.css'
 import { cap, currentLocale, fmt, t } from '../i18n'
 
-const keyOf = (e: CalEvent): string => `${e.accountId}/${e.id}`
 /** How far "show upcoming" looks past the shown day. */
 export const AHEAD_DAYS = 7
 // Goes through the main process's window-open handler: http(s) only, opened in the system browser / meeting app.
@@ -96,14 +95,14 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
   const walk = [...timed, ...upcomingTimed]
   const { current, next } = isToday ? pickNowNext(timed, now) : { current: [], next: undefined }
   const [picked, setPicked] = useState<string>()
-  const focus = walk.find((e) => keyOf(e) === picked) ?? current[0] ?? next
+  const focus = walk.find((e) => eventKey(e) === picked) ?? current[0] ?? next
   // While an event runs, the now line crosses that row where "now" falls within it (the latest-started one when
   // several overlap), so it never reads as "already over"; otherwise it goes before the first event still to start.
   const liveAt = timed.reduce((at, e, i) => (current.includes(e) ? i : at), -1)
   const nowAt = !isToday || liveAt >= 0 ? -2 : timed.findIndex((e) => eventBounds(e).start > now)
   const nowIndex = nowAt === -1 ? timed.length : nowAt
   const gaps = useMemo(() => breaksBefore(timed), [timed])
-  const pick = (e: CalEvent): void => setPicked(focus === e ? undefined : keyOf(e))
+  const pick = (e: CalEvent): void => setPicked(focus === e ? undefined : eventKey(e))
   // Read out from a live region outside the keyed card, so it persists while focus moves: today's call starting soon,
   // starting and ending (the one live on the previous tick, which focus has already left), never the minute countdown.
   // ponytail: assumes ticks TICK apart; a throttled timer (hidden window) can skip an end, keep the previous tick's live
@@ -123,7 +122,7 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
       if (ev.key === 'Escape' && picked) setPicked(undefined)
       else if (step && walk.length) {
         const i = focus ? walk.indexOf(focus) : -1
-        setPicked(keyOf(walk[Math.min(Math.max(i + step, 0), walk.length - 1)]))
+        setPicked(eventKey(walk[Math.min(Math.max(i + step, 0), walk.length - 1)]))
       } else if (ev.key === 'Enter' && url && !onControl) join(url)
       else return
       ev.preventDefault()
@@ -136,7 +135,7 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
     evs.length ? (
       <div className="ag-allday">
         {evs.map((e) => (
-          <button key={keyOf(e)} type="button" className="ag-chip" style={{ '--c': colorOf(e) } as React.CSSProperties} onClick={(ev) => open(e, ev.currentTarget)} {...eventMenu(e)}>
+          <button key={eventKey(e)} type="button" className="ag-chip" style={{ '--c': colorOf(e) } as React.CSSProperties} onClick={(ev) => open(e, ev.currentTarget)} {...eventMenu(e)}>
             {e.title || t('common.untitled')}
           </button>
         ))}
@@ -167,7 +166,7 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
               return [
                 gap && <Gap key={`gap-${i}`} m={gap} />,
                 i === nowIndex && <NowLine key="now" now={now} />,
-                <Row key={keyOf(e)} e={e} i={i} now={now} color={colorOf(e)} focused={focus === e} next={e === next} nowLine={i === liveAt} onPick={pick} />
+                <Row key={eventKey(e)} e={e} i={i} now={now} color={colorOf(e)} focused={focus === e} next={e === next} nowLine={i === liveAt} onPick={pick} />
               ]
             })}
             {timed.length > 0 && nowIndex === timed.length && <NowLine now={now} />}
@@ -192,7 +191,7 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
                       const dayGaps = breaksBefore(dayTimed)
                       return dayTimed.flatMap((e, i) => [
                         dayGaps[i] && <Gap key={`gap-${i}`} m={dayGaps[i]} />,
-                        <Row key={keyOf(e)} e={e} i={i} now={now} color={colorOf(e)} focused={focus === e} onPick={pick} />
+                        <Row key={eventKey(e)} e={e} i={i} now={now} color={colorOf(e)} focused={focus === e} onPick={pick} />
                       ])
                     })()}
                   </ol>
@@ -202,7 +201,7 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
           )}
         </section>
         {focus ? (
-          <Focus key={keyOf(focus)} e={focus} now={now} color={colorOf(focus)} calendar={calendars.find((c) => c.accountId === focus.accountId && c.id === focus.calendarId)?.name} />
+          <Focus key={eventKey(focus)} e={focus} now={now} color={colorOf(focus)} calendar={calendars.find((c) => c.accountId === focus.accountId && c.id === focus.calendarId)?.name} />
         ) : (
           <section className="ag-focus ag-focus-empty" data-testid="agenda-focus-empty">
             <p>{t(!timed.length ? (isToday ? 'agenda.noCalls' : 'agenda.nothingDay') : isToday && !picked ? 'agenda.allDone' : 'agenda.pickHint')}</p>

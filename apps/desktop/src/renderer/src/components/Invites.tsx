@@ -6,6 +6,7 @@ import { useDirectory } from './ui/useDirectory'
 import { visibleEvents } from '@mysticals/core/logic/visible'
 import { formatWhen, ownerLine, pendingInvites } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
+import { eventKey } from '@mysticals/core/logic/layout'
 import { usePopoverFocus } from './ui/usePopover'
 import './ui/ui.css'
 import './Invites.css'
@@ -59,9 +60,8 @@ export function InvitesPanel(): React.JSX.Element {
     }
   }, [open])
 
-  const keyOf = (e: CalEvent): string => `${e.accountId}/${e.id}`
   const reply = (e: CalEvent, status: 'accepted' | 'declined'): void => {
-    const k = keyOf(e)
+    const k = eventKey(e)
     if (sending.has(k)) return
     setError('')
     setSending((s) => new Set(s).add(k))
@@ -82,7 +82,7 @@ export function InvitesPanel(): React.JSX.Element {
               const a = accounts.find((x) => x.id === e.accountId)
               const o = ownerLine(undefined, a?.label ?? e.accountId, a?.email)
               return (
-                <li key={keyOf(e)} style={{ '--cal': a?.color } as React.CSSProperties}>
+                <li key={eventKey(e)} style={{ '--cal': a?.color } as React.CSSProperties}>
                   <button
                     type="button"
                     className="invites-open"
@@ -93,8 +93,8 @@ export function InvitesPanel(): React.JSX.Element {
                     <span className="invites-acc"><span className="mc-dot" /> {o.label}{o.email && <> · {o.email}</>}</span>
                   </button>
                   <div className="invites-actions">
-                    <button type="button" className="mc-btn primary" disabled={sending.has(keyOf(e))} onClick={() => reply(e, 'accepted')}>{t('rsvp.accept')}</button>
-                    <button type="button" className="mc-btn" disabled={sending.has(keyOf(e))} onClick={() => reply(e, 'declined')}>{t('rsvp.decline')}</button>
+                    <button type="button" className="mc-btn primary" disabled={sending.has(eventKey(e))} onClick={() => reply(e, 'accepted')}>{t('rsvp.accept')}</button>
+                    <button type="button" className="mc-btn" disabled={sending.has(eventKey(e))} onClick={() => reply(e, 'declined')}>{t('rsvp.decline')}</button>
                   </div>
                 </li>
               )

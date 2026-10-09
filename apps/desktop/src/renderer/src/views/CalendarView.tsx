@@ -8,7 +8,7 @@ import { canEdit } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
 import { bus } from '../bus'
 import { nav, useNav, type DeskView } from './nav'
-import { rangeLabel, shiftDate, viewDays, viewRange, type View } from '@mysticals/core/logic/layout'
+import { eventKey, rangeLabel, shiftDate, viewDays, viewRange, type View } from '@mysticals/core/logic/layout'
 import { TimeGrid } from './TimeGrid'
 import { MonthGrid } from './MonthGrid'
 import { AHEAD_DAYS, Agenda } from './Agenda'
@@ -33,7 +33,6 @@ export type ColorOf = (e: CalEvent) => string
 export type MoveTo = (e: CalEvent, start: string, end: string) => void
 export type CanDrag = (e: CalEvent) => boolean
 
-const keyOf = (e: Pick<CalEvent, 'accountId' | 'id'>): string => `${e.accountId}/${e.id}`
 const same = (a: string, b: string): boolean => Date.parse(a) === Date.parse(b) || a === b
 
 const go = (dir: 1 | -1): void => {
@@ -85,13 +84,13 @@ export function CalendarView(): React.JSX.Element {
   const [moved, setMoved] = useState<Map<string, { start: string; end: string }>>(() => new Map())
   const events = useMemo(() => {
     const shown = visibleEvents(all, calendars)
-    return moved.size ? shown.map((e) => ({ ...e, ...moved.get(keyOf(e)) })) : shown
+    return moved.size ? shown.map((e) => ({ ...e, ...moved.get(eventKey(e)) })) : shown
   }, [all, calendars, moved])
   useEffect(() => {
     setMoved((m) => {
       if (!m.size) return m
       const caught = [...m].filter(([k, to]) => {
-        const e = all.find((x) => keyOf(x) === k)
+        const e = all.find((x) => eventKey(x) === k)
         return !e || (same(e.start, to.start) && same(e.end, to.end))
       })
       if (!caught.length) return m
@@ -112,7 +111,7 @@ export function CalendarView(): React.JSX.Element {
   )
 
   const move = useCallback((e: CalEvent, start: string, end: string, scope?: DeleteScope): void => {
-    const k = keyOf(e)
+    const k = eventKey(e)
     const drop = (): void =>
       setMoved((m) => {
         const next = new Map(m)
