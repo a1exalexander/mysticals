@@ -1,7 +1,7 @@
 .dtf { display: flex; gap: 6px; }
 .dtf-trigger {
   font: 12px/1 var(--mono); color: var(--fg); background: var(--bg);
-  border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 8px; height: 28px; text-align: left;
+  border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 0 8px; height: 28px; text-align: left;
 }
 .dtf-trigger:first-child { flex: 1; }
 .dtf-time { width: 64px; text-align: center; }
@@ -13,7 +13,7 @@
 .dtf-pop {
   position: fixed; z-index: 60; padding: 8px;
   background: var(--surface-2); color: var(--fg);
-  border: 1px solid var(--line-strong); border-radius: 6px; box-shadow: 0 12px 32px rgb(var(--shadow) / calc(0.5 * var(--shadow-k)));
+  border: 1px solid var(--line-strong); border-radius: var(--r-md); box-shadow: 0 12px 32px rgb(var(--shadow) / calc(0.5 * var(--shadow-k)));
   animation: mc-fade 100ms ease-out;
 }
 
@@ -22,7 +22,7 @@
   --rdp-accent-color: var(--accent);
   --rdp-accent-background-color: color-mix(in srgb, var(--accent) 16%, transparent);
   --rdp-day-height: 30px; --rdp-day-width: 32px;
-  --rdp-day_button-height: 28px; --rdp-day_button-width: 30px; --rdp-day_button-border-radius: 4px;
+  --rdp-day_button-height: 28px; --rdp-day_button-width: 30px; --rdp-day_button-border-radius: var(--r-sm);
   --rdp-nav_button-height: 26px; --rdp-nav_button-width: 26px; --rdp-nav-height: 30px;
   --rdp-outside-opacity: 0.35;
   font: 12px/1 var(--mono);
@@ -40,12 +40,12 @@
 .dtf-typed {
   width: 100%; margin-bottom: 6px; padding: 4px 6px; height: 26px;
   font: 12px/1 var(--mono); color: var(--fg); background: var(--bg);
-  border: 1px solid var(--line-strong); border-radius: 4px; outline: none;
+  border: 1px solid var(--line-strong); border-radius: var(--r-sm); outline: none;
 }
 .dtf-typed:focus { border-color: var(--accent); }
 .dtf-slots { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; }
 .dtf-slots button {
-  flex: none; height: 26px; padding: 0 8px; border: 0; border-radius: 3px; text-align: left;
+  flex: none; height: 26px; padding: 0 8px; border: 0; border-radius: var(--r-sm); text-align: left;
   font: 12px/26px var(--mono); color: var(--fg); background: none;
 }
 .dtf-slots button:hover { background: var(--hover); }

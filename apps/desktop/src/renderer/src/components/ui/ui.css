@@ -8,7 +8,7 @@
 }
 .mc-sheet, .mc-popover {
   background: var(--surface-2); color: var(--fg);
-  border: 1px solid var(--line-strong); border-radius: 8px;
+  border: 1px solid var(--line-strong); border-radius: var(--r-lg);
   box-shadow: 0 18px 50px rgb(var(--shadow) / calc(0.55 * var(--shadow-k)));
   user-select: text;
 }
@@ -35,7 +35,7 @@
 .scope-prompt .mc-scope { margin-top: 0; }
 .mc-btn {
   font: 500 12px/1 var(--mono); color: var(--fg); background: var(--surface);
-  border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 12px; height: 26px;
+  border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 0 12px; height: 26px;
 }
 .mc-btn:hover:not(:disabled) { background: var(--hover); }
 .mc-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -45,7 +45,7 @@
 .mc-btn.danger.primary { background: var(--red); border-color: var(--red); color: var(--on-accent); }
 .mc-btn:disabled { opacity: 0.4; }
 
-.mc-seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 4px; overflow: hidden; }
+.mc-seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--r-sm); overflow: hidden; }
 .mc-seg button {
   font: 500 12px/1 var(--mono); color: var(--muted); background: transparent; border: 0; border-radius: 0;
   height: 26px; padding: 0 12px; min-width: 70px;
@@ -106,7 +106,7 @@
 /* Integer field with −/+ steppers (no native spinners). */
 .mnum {
   display: inline-flex; align-items: stretch; height: 28px; flex: none;
-  background: var(--bg); border: 1px solid var(--line-strong); border-radius: 4px; overflow: hidden;
+  background: var(--bg); border: 1px solid var(--line-strong); border-radius: var(--r-sm); overflow: hidden;
 }
 .mnum:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
 .mnum button {

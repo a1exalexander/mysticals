@@ -34,3 +34,34 @@ describe('no crescent borders', () => {
     expect(found).toEqual([])
   })
 })
+
+// Corner radii come from the tokens in base.css (--r-sm controls, --r-md cards/popovers/menus/toast, --r-lg sheets);
+// raw px only for square-ish details (dots, tags, badges: 1-3px), 50% for round things. Pills keep their half-height.
+const PILLS: Record<string, string> = { '::-webkit-scrollbar-thumb': '5px', '.mc-switch': '8px' }
+const RADIUS_OK = /^(0|[123]px|50%|var\(--r-(sm|md|lg)\))$/
+
+export const radiusDrift = (css: string): string[] =>
+  css
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('}')
+    .flatMap((rule) => {
+      const [sel, body = ''] = rule.split('{').slice(-2).map((x) => x.trim())
+      return [...body.matchAll(/border-radius\s*:\s*([^;]+)/g)]
+        .flatMap(([, v]) => v.trim().split(/\s+/))
+        .filter((x) => !RADIUS_OK.test(x) && PILLS[sel] !== x)
+        .map((x) => `${sel}: ${x}`)
+    })
+
+describe('no drifting border radii', () => {
+  it('flags a raw radius outside the tokens', () => {
+    expect(radiusDrift('.a { border-radius: 5px; } .b { border-radius: 10px; }')).toEqual(['.a: 5px', '.b: 10px'])
+    expect(radiusDrift('@media (x) { .c { border-radius: 6px; } }')).toEqual(['.c: 6px'])
+    expect(radiusDrift('.d { border-radius: var(--r-sm) 0 0 var(--r-sm); } .e { border-radius: 50%; } .f { border-radius: 3px; }')).toEqual([])
+    expect(radiusDrift('.mc-switch { border-radius: 8px; } .g { border-radius: 8px; }')).toEqual(['.g: 8px'])
+  })
+
+  it('none in the renderer styles', () => {
+    const found = cssFiles(root).flatMap((f) => radiusDrift(readFileSync(f, 'utf8')).map((d) => `${f.slice(root.length + 1)}: ${d}`))
+    expect(found).toEqual([])
+  })
+})

@@ -13,7 +13,7 @@
 }
 .editor-grid input:not([type='checkbox'], .mnum-input), .editor-grid textarea, .editor-chips {
   font: inherit; color: var(--fg); background: var(--bg);
-  border: 1px solid var(--line-strong); border-radius: 4px; padding: 4px 8px; min-height: 28px; width: 100%;
+  border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 4px 8px; min-height: 28px; width: 100%;
 }
 .editor-grid input:not(.mnum-input):focus, .editor-grid textarea:focus, .editor-chips:focus-within {
   outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
@@ -47,7 +47,7 @@
 .editor-days { display: flex; gap: 4px; }
 .editor-days button {
   flex: 1; height: 26px; font: 500 11px/1 var(--mono); color: var(--muted); background: var(--bg);
-  border: 1px solid var(--line-strong); border-radius: 4px;
+  border: 1px solid var(--line-strong); border-radius: var(--r-sm);
 }
 .editor-days button.on { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
 .editor-days button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
