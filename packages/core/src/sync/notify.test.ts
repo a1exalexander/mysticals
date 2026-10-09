@@ -35,4 +35,11 @@ describe('noteText', () => {
     expect(noteText([n], 'Work', now, 'uk')[0].title).toBe('Нове запрошення: Standup')
     expect(noteText([n, n, n, n, n], 'Work', now, 'uk')).toEqual([{ title: '5 змін у календарі', body: 'Work' }])
   })
+  it('shows the time in 24 or 12 hours', () => {
+    const n = { kind: 'changed' as const, event: ev('Review', { start: new Date(2026, 8, 24, 14, 30).toISOString(), end: new Date(2026, 8, 24, 15).toISOString() }) }
+    const day = new Date(2026, 8, 23, 12)
+    expect(noteText([n], 'Work', day)[0].body).toBe('Thu, 24 Sep · 14:30 · Work')
+    expect(noteText([n], 'Work', day, 'en', true)[0].body).toBe('Thu, 24 Sep · 2:30 PM · Work')
+    expect(noteText([n], 'Work', new Date(2026, 8, 24, 9), 'en', true)[0].body).toBe('Today · 2:30 PM · Work')
+  })
 })
