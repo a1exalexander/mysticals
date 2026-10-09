@@ -16,7 +16,7 @@
 }
 .ag-chip:hover { background: color-mix(in srgb, var(--ink) 26%, transparent); }
 /* Focus outlines inside the box: the scrolling list would clip them at its edges. */
-.ag-row:focus-visible, .ag-chip:focus-visible { outline-offset: -2px; }
+.ag-row:focus-visible, .ag-chip:focus-visible, .ag-ahead:focus-visible { outline-offset: -2px; }
 
 .ag-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .ag-rows li { position: relative; animation: ag-in 200ms ease-out both; animation-delay: calc(var(--i) * 20ms); }
