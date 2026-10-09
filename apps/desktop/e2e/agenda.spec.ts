@@ -170,3 +170,38 @@ test('agenda: the focus card shows the organizer, the description and a clickabl
   await page.screenshot({ path: 'e2e/screens/agenda-focus-notes.png' })
   await app.close()
 })
+
+test('agenda: a long focus card scrolls inside the pane, Join and Details stay reachable', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 1000, height: 640 })
+  await expect(page.locator('.app-loader')).toBeHidden()
+  // After the mock's last event today, so the call below is the only one running.
+  const today = new Date()
+  await page.clock.setFixedTime(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 21, 0))
+  await page.evaluate(async () => {
+    const at = (min: number): string => new Date(Date.now() + min * 60_000).toISOString()
+    await window.api.events.create({
+      accountId: 'work', calendarId: 'work-main', allDay: false, start: at(-10), end: at(20), title: 'All hands',
+      location: 'https://zoom.us/j/555', attendees: Array.from({ length: 24 }, (_, i) => `guest${i}@work.example`),
+      description: Array.from({ length: 40 }, (_, i) => `Point ${i + 1}: a long note that wraps over a line or two in the card.`).join('\n')
+    })
+  })
+
+  await page.keyboard.press('a')
+  const card = page.getByTestId('agenda-focus')
+  await expect(card).toContainText('All hands')
+  await card.getByTestId('agenda-people-toggle').click()
+  await expect(card.getByTestId('agenda-people')).toBeVisible()
+  const bar = (await page.locator('.statusbar').boundingBox())!
+  const box = (await card.boundingBox())!
+  expect(box.y + box.height).toBeLessThanOrEqual(bar.y)
+  const join = page.getByTestId('agenda-join')
+  await join.scrollIntoViewIfNeeded()
+  const j = (await join.boundingBox())!
+  expect(j.y + j.height).toBeLessThanOrEqual(bar.y)
+  await page.screenshot({ path: 'e2e/screens/agenda-long-card.png' })
+  await card.locator('.ag-details').click()
+  await expect(page.getByTestId('details')).toBeVisible()
+  await app.close()
+})
