@@ -55,12 +55,12 @@
 .ag-focus-empty { --bar: transparent; display: grid; place-items: center; min-height: 140px; color: var(--muted); font: 12.5px/1.5 var(--mono); }
 .ag-status { font: 600 11px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .ag-status.live { color: var(--green); }
-/* Read out by screen readers only. */
-.ag-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .ag-status.live::before {
   content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%;
   background: var(--green); vertical-align: 1px; animation: ag-pulse 1.6s ease-in-out infinite;
 }
+/* Read out by screen readers only. */
+.ag-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .ag-focus-title { margin: 10px 0 4px; font-size: 19px; font-weight: 700; letter-spacing: -0.01em; overflow-wrap: anywhere; }
 .ag-focus-when { font: 12.5px/1.4 var(--mono); }
 .ag-focus-when span { color: var(--muted); }
@@ -106,8 +106,9 @@
 /* Now line between the events that have started and the ones still to come (the time grid's .tg-now look). */
 .ag-rows .ag-now { position: relative; height: 0; margin: 5px 0 5px 52px; border-top: 2px solid var(--pink); animation: none; }
 /* Over a running event: marks the current time in the time column, above the row's hover/selection background. The
-   line stops before the title (at 75px) and the clock sits over the start time, so neither strikes through the title
-   nor reaches the Join pill. */
+   line stops before the title and the clock sits over the start time, so neither strikes through the title nor reaches
+   the Join pill. Tied to .ag-row's geometry: 52px = 8px padding + 44px time column; the title starts at 75px (then a
+   10px gap, the 3px bar and a 10px gap), so 20px ends just short of it. */
 .ag-rows .ag-now-over { position: absolute; left: 52px; width: 20px; margin: -1px 0 0; z-index: 1; pointer-events: none; }
 .ag-rows .ag-now-over .ag-now-clock { right: calc(100% + 6px); }
 .ag-now::before {

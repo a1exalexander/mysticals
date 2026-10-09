@@ -285,7 +285,7 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
   grid-area: 1 / 2; background: var(--bg); min-width: 0; min-height: 0; border-left: 1px solid var(--line);
   /* Above the sidebar, which keeps its full width and slides under the calendar while its column folds. Clipped, so
      nothing in it can paint over the status bar. */
-  position: relative; z-index: 1; overflow: hidden;
+  position: relative; z-index: 1; overflow: clip;
 }
 /* Collapsed sidebar (sidebar.ts): the column folds to nothing; on macOS the toolbar clears the traffic lights. */
 .app[data-sidebar='collapsed'] { grid-template-columns: 0 minmax(0, 1fr); }
