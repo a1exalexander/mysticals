@@ -110,11 +110,13 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
       if (document.querySelector('dialog[open], .mc-overlay, [data-testid="details"]')) return
       const step = ev.key === 'j' || ev.key === 'ArrowDown' ? 1 : ev.key === 'k' || ev.key === 'ArrowUp' ? -1 : 0
       const url = focus && joinable(focus, now)
+      // Enter on a button or link activates it; the rows are the list j/k walks, so Enter there joins the selected call.
+      const onControl = (ev.target as HTMLElement).closest('button:not(.ag-row), a, [role="button"]')
       if (ev.key === 'Escape' && picked) setPicked(undefined)
       else if (step && walk.length) {
         const i = focus ? walk.indexOf(focus) : -1
         setPicked(keyOf(walk[Math.min(Math.max(i + step, 0), walk.length - 1)]))
-      } else if (ev.key === 'Enter' && url) join(url)
+      } else if (ev.key === 'Enter' && url && !onControl) join(url)
       else return
       ev.preventDefault()
     }

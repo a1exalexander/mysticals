@@ -205,3 +205,39 @@ test('agenda: a long focus card scrolls inside the pane, Join and Details stay r
   await expect(page.getByTestId('details')).toBeVisible()
   await app.close()
 })
+
+test('agenda: Enter activates the focused control and only joins from the list', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await app.evaluate(({ shell }) => {
+    const g = globalThis as unknown as { opened: string[] }
+    g.opened = []
+    shell.openExternal = async (url: string) => void g.opened.push(url)
+  })
+  const opened = (): Promise<string[]> => app.evaluate(() => (globalThis as unknown as { opened: string[] }).opened)
+  await page.setViewportSize({ width: 1200, height: 800 })
+  await expect(page.locator('.app-loader')).toBeHidden()
+  // Halfway through the mock's sync (11:30–12:00, Zoom link), so Enter could join it.
+  const today = new Date()
+  await page.clock.setFixedTime(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 11, 45))
+
+  await page.keyboard.press('a')
+  await expect(page.getByTestId('agenda-join')).toBeVisible()
+  const toggle = page.getByTestId('agenda-ahead-toggle')
+  await toggle.focus()
+  await page.keyboard.press('Enter')
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.getByTestId('agenda-upcoming')).toBeVisible()
+  await page.locator('.ag-details').focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByTestId('details')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('details')).toBeHidden()
+  expect(await opened()).toEqual([])
+
+  // A clicked row keeps focus; Enter there still joins the selected call.
+  await page.locator('.ag-row').filter({ hasText: 'Quarterly roadmap sync' }).click()
+  await page.keyboard.press('Enter')
+  await expect.poll(opened).toEqual(['https://zoom.us/j/1234567890?pwd=abc'])
+  await app.close()
+})
