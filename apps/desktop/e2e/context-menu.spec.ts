@@ -1,4 +1,4 @@
-import { test, expect, _electron as electron, type Page } from '@playwright/test'
+import { test, expect, _electron as electron, type Locator, type Page } from '@playwright/test'
 
 const launch = async (): Promise<{ app: Awaited<ReturnType<typeof electron.launch>>; page: Page }> => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
@@ -10,12 +10,14 @@ const launch = async (): Promise<{ app: Awaited<ReturnType<typeof electron.launc
 }
 
 /** Right-click until the menu stays: the day view's own scroll-to-now (which closes menus) may land after the click. */
-const rightClick = async (page: Page, title: string): Promise<void> => {
-  const block = page.getByTestId('event-block').filter({ hasText: title }).first()
+const rightClick = async (
+  page: Page, target: string | Locator, menu = 'event-menu', position?: { x: number; y: number }
+): Promise<void> => {
+  const el = typeof target === 'string' ? page.getByTestId('event-block').filter({ hasText: target }).first() : target
   await expect(async () => {
-    await block.click({ button: 'right' })
+    await el.click({ button: 'right', position })
     await page.waitForTimeout(150)
-    await expect(page.getByTestId('event-menu')).toBeVisible({ timeout: 100 })
+    await expect(page.getByTestId(menu)).toBeVisible({ timeout: 100 })
   }).toPass()
 }
 
@@ -53,7 +55,7 @@ test('right-click an event: edit, duplicate, copy and paste, delete with undo', 
   await blocks('Gym').first().click({ button: 'right' })
   await menu.getByTestId('menu-copy').click()
   await expect(toast).toContainText('Copied “Gym”')
-  await page.locator('.tg-col').first().click({ button: 'right', position: { x: 20, y: 48 * 15 + 10 } })
+  await rightClick(page, page.locator('.tg-col').first(), 'slot-menu', { x: 20, y: 48 * 15 + 10 })
   const slot = page.getByTestId('slot-menu')
   await expect(slot.getByTestId('menu-paste')).toHaveText('Paste “Gym”')
   await slot.getByTestId('menu-paste').click()
