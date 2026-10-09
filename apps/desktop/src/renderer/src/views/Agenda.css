@@ -22,7 +22,7 @@
 .ag-rows li { position: relative; animation: ag-in 200ms ease-out both; animation-delay: calc(var(--i) * 20ms); }
 .ag-row {
   width: 100%; display: grid; grid-template-columns: 44px 3px minmax(0, 1fr); align-items: center; gap: 10px;
-  padding: 7px 64px 7px 8px; border: 0; border-radius: var(--r-sm); background: none; color: var(--fg); text-align: left;
+  padding: 7px 8px; border: 0; border-radius: var(--r-sm); background: none; color: var(--fg); text-align: left;
   transition: background 120ms ease;
 }
 .ag-row:hover { background: var(--hover); }
@@ -42,6 +42,8 @@
   animation: fade-in 160ms ease-out;
 }
 .ag-join-pill:hover { filter: brightness(1.1); }
+/* Only rows with a Join pill keep room for it. */
+.ag-rows li:has(.ag-join-pill) .ag-row { padding-right: 64px; }
 
 .ag-focus {
   --bar: var(--ink);
@@ -53,6 +55,8 @@
 .ag-focus-empty { --bar: transparent; display: grid; place-items: center; min-height: 140px; color: var(--muted); font: 12.5px/1.5 var(--mono); }
 .ag-status { font: 600 11px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .ag-status.live { color: var(--green); }
+/* Read out by screen readers only. */
+.ag-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .ag-status.live::before {
   content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%;
   background: var(--green); vertical-align: 1px; animation: ag-pulse 1.6s ease-in-out infinite;

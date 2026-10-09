@@ -1,4 +1,4 @@
-import { test, expect, _electron as electron } from '@playwright/test'
+import { test, expect, _electron as electron, type Locator } from '@playwright/test'
 
 test('agenda lists today and offers Join from 5 minutes before a call', async () => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
@@ -21,6 +21,13 @@ test('agenda lists today and offers Join from 5 minutes before a call', async ()
   await expect(focus).toContainText('Quarterly roadmap sync with design')
   await expect(focus).toContainText('https://zoom.us/j/1234567890?pwd=abc')
   await expect(page.getByTestId('agenda-join')).toBeVisible()
+  // Only rows with a Join pill keep room for it.
+  const padRight = (l: Locator): Promise<string> => l.evaluate((el) => getComputedStyle(el).paddingRight)
+  expect(await padRight(row)).toBe('64px')
+  expect(await padRight(page.locator('.ag-row').filter({ hasText: 'Daily standup' }))).toBe('8px')
+  // Screen readers hear state changes, not the card's minute countdown.
+  await expect(focus).not.toHaveAttribute('aria-live')
+  await expect(focus.getByRole('status')).toHaveText('Starting soon: Quarterly roadmap sync with design')
   await page.screenshot({ path: 'e2e/screens/agenda.png' })
 
   // The slider sits under the active tab.
@@ -150,6 +157,7 @@ test('agenda: the now line crosses a running event instead of sitting below it',
   expect(line.x + line.width).toBeLessThanOrEqual(title.x)
   expect(clock.x + clock.width).toBeLessThanOrEqual(title.x)
   expect(clock.x + clock.width).toBeLessThanOrEqual(pill.x)
+  await expect(page.getByTestId('agenda-focus').getByRole('status')).toHaveText('Started: Quarterly roadmap sync with design')
   await page.screenshot({ path: 'e2e/screens/agenda-now-running.png' })
   await app.close()
 })

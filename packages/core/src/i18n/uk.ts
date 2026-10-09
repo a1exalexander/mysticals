@@ -443,4 +443,7 @@ export const uk: Record<Key, Msg> = {
   'agenda.hideAhead': 'Сховати наступні',
   'agenda.nothingAhead': 'Найближчі {n} днів нічого немає.',
   'agenda.hidePeople': 'Сховати учасників',
+  'agenda.state.soon': 'Скоро почнеться: {title}',
+  'agenda.state.live': 'Почалася: {title}',
+  'agenda.state.ended': 'Завершилася: {title}',
 }

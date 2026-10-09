@@ -275,8 +275,11 @@ function Focus({ e, now, color, calendar }: { e: CalEvent; now: Date; color: str
   const where = locationText(e.location)
   const people = e.attendees.length
   const [showPeople, setShowPeople] = useState(false)
+  // Announced on its own, so screen readers hear the call start soon, start and end, not the minute countdown above.
+  const state = end <= now ? 'ended' : st.live ? 'live' : +start - +now <= JOIN_EARLY_MIN * 60_000 ? 'soon' : undefined
   return (
-    <section className="ag-focus" style={{ '--c': color } as React.CSSProperties} data-testid="agenda-focus" aria-live="polite">
+    <section className="ag-focus" style={{ '--c': color } as React.CSSProperties} data-testid="agenda-focus">
+      <div className="ag-sr" role="status">{state && t(`agenda.state.${state}`, { title: e.title || t('common.untitled') })}</div>
       <div className={st.live ? 'ag-status live' : 'ag-status'}>{st.text}</div>
       <h2 className="ag-focus-title">{e.title || t('common.untitled')}</h2>
       <div className="ag-focus-when">

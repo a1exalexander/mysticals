@@ -442,6 +442,9 @@ export const en = {
   'agenda.hideAhead': 'Hide upcoming',
   'agenda.nothingAhead': 'Nothing in the next {n} days.',
   'agenda.hidePeople': 'Hide people',
+  'agenda.state.soon': 'Starting soon: {title}',
+  'agenda.state.live': 'Started: {title}',
+  'agenda.state.ended': 'Ended: {title}',
 } as const
 
 export type Key = keyof typeof en
