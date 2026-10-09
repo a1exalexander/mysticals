@@ -88,3 +88,28 @@ test('event details: Meet from conference data, map and self-hosted call buttons
   await page.screenshot({ path: 'e2e/screens/details-video.png' })
   await app.close()
 })
+
+test('event details: a long invitee list scrolls in a capped box', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 1200, height: 800 })
+  await expect(page.locator('.app-loader')).toBeHidden()
+  await page.evaluate(async () => {
+    const d = new Date()
+    const at = (h: number): string => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h).toISOString()
+    await window.api.events.create({
+      accountId: 'work', calendarId: 'work-main', allDay: false, start: at(13), end: at(14), title: 'All hands',
+      attendees: Array.from({ length: 24 }, (_, i) => `person${i}@work.example`)
+    })
+  })
+
+  await page.getByTestId('event-block').filter({ hasText: 'All hands' }).first().click()
+  await page.getByTestId('invitees-toggle').click()
+  const people = page.getByTestId('details').locator('.details-people')
+  await expect(people.locator('li')).toHaveCount(24)
+  expect((await people.boundingBox())!.height).toBeLessThanOrEqual(180)
+  expect(await people.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true)
+  await page.waitForTimeout(300)
+  await page.screenshot({ path: 'e2e/screens/details-many-invitees.png' })
+  await app.close()
+})

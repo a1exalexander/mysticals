@@ -10,6 +10,8 @@
 .details-row > :first-child { font: 10.5px/19px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
 .details-people { list-style: none; margin: 0; padding: 0; }
 .details-people { display: grid; gap: 3px; }
+/* Long lists scroll in place (capped like the agenda's) so RSVP, Edit and Delete stay in view. */
+.details .details-people { max-height: 180px; overflow-y: auto; }
 .details-people li { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .details-people .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .details-people .tag {
