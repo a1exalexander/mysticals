@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { addDays, addMonths, format, isSameDay, isSameMonth, isToday, startOfMonth } from 'date-fns'
 import { nav, useNav } from '../views/nav'
 import { monthGrid, viewDays } from '@mysticals/core/logic/layout'
-import { fmt, t, useLocale } from '../i18n'
+import { cap, fmt, t, useLocale } from '../i18n'
 
 const STEP: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }
 
@@ -15,10 +15,14 @@ export function MiniMonth(): React.JSX.Element {
   useEffect(() => setShown(new Date(monthKey)), [monthKey])
   // The keyboard-focused day (the grid's one tab stop); follows the selected day.
   const [focus, setFocus] = useState(date)
-  useEffect(() => setFocus(date), [date])
-  // Set by a key press: move DOM focus to the new tab stop (paging months re-renders the old one away).
+  // Set when DOM focus should move to the new tab stop: after a key press here, or when the selected day changes
+  // (h/l/t) while focus is in the grid. Paging months re-renders the old day away, dropping focus to <body>.
   const moved = useRef(false)
   const grid = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    moved.current = grid.current?.contains(document.activeElement) ?? false
+    setFocus(date)
+  }, [date])
   useEffect(() => {
     if (moved.current) grid.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus()
     moved.current = false
@@ -78,7 +82,7 @@ export function MiniMonth(): React.JSX.Element {
             ]
               .filter(Boolean)
               .join(' ')}
-            aria-label={fmt(d, 'EEEE, d MMMM yyyy')}
+            aria-label={cap(fmt(d, 'EEEE, d MMMM yyyy'))}
             aria-current={isToday(d) ? 'date' : undefined}
             aria-pressed={isSameDay(d, date)}
             tabIndex={isSameDay(d, stop) ? 0 : -1}

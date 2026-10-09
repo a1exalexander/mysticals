@@ -63,6 +63,7 @@ test('mini-month is one labelled tab stop, arrow keys move within it, and it tin
 
   // Week view: today is the one tab stop, current and selected; the visible week is tinted.
   await expect(stop).toHaveCount(1)
+  await expect(page.locator('.mini-day:not([tabindex="-1"])')).toHaveCount(1)
   await expect(stop).toHaveAttribute('aria-label', label(today))
   await expect(stop).toHaveAttribute('aria-current', 'date')
   await expect(stop).toHaveAttribute('aria-pressed', 'true')
@@ -74,6 +75,7 @@ test('mini-month is one labelled tab stop, arrow keys move within it, and it tin
   await stop.focus()
   await page.keyboard.press('ArrowRight')
   await expect(focused).toHaveAttribute('aria-label', label(addDays(today, 1)))
+  await expect(title).toHaveText(week!)
   await page.keyboard.press('ArrowDown')
   await expect(focused).toHaveAttribute('aria-label', label(addDays(today, 8)))
   await page.keyboard.press('ArrowUp')
@@ -99,6 +101,11 @@ test('mini-month is one labelled tab stop, arrow keys move within it, and it tin
   await expect(title).not.toHaveText(week!)
   await expect(page.locator('.mini-day.in-range')).toHaveCount(7)
   await expect(page.locator(`.mini-day.in-range[aria-label="${label(target)}"]`)).toHaveCount(1)
+
+  // t (a window shortcut) moves the main view back to today; focus follows instead of dropping to <body>.
+  await page.keyboard.press('t')
+  await expect(focused).toHaveAttribute('aria-label', label(today))
+  await expect(title).toHaveText(week!)
 
   await page.getByTestId('view-switch-3day').click()
   await expect(page.locator('.mini-day.in-range')).toHaveCount(3)
