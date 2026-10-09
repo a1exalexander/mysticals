@@ -3,7 +3,7 @@ import './Accounts.css'
 import { t as tr } from '@mysticals/core/i18n'
 import type { Key, Locale } from '@mysticals/core/i18n'
 import { currentLocale, t } from '../i18n'
-import { radioGroup } from './ui/roving'
+import { useRadioGroup } from './ui/roving'
 
 /** Dracula accents: purple, green, cyan, pink, orange, yellow, red, comment. */
 export const SWATCHES = ['#bd93f9', '#50fa7b', '#8be9fd', '#ff79c6', '#ffb86c', '#f1fa8c', '#ff5555', '#6272a4']
@@ -77,9 +77,9 @@ export function Sheet(props: {
 }
 
 export function Swatches(props: { value: string; onChange: (c: string) => void; name: string }): React.JSX.Element {
-  const group = radioGroup(SWATCHES, props.value, props.onChange)
+  const group = useRadioGroup(SWATCHES, props.value, props.onChange)
   return (
-    <div className="acc-swatches" role="radiogroup" aria-label={props.name} onKeyDown={group.onKeyDown}>
+    <div className="acc-swatches" role="radiogroup" aria-label={props.name} {...group.props}>
       {SWATCHES.map((c, i) => (
         <button
           key={c}

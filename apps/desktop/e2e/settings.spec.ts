@@ -14,7 +14,20 @@ test('settings tabs: accounts (with sync and notifications), themes, general', a
   await expect(page.getByTestId('sync-work')).toContainText('Up to date')
   await expect(page.getByTestId('account-work').getByTestId('notify-account-work')).toBeVisible()
   // Colour swatches read out by name, not hex.
-  await expect(page.getByTestId('account-work').getByRole('radio', { name: 'Cyan' })).toHaveAttribute('aria-checked', 'true')
+  const work = page.getByTestId('account-work')
+  await expect(work.getByRole('radio', { name: 'Cyan' })).toHaveAttribute('aria-checked', 'true')
+  // Arrows step from the focused swatch: two in a row, the second before the first colour has come back over IPC.
+  await work.getByRole('radio', { name: 'Cyan' }).focus()
+  const arrows = (key: string): Promise<void> =>
+    page.evaluate((key) => {
+      for (let i = 0; i < 2; i++) document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }))
+    }, key)
+  await arrows('ArrowRight')
+  await expect(work.getByRole('radio', { name: 'Orange' })).toBeFocused()
+  await expect(work.getByRole('radio', { name: 'Orange' })).toHaveAttribute('tabindex', '0')
+  await expect(work.getByRole('radio', { name: 'Orange' })).toHaveAttribute('aria-checked', 'true')
+  await arrows('ArrowLeft')
+  await expect(work.getByRole('radio', { name: 'Cyan' })).toHaveAttribute('aria-checked', 'true')
   await expect(page.getByTestId('reminder-select')).toBeVisible()
   await expect(page.getByTestId('settings-tab-sync')).toHaveCount(0)
   await expect(page.getByTestId('settings-tab-notifications')).toHaveCount(0)
