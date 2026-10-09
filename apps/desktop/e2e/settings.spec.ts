@@ -136,10 +136,14 @@ test('settings scroll as one area in the smallest window', async () => {
     return out
   })
   expect(nested).toEqual([])
-  await detail.getByRole('button', { name: 'Remove', exact: true }).click()
-  const confirm = detail.getByRole('button', { name: 'Remove account' })
-  await confirm.scrollIntoViewIfNeeded()
-  await expect(confirm).toBeInViewport()
+  // Scrolling that one panel to the bottom reaches Remove, and its confirmation.
+  const toBottom = (): Promise<void> => page.getByRole('tabpanel').evaluate((el) => void (el.scrollTop = el.scrollHeight))
+  const remove = detail.getByRole('button', { name: 'Remove', exact: true })
+  await toBottom()
+  await expect(remove).toBeInViewport()
+  await remove.click()
+  await toBottom()
+  await expect(detail.getByRole('button', { name: 'Remove account' })).toBeInViewport()
   await page.screenshot({ path: 'e2e/screens/settings-960.png' })
   await app.close()
 })
