@@ -30,10 +30,11 @@ export function RepeatField({ value, start, status, onChange }: Props): React.JS
   if (status) {
     return (
       <>
-        <label>{t('repeat.label')}</label>
-        <div className="editor-static editor-muted" data-testid="editor-repeat">
+        <label htmlFor="ed-repeat">{t('repeat.label')}</label>
+        {/* <output>: a status a label can point at. */}
+        <output id="ed-repeat" className="editor-static editor-muted" data-testid="editor-repeat">
           {status === 'loading' ? t('repeat.loading') : t('repeat.loadFailed')}
-        </div>
+        </output>
       </>
     )
   }
@@ -70,9 +71,9 @@ export function RepeatField({ value, start, status, onChange }: Props): React.JS
 
       {showCustom && value && (
         <>
-          <label>{t('repeat.every')}</label>
+          <label htmlFor="ed-repeat-every">{t('repeat.every')}</label>
           <div className="editor-repeat-row">
-            <NumberField aria-label={t('repeat.everyAria')} value={value.interval ?? 1} onChange={(interval) => set({ interval })} />
+            <NumberField id="ed-repeat-every" aria-label={t('repeat.everyAria')} value={value.interval ?? 1} onChange={(interval) => set({ interval })} />
             <Select
               compact
               aria-label={t('repeat.unitAria')}
@@ -108,9 +109,10 @@ export function RepeatField({ value, start, status, onChange }: Props): React.JS
 
       {value && !value.rule && (
         <>
-          <label>{t('repeat.stops')}</label>
+          <label htmlFor="ed-repeat-stops">{t('repeat.stops')}</label>
           <div className="editor-repeat-row">
             <Select
+              id="ed-repeat-stops"
               compact
               aria-label={t('repeat.stopsAria')}
               value={ends}

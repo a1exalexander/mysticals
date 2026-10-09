@@ -204,7 +204,8 @@ export function EventEditorHost(): React.JSX.Element | null {
         </div>
 
         <div className="editor-grid">
-          <label htmlFor="ed-account">{t('editor.account')}</label>
+          {/* Editing shows plain text, no control to point at. */}
+          <label htmlFor={editing ? undefined : 'ed-account'}>{t('editor.account')}</label>
           {editing ? (
             <div className="editor-static" data-testid="editor-account">{account?.label ?? editing.accountId}</div>
           ) : (
@@ -219,7 +220,7 @@ export function EventEditorHost(): React.JSX.Element | null {
             />
           )}
 
-          <label htmlFor="ed-calendar">{t('editor.calendar')}</label>
+          <label htmlFor={editing ? undefined : 'ed-calendar'}>{t('editor.calendar')}</label>
           {editing ? (
             <div className="editor-static" data-testid="editor-calendar">{calendar?.name ?? editing.calendarId}</div>
           ) : (

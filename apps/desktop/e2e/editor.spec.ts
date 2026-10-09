@@ -109,10 +109,27 @@ test('editor fields are named by their labels, a label click focuses its field, 
   await expect(editor.getByPlaceholder('Add location')).toHaveValue('Room 5')
   await editor.locator('label', { hasText: 'All-day' }).click()
   await expect(editor.getByRole('switch', { name: 'All-day' })).toBeChecked()
+  // The repeat rows too: each label points at its (first) control.
+  await choose(page.getByTestId('editor-repeat'), 'custom')
+  await choose(editor.getByLabel('Repeat stops'), 'count')
+  const control = (text: string): Promise<string | null | undefined> =>
+    editor.locator('.editor-grid > label', { hasText: new RegExp(`^${text}$`) }).evaluate((l: HTMLLabelElement) => l.control?.getAttribute('aria-label'))
+  expect(await control('Repeat')).toBe('Repeat')
+  expect(await control('Every')).toBe('Repeat every')
+  expect(await control('Stops')).toBe('Repeat stops')
   // A picker's label opens it, like a click on its trigger.
   await editor.locator('label', { hasText: 'Starts' }).click()
   await expect(page.getByRole('dialog', { name: 'Starts date' })).toBeVisible()
   await page.screenshot({ path: 'e2e/screens/editor-labels.png' })
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  await editor.getByRole('group', { name: 'Discard changes?' }).getByRole('button', { name: 'Discard' }).click()
+
+  // Editing shows the account and calendar as text: no label points at a missing control.
+  await page.getByTestId('event-block').filter({ hasText: 'Gym' }).first().click()
+  await page.getByTestId('details').getByRole('button', { name: 'Edit' }).click()
+  await expect(page.getByTestId('editor-account')).toBeVisible()
+  expect(await editor.locator('label[for]').evaluateAll((ls) => ls.filter((l) => !(l as HTMLLabelElement).control).map((l) => l.textContent))).toEqual([])
   await app.close()
 })
 
