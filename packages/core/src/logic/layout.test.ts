@@ -185,6 +185,18 @@ describe('fitColumns', () => {
     expect(r.more.map((m) => m.items.map((p) => p.item))).toEqual([['b', 'c']])
   })
 
+  it('shows a lone block past the last column in it instead of a "+1"', () => {
+    // A 1200px window's week column fits two: A 9–11, B 9–10, C 9:30–10:30, D 10:30–11.
+    const r = fitColumns(packColumns([
+      { item: 'A', start: 540, end: 660 },
+      { item: 'B', start: 540, end: 600 },
+      { item: 'C', start: 570, end: 630 },
+      { item: 'D', start: 630, end: 660 }
+    ]), 2)
+    expect(r.shown.map((p) => [p.item, p.col, p.cols, p.span])).toEqual([['A', 0, 2, 1], ['D', 1, 2, 1]])
+    expect(r.more.map((m) => [m.start, m.end, m.items.map((p) => p.item)])).toEqual([[540, 630, ['B', 'C']]])
+  })
+
   it('merges hidden blocks that overlap only through minDur', () => {
     const r = fitColumns(packColumns([0, 1, 2].map((i) => ({ item: i, start: 600 + i * 5, end: 605 + i * 5 })), 20), 2, 20)
     expect(r.more).toEqual([{ start: 605, end: 630, items: [expect.objectContaining({ item: 1 }), expect.objectContaining({ item: 2 })] }])
