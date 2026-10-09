@@ -82,3 +82,23 @@ describe('account colours', () => {
     expect(found).toEqual([])
   })
 })
+
+// Text drawn on or in the palette's own hues (WCAG 4.5:1): primary buttons, the today badge and now clock,
+// Join buttons, the pending-invites count in the status bar, and secondary text.
+const UI_PAIRS = [['on-accent', 'accent'], ['on-accent', 'pink'], ['bg', 'green'], ['orange', 'surface'], ['muted', 'bg']]
+
+describe('UI tokens', () => {
+  it.each(THEMES.map((th) => [th.id, th.scheme]))('%s keeps text on its own hues legible', (id, scheme) => {
+    const v = vars(id, scheme)
+    const col = (k: string): RGB => {
+      let x = v[k]
+      while (x.startsWith('var(--')) x = v[x.slice(6, -1)]
+      return hex(x)
+    }
+    const bad = UI_PAIRS.flatMap(([fg, bg]) => {
+      const r = contrast(col(fg), col(bg))
+      return r >= 4.5 ? [] : [`--${fg} on --${bg} ${r.toFixed(2)}`]
+    })
+    expect(bad).toEqual([])
+  })
+})
