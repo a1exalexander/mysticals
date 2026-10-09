@@ -6,7 +6,7 @@ import { useDirectory } from './ui/useDirectory'
 import { deleteEvent } from './EventMenu'
 import { canEdit, cleanNotes, formatWhen, isHtml, linkify, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
-import { eventBounds } from '@mysticals/core/logic/layout'
+import { eventBounds, eventKey } from '@mysticals/core/logic/layout'
 import { eventLinks, linkLabel, locationText } from '@mysticals/core/logic/meeting'
 import { LinkIcon } from './LinkIcon'
 import { notesFragment } from './notesHtml'
@@ -40,7 +40,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const current = useRef<string | null>(null) // id of the shown event; late replies for another event are dropped
-  current.current = opened ? `${opened.event.accountId}/${opened.event.id}` : null
+  current.current = opened ? eventKey(opened.event) : null
 
   useEffect(
     () =>
@@ -101,9 +101,9 @@ export function EventDetailsHost(): React.JSX.Element | null {
 
   // Follow the event while shown: edits from elsewhere update it, a deletion shows a notice.
   const accountId = opened?.event.accountId
-  const eventId = opened?.event.id
+  const key = opened && eventKey(opened.event)
   useEffect(() => {
-    if (!opened || !accountId || !eventId) return
+    if (!opened || !accountId || !key) return
     let live = true
     const b = eventBounds(opened.event)
     // A window around the event: finds it after small moves without pulling every cached event over IPC.
@@ -112,9 +112,9 @@ export function EventDetailsHost(): React.JSX.Element | null {
       if (changed !== accountId) return
       window.api.events.list(range).then((events) => {
         if (!live) return
-        const fresh = events.find((e) => e.accountId === accountId && e.id === eventId)
+        const fresh = events.find((e) => eventKey(e) === key)
         setGone(!fresh)
-        if (fresh) setOpened((o) => (o && o.event.id === eventId ? { ...o, event: fresh } : o))
+        if (fresh) setOpened((o) => (o && eventKey(o.event) === key ? { ...o, event: fresh } : o))
       }, console.error)
     })
     return () => {
@@ -122,7 +122,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
       off()
     }
     // Re-subscribes per shown event, not per refreshed copy of it.
-  }, [accountId, eventId])
+  }, [accountId, key])
 
   if (!opened) return null
 
@@ -134,7 +134,6 @@ export function EventDetailsHost(): React.JSX.Element | null {
   const where = locationText(event.location)
   const owner = ownerLine(calendar?.name ?? t('editor.calendar'), account?.label ?? event.accountId, account?.email)
 
-  const key = `${event.accountId}/${event.id}`
   const still = (): boolean => current.current === key
   const run = async (fn: () => Promise<void>): Promise<void> => {
     setBusy(true)
