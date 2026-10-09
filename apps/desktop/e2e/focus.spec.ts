@@ -12,6 +12,7 @@ test('the editor and the scope prompt keep focus inside; popovers take it and gi
   await page.keyboard.press('n')
   const editor = page.getByTestId('editor')
   await expect(editor.getByPlaceholder('New Event')).toBeFocused()
+  await expect(page.getByRole('dialog', { name: 'New Event' })).toBeVisible()
   for (let i = 0; i < 30; i++) {
     await page.keyboard.press('Tab')
     expect(await focusIn('editor')).toBe(true)
@@ -30,6 +31,7 @@ test('the editor and the scope prompt keep focus inside; popovers take it and gi
   await page.getByTestId('details').getByRole('button', { name: 'Delete' }).click()
   const prompt = page.getByTestId('scope-prompt')
   await expect(prompt.getByRole('button', { name: 'This event' })).toBeFocused()
+  await expect(page.getByRole('dialog', { name: 'Delete recurring event' })).toBeVisible()
   for (let i = 0; i < 6; i++) {
     await page.keyboard.press('Tab')
     expect(await focusIn('scope-prompt')).toBe(true)

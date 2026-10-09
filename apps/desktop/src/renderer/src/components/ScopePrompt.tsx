@@ -48,6 +48,7 @@ export function ScopePromptHost(): React.JSX.Element | null {
     <dialog
       ref={dialog}
       className="mc-overlay"
+      aria-label={ask.title}
       onCancel={(e) => e.preventDefault()}
       onMouseDown={(e) => e.target === e.currentTarget && cancel()}
     >

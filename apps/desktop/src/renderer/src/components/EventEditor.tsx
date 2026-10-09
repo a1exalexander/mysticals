@@ -166,6 +166,7 @@ export function EventEditorHost(): React.JSX.Element | null {
     <dialog
       ref={dialog}
       className="mc-overlay"
+      aria-label={editing ? form.title || t('common.untitled') : t('common.newEvent')}
       onCancel={(e) => e.preventDefault()}
       onMouseDown={(e) => {
         if (e.target !== e.currentTarget) return
