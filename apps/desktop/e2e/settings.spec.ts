@@ -30,8 +30,15 @@ test('settings tabs: accounts (with sync and notifications), themes, general', a
   await page.keyboard.press('ArrowDown')
   await expect(page.getByTestId('settings-tab-themes')).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByTestId('settings-tab-themes')).toBeFocused()
+  // The scrolling panel clips at its edges: the top-left card leaves room for a focus outline (2px, 1px off),
+  // and the selected ring is drawn inside the card.
+  const firstCard = (await page.getByTestId('theme-dracula').boundingBox())!
+  const panelBox = (await panel.boundingBox())!
+  expect(firstCard.x - 3).toBeGreaterThanOrEqual(panelBox.x - 0.5)
+  expect(firstCard.y - 3).toBeGreaterThanOrEqual(panelBox.y - 0.5)
   await page.getByTestId('theme-catppuccin').click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'catppuccin')
+  await expect(page.getByTestId('theme-catppuccin')).toHaveCSS('box-shadow', /inset/)
   await expect(page.locator('html')).toHaveAttribute('data-scheme', 'dark')
   expect((await settings.boundingBox())?.height).toBeCloseTo(box?.height ?? 0, 0)
   await page.screenshot({ path: 'e2e/screens/settings-themes.png' })

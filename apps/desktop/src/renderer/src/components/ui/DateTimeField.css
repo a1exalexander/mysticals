@@ -49,4 +49,5 @@
   font: 12px/26px var(--mono); color: var(--fg); background: none;
 }
 .dtf-slots button:hover { background: var(--hover); }
+.dtf-slots button:focus-visible { outline-offset: -2px; } /* inside the box: the scrolling list would clip it */
 .dtf-slots button[aria-selected='true'] { background: var(--accent); color: var(--on-accent); font-weight: 700; }
