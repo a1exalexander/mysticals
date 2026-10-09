@@ -164,7 +164,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
         data-testid="details"
         role="dialog"
         aria-label={event.title}
-        style={{ '--accent': calendar?.color ?? account?.color ?? 'var(--accent)', left: pos?.left ?? -9999, top: pos?.top ?? 0 } as React.CSSProperties}
+        style={{ '--cal': calendar?.color ?? account?.color, left: pos?.left ?? -9999, top: pos?.top ?? 0 } as React.CSSProperties}
       >
         {gone && (
           <div className="details-gone" role="alert" data-testid="details-gone">

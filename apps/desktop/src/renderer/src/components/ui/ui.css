@@ -17,7 +17,7 @@
 /* Event colour: a straight bar inset from the rounded corners (a coloured border would bend around them).
    A background layer, not ::before, so it stays put while the box scrolls. */
 .details, .editor {
-  --bar: var(--accent);
+  --bar: var(--cal, var(--accent));
   background: linear-gradient(var(--bar), var(--bar)) 0 14px / 3px calc(100% - 28px) no-repeat, var(--surface-2);
 }
 @keyframes mc-fade { from { opacity: 0; } }
@@ -55,7 +55,7 @@
 .mc-seg button.on, .mc-seg button.on:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
 .mc-seg button:disabled { opacity: 0.6; }
 
-.mc-dot { display: inline-block; width: 7px; height: 7px; border-radius: 2px; background: var(--accent); flex: none; }
+.mc-dot { display: inline-block; width: 7px; height: 7px; border-radius: 2px; background: var(--cal, var(--accent)); flex: none; }
 .mc-muted { color: var(--muted); }
 
 /* Switch, checkbox and radio: native inputs (keyboard, labels, a11y) drawn in the app's style. */

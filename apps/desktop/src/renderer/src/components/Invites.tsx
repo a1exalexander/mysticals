@@ -80,7 +80,7 @@ export function InvitesPanel(): React.JSX.Element {
               const a = accounts.find((x) => x.id === e.accountId)
               const o = ownerLine(undefined, a?.label ?? e.accountId, a?.email)
               return (
-                <li key={keyOf(e)} style={{ '--accent': a?.color ?? 'var(--accent)' } as React.CSSProperties}>
+                <li key={keyOf(e)} style={{ '--cal': a?.color } as React.CSSProperties}>
                   <button
                     type="button"
                     className="invites-open"

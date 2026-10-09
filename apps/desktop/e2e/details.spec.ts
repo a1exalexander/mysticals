@@ -38,6 +38,9 @@ test('event details: location link, collapsible invitees, RSVP colors', async ()
       d.remove()
       return v
     }, name)
+  // The calendar colour (Work, #8be9fd) marks the dot only; the call link keeps the theme accent so it stays legible.
+  await expect(details.locator('.details-dot')).toHaveCSS('background-color', 'rgb(139, 233, 253)')
+  await expect(link).toHaveCSS('color', await token('--accent'))
   for (const [status, name] of [['declined', '--red'], ['tentative', '--orange'], ['accepted', '--green']]) {
     const btn = page.getByTestId(`rsvp-${status}`)
     await btn.click()

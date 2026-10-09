@@ -1,5 +1,5 @@
 .editor-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-.editor-dot { width: 10px; height: 10px; border-radius: 3px; background: var(--accent); flex: none; }
+.editor-dot { width: 10px; height: 10px; border-radius: 3px; background: var(--cal); flex: none; }
 .editor-title {
   flex: 1; font: inherit; font-size: 17px; font-weight: 600; color: var(--fg);
   background: transparent; border: 0; outline: none; padding: 2px 0;
@@ -28,7 +28,7 @@
 .chip {
   display: inline-flex; align-items: center; gap: 2px; padding: 1px 3px 1px 8px; border-radius: 3px;
   font: 11.5px/18px var(--mono);
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  background: color-mix(in srgb, var(--cal) 16%, transparent);
 }
 .chip.bad { background: color-mix(in srgb, var(--red) 20%, transparent); color: var(--red); }
 .chip button { font: inherit; border: 0; background: transparent; color: var(--muted); padding: 0 3px; }
@@ -36,8 +36,8 @@
 .editor-identity {
   margin-top: 16px; padding: 8px 10px; border-radius: 0; line-height: 1.5;
   font: 11.5px/1.6 var(--mono);
-  background: color-mix(in srgb, var(--accent) 9%, transparent);
-  box-shadow: inset 2px 0 var(--accent);
+  background: color-mix(in srgb, var(--cal) 9%, transparent);
+  box-shadow: inset 2px 0 var(--cal);
 }
 .editor-warn { color: var(--orange); }
 .editor-error { margin-top: 10px; color: var(--red); }
@@ -49,5 +49,5 @@
   flex: 1; height: 26px; font: 500 11px/1 var(--mono); color: var(--muted); background: var(--bg);
   border: 1px solid var(--line-strong); border-radius: 4px;
 }
-.editor-days button.on { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+.editor-days button.on { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
 .editor-days button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

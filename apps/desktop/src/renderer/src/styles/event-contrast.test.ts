@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs'
+import { readdirSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { describe, expect, it } from 'vitest'
 import { THEMES } from '../theme'
@@ -69,5 +69,16 @@ describe('event colours', () => {
       return bar >= 3 && title >= 4.5 ? [] : [`${c} bar ${bar.toFixed(2)} title ${title.toFixed(2)}`]
     })
     expect(bad).toEqual([])
+  })
+})
+
+// Account and calendar colours are raw swatches tuned for dark bgs (white on #f1fa8c is 1.12:1). They go in --cal for
+// dots, bars and tints; overriding --accent would put --on-accent text on them in every primary button and link.
+describe('account colours', () => {
+  it('never replace the theme accent', () => {
+    const src = join(__dirname, '..')
+    const found = (readdirSync(src, { recursive: true }) as string[])
+      .filter((f) => f.endsWith('.tsx') && /['"]--accent['"]\s*:/.test(readFileSync(join(src, f), 'utf8')))
+    expect(found).toEqual([])
   })
 })

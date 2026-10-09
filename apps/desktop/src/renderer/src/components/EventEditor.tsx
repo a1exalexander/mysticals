@@ -133,7 +133,7 @@ export function EventEditorHost(): React.JSX.Element | null {
       <form
         className="mc-sheet editor"
         data-testid="editor"
-        style={{ '--accent': accent } as React.CSSProperties}
+        style={{ '--cal': accent } as React.CSSProperties}
         onSubmit={(e) => {
           e.preventDefault()
           void save()
