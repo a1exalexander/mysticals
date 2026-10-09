@@ -537,7 +537,7 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
   display: grid; place-items: center; border-radius: var(--r-sm);
 }
 .tg-dayhead.is-today .dow { color: var(--pink); }
-.tg-dayhead.is-today .num { background: color-mix(in srgb, var(--pink) 18%, transparent); color: var(--pink); }
+.tg-dayhead.is-today .num { background: var(--pink); color: var(--on-accent); }
 .tg-allday { border-top: 1px solid var(--line); }
 .tg-allday > .tg-gutter { font: 9.5px/1 var(--mono); color: var(--muted); text-align: right; padding: 8px 8px 0 0; }
 .tg-allday-cell {
