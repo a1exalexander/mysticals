@@ -47,15 +47,26 @@ test('event tooltip shows title, time and meeting link after a 1s hover', async 
   await expect(tip.locator('.ett-title')).toHaveText('Holiday')
   await expect(tip.locator('.ett-when')).toHaveText(/ · all day$/)
 
-  // Keyboard focus shows it as well, and moving focus away hides it.
+  // Keyboard focus shows it as well. Focus moving on to another pill drops the old one at once, well before the next
+  // pill's own 1s. Without a scroll (which hides it anyway): both pills are a 07:00 Morning run, today's and a
+  // neighbouring day's.
   await page.keyboard.press('Escape')
   await page.mouse.move(0, 0)
-  await blocks.filter({ hasText: 'Gym' }).focus()
-  await page.keyboard.press('ArrowUp')
-  const focused = page.locator('.tg-col.is-today :focus')
-  const title = (await focused.locator('.ev-title').textContent()) ?? ''
+  const stops = page.locator('.tg-col > [tabindex="0"]')
+  const i = await stops.evaluateAll((els) => els.findIndex((el) => el.parentElement?.classList.contains('is-today')))
+  const left = i > 0
+  await stops.nth(i).focus()
+  await page.keyboard.press(left ? 'ArrowLeft' : 'ArrowRight')
   await page.waitForTimeout(1200)
-  await expect(tip.locator('.ett-title')).toHaveText(title)
+  await expect(tip.locator('.ett-title')).toHaveText('Morning run')
+  const grid = page.locator('.tg')
+  const scrolled = await grid.evaluate((el) => el.scrollTop)
+  await page.keyboard.press(left ? 'ArrowRight' : 'ArrowLeft')
+  await expect(stops.nth(i)).toBeFocused()
+  await expect(tip).toHaveCount(0, { timeout: 500 })
+  expect(await grid.evaluate((el) => el.scrollTop)).toBe(scrolled)
+  await page.waitForTimeout(1200)
+  await expect(tip.locator('.ett-title')).toHaveText('Morning run')
   await page.keyboard.press('Tab')
   await expect(tip).toHaveCount(0)
 

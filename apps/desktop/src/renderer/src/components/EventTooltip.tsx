@@ -45,7 +45,8 @@ export function tooltipHover(event: CalEvent): Pick<React.HTMLAttributes<HTMLEle
     onMouseLeave: hideSoon,
     // Keyboard focus only: a click focuses the pill too, and opens its details.
     onFocus: (e) => e.currentTarget.matches(':focus-visible') && show(e.currentTarget),
-    onBlur: hideSoon
+    // At once, so the next pill's tooltip doesn't open over a stale one; focus going into the tooltip (its link) keeps it.
+    onBlur: (e) => !(e.relatedTarget as Element | null)?.closest('.ett') && hide()
   }
 }
 
