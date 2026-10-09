@@ -123,9 +123,7 @@ export function StatusBar(): React.JSX.Element {
   const { locale } = useLocale()
   const days = viewDays(view === 'agenda' ? 'day' : view, date)
   const range =
-    view === 'agenda'
-      ? fmt(new Date(), 'EEE d MMM yyyy')
-      : view === 'day'
+    view === 'agenda' || view === 'day'
       ? fmt(date, 'EEE d MMM yyyy')
       : view === 'month'
         ? fmt(date, 'LLLL yyyy')

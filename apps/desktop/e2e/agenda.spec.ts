@@ -1,4 +1,5 @@
 import { test, expect, _electron as electron, type Locator } from '@playwright/test'
+import { addDays, format } from 'date-fns'
 
 const rightOf = async (l: Locator): Promise<number> => {
   const box = (await l.boundingBox())!
@@ -149,6 +150,8 @@ test('agenda: no stale card after the day, a now line, people toggle, and other 
   await expect(page.locator('.ag[data-other-day]')).toHaveCount(1)
   await expect(page.getByTestId('agenda-now')).toHaveCount(0)
   await expect(page.locator('.ag-row').filter({ hasText: 'Sprint planning' })).toBeVisible()
+  // The status bar names the day shown, not today.
+  await expect(page.getByTestId('statusbar')).toContainText(format(addDays(today, 1), 'EEE d MMM yyyy'))
   await page.screenshot({ path: 'e2e/screens/agenda-other-day.png' })
   await page.getByTestId('agenda-back-today').click()
   await expect(page.getByTestId('agenda-other-day')).toHaveCount(0)
