@@ -24,5 +24,15 @@ test('overlapping events too many for a week column fold into "+N", which opens 
   await expect(page.getByTestId('view-switch-day')).toHaveAttribute('aria-selected', 'true')
   await expect(overlaps).toHaveCount(4)
   await expect(more).toHaveCount(0)
+
+  // The day view never folds, however many there are: its "+N" would lead nowhere.
+  await page.evaluate(async () => {
+    const at = (h: number): string => new Date(new Date().setHours(h, 0, 0, 0)).toISOString()
+    for (let n = 5; n <= 16; n++)
+      await window.api.events.create({ accountId: 'work', calendarId: 'work-main', allDay: false, start: at(13), end: at(14), title: `Overlap ${n}` })
+  })
+  await page.setViewportSize({ width: 960, height: 600 })
+  await expect(overlaps).toHaveCount(16)
+  await expect(more).toHaveCount(0)
   await app.close()
 })

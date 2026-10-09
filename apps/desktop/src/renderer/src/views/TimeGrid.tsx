@@ -219,8 +219,9 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
   const multi = days.length > 1
   const showsToday = days.some((d) => isToday(d))
   const layouts = days.map((d) => layoutDayLong(events, d, MIN_DUR, long))
-  // Side by side, as many columns as stay MIN_BLOCK wide (at least one beside the "+N"); the "+N" opens the day.
-  const fits = layouts.map((l) => Math.max(2, Math.floor((area / days.length - RAIL * Math.max(0, ...l.timed.map((p) => p.inset))) / MIN_BLOCK)))
+  // Side by side, as many columns as stay MIN_BLOCK wide (at least one beside the "+N"); the "+N" opens the day, which
+  // never folds: there it would lead nowhere.
+  const fits = layouts.map((l) => (multi ? Math.max(2, Math.floor((area / days.length - RAIL * Math.max(0, ...l.timed.map((p) => p.inset))) / MIN_BLOCK)) : Infinity))
   const fitted = layouts.map((l, i) => fitColumns(l.timed, fits[i], MIN_DUR))
   // One Tab stop per day column, its earliest event; ↑/↓ reach the others.
   const firsts = layouts.map((l, i) => [...l.rails, ...fitted[i].shown].sort((a, b) => a.start - b.start)[0]?.item)
