@@ -150,8 +150,10 @@ export function CalendarView(): React.JSX.Element {
       // Keys belong to the open sheet/popover, not the grid.
       if (document.querySelector('dialog[open], .mc-overlay, [data-testid="details"]')) return
       const k = e.key
-      // A focused event pill takes ←/→/h/l itself (EventMenu's eventButton); a new period or view would unmount it.
-      if (t.closest('.ev, .ev-rail') && (k === 't' || k === 'T' || KEY_VIEW[k])) return
+      // A new period or view would unmount a focused event pill or day header (keyed by date) and drop the focus. Pills
+      // take ←/→/h/l themselves (EventMenu's eventButton).
+      const navKey = k === 'ArrowLeft' || k === 'ArrowRight' || k === 'h' || k === 'l' || k === 't' || k === 'T' || KEY_VIEW[k]
+      if (navKey && t.closest('.ev, .ev-rail, .tg-dayhead')) return
       if (k === 'ArrowLeft' || k === 'h') go(-1)
       else if (k === 'ArrowRight' || k === 'l') go(1)
       else if (k === 't' || k === 'T') today()

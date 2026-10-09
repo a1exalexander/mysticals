@@ -96,8 +96,12 @@ test('week view events work from the keyboard: Tab, Enter, the menu key, ↑/↓
   await expect(page.locator('.toolbar-title')).toHaveText(period)
   await expect(page.locator('.tg-dayhead')).toHaveCount(7)
 
-  // A day's header is a button that opens that day.
-  await page.locator('button.tg-dayhead').first().focus()
+  // A day's header is a button that opens that day; the period and view keys leave it (and its focus) alone.
+  const head = page.locator('button.tg-dayhead').first()
+  await head.focus()
+  for (const key of ['ArrowRight', 'l', 't', 'm']) await page.keyboard.press(key)
+  await expect(head).toBeFocused()
+  await expect(page.locator('.toolbar-title')).toHaveText(period)
   await page.keyboard.press('Enter')
   await expect(page.locator('.tg-single')).toBeVisible()
 

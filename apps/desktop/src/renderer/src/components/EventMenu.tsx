@@ -150,7 +150,7 @@ export function EventMenuHost(): React.JSX.Element | null {
     if (menu) return
     const el = back.current
     back.current = null
-    if (el instanceof HTMLElement && el.isConnected && document.activeElement === document.body) el.focus()
+    if (el instanceof HTMLElement && el.isConnected && document.activeElement === document.body) el.focus({ preventScroll: true })
   }, [menu])
 
   useEffect(() => {
