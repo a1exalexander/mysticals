@@ -107,3 +107,26 @@ test('general tab: usage stats toggle is on by default and persists', async () =
   await expect(page.getByTestId('telemetry-toggle')).not.toBeChecked()
   await app.close()
 })
+
+test('settings scroll as one area in the smallest window', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 960, height: 600 })
+  await page.getByRole('button', { name: 'Settings' }).click()
+  const detail = page.getByTestId('account-work')
+  await expect(detail).toBeVisible()
+  // The account details grow with their content; only the panel around them scrolls.
+  const nested = await detail.evaluate((el) => {
+    const out: string[] = []
+    for (let e: Element | null = el; e && !e.classList.contains('set-panel'); e = e.parentElement)
+      if (/auto|scroll/.test(getComputedStyle(e).overflowY)) out.push(e.className)
+    return out
+  })
+  expect(nested).toEqual([])
+  await detail.getByRole('button', { name: 'Remove', exact: true }).click()
+  const confirm = detail.getByRole('button', { name: 'Remove account' })
+  await confirm.scrollIntoViewIfNeeded()
+  await expect(confirm).toBeInViewport()
+  await page.screenshot({ path: 'e2e/screens/settings-960.png' })
+  await app.close()
+})
