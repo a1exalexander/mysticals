@@ -165,7 +165,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
         className={`mc-popover details${gone ? ' is-gone' : ''}`}
         data-testid="details"
         role="dialog"
-        aria-label={event.title}
+        aria-label={event.title || t('common.untitled')}
         style={{ '--cal': calendar?.color ?? account?.color, left: pos?.left ?? -9999, top: pos?.top ?? 0 } as React.CSSProperties}
       >
         {gone && (

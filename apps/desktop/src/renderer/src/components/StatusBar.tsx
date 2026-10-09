@@ -52,7 +52,7 @@ function NowNext(): React.JSX.Element {
       type="button"
       className="sbar-seg sbar-ev"
       style={{ '--c': colorOf(e) } as React.CSSProperties}
-      title={e.title}
+      title={e.title || t('common.untitled')}
       onClick={(ev) => bus.emit('event:open', { event: e, anchor: ev.currentTarget.getBoundingClientRect(), el: ev.currentTarget })}
     >
       {label}
@@ -66,7 +66,7 @@ function NowNext(): React.JSX.Element {
           e,
           <>
             <span className="sbar-dot" aria-hidden>●</span>
-            <span className="sbar-title">{e.title}</span>· {t('sbar.until', { time: format(new Date(e.end), 'HH:mm') })}
+            <span className="sbar-title">{e.title || t('common.untitled')}</span>· {t('sbar.until', { time: format(new Date(e.end), 'HH:mm') })}
           </>
         )
       )}
@@ -76,7 +76,7 @@ function NowNext(): React.JSX.Element {
           next,
           <>
             <span className="sbar-dim">{t('sbar.next')}</span>
-            <span className="sbar-title">{next.title}</span>· {startsLabel(next.start, now, currentLocale())}
+            <span className="sbar-title">{next.title || t('common.untitled')}</span>· {startsLabel(next.start, now, currentLocale())}
           </>
         )}
       {!current.length && !next && <span className="sbar-seg sbar-dim">{t('sbar.noUpcoming')}</span>}

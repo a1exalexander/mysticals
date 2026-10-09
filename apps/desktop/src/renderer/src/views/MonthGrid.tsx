@@ -121,14 +121,14 @@ export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): Re
                   {...eventMenu(e)}
                 >
                   {!e.allDay && <span className="mg-dot" />}
-                  <span className="ev-title">{e.title}</span>
+                  <span className="ev-title">{e.title || t('common.untitled')}</span>
                   {!e.allDay && <span className="mg-time">{format(eventBounds(e).start, 'HH:mm')}</span>}
                 </div>
               ))}
               {dragged && moving.over === idx && (
                 <div className={`ev mg-ev ev-preview${dragged.allDay ? ' ev-allday' : ''}`} data-testid="drag-preview" style={{ '--c': colorOf(dragged) } as React.CSSProperties}>
                   {!dragged.allDay && <span className="mg-dot" />}
-                  <span className="ev-title">{dragged.title}</span>
+                  <span className="ev-title">{dragged.title || t('common.untitled')}</span>
                 </div>
               )}
               {more > 0 && (

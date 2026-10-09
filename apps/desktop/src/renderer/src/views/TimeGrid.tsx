@@ -281,7 +281,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
                       {...eventMenu(e)}
                     >
                       {tag && <span className="ev-hours">{tag}</span>}
-                      <span className="ev-title">{e.title}</span>
+                      <span className="ev-title">{e.title || t('common.untitled')}</span>
                     </div>
                   ))}
                 {more > 0 && (
@@ -384,7 +384,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
                   {...tooltipHover(e)}
                   {...eventMenu(e)}
                 >
-                  <span className="ev-title">{e.title}</span>
+                  <span className="ev-title">{e.title || t('common.untitled')}</span>
                   <span className="ev-meta">
                     {hhmm(b.start)}
                     {/* a one-line (is-short) block keeps its room for the title */}
@@ -432,7 +432,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
                       } as React.CSSProperties
                     }
                   >
-                    <span className="ev-title">{e.title}</span>
+                    <span className="ev-title">{e.title || t('common.untitled')}</span>
                     <span className="ev-meta">
                       {hhmm(atMinute(d, moving.start))} – {hhmm(atMinute(d, moving.end))}
                     </span>
