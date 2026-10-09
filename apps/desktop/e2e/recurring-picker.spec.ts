@@ -119,7 +119,7 @@ test('repeat rule: create "every 2 days, 3 times", then make "Morning run" weekl
   await expect(editor).toBeHidden()
   await expect.poll(async () => (await list('Stretch')).length).toBe(3)
   const [a, b] = (await list('Stretch')).map((s) => new Date(s).getTime())
-  expect((b - a) / 864e5).toBe(2)
+  expect(Math.round((b - a) / 864e5)).toBe(2)
 
   await page.getByTestId('view-switch-day').click()
   await page.getByTestId('event-block').filter({ hasText: 'Morning run' }).first().click()
@@ -134,10 +134,10 @@ test('repeat rule: create "every 2 days, 3 times", then make "Morning run" weekl
   await page.screenshot({ path: 'e2e/screens/repeat-scope.png' })
   await scope.getByRole('button', { name: 'All events' }).click()
   await expect(editor).toBeHidden()
-  // The 7 daily runs become weekly (still 7 times): one per week from the first one.
+  // The 7 daily runs become weekly (still 7 times): one per week from the first one. Rounded: a clock change adds or drops an hour.
   await expect.poll(async () => {
     const runs = (await list('Morning run')).map((s) => new Date(s).getTime())
-    return runs.slice(1).map((t, i) => (t - runs[i]) / 864e5)
+    return runs.slice(1).map((t, i) => Math.round((t - runs[i]) / 864e5))
   }).toEqual([7, 7, 7, 7, 7, 7])
   await app.close()
 })
