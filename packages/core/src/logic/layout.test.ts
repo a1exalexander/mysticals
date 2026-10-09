@@ -18,7 +18,8 @@ import {
   slotAt,
   snapLongHours,
   viewDays,
-  viewRange
+  viewRange,
+  weekLabel
 } from './layout'
 
 const ev = (id: string, start: string, end: string, allDay = false): CalEvent => ({
@@ -268,6 +269,19 @@ describe('3day view', () => {
     expect(rangeLabel(new Date(2026, 8, 30), new Date(2026, 9, 2))).toBe('30 Sep – 2 Oct 2026')
     expect(rangeLabel(new Date(2026, 11, 31), new Date(2027, 0, 2))).toBe('31 Dec 2026 – 2 Jan 2027')
     expect(rangeLabel(new Date(2026, 8, 30), new Date(2026, 9, 2), 'uk')).toBe('30 верес. – 2 жовт. 2026')
+  })
+})
+
+describe('weekLabel', () => {
+  it('names the month, or both months and years, of the days shown', () => {
+    expect(weekLabel(new Date(2026, 8, 7), new Date(2026, 8, 13))).toEqual({ title: 'September', year: '2026' })
+    expect(weekLabel(new Date(2026, 8, 28), new Date(2026, 9, 4))).toEqual({ title: 'Sep – Oct', year: '2026' })
+    expect(weekLabel(new Date(2026, 11, 28), new Date(2027, 0, 3))).toEqual({ title: 'Dec – Jan', year: '2026 – 2027' })
+  })
+  it('localises the month names', () => {
+    expect(weekLabel(new Date(2026, 8, 7), new Date(2026, 8, 13), 'uk')).toEqual({ title: 'вересень', year: '2026' })
+    expect(weekLabel(new Date(2026, 8, 28), new Date(2026, 9, 4), 'uk')).toEqual({ title: 'верес. – жовт.', year: '2026' })
+    expect(weekLabel(new Date(2026, 11, 28), new Date(2027, 0, 3), 'uk')).toEqual({ title: 'груд. – січ.', year: '2026 – 2027' })
   })
 })
 

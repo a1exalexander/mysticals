@@ -8,7 +8,7 @@ import { canEdit } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
 import { bus } from '../bus'
 import { nav, useNav, type DeskView } from './nav'
-import { eventKey, rangeLabel, shiftDate, viewDays, viewRange, type View } from '@mysticals/core/logic/layout'
+import { eventKey, rangeLabel, shiftDate, viewDays, viewRange, weekLabel, type View } from '@mysticals/core/logic/layout'
 import { TimeGrid } from './TimeGrid'
 import { MonthGrid } from './MonthGrid'
 import { AHEAD_DAYS, Agenda } from './Agenda'
@@ -137,6 +137,8 @@ export function CalendarView(): React.JSX.Element {
   }, [])
   const moveTo = useCallback<MoveTo>((e, start, end) => move(e, start, end), [move])
   const firstSync = accounts.filter((a) => a.syncing && !a.synced)
+  // The visible days, not the picked date: a week can span two months or years.
+  const week = view === 'week' ? weekLabel(days[0], days[days.length - 1], currentLocale()) : null
 
   const colorOf = useMemo<ColorOf>(() => {
     const cal = new Map(calendars.map((c) => [`${c.accountId}/${c.id}`, c.color]))
@@ -186,13 +188,13 @@ export function CalendarView(): React.JSX.Element {
       <header className="toolbar">
         {/* Keyed by the period so a step to the next one fades the new title in. */}
         <h1 className="toolbar-title" key={`${deskView}/${format(days[0], 'yyyy-MM-dd')}`}>
-          {agenda && isToday(date) ? t('common.today') : view === 'day' ? fmt(date, 'd MMMM') : view === '3day' ? rangeLabel(days[0], days[2], currentLocale()) : cap(fmt(date, 'LLLL'))}
+          {agenda && isToday(date) ? t('common.today') : view === 'day' ? fmt(date, 'd MMMM') : view === '3day' ? rangeLabel(days[0], days[2], currentLocale()) : cap(week?.title ?? fmt(date, 'LLLL'))}
           <span className="toolbar-sub">
             {agenda ? (
               cap(fmt(date, 'EEEE, d MMMM'))
             ) : (
               <>
-                {view !== '3day' && format(date, 'yyyy')}
+                {view !== '3day' && (week?.year ?? format(date, 'yyyy'))}
                 {view === 'day' && ` · ${fmt(date, 'EEE')}`}
                 {view === '3day' &&
                   [...new Set(days.map((d) => t('toolbar.weekNo', { n: getISOWeek(d) })))].join('–')}

@@ -284,6 +284,14 @@ export function rangeLabel(a: Date, b: Date, locale: Locale = 'en'): string {
   return `${fmt(locale, a, head)} – ${fmt(locale, b, 'd MMM yyyy')}`
 }
 
+/** Week heading from its first and last day: "September" or "Sep – Oct", and "2026" or "2026 – 2027". */
+export function weekLabel(a: Date, b: Date, locale: Locale = 'en'): { title: string; year: string } {
+  return {
+    title: a.getMonth() === b.getMonth() ? fmt(locale, a, 'LLLL') : `${fmt(locale, a, 'LLL')} – ${fmt(locale, b, 'LLL')}`,
+    year: a.getFullYear() === b.getFullYear() ? fmt(locale, a, 'yyyy') : `${fmt(locale, a, 'yyyy')} – ${fmt(locale, b, 'yyyy')}`
+  }
+}
+
 /** Floor a minute offset to its slot, clamped to the day. */
 export function slotAt(minute: number): number {
   return Math.min(1440 - SLOT_MIN, Math.max(0, Math.floor(minute / SLOT_MIN) * SLOT_MIN))
