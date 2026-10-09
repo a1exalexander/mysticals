@@ -55,3 +55,25 @@ test('editor requires an explicit account; RSVP goes through the invite account'
   expect(sprint).toMatchObject({ accountId: 'work', myStatus: 'accepted' })
   await app.close()
 })
+
+test('switches on light themes: the off knob is white, not the ink that reads as on', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await expect(page.getByTestId('calendar-view')).toBeVisible()
+  await page.evaluate(() => localStorage.setItem('mysticals-theme', 'light'))
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('data-scheme', 'light')
+
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.send('menu', 'new-event'))
+  const allDay = page.getByTestId('editor').getByRole('switch', { name: 'All-day' })
+  await expect(allDay).not.toBeChecked()
+  const knob = (): Promise<string> => allDay.evaluate((el) => getComputedStyle(el, '::after').backgroundColor)
+  expect(await knob()).toBe('rgb(255, 255, 255)')
+  // Checked stays as it was: the --on-accent knob on the accent track.
+  await allDay.click()
+  await expect(allDay).toBeChecked()
+  expect(await knob()).toBe('rgb(255, 255, 255)')
+
+  await page.evaluate(() => localStorage.removeItem('mysticals-theme'))
+  await app.close()
+})
