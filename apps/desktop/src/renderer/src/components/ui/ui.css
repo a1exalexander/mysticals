@@ -82,7 +82,7 @@
   border: solid var(--on-accent); border-width: 0 0 1.6px 1.6px; transform: rotate(-45deg) scale(0);
   transition: transform 90ms ease;
 }
-.mc-check:checked { background: var(--c); border-color: var(--c); }
+.mc-check:checked { background: var(--ink, var(--c)); border-color: var(--ink, var(--c)); }
 .mc-check:checked::after { transform: rotate(-45deg) scale(1); }
 .mc-check:disabled { opacity: 0.5; }
 .mc-radio {
