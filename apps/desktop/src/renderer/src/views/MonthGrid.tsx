@@ -1,16 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { addDays, differenceInCalendarDays, format, isSameMonth, isToday } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
 import { eventButton, eventMenu, slotMenu } from '../components/EventMenu'
 import { nav } from './nav'
-import { eventBounds, eventsOnDay, isPast, monthGrid, statusClass, ymd } from '@mysticals/core/logic/layout'
+import { eventBounds, eventsOnDay, isPast, monthGrid, monthShown, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
 import { shiftDays } from './drag'
 import { fmt, t } from '../i18n'
-
-const MAX_PER_DAY = 3
 
 interface Props {
   date: Date
@@ -28,6 +26,18 @@ export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): Re
   // Dragging an event to another day: its key and the cell (index in `days`) under the pointer.
   const [moving, setMoving] = useState<{ key: string; over: number } | null>(null)
   const justDragged = useRef(false)
+  // All cells are one height: measured on the first, it says how many events each lists.
+  const grid = useRef<HTMLDivElement>(null)
+  const [cellHeight, setCellHeight] = useState(0)
+  useLayoutEffect(() => {
+    const el = grid.current
+    if (!el) return
+    const measure = (): void => setCellHeight((el.firstElementChild as HTMLElement).clientHeight)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const onEventDown = (e: CalEvent, from: number) => (ev: React.MouseEvent<HTMLElement>) => {
     if (ev.button !== 0 || !moveTo || !canDrag?.(e)) return
@@ -79,10 +89,10 @@ export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): Re
           <div key={d.getTime()}>{fmt(d, 'EEE')}</div>
         ))}
       </div>
-      <div className="mg-grid">
+      <div className="mg-grid" ref={grid}>
         {days.map((d, idx) => {
           const list = eventsOnDay(events, d)
-          const shown = list.length > MAX_PER_DAY ? list.slice(0, MAX_PER_DAY - 1) : list
+          const shown = list.slice(0, monthShown(cellHeight, list.length))
           const more = list.length - shown.length
           return (
             <div

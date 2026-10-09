@@ -7,6 +7,7 @@ import {
   layoutDay,
   layoutDayLong,
   monthGrid,
+  monthShown,
   packColumns,
   rangeLabel,
   shiftDate,
@@ -155,6 +156,18 @@ describe('eventsOnDay', () => {
       ev('next', '2026-09-24', '2026-09-25', true)
     ], day)
     expect(r.map((e) => e.id)).toEqual(['h', 't'])
+  })
+})
+
+describe('monthShown', () => {
+  it('lists every event that fits, else the rows above "+N more", at least one', () => {
+    expect(monthShown(115, 4)).toBe(4) // 1200x800 window
+    expect(monthShown(115, 5)).toBe(3)
+    expect(monthShown(145, 5)).toBe(5) // full screen
+    expect(monthShown(145, 9)).toBe(4)
+    expect(monthShown(82, 5)).toBe(1) // minimum window
+    expect(monthShown(20, 3)).toBe(1)
+    expect(monthShown(115, 0)).toBe(0)
   })
 })
 

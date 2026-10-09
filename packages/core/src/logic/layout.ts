@@ -181,6 +181,16 @@ function cascade(items: { item: CalEvent; start: number; end: number }[], minDur
   return out.map(({ last: _, ...p }) => p)
 }
 
+/**
+ * How many of a month cell's `n` events it lists, `height` px tall (its clientHeight; base.css `.mg-*`): 4px padding,
+ * the 21px date, then 18px rows 2px apart. When they don't all fit, "+N more" (16px) takes the last row; at least one
+ * event shows.
+ */
+export function monthShown(height: number, n: number): number {
+  const room = height - 29
+  return n * 20 <= room ? n : Math.max(1, Math.floor((room - 18) / 20))
+}
+
 /** 6-week grid (42 days) covering the month of `date`. */
 export function monthGrid(date: Date): Date[] {
   const first = startOfWeek(startOfMonth(date), { weekStartsOn: WEEK_STARTS_ON })
