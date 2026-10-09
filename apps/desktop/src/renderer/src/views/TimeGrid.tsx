@@ -3,7 +3,7 @@ import { addDays, format, isSameDay, isToday, startOfDay } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
-import { eventMenu, slotMenu } from '../components/EventMenu'
+import { eventButton, eventMenu, slotMenu } from '../components/EventMenu'
 import { eventMeetingUrl, eventPlace } from '@mysticals/core/logic/meeting'
 import { nav } from './nav'
 import { dragRange, eventBounds, eventsOnDay, isPast, layoutDayLong, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
@@ -197,12 +197,16 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
   const multi = days.length > 1
   const showsToday = days.some((d) => isToday(d))
   const layouts = days.map((d) => layoutDayLong(events, d, MIN_DUR, long))
+  // One Tab stop per day column, its earliest event; ↑/↓ reach the others.
+  const firsts = layouts.map((l) => [...l.rails, ...l.timed].sort((a, b) => a.start - b.start)[0]?.item)
   /** All-day events, then long timed ones moved up (all-day mode) with their hours as a tag. */
   const allDayOf = (i: number): { e: CalEvent; tag?: string }[] => [
     ...eventsOnDay(events, days[i]).filter((e) => e.allDay).map((e) => ({ e })),
     ...layouts[i].allDay.map((x) => ({ e: x.item, tag: hourSpan(x.start, x.end) }))
   ]
   const allDayOverflows = days.some((_, i) => allDayOf(i).length > MAX_ALLDAY)
+  // Multi-day views: a day's header switches to that day.
+  const DayHead = multi ? 'button' : 'div'
 
   return (
     <div className={`tg${multi ? '' : ' tg-single'}`} ref={scroller}>
@@ -210,14 +214,15 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
         <div className="tg-row">
           <div className="tg-gutter" />
           {days.map((d) => (
-            <div
+            <DayHead
               key={d.getTime()}
+              type={multi ? 'button' : undefined}
               className={`tg-dayhead${isToday(d) ? ' is-today' : ''}`}
               onClick={() => multi && nav.set({ view: 'day', date: d })}
             >
               <span className="dow">{fmt(d, 'EEE')}</span>
               <span className="num">{format(d, 'd')}</span>
-            </div>
+            </DayHead>
           ))}
         </div>
         <div className="tg-row tg-allday">
@@ -241,7 +246,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
               >
                 {list
                   .slice(0, list.length - more)
-                  .map(({ e, tag }) => (
+                  .map(({ e, tag }, n) => (
                     <div
                       key={e.id}
                       data-testid="event-block"
@@ -250,6 +255,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                       style={{ '--c': colorOf(e) } as React.CSSProperties}
                       onClick={open(e)}
                       onDoubleClick={stop}
+                      {...eventButton(e, n === 0)}
                       {...tooltipHover(e)}
                       {...eventMenu(e)}
                     >
@@ -318,10 +324,10 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                 data-account-id={e.accountId}
                 className={`ev-rail${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}`}
                 style={{ '--c': colorOf(e), top: pxOf(start), height: pxOf(end - start) - 1, left: 2 + col * RAIL } as React.CSSProperties}
-                aria-label={`${e.title}, ${hhmm(eventBounds(e).start)} – ${hhmm(eventBounds(e).end)}`}
                 onMouseDown={stop}
                 onDoubleClick={stop}
                 onClick={open(e)}
+                {...eventButton(e, e === firsts[dayIdx])}
                 {...tooltipHover(e)}
                 {...eventMenu(e)}
               />
@@ -357,6 +363,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                   onMouseDown={onEventDown(e, dayIdx, 'move')}
                   onDoubleClick={stop}
                   onClick={open(e)}
+                  {...eventButton(e, e === firsts[dayIdx])}
                   {...tooltipHover(e)}
                   {...eventMenu(e)}
                 >

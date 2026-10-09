@@ -509,6 +509,8 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
     color-mix(in srgb, var(--ink) 7%, var(--bg));
   outline: 1px dashed var(--orange); outline-offset: -1px;
 }
+/* Drawn inside: the grid's scroller and the neighbouring pills would clip a ring outside. */
+.ev:focus-visible, .tg-dayhead:focus-visible { outline-offset: -2px; }
 /* On a tinted canvas (pink Bubblegum, yellow Cartoon, cyan Cloud) an event of the same hue melts into it: a hairline
    at full strength within 30° of --ev-clash-h, fading out by 40°, none for greys. */
 .ev, .ag-chip {
@@ -531,7 +533,7 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .tg-gutter { width: 56px; flex: none; position: relative; }
 .tg-dayhead {
   flex: 1; min-width: 0; height: 34px; display: flex; align-items: center; justify-content: center;
-  gap: 6px; border-left: 1px solid var(--line); font: 10.5px/1 var(--mono); letter-spacing: 0.06em;
+  gap: 6px; padding: 0; border: 0; border-left: 1px solid var(--line); background: none; font: 10.5px/1 var(--mono); letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 .tg-single .tg-dayhead { justify-content: flex-start; padding-left: 12px; }

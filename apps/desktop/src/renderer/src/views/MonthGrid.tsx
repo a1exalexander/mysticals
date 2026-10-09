@@ -3,7 +3,7 @@ import { addDays, differenceInCalendarDays, format, isSameMonth, isToday } from 
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
-import { eventMenu, slotMenu } from '../components/EventMenu'
+import { eventButton, eventMenu, slotMenu } from '../components/EventMenu'
 import { nav } from './nav'
 import { eventBounds, eventsOnDay, isPast, monthGrid, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
@@ -95,7 +95,7 @@ export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): Re
               <div className="mg-num">
                 <span>{format(d, 'd') === '1' ? fmt(d, 'd MMM') : format(d, 'd')}</span>
               </div>
-              {shown.map((e) => (
+              {shown.map((e, n) => (
                 <div
                   key={e.id}
                   data-testid="event-block"
@@ -108,6 +108,7 @@ export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): Re
                     !justDragged.current &&
                     bus.emit('event:open', { event: e, anchor: ev.currentTarget.getBoundingClientRect(), el: ev.currentTarget })
                   }
+                  {...eventButton(e, n === 0)}
                   {...tooltipHover(e)}
                   {...eventMenu(e)}
                 >

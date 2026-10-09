@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CalEvent, DeleteScope } from '@shared/types'
 import { bus, type BusEvents } from '../bus'
 import { useDirectory } from './ui/useDirectory'
-import { canEdit } from '@mysticals/core/logic/details'
+import { canEdit, formatWhen } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
 import { copyInput, type PasteSlot } from '@mysticals/core/logic/copy'
 import { currentLocale, t, useLocale } from '../i18n'
@@ -22,6 +22,35 @@ export function eventMenu(event: CalEvent): Pick<React.HTMLAttributes<HTMLElemen
       e.preventDefault()
       e.stopPropagation()
       bus.emit('menu:event', { event, x: e.clientX, y: e.clientY })
+    }
+  }
+}
+
+/**
+ * Spread onto an event pill in the grids: a keyboard control named by its title and time. Enter/Space open it (its
+ * click), the menu key or Shift+F10 its menu, ↑/↓ step to the earlier/later event of the same day. Only the
+ * `tabbable` pill of a day is a Tab stop.
+ */
+export function eventButton(
+  event: CalEvent,
+  tabbable: boolean
+): Pick<React.HTMLAttributes<HTMLElement>, 'role' | 'tabIndex' | 'aria-label' | 'onKeyDown'> {
+  return {
+    role: 'button',
+    tabIndex: tabbable ? 0 : -1,
+    'aria-label': `${name(event)}, ${formatWhen(event, currentLocale())}`,
+    onKeyDown: (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      const el = e.currentTarget
+      if (e.key === 'Enter' || e.key === ' ') el.click()
+      else if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
+        const r = el.getBoundingClientRect()
+        bus.emit('menu:event', { event, x: r.left, y: r.top })
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const day = [...(el.parentElement?.querySelectorAll<HTMLElement>(':scope > [role=button]') ?? [])].sort((a, b) => a.offsetTop - b.offsetTop)
+        day[day.indexOf(el) + (e.key === 'ArrowDown' ? 1 : -1)]?.focus()
+      } else return
+      e.preventDefault()
     }
   }
 }
@@ -133,8 +162,11 @@ export function EventMenuHost(): React.JSX.Element | null {
     const left = menu.x + width + 4 > window.innerWidth ? Math.max(4, menu.x - width) : menu.x
     const top = menu.y + height + 4 > window.innerHeight ? Math.max(4, menu.y - height) : menu.y
     setPos({ left, top })
-    el.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus()
   }, [menu])
+  // Once placed: a still hidden (measuring) menu can't take focus.
+  useLayoutEffect(() => {
+    if (pos) ref.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus()
+  }, [pos])
 
   if (!menu) return null
 
