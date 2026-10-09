@@ -70,7 +70,7 @@
 }
 /* Light schemes: an ink knob or an ink track (Cartoon's --line-strong) reads as "on", so off is a white knob with a
    hairline on a pale track. */
-:root[data-scheme='light'] .mc-switch:not(:checked) { background: var(--line); }
+:root[data-scheme='light'] .mc-switch:not(:checked) { background: color-mix(in srgb, var(--fg) 14%, var(--surface-2)); }
 :root[data-scheme='light'] .mc-switch:not(:checked)::after {
   background: var(--surface-2);
   box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--fg) 30%, transparent), 0 1px 2px rgb(var(--shadow) / calc(0.35 * var(--shadow-k)));

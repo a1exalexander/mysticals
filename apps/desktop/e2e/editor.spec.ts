@@ -60,10 +60,11 @@ test('switches on light themes: off is a white knob on a pale track, not the ink
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()
   await expect(page.getByTestId('calendar-view')).toBeVisible()
-  // Off track is --line, checked track --accent; Cartoon's ink --line-strong track used to read as on.
+  // Off track is --fg 14% into the white --surface-2 (visible on white popovers), checked track --accent;
+  // Cartoon's ink --line-strong track used to read as on.
   const themes = [
-    { id: 'light', off: 'rgb(229, 229, 229)', on: 'rgb(17, 17, 17)' },
-    { id: 'toon', off: 'rgb(241, 225, 164)', on: 'rgb(123, 63, 242)' }
+    { id: 'light', off: 'color(srgb 0.869333 0.869333 0.869333)', on: 'rgb(17, 17, 17)' },
+    { id: 'toon', off: 'color(srgb 0.883608 0.878118 0.895137)', on: 'rgb(123, 63, 242)' }
   ]
   for (const { id, off, on } of themes) {
     await page.evaluate((id) => localStorage.setItem('mysticals-theme', id), id)
