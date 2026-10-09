@@ -1,4 +1,5 @@
 import { test, expect, _electron as electron } from '@playwright/test'
+import { endOfWeek, format, getWeek, startOfWeek } from 'date-fns'
 import { choose } from './choose'
 
 test('settings tabs: accounts (with sync and notifications), themes, general', async () => {
@@ -144,6 +145,11 @@ test('general tab: 12-hour times and a Sunday week start', async () => {
   await expect(page.getByTestId('now-clock')).toHaveText(/^\d{1,2}:\d\d [AP]M$/)
   await expect(page.locator('.tg-dayhead .dow').first()).toHaveText('Sun')
   await expect(page.locator('.tg-dayhead .dow').last()).toHaveText('Sat')
+  // The title and week number follow the Sunday-first week (US numbering: week 1 holds 1 January).
+  const sun = startOfWeek(new Date(), { weekStartsOn: 0 })
+  const sat = endOfWeek(sun, { weekStartsOn: 0 })
+  await expect(page.locator('.toolbar-title')).toContainText(sun.getMonth() === sat.getMonth() ? format(sun, 'LLLL') : `${format(sun, 'LLL')} – ${format(sat, 'LLL')}`)
+  await expect(page.locator('.toolbar-sub')).toHaveText(new RegExp(`W${getWeek(new Date(), { weekStartsOn: 0, firstWeekContainsDate: 1 })}$`))
   await page.screenshot({ path: 'e2e/screens/week-12h-sunday.png' })
   await page.getByTestId('view-switch-month').click()
   await expect(page.locator('.mg-dows div').first()).toHaveText('Sun')
