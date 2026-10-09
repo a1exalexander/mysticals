@@ -62,6 +62,21 @@ test('week view events work from the keyboard: Tab, Enter, the menu key, ↑/↓
   await expect(details).toBeVisible()
   await page.keyboard.press('Escape')
 
+  // ←/→ (h/l) step to the neighbouring day's events and leave the period alone; so do t and the view keys.
+  const stops = page.locator('.tg-col > [tabindex="0"]')
+  const i = await stops.evaluateAll((els) => els.findIndex((el) => el.parentElement?.classList.contains('is-today')))
+  const left = i > 0
+  const period = (await page.locator('.toolbar-title').textContent()) ?? ''
+  await stop.focus()
+  await page.keyboard.press(left ? 'ArrowLeft' : 'ArrowRight')
+  await expect(stops.nth(left ? i - 1 : i + 1)).toBeFocused()
+  await page.keyboard.press(left ? 'l' : 'h')
+  await expect(stop).toBeFocused()
+  for (const key of ['t', 'm', 'd']) await page.keyboard.press(key)
+  await expect(stop).toBeFocused()
+  await expect(page.locator('.toolbar-title')).toHaveText(period)
+  await expect(page.locator('.tg-dayhead')).toHaveCount(7)
+
   // A day's header is a button that opens that day.
   await page.locator('button.tg-dayhead').first().focus()
   await page.keyboard.press('Enter')

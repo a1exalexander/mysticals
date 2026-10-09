@@ -28,8 +28,9 @@ export function eventMenu(event: CalEvent): Pick<React.HTMLAttributes<HTMLElemen
 
 /**
  * Spread onto an event pill in the grids: a keyboard control named by its title and time. Enter/Space open it (its
- * click), the menu key or Shift+F10 its menu, ↑/↓ step to the earlier/later event of the same day. Only the
- * `tabbable` pill of a day is a Tab stop.
+ * click), the menu key or Shift+F10 its menu, ↑/↓ step to the earlier/later event of the same day, ←/→ (h/l) to the
+ * previous/next day with events. Only the `tabbable` pill of a day is a Tab stop. Keys handled here never reach the
+ * window shortcuts, so ←/→ move focus instead of the period.
  */
 export function eventButton(
   event: CalEvent,
@@ -42,15 +43,22 @@ export function eventButton(
     onKeyDown: (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return
       const el = e.currentTarget
-      if (e.key === 'Enter' || e.key === ' ') el.click()
-      else if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
+      const k = e.key
+      if (k === 'Enter' || k === ' ') el.click()
+      else if (k === 'ContextMenu' || (k === 'F10' && e.shiftKey)) {
         const r = el.getBoundingClientRect()
         bus.emit('menu:event', { event, x: r.left, y: r.top })
-      } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      } else if (k === 'ArrowDown' || k === 'ArrowUp') {
         const day = [...(el.parentElement?.querySelectorAll<HTMLElement>(':scope > [role=button]') ?? [])].sort((a, b) => a.offsetTop - b.offsetTop)
-        day[day.indexOf(el) + (e.key === 'ArrowDown' ? 1 : -1)]?.focus()
+        day[day.indexOf(el) + (k === 'ArrowDown' ? 1 : -1)]?.focus()
+      } else if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'h' || k === 'l') {
+        // The day containers (columns, all-day or month cells) are siblings; each has at most one Tab stop.
+        const stops = [...(el.parentElement?.parentElement?.querySelectorAll<HTMLElement>(':scope > * > [role=button][tabindex="0"]') ?? [])]
+        const i = stops.findIndex((s) => s.parentElement === el.parentElement)
+        stops[i + (k === 'ArrowLeft' || k === 'h' ? -1 : 1)]?.focus()
       } else return
       e.preventDefault()
+      e.stopPropagation()
     }
   }
 }
