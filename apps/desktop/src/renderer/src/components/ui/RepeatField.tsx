@@ -54,8 +54,9 @@ export function RepeatField({ value, start, status, onChange }: Props): React.JS
 
   return (
     <>
-      <label>{t('repeat.label')}</label>
+      <label htmlFor="ed-repeat">{t('repeat.label')}</label>
       <Select
+        id="ed-repeat"
         data-testid="editor-repeat"
         aria-label={t('repeat.label')}
         value={showCustom ? 'custom' : preset}

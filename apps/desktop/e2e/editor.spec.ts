@@ -89,3 +89,28 @@ test('switches on light themes: off is a white knob on a pale track, not the ink
   await page.evaluate(() => localStorage.removeItem('mysticals-theme'))
   await app.close()
 })
+
+test('editor fields are named by their labels, a label click focuses its field, the title shows focus', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await expect(page.getByTestId('calendar-view')).toBeVisible()
+  await page.getByTestId('new-event').click()
+  const editor = page.getByTestId('editor')
+
+  const title = editor.getByRole('textbox', { name: 'Title' })
+  await expect(title).toBeFocused()
+  await expect(title).not.toHaveCSS('box-shadow', 'none')
+  for (const name of ['Location', 'Invitees', 'Notes']) {
+    await editor.locator('label', { hasText: name }).click()
+    await expect(editor.getByLabel(name, { exact: true })).toBeFocused()
+  }
+  await editor.getByLabel('Location', { exact: true }).fill('Room 5')
+  await expect(editor.getByPlaceholder('Add location')).toHaveValue('Room 5')
+  await editor.locator('label', { hasText: 'All-day' }).click()
+  await expect(editor.getByRole('switch', { name: 'All-day' })).toBeChecked()
+  // A picker's label opens it, like a click on its trigger.
+  await editor.locator('label', { hasText: 'Starts' }).click()
+  await expect(page.getByRole('dialog', { name: 'Starts date' })).toBeVisible()
+  await page.screenshot({ path: 'e2e/screens/editor-labels.png' })
+  await app.close()
+})

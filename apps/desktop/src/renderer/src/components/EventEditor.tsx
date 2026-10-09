@@ -157,6 +157,7 @@ export function EventEditorHost(): React.JSX.Element | null {
           <input
             ref={titleRef}
             className="editor-title"
+            aria-label={t('editor.title')}
             placeholder={editing ? t('editor.title') : t('common.newEvent')}
             value={form.title}
             onChange={(e) => set({ title: e.target.value })}
@@ -164,11 +165,12 @@ export function EventEditorHost(): React.JSX.Element | null {
         </div>
 
         <div className="editor-grid">
-          <label>{t('editor.account')}</label>
+          <label htmlFor="ed-account">{t('editor.account')}</label>
           {editing ? (
             <div className="editor-static" data-testid="editor-account">{account?.label ?? editing.accountId}</div>
           ) : (
             <Select
+              id="ed-account"
               data-testid="editor-account"
               aria-label={t('editor.account')}
               placeholder={t('editor.chooseAccount')}
@@ -178,11 +180,12 @@ export function EventEditorHost(): React.JSX.Element | null {
             />
           )}
 
-          <label>{t('editor.calendar')}</label>
+          <label htmlFor="ed-calendar">{t('editor.calendar')}</label>
           {editing ? (
             <div className="editor-static" data-testid="editor-calendar">{calendar?.name ?? editing.calendarId}</div>
           ) : (
             <Select
+              id="ed-calendar"
               data-testid="editor-calendar"
               aria-label={t('editor.calendar')}
               placeholder={form.accountId ? t('editor.chooseCalendar') : t('editor.accountFirst')}
@@ -193,9 +196,10 @@ export function EventEditorHost(): React.JSX.Element | null {
             />
           )}
 
-          <label>{t('editor.allDay')}</label>
+          <label htmlFor="ed-allday">{t('editor.allDay')}</label>
           <label className="editor-switch">
             <input
+              id="ed-allday"
               type="checkbox"
               role="switch"
               className="mc-switch"
@@ -205,11 +209,11 @@ export function EventEditorHost(): React.JSX.Element | null {
             />
           </label>
 
-          <label>{t('editor.starts')}</label>
-          <DateTimeField label={t('editor.starts')} value={form.start} dateOnly={form.allDay} onChange={(start) => setForm(moveStart(form, start))} />
+          <label htmlFor="ed-starts">{t('editor.starts')}</label>
+          <DateTimeField id="ed-starts" label={t('editor.starts')} value={form.start} dateOnly={form.allDay} onChange={(start) => setForm(moveStart(form, start))} />
 
-          <label>{t('editor.ends')}</label>
-          <DateTimeField label={t('editor.ends')} value={form.end} dateOnly={form.allDay} onChange={(end) => set({ end })} />
+          <label htmlFor="ed-ends">{t('editor.ends')}</label>
+          <DateTimeField id="ed-ends" label={t('editor.ends')} value={form.end} dateOnly={form.allDay} onChange={(end) => set({ end })} />
 
           <RepeatField
             value={form.repeat}
@@ -218,10 +222,10 @@ export function EventEditorHost(): React.JSX.Element | null {
             onChange={(repeat) => set({ repeat })}
           />
 
-          <label>{t('editor.location')}</label>
-          <input placeholder={t('editor.addLocation')} value={form.location} onChange={(e) => set({ location: e.target.value })} />
+          <label htmlFor="ed-location">{t('editor.location')}</label>
+          <input id="ed-location" placeholder={t('editor.addLocation')} value={form.location} onChange={(e) => set({ location: e.target.value })} />
 
-          <label>{t('editor.invitees')}</label>
+          <label htmlFor="ed-invitees">{t('editor.invitees')}</label>
           <div className="editor-chips">
             {form.attendees.map((m) => (
               <span key={m} className={isEmail(m) ? 'chip' : 'chip bad'}>
@@ -230,6 +234,7 @@ export function EventEditorHost(): React.JSX.Element | null {
               </span>
             ))}
             <input
+              id="ed-invitees"
               placeholder={form.attendees.length ? '' : t('editor.addPeople')}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -245,8 +250,8 @@ export function EventEditorHost(): React.JSX.Element | null {
             />
           </div>
 
-          <label>{t('editor.notes')}</label>
-          <textarea rows={3} placeholder={t('editor.addNotes')} value={form.description} onChange={(e) => set({ description: e.target.value })} />
+          <label htmlFor="ed-notes">{t('editor.notes')}</label>
+          <textarea id="ed-notes" rows={3} placeholder={t('editor.addNotes')} value={form.description} onChange={(e) => set({ description: e.target.value })} />
         </div>
 
         <div className="editor-identity">

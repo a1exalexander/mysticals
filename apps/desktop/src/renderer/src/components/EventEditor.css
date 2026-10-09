@@ -5,6 +5,8 @@
   background: transparent; border: 0; outline: none; padding: 2px 0;
 }
 .editor-title::placeholder { color: var(--muted); font-weight: 500; }
+/* Square box: a bottom rule under the title, not a border bending round a corner. */
+.editor-title:focus-visible { border-radius: 0; box-shadow: 0 2px var(--accent); }
 
 /* Labels keep one line: longer translations widen the column. */
 .editor-grid { display: grid; grid-template-columns: minmax(78px, max-content) 1fr; gap: 8px 12px; align-items: center; }

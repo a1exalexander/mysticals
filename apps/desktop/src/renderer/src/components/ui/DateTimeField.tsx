@@ -24,10 +24,12 @@ type Props = {
   dateOnly?: boolean
   /** Accessible name prefix, e.g. 'Starts'. */
   label: string
+  /** The date trigger's id, for a <label htmlFor>. */
+  id?: string
 }
 
 // Date + time triggers, each opening a small themed popover. Replaces native datetime inputs.
-export function DateTimeField({ value, onChange, dateOnly, label }: Props): React.JSX.Element {
+export function DateTimeField({ value, onChange, dateOnly, label, id }: Props): React.JSX.Element {
   const [open, setOpen] = useState<{ kind: 'date' | 'time'; rect: DOMRect } | null>(null)
   const [typed, setTyped] = useState('')
   const root = useRef<HTMLDivElement>(null)
@@ -53,6 +55,7 @@ export function DateTimeField({ value, onChange, dateOnly, label }: Props): Reac
   return (
     <div className="dtf" ref={root}>
       <button
+        id={id}
         type="button"
         className="dtf-trigger"
         aria-label={t('dtf.date', { label })}
