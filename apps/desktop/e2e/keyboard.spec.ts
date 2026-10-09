@@ -29,12 +29,13 @@ test('week view events work from the keyboard: Tab, Enter, the menu key, ↑/↓
   await page.keyboard.press('Escape')
   await expect(details).toBeHidden()
 
-  // The menu key and Shift+F10 open its menu, with an item focused. Retried: a scroll (focusing scrolls the grid)
-  // closes menus and may land after the key.
+  // The menu key and Shift+F10 open its menu, with an item focused; closing it hands focus back to the pill.
+  // Retried: a scroll (focusing scrolls the grid) closes menus and may land after the key.
   const menu = page.getByTestId('event-menu')
+  const stop = today.locator('[tabindex="0"]')
+  await stop.focus()
   for (const key of ['ContextMenu', 'Shift+F10']) {
     await expect(async () => {
-      await today.locator('[tabindex="0"]').focus()
       await page.keyboard.press(key)
       await page.waitForTimeout(150)
       await expect(menu).toBeVisible({ timeout: 100 })
@@ -42,11 +43,17 @@ test('week view events work from the keyboard: Tab, Enter, the menu key, ↑/↓
     await expect(menu.locator('button:focus')).toHaveCount(1)
     await page.keyboard.press('Escape')
     await expect(menu).toBeHidden()
+    await expect(stop).toBeFocused()
   }
+  // Choosing an item too (Copy only shows a toast).
+  await page.keyboard.press('ContextMenu')
+  await menu.getByTestId('menu-copy').focus()
+  await page.keyboard.press('Enter')
+  await expect(menu).toBeHidden()
+  await expect(stop).toBeFocused()
 
   // ↓ steps to the day's next event, Space opens it.
-  await today.locator('[tabindex="0"]').focus()
-  const top = await today.locator('[tabindex="0"]').evaluate((el) => (el as HTMLElement).offsetTop)
+  const top = await stop.evaluate((el) => (el as HTMLElement).offsetTop)
   await page.keyboard.press('ArrowDown')
   const next = today.locator(':focus')
   await expect(next).toHaveAttribute('tabindex', '-1')

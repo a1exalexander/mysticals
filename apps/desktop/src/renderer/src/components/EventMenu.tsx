@@ -120,14 +120,28 @@ export function EventMenuHost(): React.JSX.Element | null {
   const [menu, setMenu] = useState<Opened | null>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   const ref = useRef<HTMLDivElement>(null)
+  // What had focus before the menu opened (an event pill, say); it gets it back when the menu closes.
+  const back = useRef<Element | null>(null)
 
   useEffect(() => {
+    const open = (m: Opened): void => {
+      if (!ref.current?.contains(document.activeElement)) back.current = document.activeElement
+      setMenu(m)
+    }
     const offs = [
-      bus.on('menu:event', (m) => setMenu({ kind: 'event', ...m })),
-      bus.on('menu:slot', (m) => setMenu({ kind: 'slot', ...m }))
+      bus.on('menu:event', (m) => open({ kind: 'event', ...m })),
+      bus.on('menu:slot', (m) => open({ kind: 'slot', ...m }))
     ]
     return () => offs.forEach((off) => off())
   }, [])
+
+  // Unless the chosen item moved focus on (the editor, a prompt), or the element is gone (deleted).
+  useEffect(() => {
+    if (menu) return
+    const el = back.current
+    back.current = null
+    if (el instanceof HTMLElement && el.isConnected && document.activeElement === document.body) el.focus()
+  }, [menu])
 
   useEffect(() => {
     if (!menu) return
