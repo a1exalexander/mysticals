@@ -31,6 +31,8 @@ export function MiniMonth(): React.JSX.Element {
   const range = view === 'month' ? [] : viewDays(view === 'agenda' ? 'day' : view, date)
   const onKey = (e: React.KeyboardEvent): void => {
     if (e.metaKey || e.ctrlKey || e.altKey) return
+    // The button's own click selects the day; no window shortcut should see the key too.
+    if (e.key === 'Enter' || e.key === ' ') return e.stopPropagation()
     const i = days.findIndex((d) => isSameDay(d, stop))
     const k = e.key
     const next =
