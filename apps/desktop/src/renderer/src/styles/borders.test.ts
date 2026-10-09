@@ -46,7 +46,7 @@ export const radiusDrift = (css: string): string[] =>
     .split('}')
     .flatMap((rule) => {
       const [sel, body = ''] = rule.split('{').slice(-2).map((x) => x.trim())
-      return [...body.matchAll(/border-radius\s*:\s*([^;]+)/g)]
+      return [...body.matchAll(/border(?:-[a-z]+)*-radius\s*:\s*([^;]+)/g)]
         .flatMap(([, v]) => v.trim().split(/\s+/))
         .filter((x) => !RADIUS_OK.test(x) && PILLS[sel] !== x)
         .map((x) => `${sel}: ${x}`)
@@ -56,6 +56,7 @@ describe('no drifting border radii', () => {
   it('flags a raw radius outside the tokens', () => {
     expect(radiusDrift('.a { border-radius: 5px; } .b { border-radius: 10px; }')).toEqual(['.a: 5px', '.b: 10px'])
     expect(radiusDrift('@media (x) { .c { border-radius: 6px; } }')).toEqual(['.c: 6px'])
+    expect(radiusDrift('.h { border-top-left-radius: 5px; border-end-end-radius: var(--r-sm); }')).toEqual(['.h: 5px'])
     expect(radiusDrift('.d { border-radius: var(--r-sm) 0 0 var(--r-sm); } .e { border-radius: 50%; } .f { border-radius: 3px; }')).toEqual([])
     expect(radiusDrift('.mc-switch { border-radius: 8px; } .g { border-radius: 8px; }')).toEqual(['.g: 8px'])
   })

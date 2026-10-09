@@ -222,7 +222,7 @@
   --ev-clash: 0;
   --mono: ui-monospace, 'SF Mono', Menlo, monospace;
   /* Corner radii: controls; cards, popovers, menus and the toast; sheets and dialogs. Events and their chips stay
-     square, dots, tags and badges 2-3px, round things 50% (guarded by borders.test.ts). */
+     square, dots, tags and badges 1-3px, round things 50% (guarded by borders.test.ts). */
   --r-sm: 4px;
   --r-md: 6px;
   --r-lg: 8px;
