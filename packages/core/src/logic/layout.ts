@@ -181,6 +181,14 @@ function cascade(items: { item: CalEvent; start: number; end: number }[], minDur
   return out.map(({ last: _, ...p }) => p)
 }
 
+/** Px per rail lane (6px bar + gap) for long events in rails mode. */
+export const RAIL = 8
+/** Px; side-by-side blocks any narrower fold into a "+N". */
+export const MIN_BLOCK = 48
+
+/** Side-by-side columns that stay MIN_BLOCK wide in a `width` px day right of `inset` rail lanes; at least two (a block and "+N"). */
+export const columnsFit = (width: number, inset: number): number => Math.max(2, Math.floor((width - inset * RAIL) / MIN_BLOCK))
+
 /**
  * Side-by-side blocks stay readable in up to `fit` columns. A cluster with more keeps its first `fit - 1` columns
  * (blocks there stop short of the last one); the blocks from there on make way for a "+N" in the last column, one per

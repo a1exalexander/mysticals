@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CalEvent } from '../shared/types'
 import {
+  columnsFit,
   dragRange,
   eventsOnDay,
   fitColumns,
@@ -157,6 +158,16 @@ describe('eventsOnDay', () => {
       ev('next', '2026-09-24', '2026-09-25', true)
     ], day)
     expect(r.map((e) => e.id)).toEqual(['h', 't'])
+  })
+})
+
+describe('columnsFit', () => {
+  it('fits 48px columns right of the rails, at least two', () => {
+    expect(columnsFit(127.6, 0)).toBe(2) // a 1200px window's week column
+    expect(columnsFit(200, 0)).toBe(4)
+    expect(columnsFit(200, 2)).toBe(3)
+    expect(columnsFit(60, 0)).toBe(2)
+    expect(columnsFit(Infinity, 1)).toBe(Infinity)
   })
 })
 

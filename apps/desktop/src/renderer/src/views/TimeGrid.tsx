@@ -6,7 +6,7 @@ import { tooltipHover } from '../components/EventTooltip'
 import { eventButton, eventMenu, slotMenu } from '../components/EventMenu'
 import { eventPlace } from '@mysticals/core/logic/meeting'
 import { nav } from './nav'
-import { dragRange, eventBounds, eventsOnDay, fitColumns, isPast, layoutDayLong, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
+import { columnsFit, dragRange, eventBounds, eventsOnDay, fitColumns, isPast, layoutDayLong, RAIL, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
 import { moveRange, resizeEnd, resizeStart } from './drag'
 import { currentLocale, fmt, t } from '../i18n'
@@ -15,9 +15,7 @@ import { useLongEvents } from '../longEvents'
 const HOUR = 48 // px per hour
 const MAX_ALLDAY = 3 // all-day events per day before the row collapses
 const MIN_DUR = 22 // minutes; shorter events render (and pack) as if this long
-const RAIL = 8 // px per rail lane (6px bar + gap) for long events in rails mode
 const CASCADE = 14 // px each overlapping block steps right in cascade mode
-const MIN_BLOCK = 48 // px; side-by-side blocks any narrower fold into a "+N"
 const pxOf = (min: number): number => (min / 60) * HOUR
 
 /** Left and width of a block in column `col` of `cols`, `span` columns wide, right of `inset` rail lanes. */
@@ -219,9 +217,8 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
   const multi = days.length > 1
   const showsToday = days.some((d) => isToday(d))
   const layouts = days.map((d) => layoutDayLong(events, d, MIN_DUR, long))
-  // Side by side, as many columns as stay MIN_BLOCK wide (at least one beside the "+N"); the "+N" opens the day, which
-  // never folds: there it would lead nowhere.
-  const fits = layouts.map((l) => (multi ? Math.max(2, Math.floor((area / days.length - RAIL * Math.max(0, ...l.timed.map((p) => p.inset))) / MIN_BLOCK)) : Infinity))
+  // Side by side, as many columns as fit (columnsFit); the "+N" opens the day, which never folds: there it would lead nowhere.
+  const fits = layouts.map((l) => (multi ? columnsFit(area / days.length, Math.max(0, ...l.timed.map((p) => p.inset))) : Infinity))
   const fitted = layouts.map((l, i) => fitColumns(l.timed, fits[i], MIN_DUR))
   // One Tab stop per day column, its earliest event; ↑/↓ reach the others.
   const firsts = layouts.map((l, i) => [...l.rails, ...fitted[i].shown].sort((a, b) => a.start - b.start)[0]?.item)
