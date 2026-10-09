@@ -210,8 +210,16 @@
   --shadow: 0 0 0;
   --shadow-k: 1;
   --today: var(--pink);
-  --ev-mix: 15%;
-  --ev-text-mix: 60%;
+  /* Event inks (see .ev): lightness band, chroma cap, tint strength, title lightness and chroma. */
+  --ev-lmin: 0.7;
+  --ev-lmax: 0.9;
+  --ev-cmax: 0.2;
+  --ev-mix: 18%;
+  --ev-text-l: 0.9;
+  --ev-text-cmax: 0.08;
+  /* Hue of a tinted canvas (light themes) and whether same-hue events get a hairline: 0 off, 1 on. */
+  --ev-clash-h: 0;
+  --ev-clash: 0;
   --mono: ui-monospace, 'SF Mono', Menlo, monospace;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
   font-size: 13px;
@@ -222,14 +230,20 @@
   --on-accent: #ffffff;
   --shadow: 90 40 70;
   --shadow-k: 0.35;
-  /* Account colours are picked for dark bgs: a stronger tint, text pulled towards the dark --fg. */
-  --ev-mix: 22%;
-  --ev-text-mix: 40%;
+  /* Account colours are picked for dark bgs: inks go darker, titles near-black in the event's hue. */
+  --ev-lmin: 0.42;
+  --ev-lmax: 0.6;
+  --ev-mix: 16%;
+  --ev-text-l: 0.36;
+  --ev-text-cmax: 0.14;
 }
-:root[data-theme='bubble'] { --shadow: 150 100 190; --shadow-k: 0.3; }
-:root[data-theme='toon'] { --shadow: 43 33 64; --shadow-k: 0.5; }
-:root[data-theme='cloud'] { --shadow: 40 130 145; --shadow-k: 0.28; }
-:root[data-theme='light'] { --shadow: 0 0 0; --shadow-k: 0.12; }
+:root[data-theme='bubble'] { --shadow: 150 100 190; --shadow-k: 0.3; --ev-clash: 1; --ev-clash-h: 345; }
+:root[data-theme='toon'] { --shadow: 43 33 64; --shadow-k: 0.5; --ev-clash: 1; --ev-clash-h: 96; }
+:root[data-theme='cloud'] { --shadow: 40 130 145; --shadow-k: 0.28; --ev-clash: 1; --ev-clash-h: 197; }
+:root[data-theme='light'] { --shadow: 0 0 0; --shadow-k: 0.12; --ev-cmax: 0.09; }
+/* Monochrome themes: event colours keep their hue but only as a hint. */
+:root:is([data-theme='amber'], [data-theme='matrix']) { --ev-cmax: 0.11; }
+:root[data-theme='mono'] { --ev-cmax: 0.06; }
 /* Matrix: everything in mono with a barely-there phosphor glow. */
 :root[data-theme='matrix'] { --shadow: 0 0 0; font-family: var(--mono); }
 :root[data-theme='matrix'] :is(input, textarea, .invites-panel) { font-family: var(--mono); }
@@ -466,10 +480,15 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 }
 .new-btn:hover { filter: brightness(1.1); }
 
-/* Events: calendar colour in --c; soft tint + strong left border. */
+/* Events: raw calendar colour in --c (Google, CalDAV, swatches), drawn through --ink: same hue, lightness held in the
+   theme's band, chroma capped on monochrome themes, so yellow stays visible on white and Tomato on black. */
+.ev, .ev-rail, .sbar-ev, .ag-chip, .ag-rows li, .ag-focus, .sb-cal .mc-check {
+  --ink: oklch(from var(--c) clamp(var(--ev-lmin), l, var(--ev-lmax)) min(c, var(--ev-cmax)) h);
+}
+/* Soft tint + strong left border. */
 .ev {
-  --tint: color-mix(in srgb, var(--c) var(--ev-mix), var(--bg));
-  color: color-mix(in srgb, var(--c) var(--ev-text-mix), var(--fg));
+  --tint: color-mix(in srgb, var(--ink) var(--ev-mix), var(--bg));
+  color: oklch(from var(--c) var(--ev-text-l) min(c, var(--ev-text-cmax), var(--ev-cmax)) h);
   background: var(--tint);
   border-radius: 0; overflow: hidden; font-size: 11px; line-height: 14px;
 }
@@ -478,9 +497,18 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .ev.is-pending {
   background:
     repeating-linear-gradient(-45deg, color-mix(in srgb, var(--orange) 13%, transparent) 0 5px, transparent 5px 10px),
-    color-mix(in srgb, var(--c) 7%, var(--bg));
+    color-mix(in srgb, var(--ink) 7%, var(--bg));
   outline: 1px dashed var(--orange); outline-offset: -1px;
 }
+/* On a tinted canvas (pink Bubblegum, yellow Cartoon, cyan Cloud) an event of the same hue melts into it: a hairline
+   at full strength within 30° of --ev-clash-h, fading out by 40°, none for greys. */
+.ev, .ag-chip {
+  --ev-ring: oklch(from var(--ink) l c h / calc(
+    var(--ev-clash) * 0.5
+    * clamp(0, (40 - abs(mod(h - var(--ev-clash-h) + 180, 360) - 180)) / 10, 1)
+    * clamp(0, (c - 0.04) * 50, 1)));
+}
+.ev:is(.ev-timed, .ev-allday) { box-shadow: inset 0 0 0 1px var(--ev-ring); }
 .ev.is-declined { opacity: 0.45; }
 .ev.is-declined .ev-title { text-decoration: line-through; }
 .ev.is-past { opacity: 0.55; }
@@ -511,12 +539,12 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
   flex: 1; min-width: 0; min-height: 28px; padding: 3px; border-left: 1px solid var(--line);
   display: flex; flex-direction: column; gap: 2px;
 }
-.ev-allday { padding: 2px 6px; border-left: 2px solid var(--c); border-radius: 0; }
+.ev-allday { padding: 2px 6px; border-left: 2px solid var(--ink); border-radius: 0; }
 .ev-allday.is-promoted { display: flex; gap: 5px; align-items: baseline; }
 /* A long timed event moved up here, not a real all-day one: faint diagonal lines in its own colour. */
 .ev-allday.is-promoted:not(.is-pending) {
   background:
-    repeating-linear-gradient(-45deg, color-mix(in srgb, var(--c) 16%, transparent) 0 4px, transparent 4px 8px),
+    repeating-linear-gradient(-45deg, color-mix(in srgb, var(--ink) 16%, transparent) 0 4px, transparent 4px 8px),
     var(--tint);
 }
 .ev-allday .ev-hours { flex: none; font: 10px/14px var(--mono); opacity: 0.8; }
@@ -536,11 +564,11 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .tg-col.is-today { background-color: color-mix(in srgb, var(--pink) 3%, transparent); }
 .ev-timed {
   position: absolute; z-index: 1; display: flex; flex-direction: column; padding: 3px 6px 3px 7px;
-  border-left: 2px solid var(--c); border-radius: 0;
+  border-left: 2px solid var(--ink); border-radius: 0;
 }
 .ev-timed:hover { z-index: 2; filter: brightness(1.15); }
 /* Cascade mode: blocks overlap in start order; a 1px ground-coloured ring keeps stacked edges apart. */
-.ev-timed.is-cascade { z-index: var(--z); box-shadow: 0 0 0 1px var(--bg); }
+.ev-timed.is-cascade { z-index: var(--z); box-shadow: 0 0 0 1px var(--bg), inset 0 0 0 1px var(--ev-ring); }
 .ev-timed.is-cascade:hover { z-index: 1000; }
 /* Stacked blocks must stay opaque, or the titles underneath show through: dim past ones without opacity. */
 .ev.ev-timed.is-cascade.is-past { opacity: 1; filter: brightness(0.6) saturate(0.7); }
@@ -549,12 +577,12 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 /* Long events in rails mode: a thin square bar per event at the left edge; the details open on click. */
 .ev-rail {
   position: absolute; z-index: 1; width: 6px; border-radius: 0; cursor: pointer;
-  background: color-mix(in srgb, var(--c) 70%, var(--bg));
+  background: color-mix(in srgb, var(--ink) 70%, var(--bg));
   transition: background-color 90ms ease, opacity 120ms ease;
 }
 .ev-rail::after { content: ''; position: absolute; inset: 0 -2px; } /* a wider hit area */
-.ev-rail:hover { z-index: 2; background: var(--c); }
-.ev-rail.is-pending { background: repeating-linear-gradient(180deg, var(--c) 0 4px, transparent 4px 8px); }
+.ev-rail:hover { z-index: 2; background: var(--ink); }
+.ev-rail.is-pending { background: repeating-linear-gradient(180deg, var(--ink) 0 4px, transparent 4px 8px); }
 .ev-rail.is-declined, .ev-rail.is-past { opacity: 0.45; }
 /* The busy hours of long events (rails and all-day modes), hatched behind everything. */
 .tg-busy {
@@ -603,7 +631,7 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .mg-ev:not(.ev-allday):hover { background: var(--hover); }
 .mg-ev.ev-allday { border-left: 0; }
 .mg-ev .ev-title { flex: 1; font-weight: 500; }
-.mg-dot { width: 6px; height: 6px; border-radius: 2px; background: var(--c); flex: none; }
+.mg-dot { width: 6px; height: 6px; border-radius: 2px; background: var(--ink); flex: none; }
 .mg-time { font: 10px/1 var(--mono); color: var(--muted); flex: none; }
 .mg-more {
   align-self: flex-start; border: 0; background: none; padding: 0 5px; font: 10.5px/16px var(--mono); color: var(--muted);
@@ -625,7 +653,7 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .sbar-ev, .sbar-err, .sbar-upd { border: 0; border-right: 1px solid var(--line); background: none; font: inherit; color: var(--fg); cursor: pointer; }
 .sbar-ev { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 320px; }
 .sbar-ev:hover, .sbar-err:hover, .sbar-upd:hover { background: var(--hover); }
-.sbar-dot { color: var(--c, var(--accent)); }
+.sbar-dot { color: var(--ink, var(--accent)); }
 .sbar-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .sbar-dim { color: var(--muted); }
 .sbar-err { flex: none; color: var(--red); }
@@ -717,20 +745,20 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 }
 .ev-timed.is-draggable:hover .ev-resize::after {
   content: ''; position: absolute; left: 50%; bottom: 2px; width: 16px; height: 2px; margin-left: -8px;
-  border-radius: 1px; background: color-mix(in srgb, var(--c) 70%, var(--fg));
+  border-radius: 1px; background: color-mix(in srgb, var(--ink) 70%, var(--fg));
 }
 .ev-resize-top { top: 0; bottom: auto; }
 .ev-timed.is-draggable:hover .ev-resize-top::after { top: 2px; bottom: auto; }
 .ev.is-dragged { opacity: 0.35; }
 .ev-preview {
   z-index: 5; pointer-events: none; animation: none;
-  box-shadow: 0 6px 18px rgb(var(--shadow) / calc(0.45 * var(--shadow-k))), 0 0 0 1px color-mix(in srgb, var(--c) 60%, transparent);
-  background: color-mix(in srgb, var(--c) 28%, var(--bg));
+  box-shadow: 0 6px 18px rgb(var(--shadow) / calc(0.45 * var(--shadow-k))), 0 0 0 1px color-mix(in srgb, var(--ink) 60%, transparent);
+  background: color-mix(in srgb, var(--ink) 28%, var(--bg));
 }
 .ev-preview .ev-meta { font-weight: 700; opacity: 1; }
 body[data-dragging='move'], body[data-dragging='move'] * { cursor: grabbing !important; }
 body[data-dragging='resize'], body[data-dragging='resize'] * { cursor: ns-resize !important; }
 body[data-dragging] .ett { display: none; }
 .mg-cell.is-drop { background: color-mix(in srgb, var(--accent) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
-.mg-cell .mg-ev.ev-preview:not(.ev-allday) { box-shadow: none; background: color-mix(in srgb, var(--c) 22%, var(--bg)); }
+.mg-cell .mg-ev.ev-preview:not(.ev-allday) { box-shadow: none; background: color-mix(in srgb, var(--ink) 22%, var(--bg)); }
 @media (prefers-reduced-motion: reduce) { .toast, .ev-preview { animation: none; } }
