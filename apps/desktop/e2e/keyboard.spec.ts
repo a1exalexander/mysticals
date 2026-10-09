@@ -60,5 +60,15 @@ test('week view events work from the keyboard: Tab, Enter, the menu key, ↑/↓
   await page.keyboard.press('Enter')
   await expect(page.locator('.tg-single')).toBeVisible()
 
+  // A focused invite awaiting a reply (tomorrow's Sprint planning) shows the ring, not its dashed outline.
+  await page.locator('.today-btn').click()
+  await page.keyboard.press('ArrowRight')
+  const invite = page.locator('.ev.is-pending')
+  await expect(invite).toBeVisible()
+  await page.locator('.tg-col > [tabindex="0"]').focus()
+  for (let i = 0; i < 5 && !(await invite.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('ArrowDown')
+  await expect(invite).toBeFocused()
+  await expect(invite).toHaveCSS('outline-style', 'solid')
+
   await app.close()
 })
