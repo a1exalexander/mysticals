@@ -350,9 +350,10 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 /* The days the main view shows: a faint tint under the hover, today and selection styles. */
 .mini-day.in-range { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .mini-day:hover { background: var(--hover); }
+.mini-day.in-range:not(.is-selected):hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .mini-day.is-other { color: var(--faint); }
 .mini-day.is-today { color: var(--pink); font-weight: 700; }
-.mini-day.is-selected { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--fg); }
+.mini-day.is-selected { background: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--fg); font-weight: 700; }
 .mini-day.is-today.is-selected { background: var(--pink); color: var(--on-accent); }
 
 .sb-accounts {
