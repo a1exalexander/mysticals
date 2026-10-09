@@ -190,31 +190,52 @@ export const MIN_BLOCK = 48
 export const columnsFit = (width: number, inset: number): number => Math.max(2, Math.floor((width - inset * RAIL) / MIN_BLOCK))
 
 /**
- * Side-by-side blocks stay readable in up to `fit` columns. A cluster with more keeps its first `fit - 1` columns
- * (blocks there stop short of the last one); the blocks from there on make way for a "+N" in the last column, one per
- * run of them that overlap (`minDur` as in packColumns). A run of one is no fold: that block takes the column itself.
+ * Side-by-side blocks in a `width` px day stay readable in as many columns as fit right of their cluster's rail lanes
+ * (columnsFit, the cluster's largest `inset`). A cluster with more keeps its first `fit - 1` columns (blocks there stop
+ * short of the last one); the blocks from there on make way for a "+N" in the last column, one per run of them that
+ * overlap (`minDur` as in packColumns). A run of one is no fold: that block takes the column itself.
  */
-export function fitColumns<P extends Placed<unknown>>(
+export function fitColumns<P extends Placed<unknown> & { inset: number }>(
   placed: P[],
-  fit: number,
+  width: number,
   minDur = 0
-): { shown: P[]; more: { start: number; end: number; items: P[] }[] } {
+): { shown: P[]; more: { start: number; end: number; items: P[]; cols: number; inset: number }[] } {
+  // Clusters as packColumns made them: each block's fit, and the lanes its column keeps clear of.
+  const of = new Map<P, { fit: number; inset: number }>()
+  let cluster: P[] = []
+  let clusterEnd = -Infinity
+  const flush = (): void => {
+    const inset = Math.max(0, ...cluster.map((p) => p.inset))
+    for (const p of cluster) of.set(p, { fit: columnsFit(width, inset), inset })
+    cluster = []
+  }
+  for (const p of [...placed].sort((a, b) => a.start - b.start)) {
+    if (p.start >= clusterEnd) flush()
+    cluster.push(p)
+    clusterEnd = Math.max(clusterEnd, p.end, p.start + minDur)
+  }
+  flush()
   const shown: P[] = []
-  const runs: { start: number; end: number; items: P[] }[] = []
+  const hidden: P[] = []
   for (const p of placed) {
+    const { fit } = of.get(p)!
     if (p.cols <= fit) shown.push(p)
     else if (p.col < fit - 1) shown.push({ ...p, cols: fit, span: Math.min(p.span, fit - 1 - p.col) })
+    else hidden.push(p)
   }
-  const hidden = placed.filter((p) => p.cols > fit && p.col >= fit - 1).sort((a, b) => a.start - b.start)
-  for (const p of hidden) {
+  const runs: { start: number; end: number; items: P[]; cols: number; inset: number }[] = []
+  for (const p of hidden.sort((a, b) => a.start - b.start)) {
     const end = Math.max(p.end, p.start + minDur)
     const last = runs[runs.length - 1]
     if (last && p.start < last.end) {
       last.end = Math.max(last.end, end)
       last.items.push(p)
-    } else runs.push({ start: p.start, end, items: [p] })
+    } else {
+      const { fit, inset } = of.get(p)!
+      runs.push({ start: p.start, end, items: [p], cols: fit, inset })
+    }
   }
-  for (const { items } of runs) if (items.length === 1) shown.push({ ...items[0], col: fit - 1, cols: fit, span: 1 })
+  for (const { items, cols, inset } of runs) if (items.length === 1) shown.push({ ...items[0], col: cols - 1, cols, span: 1, inset })
   return { shown, more: runs.filter((r) => r.items.length > 1) }
 }
 

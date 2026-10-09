@@ -6,7 +6,7 @@ import { tooltipHover } from '../components/EventTooltip'
 import { eventButton, eventMenu, slotMenu } from '../components/EventMenu'
 import { eventPlace } from '@mysticals/core/logic/meeting'
 import { nav } from './nav'
-import { columnsFit, dragRange, eventBounds, eventsOnDay, fitColumns, isPast, layoutDayLong, RAIL, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
+import { dragRange, eventBounds, eventsOnDay, fitColumns, isPast, layoutDayLong, RAIL, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
 import { moveRange, resizeEnd, resizeStart } from './drag'
 import { currentLocale, fmt, t } from '../i18n'
@@ -217,9 +217,8 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
   const multi = days.length > 1
   const showsToday = days.some((d) => isToday(d))
   const layouts = days.map((d) => layoutDayLong(events, d, MIN_DUR, long))
-  // Side by side, as many columns as fit (columnsFit); the "+N" opens the day, which never folds: there it would lead nowhere.
-  const fits = layouts.map((l) => (multi ? columnsFit(area / days.length, Math.max(0, ...l.timed.map((p) => p.inset))) : Infinity))
-  const fitted = layouts.map((l, i) => fitColumns(l.timed, fits[i], MIN_DUR))
+  // Side by side, as many columns as fit (fitColumns); the "+N" opens the day, which never folds: there it would lead nowhere.
+  const fitted = layouts.map((l) => fitColumns(l.timed, multi ? area / days.length : Infinity, MIN_DUR))
   // One Tab stop per day column, its earliest event; ↑/↓ reach the others.
   const firsts = layouts.map((l, i) => [...l.rails, ...fitted[i].shown].sort((a, b) => a.start - b.start)[0]?.item)
   /** All-day events, then long timed ones moved up (all-day mode) with their hours as a tag. */
@@ -401,14 +400,14 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
                 </div>
               )
             })}
-            {fitted[dayIdx].more.map(({ start, end, items }) => (
+            {fitted[dayIdx].more.map(({ start, end, items, cols, inset }) => (
               <button
                 key={start}
                 type="button"
                 className="tg-more"
                 data-testid="more-events"
                 aria-label={t('grid.showMore', { n: items.length })}
-                style={{ top: pxOf(start), height: pxOf(end - start) - 1, ...beside(fits[dayIdx] - 1, fits[dayIdx], 1, Math.max(...items.map((p) => p.inset))) }}
+                style={{ top: pxOf(start), height: pxOf(end - start) - 1, ...beside(cols - 1, cols, 1, inset) }}
                 onMouseDown={stop}
                 onDoubleClick={stop}
                 onClick={() => nav.set({ view: 'day', date: d })}
