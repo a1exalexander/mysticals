@@ -177,6 +177,11 @@ test('general tab: 12-hour times and a Sunday week start', async () => {
   expect(await starts.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
   await editor.getByRole('button', { name: 'Starts date' }).click()
   await expect(page.locator('.rdp-weekday').first()).toHaveText('Su')
+  await page.keyboard.press('Escape')
+  // Weekly repeat days start on Sunday too.
+  await choose(page.getByTestId('editor-repeat'), 'custom')
+  await choose(editor.getByLabel('Repeat unit'), 'weekly')
+  await expect(editor.getByRole('group', { name: 'Repeat on' }).getByRole('button')).toHaveText(['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'])
   await app.close()
 })
 

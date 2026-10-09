@@ -7,6 +7,7 @@ import { DateTimeField } from './DateTimeField'
 import { NumberField } from './NumberField'
 import { Select } from './Select'
 import { currentLocale, t } from '../../i18n'
+import { weekStartsOn } from '../../clock'
 
 type Ends = 'never' | 'until' | 'count'
 
@@ -86,7 +87,8 @@ export function RepeatField({ value, start, status, onChange }: Props): React.JS
             <>
               <label>{t('repeat.on')}</label>
               <div className="editor-days" role="group" aria-label={t('repeat.onAria')}>
-                {WEEKDAYS.map((d) => {
+                {/* In the week's order; the rule itself keeps RFC order (MO..SU). */}
+                {(weekStartsOn() === 0 ? [WEEKDAYS[6], ...WEEKDAYS.slice(0, 6)] : WEEKDAYS).map((d) => {
                   const on = days.includes(d)
                   return (
                     <button
