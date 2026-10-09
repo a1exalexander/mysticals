@@ -143,6 +143,13 @@ test('agenda: the now line crosses a running event instead of sitting below it',
   const box = (await row.boundingBox())!
   expect(line.y).toBeGreaterThan(box.y + box.height * 0.3)
   expect(line.y).toBeLessThan(box.y + box.height * 0.7)
+  // In the time column only: the title is never struck through, and the clock covers neither it nor the Join pill.
+  const title = (await row.locator('.ag-title').boundingBox())!
+  const clock = (await row.locator('.ag-now-clock').boundingBox())!
+  const pill = (await row.locator('.ag-join-pill').boundingBox())!
+  expect(line.x + line.width).toBeLessThanOrEqual(title.x)
+  expect(clock.x + clock.width).toBeLessThanOrEqual(title.x)
+  expect(clock.x + clock.width).toBeLessThanOrEqual(pill.x)
   await page.screenshot({ path: 'e2e/screens/agenda-now-running.png' })
   await app.close()
 })
