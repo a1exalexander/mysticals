@@ -13,6 +13,8 @@ test('settings tabs: accounts (with sync and notifications), themes, general', a
   // Sync and notifications live on each account's one card, not in tabs of their own.
   await expect(page.getByTestId('sync-work')).toContainText('Up to date')
   await expect(page.getByTestId('account-work').getByTestId('notify-account-work')).toBeVisible()
+  // Colour swatches read out by name, not hex.
+  await expect(page.getByTestId('account-work').getByRole('radio', { name: 'Cyan' })).toHaveAttribute('aria-checked', 'true')
   await expect(page.getByTestId('reminder-select')).toBeVisible()
   await expect(page.getByTestId('settings-tab-sync')).toHaveCount(0)
   await expect(page.getByTestId('settings-tab-notifications')).toHaveCount(0)
@@ -36,6 +38,16 @@ test('settings tabs: accounts (with sync and notifications), themes, general', a
   const panelBox = (await panel.boundingBox())!
   expect(firstCard.x - 3).toBeGreaterThanOrEqual(panelBox.x - 0.5)
   expect(firstCard.y - 3).toBeGreaterThanOrEqual(panelBox.y - 0.5)
+  // The themes are one radio group: a single Tab stop, and the arrow keys move the selection.
+  await expect(page.getByTestId('theme-tokyo')).toHaveAttribute('tabindex', '-1')
+  await page.getByTestId('theme-dracula').focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'tokyo')
+  await expect(page.getByTestId('theme-tokyo')).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByTestId('theme-tokyo')).toBeFocused()
+  await expect(page.getByTestId('theme-tokyo')).toHaveAttribute('tabindex', '0')
+  await page.keyboard.press('ArrowLeft')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dracula')
   await page.getByTestId('theme-catppuccin').click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'catppuccin')
   await expect(page.getByTestId('theme-catppuccin')).toHaveCSS('box-shadow', /inset/)

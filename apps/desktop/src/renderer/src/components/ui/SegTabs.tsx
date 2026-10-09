@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { rovingIndex } from './roving'
 
 export interface SegTab<T extends string> {
   id: T
@@ -67,19 +68,7 @@ export function SegTabs<T extends string>({
 
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>): void => {
     const i = tabs.findIndex((t) => t.id === value)
-    const n = tabs.length
-    const fwd = e.key === 'ArrowRight' || (orientation === 'vertical' && e.key === 'ArrowDown')
-    const back = e.key === 'ArrowLeft' || (orientation === 'vertical' && e.key === 'ArrowUp')
-    const next =
-      fwd
-        ? (i + 1) % n
-        : back
-          ? (i - 1 + n) % n
-          : e.key === 'Home'
-            ? 0
-            : e.key === 'End'
-              ? n - 1
-              : -1
+    const next = rovingIndex(e.key, i, tabs.length, orientation === 'vertical')
     if (next < 0) return
     e.preventDefault()
     onChange(tabs[next].id)

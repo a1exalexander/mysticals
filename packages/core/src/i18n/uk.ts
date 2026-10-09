@@ -286,6 +286,14 @@ export const uk: Record<Key, Msg> = {
   'accounts.field.label': 'Назва',
   'accounts.field.colour': 'Колір',
   'accounts.field.accountColour': 'Колір облікового запису',
+  'accounts.colour.purple': 'Фіолетовий',
+  'accounts.colour.green': 'Зелений',
+  'accounts.colour.cyan': 'Блакитний',
+  'accounts.colour.pink': 'Рожевий',
+  'accounts.colour.orange': 'Помаранчевий',
+  'accounts.colour.yellow': 'Жовтий',
+  'accounts.colour.red': 'Червоний',
+  'accounts.colour.blueGrey': 'Сіро-синій',
   'accounts.add': 'Додати обліковий запис',
 
   // ---- desktop: event editor ----

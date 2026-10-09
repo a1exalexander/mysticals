@@ -285,6 +285,14 @@ export const en = {
   'accounts.field.label': 'Label',
   'accounts.field.colour': 'Colour',
   'accounts.field.accountColour': 'Account colour',
+  'accounts.colour.purple': 'Purple',
+  'accounts.colour.green': 'Green',
+  'accounts.colour.cyan': 'Cyan',
+  'accounts.colour.pink': 'Pink',
+  'accounts.colour.orange': 'Orange',
+  'accounts.colour.yellow': 'Yellow',
+  'accounts.colour.red': 'Red',
+  'accounts.colour.blueGrey': 'Blue-grey',
   'accounts.add': 'Add account',
 
   // ---- desktop: event editor ----

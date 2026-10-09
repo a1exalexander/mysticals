@@ -4,6 +4,7 @@ import { bus } from '../bus'
 import { THEMES, applyTheme, themeName, useTheme } from '../theme'
 import { KindIcon, Sheet, Swatches, errorText } from './AccountsShared'
 import { SegTabs } from './ui/SegTabs'
+import { radioGroup } from './ui/roving'
 import { currentLocale, setLanguage, t, useLocale } from '../i18n'
 import { LOCALE_NAME, LOCALES, type Key, type LocaleSetting } from '@mysticals/core/i18n'
 import { REMINDER_CHOICES } from '@mysticals/core/logic/reminders'
@@ -148,17 +149,19 @@ const hoursText = (n: number): string => t('settings.events.hours', { n: n.toLoc
 /** How timed events longer than a threshold show in the day grids; a per-device preference. */
 function EventsPanel(): React.JSX.Element {
   const long = useLongEvents()
+  const modes = radioGroup(LONG_MODES, long.mode, (mode) => setLongEvents({ mode }))
   return (
     <>
       <h3 className="set-heading set-heading-first">{t('settings.events.long')}</h3>
       <p className="acc-note">{t('settings.events.note')}</p>
-      <div className="long-grid" role="radiogroup" aria-label={t('settings.events.mode')}>
+      <div className="long-grid" role="radiogroup" aria-label={t('settings.events.mode')} onKeyDown={modes.onKeyDown}>
         {LONG_MODES.map((m) => (
           <button
             key={m}
             type="button"
             role="radio"
             aria-checked={long.mode === m}
+            tabIndex={modes.tabIndex(m)}
             className="long-opt"
             data-testid={`long-mode-${m}`}
             onClick={() => setLongEvents({ mode: m })}
@@ -216,14 +219,16 @@ function LongPreview({ mode }: { mode: LongMode }): React.JSX.Element {
 
 function ThemePicker(): React.JSX.Element {
   const theme = useTheme()
+  const group = radioGroup(THEMES.map((th) => th.id), theme, applyTheme)
   return (
-    <div className="theme-grid" role="radiogroup" aria-label={t('settings.theme')}>
+    <div className="theme-grid" role="radiogroup" aria-label={t('settings.theme')} onKeyDown={group.onKeyDown}>
       {THEMES.map((th) => (
         <button
           key={th.id}
           type="button"
           role="radio"
           aria-checked={theme === th.id}
+          tabIndex={group.tabIndex(th.id)}
           className="theme-opt"
           data-testid={`theme-${th.id}`}
           onClick={() => applyTheme(th.id)}
