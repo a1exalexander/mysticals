@@ -3,7 +3,7 @@ import { addDays, format, isSameDay, isToday, startOfDay } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
-import { eventButton, eventMenu, slotMenu } from '../components/EventMenu'
+import { eventButton, eventMenu, name, slotMenu } from '../components/EventMenu'
 import { eventPlace } from '@mysticals/core/logic/meeting'
 import { nav } from './nav'
 import { dragRange, eventBounds, eventKey, eventsOnDay, fitColumns, isPast, layoutDayLong, RAIL, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
@@ -281,7 +281,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
                       {...eventMenu(e)}
                     >
                       {tag && <span className="ev-hours">{tag}</span>}
-                      <span className="ev-title">{e.title || t('common.untitled')}</span>
+                      <span className="ev-title">{name(e)}</span>
                     </div>
                   ))}
                 {more > 0 && (
@@ -384,7 +384,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
                   {...tooltipHover(e)}
                   {...eventMenu(e)}
                 >
-                  <span className="ev-title">{e.title || t('common.untitled')}</span>
+                  <span className="ev-title">{name(e)}</span>
                   <span className="ev-meta">
                     {hhmm(b.start)}
                     {/* a one-line (is-short) block keeps its room for the title */}
@@ -432,7 +432,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
                       } as React.CSSProperties
                     }
                   >
-                    <span className="ev-title">{e.title || t('common.untitled')}</span>
+                    <span className="ev-title">{name(e)}</span>
                     <span className="ev-meta">
                       {hhmm(atMinute(d, moving.start))} – {hhmm(atMinute(d, moving.end))}
                     </span>

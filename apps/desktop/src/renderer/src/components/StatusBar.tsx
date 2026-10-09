@@ -4,6 +4,7 @@ import { visibleEvents } from '@mysticals/core/logic/visible'
 import { useNav } from '../views/nav'
 import { eventKey, rangeLabel, viewDays } from '@mysticals/core/logic/layout'
 import { InvitesPanel } from './Invites'
+import { name } from './EventMenu'
 import { useEffect, useState } from 'react'
 import { addHours } from 'date-fns'
 import type { CalEvent } from '@shared/types'
@@ -52,7 +53,7 @@ function NowNext(): React.JSX.Element {
       type="button"
       className="sbar-seg sbar-ev"
       style={{ '--c': colorOf(e) } as React.CSSProperties}
-      title={e.title || t('common.untitled')}
+      title={name(e)}
       onClick={(ev) => bus.emit('event:open', { event: e, anchor: ev.currentTarget.getBoundingClientRect(), el: ev.currentTarget })}
     >
       {label}
@@ -66,7 +67,7 @@ function NowNext(): React.JSX.Element {
           e,
           <>
             <span className="sbar-dot" aria-hidden>●</span>
-            <span className="sbar-title">{e.title || t('common.untitled')}</span>· {t('sbar.until', { time: format(new Date(e.end), 'HH:mm') })}
+            <span className="sbar-title">{name(e)}</span>· {t('sbar.until', { time: format(new Date(e.end), 'HH:mm') })}
           </>
         )
       )}
@@ -76,7 +77,7 @@ function NowNext(): React.JSX.Element {
           next,
           <>
             <span className="sbar-dim">{t('sbar.next')}</span>
-            <span className="sbar-title">{next.title || t('common.untitled')}</span>· {startsLabel(next.start, now, currentLocale())}
+            <span className="sbar-title">{name(next)}</span>· {startsLabel(next.start, now, currentLocale())}
           </>
         )}
       {!current.length && !next && <span className="sbar-seg sbar-dim">{t('sbar.noUpcoming')}</span>}

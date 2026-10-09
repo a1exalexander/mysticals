@@ -3,7 +3,7 @@ import { addDays, differenceInCalendarDays, format, isSameMonth, isToday } from 
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
-import { eventButton, eventMenu, slotMenu } from '../components/EventMenu'
+import { eventButton, eventMenu, name, slotMenu } from '../components/EventMenu'
 import { nav } from './nav'
 import { eventBounds, eventKey, eventsOnDay, isPast, monthGrid, monthShown, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
@@ -121,14 +121,14 @@ export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): Re
                   {...eventMenu(e)}
                 >
                   {!e.allDay && <span className="mg-dot" />}
-                  <span className="ev-title">{e.title || t('common.untitled')}</span>
+                  <span className="ev-title">{name(e)}</span>
                   {!e.allDay && <span className="mg-time">{format(eventBounds(e).start, 'HH:mm')}</span>}
                 </div>
               ))}
               {dragged && moving.over === idx && (
                 <div className={`ev mg-ev ev-preview${dragged.allDay ? ' ev-allday' : ''}`} data-testid="drag-preview" style={{ '--c': colorOf(dragged) } as React.CSSProperties}>
                   {!dragged.allDay && <span className="mg-dot" />}
-                  <span className="ev-title">{dragged.title || t('common.untitled')}</span>
+                  <span className="ev-title">{name(dragged)}</span>
                 </div>
               )}
               {more > 0 && (

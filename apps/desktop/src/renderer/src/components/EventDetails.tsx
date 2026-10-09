@@ -3,7 +3,7 @@ import { addDays, subDays } from 'date-fns'
 import type { CalEvent, PartStat } from '@shared/types'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
-import { deleteEvent } from './EventMenu'
+import { deleteEvent, name } from './EventMenu'
 import { canEdit, cleanNotes, formatWhen, isHtml, linkify, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
 import { eventBounds, eventKey } from '@mysticals/core/logic/layout'
@@ -164,7 +164,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
         className={`mc-popover details${gone ? ' is-gone' : ''}`}
         data-testid="details"
         role="dialog"
-        aria-label={event.title || t('common.untitled')}
+        aria-label={name(event)}
         style={{ '--cal': calendar?.color ?? account?.color, left: pos?.left ?? -9999, top: pos?.top ?? 0 } as React.CSSProperties}
       >
         {gone && (
@@ -179,7 +179,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
         )}
         <div className="details-head">
           <span className="mc-dot details-dot" />
-          <h2 tabIndex={-1}>{event.title || t('common.untitled')}</h2>
+          <h2 tabIndex={-1}>{name(event)}</h2>
         </div>
         <div className="details-when">{formatWhen(event, currentLocale())}</div>
         <div className="details-owner mc-muted">

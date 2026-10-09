@@ -13,7 +13,8 @@ type Opened = ({ kind: 'event' } & BusEvents['menu:event']) | ({ kind: 'slot' } 
 /** The event "Copy" put aside for "Paste" on a free time or day; app-wide, lives while the app runs. */
 let copied: CalEvent | null = null
 
-const name = (e: CalEvent): string => e.title || t('common.untitled')
+/** An event's title, or "Untitled" for one without. */
+export const name = (e: CalEvent): string => e.title || t('common.untitled')
 
 /** Spread onto an event pill: right-click opens its menu (instead of the window's native one). */
 export function eventMenu(event: CalEvent): Pick<React.HTMLAttributes<HTMLElement>, 'onContextMenu'> {
