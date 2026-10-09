@@ -126,14 +126,14 @@ export function EventEditorHost(): React.JSX.Element | null {
     setDraft('')
   }
   const calendar = calendars.find((c) => c.accountId === form.accountId && c.id === form.calendarId)
-  const accent = account?.color ?? 'var(--muted)'
+  const cal = account?.color ?? 'var(--muted)'
 
   return (
     <div className="mc-overlay" onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <form
         className="mc-sheet editor"
         data-testid="editor"
-        style={{ '--cal': accent } as React.CSSProperties}
+        style={{ '--cal': cal } as React.CSSProperties}
         onSubmit={(e) => {
           e.preventDefault()
           void save()
