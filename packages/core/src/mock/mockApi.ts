@@ -17,7 +17,9 @@ export function createMockApi(onChanged: (accountId: string) => void, onAction?:
     {
       id: 'work', kind: 'caldav', label: 'Work', email: 'me@work.example', color: '#8be9fd',
       // e2e: a revoked app password; accounts.reauth with any password fixes it.
-      ...(process.env.MYSTICALS_MOCK_AUTH_ERROR ? { error: 'CalDAV login failed: the password was changed or revoked', authError: true } : {})
+      ...(process.env.MYSTICALS_MOCK_AUTH_ERROR ? { error: 'CalDAV login failed: the password was changed or revoked', authError: true } : {}),
+      // e2e: a sync failure that isn't about credentials.
+      ...(process.env.MYSTICALS_MOCK_SYNC_ERROR ? { error: 'Server unreachable' } : {})
     },
     { id: 'personal', kind: 'google', label: 'Personal', email: 'me@gmail.example', color: '#50fa7b' }
   ]

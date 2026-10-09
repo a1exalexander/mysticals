@@ -147,7 +147,7 @@ export function StatusBar(): React.JSX.Element {
           onClick={() => {
             const off = accounts.find((a) => a.authError)
             if (off) bus.emit('reauth:open', { accountId: off.id })
-            else bus.emit('settings:open', {})
+            else bus.emit('settings:open', { tab: 'accounts' })
           }}
         >
           {accounts.some((a) => a.authError) ? t('sbar.disconnected') : t('sbar.syncError')}

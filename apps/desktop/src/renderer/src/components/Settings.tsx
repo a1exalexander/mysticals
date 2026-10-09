@@ -37,7 +37,14 @@ export function SettingsHost(): React.JSX.Element | null {
     setTabState(t)
   }
 
-  useEffect(() => bus.on('settings:open', () => setOpen(true)), [])
+  useEffect(
+    () =>
+      bus.on('settings:open', (p) => {
+        if (p.tab) setTab(p.tab)
+        setOpen(true)
+      }),
+    []
+  )
   useEffect(() => {
     if (!open) return
     const load = (): void => void window.api.accounts.list().then(setAccounts, () => {})

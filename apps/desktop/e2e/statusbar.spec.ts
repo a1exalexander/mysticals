@@ -24,3 +24,19 @@ test('status bar shows current and next events', async () => {
   await expect(page.getByTestId('details')).toContainText('Status sync')
   await app.close()
 })
+
+test('the sync error opens Settings on Accounts, whatever tab was used last', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1', MYSTICALS_MOCK_SYNC_ERROR: '1' } })
+  const page = await app.firstWindow()
+  await expect(page.locator('.app-loader')).toBeHidden()
+
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByTestId('settings-tab-logs').click()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('settings-sheet')).toBeHidden()
+
+  await page.getByTestId('statusbar').getByRole('button', { name: 'sync error' }).click()
+  await expect(page.getByTestId('settings-sheet')).toBeVisible()
+  await expect(page.getByTestId('settings-tab-accounts')).toHaveAttribute('aria-selected', 'true')
+  await app.close()
+})
