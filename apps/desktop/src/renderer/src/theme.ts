@@ -11,7 +11,7 @@ export const THEMES = [
   { id: 'vscode', name: 'VS Code Dark', scheme: 'dark', preview: ['#1f1f1f', '#3794ff', '#c586c0', '#4ec9b0', '#6a9955'] },
   { id: 'matrix', name: 'Matrix', scheme: 'dark', preview: ['#0a0a0a', '#3ecf68', '#a8d66a', '#6fcfa2', '#35b85a'] },
   { id: 'bubble', name: 'Bubblegum', scheme: 'light', preview: ['#fff5fa', '#d13682', '#ffa3d1', '#7cc4f2', '#cfeeff'] },
-  { id: 'toon', name: 'Cartoon', scheme: 'light', preview: ['#fffbea', '#7b3ff2', '#e21368', '#18b6f6', '#ffd60a'] },
+  { id: 'toon', name: 'Cartoon', scheme: 'light', preview: ['#fffbea', '#7b3ff2', '#d0105f', '#18b6f6', '#ffd60a'] },
   { id: 'cloud', name: 'Cloud', scheme: 'light', preview: ['#f2fefe', '#137d8b', '#e0ffff', '#f7c3d9', '#b4ebd9'] },
   { id: 'light', name: 'Light', scheme: 'light', preview: ['#ffffff', '#111111', '#525252', '#a3a3a3', '#e5e5e5'] }
 ] as const
