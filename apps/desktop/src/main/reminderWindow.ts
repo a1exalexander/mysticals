@@ -1,6 +1,12 @@
-import { app, BrowserWindow, ipcMain, screen, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, shell, type BrowserWindowConstructorOptions } from 'electron'
 import { IPC, type ReminderMeeting } from '@shared/ipc'
 import { loadRenderer, lockDown, themeBg, webPreferences } from './window'
+
+/** Native blur behind the screen. Linux has none, so it keeps a solid window. */
+const BACKDROP: Partial<Record<NodeJS.Platform, BrowserWindowConstructorOptions>> = {
+  darwin: { vibrancy: 'fullscreen-ui', visualEffectState: 'active' },
+  win32: { backgroundMaterial: 'acrylic' }
+}
 
 /** A dismiss this soon after the screen appears came from keys meant for another app. */
 const KEY_GUARD_MS = 1000
@@ -57,8 +63,9 @@ export function showReminderScreen(list: ReminderMeeting[]): void {
     skipTaskbar: true,
     hasShadow: false,
     alwaysOnTop: true,
-    // Solid, in the theme: never see-through.
-    backgroundColor: themeBg.current,
+    // Frosted where the OS blurs what is behind (the renderer lays a translucent --bg over it); solid elsewhere.
+    ...BACKDROP[process.platform],
+    backgroundColor: process.platform in BACKDROP ? '#00000000' : themeBg.current,
     webPreferences
   })
   w.setAlwaysOnTop(true, 'screen-saver')
