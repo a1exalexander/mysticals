@@ -48,7 +48,7 @@ test('right-click an event: edit, duplicate, copy and paste, delete with undo', 
   await expect(toast).toContainText('Duplicated “Gym”')
   await expect(toast).toHaveCSS('border-radius', '6px') // the menus' and popovers' corner
   await expect(blocks('Gym')).toHaveCount(2)
-  await toast.getByRole('button').click()
+  await toast.getByRole('button', { name: 'Undo' }).click()
   await expect(blocks('Gym')).toHaveCount(1)
 
   // Copy, then right-click a free time: paste puts it there.
@@ -69,7 +69,7 @@ test('right-click an event: edit, duplicate, copy and paste, delete with undo', 
   await expect(page.getByTestId('scope-prompt')).toHaveCount(0)
   await expect(toast).toContainText('Deleted “Gym”')
   await expect(blocks('Gym')).toHaveCount(1)
-  await toast.getByRole('button').click()
+  await toast.getByRole('button', { name: 'Undo' }).click()
   await expect(blocks('Gym')).toHaveCount(2)
   await app.close()
 })
@@ -90,7 +90,7 @@ test('details popover: Delete works like the menu, at once with Undo', async () 
   await expect(page.getByTestId('scope-prompt')).toHaveCount(0)
   await expect(toast).toContainText('Deleted “Gym”')
   await expect(gym).toHaveCount(0)
-  await toast.getByRole('button').click()
+  await toast.getByRole('button', { name: 'Undo' }).click()
   await expect(gym).toHaveCount(1)
   await app.close()
 })
@@ -111,5 +111,40 @@ test('right-click: a recurring event asks what to delete; a read-only one offers
   // Holidays is a read-only calendar: nothing to change, and no copy can go into it.
   await rightClick(page, 'Holiday')
   for (const id of ['edit', 'duplicate', 'copy', 'delete']) await expect(menu.getByTestId(`menu-${id}`)).toBeDisabled()
+  await app.close()
+})
+
+test('toasts: focus inside keeps one up, an error stays until closed', async () => {
+  test.slow() // waits out the 5 s auto-hide twice
+  const { app, page } = await launch()
+  const menu = page.getByTestId('event-menu')
+  const toast = page.getByTestId('toast')
+
+  // Tabbed to Undo: up past its 5 s while focused, gone 5 s after focus leaves.
+  await rightClick(page, 'Gym')
+  await menu.getByTestId('menu-duplicate').click()
+  await expect(toast).toContainText('Duplicated “Gym”')
+  await page.mouse.move(0, 0)
+  const undo = toast.getByRole('button', { name: 'Undo' })
+  await undo.focus()
+  await page.waitForTimeout(5500)
+  await expect(toast).toBeVisible()
+  await undo.blur()
+  await expect(toast).toHaveCount(0, { timeout: 7000 })
+
+  // A failed duplicate stays until its close button.
+  await app.evaluate(({ ipcMain }) => {
+    ipcMain.removeHandler('events:create')
+    ipcMain.handle('events:create', () => Promise.reject(new Error('offline')))
+  })
+  await rightClick(page, 'Gym')
+  await menu.getByTestId('menu-duplicate').click()
+  await expect(toast).toContainText("Couldn't create “Gym”")
+  await page.mouse.move(0, 0)
+  await page.waitForTimeout(5500)
+  await expect(toast).toBeVisible()
+  await page.screenshot({ path: 'e2e/screens/toast-error.png' })
+  await toast.getByRole('button', { name: 'Close' }).click()
+  await expect(toast).toHaveCount(0)
   await app.close()
 })
