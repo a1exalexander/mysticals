@@ -1,6 +1,9 @@
-/* Full-screen reminder: opaque in the theme's --bg (body), cards on --surface-2, hairline borders only. */
+/* Full-screen reminder: the theme's --bg at 72% over the OS blur (macOS vibrancy, Windows acrylic; Linux keeps a solid
+   window), cards on --surface-2, hairline borders only. */
+body:has(> #root > .rs) { background: transparent; }
 .rs {
   height: 100%; box-sizing: border-box; overflow: auto;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px;
   padding: 48px 24px;
 }
