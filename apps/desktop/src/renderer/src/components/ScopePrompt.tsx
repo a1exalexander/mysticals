@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { bus, type BusEvents } from '../bus'
 import { RecurringScope } from './ui/RecurringScope'
+import { useModal } from './ui/usePopover'
 import './ui/ui.css'
 
 /** Asks which part of a recurring series a change is for (e.g. after dragging an instance). Rendered once in the app shell. */
@@ -34,10 +35,7 @@ export function ScopePromptHost(): React.JSX.Element | null {
   }, [ask])
 
   // Modal: focus lands on the first choice and stays inside.
-  useEffect(() => {
-    const d = dialog.current
-    if (ask && d && !d.open) d.showModal()
-  }, [ask])
+  useModal(dialog, !!ask)
 
   if (!ask) return null
   const cancel = (): void => {

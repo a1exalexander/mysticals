@@ -80,3 +80,21 @@ export function usePopoverFocus(open: boolean, target: () => HTMLElement | null 
     }
   }, [open, opener])
 }
+
+/**
+ * Shows `dialog` as a modal while `open` (focus trap, inert background, Esc) and, once it's gone, gives focus back
+ * to what had it when it opened, if that's still in the page.
+ */
+export function useModal(dialog: RefObject<HTMLDialogElement | null>, open: boolean): void {
+  useEffect(() => {
+    const d = dialog.current
+    if (!open || !d || d.open) return
+    const back = document.activeElement
+    d.showModal()
+    return () => {
+      // StrictMode re-runs this while the dialog is still up: closed here, the re-run shows it again.
+      if (d.open) d.close()
+      if (document.activeElement === document.body && back instanceof HTMLElement && back.isConnected) back.focus()
+    }
+  }, [dialog, open])
+}

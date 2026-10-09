@@ -6,6 +6,7 @@ import { DateTimeField } from './ui/DateTimeField'
 import { RecurringScope } from './ui/RecurringScope'
 import { RepeatField } from './ui/RepeatField'
 import { Select } from './ui/Select'
+import { useModal } from './ui/usePopover'
 import { extraEmail } from '@mysticals/core/logic/details'
 import {
   applyForm, emptyForm, setAllDay, errorText, formFromEvent, formToInput, isEmail, moveStart, repeatChanged, soleId, splitEmails,
@@ -36,24 +37,29 @@ export function EventEditorHost(): React.JSX.Element | null {
   const dialog = useRef<HTMLDialogElement>(null)
   const session = useRef(0) // bumps on every open/close so a late save can't touch a newer editor
   const changed = useRef(false) // `dirty` for the listeners below
+  const pending = useRef<Opened | null>(null) // asked for while the form had changes: Discard opens it
+
+  // Only setters and refs, so the listeners below can keep the first render's copy.
+  const open = (o: Opened, discarding = false): void => {
+    // A changed form isn't replaced unasked: the app menu's New Event (Cmd+N) reaches past the modal.
+    if (changed.current && !discarding) {
+      pending.current = o
+      setAskScope(false)
+      return setDiscard(true)
+    }
+    pending.current = null
+    session.current++
+    setSaving(false)
+    setAskScope(false)
+    setDiscard(false)
+    setRepeatFailed(false)
+    setOpened(o)
+    setForm(null)
+    setDraft('')
+    setError('')
+  }
 
   useEffect(() => {
-    const open = (o: Opened): void => {
-      // A changed form isn't replaced unasked: the app menu's New Event (Cmd+N) reaches past the modal.
-      if (changed.current) {
-        setAskScope(false)
-        return setDiscard(true)
-      }
-      session.current++
-      setSaving(false)
-      setAskScope(false)
-      setDiscard(false)
-      setRepeatFailed(false)
-      setOpened(o)
-      setForm(null)
-      setDraft('')
-      setError('')
-    }
     const offs = [
       bus.on('event:create', (prefill) => open({ mode: 'create', prefill })),
       bus.on('event:edit', ({ event }) => open({ mode: 'edit', event })),
@@ -100,11 +106,13 @@ export function EventEditorHost(): React.JSX.Element | null {
   changed.current = dirty
 
   const requestClose = (): void => {
+    pending.current = null
     if (!dirty) return close()
     setAskScope(false)
     setDiscard(true)
   }
   const keepEditing = (): void => {
+    pending.current = null
     setDiscard(false)
     titleRef.current?.focus()
   }
@@ -152,10 +160,7 @@ export function EventEditorHost(): React.JSX.Element | null {
   })
 
   // A modal dialog: Tab stays inside and the app behind is inert.
-  useEffect(() => {
-    const d = dialog.current
-    if (d && !d.open) d.showModal()
-  })
+  useModal(dialog, !!opened && !!form)
 
   if (!opened || !form) return null
 
@@ -319,7 +324,9 @@ export function EventEditorHost(): React.JSX.Element | null {
         ) : discard ? (
           <div className="mc-actions" role="group" aria-label={t('editor.discardTitle')}>
             <span className="editor-discard">{t('editor.discardTitle')}</span>
-            <button type="button" className="mc-btn danger" onClick={close}>{t('editor.discard')}</button>
+            <button type="button" className="mc-btn danger" onClick={() => (pending.current ? open(pending.current, true) : close())}>
+              {t('editor.discard')}
+            </button>
             <button type="button" className="mc-btn" autoFocus onClick={keepEditing}>{t('editor.keepEditing')}</button>
           </div>
         ) : (

@@ -202,7 +202,7 @@ test('Esc and Cmd+Enter in a dialog stacked on the editor stay with that dialog'
   await app.close()
 })
 
-test('the menu\'s New Event asks before replacing a changed editor; Cmd+Enter at the prompt still saves', async () => {
+test('the menu\'s New Event asks before replacing a changed editor; Cmd+Enter at the prompt saves, Discard opens it', async () => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()
   await expect(page.getByTestId('calendar-view')).toBeVisible()
@@ -228,5 +228,14 @@ test('the menu\'s New Event asks before replacing a changed editor; Cmd+Enter at
   await expect(editor).toHaveCount(0)
   const all = { start: '2000-01-01T00:00:00Z', end: '2100-01-01T00:00:00Z' }
   await expect.poll(async () => (await page.evaluate((r) => window.api.events.list(r), all)).filter((e) => e.title === 'Keep me').length).toBe(1)
+
+  // Discard drops the changes and opens the new event that was asked for.
+  await page.getByTestId('new-event').click()
+  await title.fill('Drop me')
+  await menuNew()
+  await discard.getByRole('button', { name: 'Discard' }).click()
+  await expect(discard).toHaveCount(0)
+  await expect(title).toHaveValue('')
+  await expect(title).toBeFocused()
   await app.close()
 })

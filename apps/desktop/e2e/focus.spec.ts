@@ -9,7 +9,9 @@ test('the editor and the scope prompt keep focus inside; popovers take it and gi
   const focusIn = (testId: string): Promise<boolean> => page.getByTestId(testId).evaluate((el) => el.contains(document.activeElement))
 
   // Tab walks round the editor, never out into the sidebar behind it.
-  await page.keyboard.press('n')
+  const newEvent = page.getByTestId('new-event')
+  await newEvent.focus()
+  await page.keyboard.press('Enter')
   const editor = page.getByTestId('editor')
   await expect(editor.getByPlaceholder('New Event')).toBeFocused()
   await expect(page.getByRole('dialog', { name: 'New Event' })).toBeVisible()
@@ -24,10 +26,14 @@ test('the editor and the scope prompt keep focus inside; popovers take it and gi
   await expect(editor).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(editor).toHaveCount(0)
+  // Closed, it gives focus back to what opened it.
+  await expect(newEvent).toBeFocused()
 
   // The scope prompt starts on its first choice and keeps focus too.
-  await page.getByTestId('view-switch-day').click()
-  await page.getByTestId('event-block').filter({ hasText: 'Morning run' }).first().click()
+  await page.keyboard.press('d')
+  const run = page.getByTestId('event-block').filter({ hasText: 'Morning run' }).first()
+  await run.focus()
+  await page.keyboard.press('Enter')
   await page.getByTestId('details').getByRole('button', { name: 'Delete' }).click()
   const prompt = page.getByTestId('scope-prompt')
   await expect(prompt.getByRole('button', { name: 'This event' })).toBeFocused()
@@ -44,6 +50,7 @@ test('the editor and the scope prompt keep focus inside; popovers take it and gi
   await prompt.getByRole('button', { name: 'This event' }).focus()
   await page.keyboard.press('Escape')
   await expect(prompt).toHaveCount(0)
+  await expect(run).toBeFocused()
 
   // Opened with the mouse from a grid event: nothing gets focus back, neither the event (no ring, no tooltip a second
   // later) nor what had keyboard focus before (grid events don't take focus on click).
