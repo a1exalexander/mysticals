@@ -58,6 +58,8 @@ interface Props {
   colorOf: ColorOf
   canDrag?: CanDrag
   moveTo?: MoveTo
+  /** Bumped by "today": scroll back to now. */
+  todays?: number
 }
 
 /** An event being dragged: where it would land (day index in `days`, minutes of that day). */
@@ -69,7 +71,7 @@ interface Moving {
   end: number
 }
 
-export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): React.JSX.Element {
+export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Props): React.JSX.Element {
   const scroller = useRef<HTMLDivElement>(null)
   const [now, setNow] = useState(() => new Date())
   const [drag, setDrag] = useState<{ day: Date; a: number; b: number } | null>(null)
@@ -142,7 +144,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
     window.addEventListener('keydown', key, true)
   }
 
-  // Opens on a whole hour: with today shown, the one that puts now about a third down the grid, else 08:00.
+  // Opens (and returns on "today") on a whole hour: with today shown, the one that puts now about a third down the grid, else 08:00.
   useEffect(() => {
     const el = scroller.current
     if (!el) return
@@ -150,7 +152,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
     const hours = (el.clientHeight - (el.querySelector<HTMLElement>('.tg-head')?.offsetHeight ?? 0)) / HOUR
     const top = days.some((d) => isToday(d)) ? Math.floor(t.getHours() + t.getMinutes() / 60 - hours / 3) : 8
     el.scrollTop = pxOf(Math.max(0, top) * 60) - 8
-  }, []) // only on mount: later steps keep the user's scroll
+  }, [todays]) // not on ‹ › steps: they keep the user's scroll
 
   // Tick on the minute so the now-line and its clock never lag behind the real time.
   useEffect(() => {

@@ -41,7 +41,12 @@ const go = (dir: 1 | -1): void => {
   // The agenda steps one day at a time.
   nav.set({ date: shiftDate(view === 'agenda' ? 'day' : view, date, dir) })
 }
-const today = (): void => nav.set({ date: new Date() })
+// Each "today" bumps it, and the time grid scrolls back to now; ‹ › keep the user's scroll.
+let todays = 0
+const today = (): void => {
+  todays++
+  nav.set({ date: new Date() })
+}
 
 // Whether the agenda shows the next days too: a per-device preference.
 const AHEAD_KEY = 'mysticals-agenda-ahead'
@@ -219,7 +224,7 @@ export function CalendarView(): React.JSX.Element {
       ) : view === 'month' ? (
         <MonthGrid date={date} events={events} colorOf={colorOf} canDrag={canDrag} moveTo={moveTo} />
       ) : (
-        <TimeGrid days={days} events={events} colorOf={colorOf} canDrag={canDrag} moveTo={moveTo} />
+        <TimeGrid days={days} events={events} colorOf={colorOf} canDrag={canDrag} moveTo={moveTo} todays={todays} />
       )}
       {firstSync.length > 0 && !events.length && (
         <div className="first-sync" role="status" data-testid="first-sync">
