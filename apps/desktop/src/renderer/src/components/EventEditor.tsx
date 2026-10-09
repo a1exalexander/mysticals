@@ -35,9 +35,15 @@ export function EventEditorHost(): React.JSX.Element | null {
   const titleRef = useRef<HTMLInputElement>(null)
   const dialog = useRef<HTMLDialogElement>(null)
   const session = useRef(0) // bumps on every open/close so a late save can't touch a newer editor
+  const changed = useRef(false) // `dirty` for the listeners below
 
   useEffect(() => {
     const open = (o: Opened): void => {
+      // A changed form isn't replaced unasked: the app menu's New Event (Cmd+N) reaches past the modal.
+      if (changed.current) {
+        setAskScope(false)
+        return setDiscard(true)
+      }
       session.current++
       setSaving(false)
       setAskScope(false)
@@ -90,7 +96,8 @@ export function EventEditorHost(): React.JSX.Element | null {
   const pendingEmails = splitEmails(draft)
   const invitees = form ? [...form.attendees, ...pendingEmails] : []
   const canSave = !!form && !!form.accountId && !!form.calendarId && !saving
-  const dirty = !!draft.trim() || JSON.stringify(form) !== JSON.stringify(initial)
+  const dirty = !!form && (!!draft.trim() || JSON.stringify(form) !== JSON.stringify(initial))
+  changed.current = dirty
 
   const requestClose = (): void => {
     if (!dirty) return close()
@@ -104,6 +111,7 @@ export function EventEditorHost(): React.JSX.Element | null {
 
   const save = async (scope?: DeleteScope): Promise<void> => {
     if (!form || !canSave) return
+    setDiscard(false)
     if (editing?.recurringEventId && !scope) return setAskScope(true)
     const mine = session.current
     setError('')
