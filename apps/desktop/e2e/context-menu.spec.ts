@@ -9,16 +9,13 @@ const launch = async (): Promise<{ app: Awaited<ReturnType<typeof electron.launc
   return { app, page }
 }
 
-/** Right-click until the menu stays: the day view's own scroll-to-now (which closes menus) may land after the click. */
+/** Right-click an event by its title, or `target` at `position`; its menu shows. */
 const rightClick = async (
   page: Page, target: string | Locator, menu = 'event-menu', position?: { x: number; y: number }
 ): Promise<void> => {
   const el = typeof target === 'string' ? page.getByTestId('event-block').filter({ hasText: target }).first() : target
-  await expect(async () => {
-    await el.click({ button: 'right', position })
-    await page.waitForTimeout(150)
-    await expect(page.getByTestId(menu)).toBeVisible({ timeout: 100 })
-  }).toPass()
+  await el.click({ button: 'right', position })
+  await expect(page.getByTestId(menu)).toBeVisible()
 }
 
 test('right-click an event: edit, duplicate, copy and paste, delete with undo', async () => {
@@ -74,17 +71,47 @@ test('right-click an event: edit, duplicate, copy and paste, delete with undo', 
   await app.close()
 })
 
+test('a scroll made just before a menu or popover opens leaves it open; a later one closes it', async () => {
+  const { app, page } = await launch()
+  const grid = page.locator('.tg')
+  const scroll = (): Promise<number> => grid.evaluate((el) => (el.scrollTop = el.scrollTop ? 0 : 100))
+  // The grid scrolls, then the click lands in the same frame: the scroll's event comes after what it opened.
+  const scrollThen = (target: Locator, button: 'left' | 'right'): Promise<void> =>
+    target.evaluate((el, button) => {
+      const grid = document.querySelector('.tg')!
+      grid.scrollTop = grid.scrollTop ? 0 : 100
+      if (button === 'left') return (el as HTMLElement).click()
+      const at = { clientX: el.getBoundingClientRect().left + 20, clientY: grid.getBoundingClientRect().bottom - 40 }
+      el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, ...at }))
+    }, button)
+
+  // The free-slot menu (EventMenu).
+  const slot = page.getByTestId('slot-menu')
+  await scrollThen(page.locator('.tg-col').first(), 'right')
+  await page.waitForTimeout(150)
+  await expect(slot).toBeVisible()
+  await scroll()
+  await expect(slot).toBeHidden()
+
+  // A Select's list in the editor (usePopover).
+  await page.keyboard.press('n')
+  await expect(page.getByTestId('editor')).toBeVisible()
+  const list = page.getByRole('listbox')
+  await scrollThen(page.getByTestId('editor-account'), 'left')
+  await page.waitForTimeout(150)
+  await expect(list).toBeVisible()
+  await scroll()
+  await expect(list).toBeHidden()
+  await app.close()
+})
+
 test('details popover: Delete works like the menu, at once with Undo', async () => {
   const { app, page } = await launch()
   const gym = page.getByTestId('event-block').filter({ hasText: 'Gym' })
   const details = page.getByTestId('details')
   const toast = page.getByTestId('toast')
-  // Click until the popover stays: the day view's scroll-to-now may close it.
-  await expect(async () => {
-    await gym.click()
-    await page.waitForTimeout(150)
-    await expect(details).toBeVisible({ timeout: 100 })
-  }).toPass()
+  await gym.click()
+  await expect(details).toBeVisible()
   await details.getByRole('button', { name: 'Delete' }).click()
   await expect(page.getByTestId('details')).toBeHidden()
   await expect(page.getByTestId('scope-prompt')).toHaveCount(0)

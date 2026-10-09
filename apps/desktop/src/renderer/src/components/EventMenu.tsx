@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CalEvent, DeleteScope } from '@shared/types'
 import { bus, type BusEvents } from '../bus'
 import { useDirectory } from './ui/useDirectory'
+import { onLaterScroll } from './ui/usePopover'
 import { canEdit, formatWhen } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
 import { copyInput, type PasteSlot } from '@mysticals/core/logic/copy'
@@ -168,13 +169,13 @@ export function EventMenuHost(): React.JSX.Element | null {
     }
     window.addEventListener('mousedown', onDown, true)
     window.addEventListener('keydown', onKey, true)
-    window.addEventListener('scroll', close, true)
+    const offScroll = onLaterScroll(close)
     window.addEventListener('resize', close)
     window.addEventListener('blur', close)
     return () => {
       window.removeEventListener('mousedown', onDown, true)
       window.removeEventListener('keydown', onKey, true)
-      window.removeEventListener('scroll', close, true)
+      offScroll()
       window.removeEventListener('resize', close)
       window.removeEventListener('blur', close)
     }

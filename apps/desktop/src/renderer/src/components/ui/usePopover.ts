@@ -1,6 +1,18 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 
 /**
+ * Calls `on` for scrolls from the next frame on; returns the unsubscribe. Scroll events fire a frame late, so one for
+ * a scroll made just before a menu or popover opened (a focus, the grid's scroll to now, a wheel) would close it at once.
+ */
+export function onLaterScroll(on: (e: Event) => void): () => void {
+  const frame = requestAnimationFrame(() => window.addEventListener('scroll', on, true))
+  return () => {
+    cancelAnimationFrame(frame)
+    window.removeEventListener('scroll', on, true)
+  }
+}
+
+/**
  * A fixed popover anchored to `anchor` (the trigger's rect when it opened): below it, or above when it
  * would overflow, kept inside the window. Closes on an outside mousedown, Esc, an outside scroll and resize.
  * Returns the popover's style: hidden until it's measured.
@@ -43,12 +55,12 @@ export function usePopover(
     }
     window.addEventListener('mousedown', onDown, true)
     window.addEventListener('keydown', onKey, true)
-    window.addEventListener('scroll', onScroll, true)
+    const offScroll = onLaterScroll(onScroll)
     window.addEventListener('resize', done)
     return () => {
       window.removeEventListener('mousedown', onDown, true)
       window.removeEventListener('keydown', onKey, true)
-      window.removeEventListener('scroll', onScroll, true)
+      offScroll()
       window.removeEventListener('resize', done)
     }
   }, [anchor, root, pop])

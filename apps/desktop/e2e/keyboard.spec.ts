@@ -33,16 +33,12 @@ test('week view events work from the keyboard: Tab, Enter, the menu key, ↑/↓
   await expect(focused.locator('.ev-title')).toHaveText(title)
 
   // The menu key and Shift+F10 open its menu, with an item focused; closing it hands focus back to the pill.
-  // Retried: a scroll (focusing scrolls the grid) closes menus and may land after the key.
   const menu = page.getByTestId('event-menu')
   const stop = today.locator('[tabindex="0"]')
   await stop.focus()
   for (const key of ['ContextMenu', 'Shift+F10']) {
-    await expect(async () => {
-      await page.keyboard.press(key)
-      await page.waitForTimeout(150)
-      await expect(menu).toBeVisible({ timeout: 100 })
-    }).toPass()
+    await page.keyboard.press(key)
+    await expect(menu).toBeVisible()
     await expect(menu.locator('button:focus')).toHaveCount(1)
     await page.keyboard.press('Escape')
     await expect(menu).toBeHidden()
@@ -54,12 +50,10 @@ test('week view events work from the keyboard: Tab, Enter, the menu key, ↑/↓
   await page.keyboard.press('Enter')
   await expect(menu).toBeHidden()
   await expect(stop).toBeFocused()
-  const rightClick = (): Promise<void> =>
-    expect(async () => {
-      await stop.click({ button: 'right' })
-      await page.waitForTimeout(150)
-      await expect(menu).toBeVisible({ timeout: 100 })
-    }).toPass()
+  const rightClick = async (): Promise<void> => {
+    await stop.click({ button: 'right' })
+    await expect(menu).toBeVisible()
+  }
   // A right-click on the pill that already has keyboard focus: it gets it back.
   await rightClick()
   await page.keyboard.press('Escape')
