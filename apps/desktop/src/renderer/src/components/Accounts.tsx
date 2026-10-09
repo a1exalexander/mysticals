@@ -77,7 +77,7 @@ export function AccountsHost(): React.JSX.Element | null {
             data-testid="open-settings"
             onClick={() => {
               close()
-              bus.emit('settings:open', {})
+              bus.emit('settings:open', { tab: 'accounts' })
             }}
           >
             {t('accounts.manage')}

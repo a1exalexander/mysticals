@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { Account, Calendar, EventSnap, LogChange, LogEntry, LogKind, PartStat } from '@shared/types'
-import type { Key } from '@mysticals/core/i18n'
+import type { Account, Calendar, EventSnap, LogChange, LogEntry, LogKind } from '@shared/types'
+import { isKey, type Key } from '@mysticals/core/i18n'
 import { STATUS_ICON } from '@mysticals/core/logic/details'
 import { errorText } from './AccountsShared'
 import { Select } from './ui/Select'
@@ -31,6 +31,11 @@ const FIELD: Record<string, Key> = {
 
 const time = (iso: string, allDay = false): string => fmt(new Date(allDay ? `${iso}T00:00:00` : iso), allDay ? 'd MMM yyyy' : 'd MMM yyyy, HH:mm')
 const entryKey = (e: LogEntry, i: number): string => `${e.at}|${e.kind}|${i}`
+// A scope or answer read from the log file; an old or malformed one shows as it is.
+const known = (group: 'scope' | 'partstat', v: string): string => {
+  const key = `${group}.${v}`
+  return isKey(key) ? t(key) : v
+}
 
 /** Settings > Logs: per-account history from the main process (`window.logs`), newest first, each entry expandable. */
 export function LogsPanel({ accounts }: { accounts: Account[] }): React.JSX.Element {
@@ -204,13 +209,13 @@ function Details({ e, email, calName }: { e: LogEntry; email: string; calName: (
       {e.scope && (
         <>
           <dt>{t('logs.scope')}</dt>
-          <dd>{t(`scope.${e.scope}`)}</dd>
+          <dd>{known('scope', e.scope)}</dd>
         </>
       )}
       {e.status && (
         <>
           <dt>{t('logs.answer')}</dt>
-          <dd>{t(`partstat.${e.status}`)}</dd>
+          <dd>{known('partstat', e.status)}</dd>
         </>
       )}
       {!!e.changes?.length && (
@@ -255,7 +260,7 @@ function EventRows({ ev, calName }: { ev: EventSnap; calName: (id: string) => st
   if (ev.organizer) rows.push(['logs.organizer', ev.organizer.name ? `${ev.organizer.name} <${ev.organizer.email}>` : ev.organizer.email])
   if (ev.location) rows.push(['logs.location', ev.location])
   if (ev.conferenceUrl) rows.push(['logs.call', ev.conferenceUrl])
-  if (ev.myStatus) rows.push(['logs.myStatus', `${STATUS_ICON[ev.myStatus]} ${t(`partstat.${ev.myStatus}`)}`])
+  if (ev.myStatus) rows.push(['logs.myStatus', `${STATUS_ICON[ev.myStatus]} ${known('partstat', ev.myStatus)}`])
   if (ev.recurringEventId) rows.push(['logs.series', ev.recurringEventId])
   if (ev.attendees.length)
     rows.push([
@@ -263,7 +268,7 @@ function EventRows({ ev, calName }: { ev: EventSnap; calName: (id: string) => st
       <ul className="log-people" key="people">
         {ev.attendees.map((a) => (
           <li key={a.email}>
-            <span className={`log-rsvp is-${a.status}`} title={t(`partstat.${a.status}`)}>
+            <span className={`log-rsvp is-${a.status}`} title={known('partstat', a.status)}>
               {STATUS_ICON[a.status]}
             </span>{' '}
             {a.name ? `${a.name} <${a.email}>` : a.email}
@@ -299,6 +304,6 @@ function fieldName(field: string): string {
 function value(c: LogChange, v: string | undefined, allDay = false): string {
   if (v === undefined) return '—'
   if ((c.field === 'start' || c.field === 'end') && !Number.isNaN(Date.parse(v))) return time(v, allDay)
-  if (c.field === 'myStatus' || c.field.startsWith('attendee:')) return t(`partstat.${v as PartStat}`)
+  if (c.field === 'myStatus' || c.field.startsWith('attendee:')) return known('partstat', v)
   return v
 }

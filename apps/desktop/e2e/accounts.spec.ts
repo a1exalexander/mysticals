@@ -4,6 +4,12 @@ test('add-account sheet shows inline errors; settings renames an account', async
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()
 
+  // Settings last left on Themes: "Manage accounts" below still opens it on Accounts.
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByTestId('settings-tab-themes').click()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('settings-sheet')).toBeHidden()
+
   await page.getByRole('button', { name: 'Add calendar' }).click()
   const sheet = page.getByTestId('accounts-sheet')
   await expect(sheet).toBeVisible()
@@ -27,6 +33,7 @@ test('add-account sheet shows inline errors; settings renames an account', async
   await page.getByTestId('open-settings').click()
   const settings = page.getByTestId('settings-sheet')
   await expect(settings).toBeVisible()
+  await expect(page.getByTestId('settings-tab-accounts')).toHaveAttribute('aria-selected', 'true')
   await expect(sheet).toBeHidden()
   const label = page.getByTestId('account-label-work')
   await expect(label).toHaveValue('Work')

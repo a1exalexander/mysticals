@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fmt, resolveLocale, t } from './i18n'
+import { fmt, isKey, resolveLocale, t } from './i18n'
 import { en } from './i18n/en'
 import { uk } from './i18n/uk'
 
@@ -23,6 +23,14 @@ describe('t', () => {
       expect(uk[k], k).toBeDefined()
       expect(names(uk[k]), k).toEqual(names(en[k]))
     }
+  })
+})
+
+describe('isKey', () => {
+  it('knows messages and nothing else', () => {
+    expect(isKey('partstat.accepted')).toBe(true)
+    expect(isKey('partstat.maybe')).toBe(false)
+    expect(isKey('constructor')).toBe(false)
   })
 })
 

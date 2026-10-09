@@ -31,6 +31,9 @@ export function t(locale: Locale, key: Key, params?: Params): string {
   return params ? text.replace(/\{(\w+)\}/g, (m, k: string) => (k in params ? String(params[k]) : m)) : text
 }
 
+/** Whether `key` is a message, for keys built from outside data (an old log entry may hold an unknown value). */
+export const isKey = (key: string): key is Key => Object.hasOwn(en, key)
+
 export const dateLocale = (locale: Locale): typeof enUS => (locale === 'uk' ? ukDates : enUS)
 
 /**
