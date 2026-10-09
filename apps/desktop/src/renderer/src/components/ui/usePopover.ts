@@ -57,23 +57,26 @@ export function usePopover(
 }
 
 /**
- * While `open`, focus moves to `target()` (a heading with tabIndex -1, or a control); on close it goes back to
- * `opener` while it's still there, else to what had it before, unless the user put it somewhere else meanwhile.
- * Pass the opener when known: what had focus before can be unrelated (grid blocks don't take focus on click).
+ * While `open`, focus moves to `target()` (a heading with tabIndex -1, or a control). On close it goes back to what
+ * had keyboard focus (:focus-visible) when it opened, like the event menu: a mouse user wants no ring, and no tooltip
+ * on an event, afterwards. Pass the `opener` when known: while it's still in the page only it gets focus back, as what
+ * had focus before can be unrelated (grid events don't take focus on click).
  */
 export function usePopoverFocus(open: boolean, target: () => HTMLElement | null | undefined, opener?: HTMLElement): void {
   const back = useRef<Element | null>(null)
   useEffect(() => {
     if (!open) return
     const el = target()
+    const was = document.activeElement
     // StrictMode runs this twice: the second time focus is already on el.
-    if (document.activeElement !== el) back.current = document.activeElement
+    if (was !== el) back.current = was?.matches(':focus-visible') ? was : null
     el?.focus()
     return () => {
-      // Focus inside the closed popover fell back to <body>.
-      if (document.activeElement !== document.body) return
-      const to = opener?.isConnected ? opener : back.current
-      if (to instanceof HTMLElement) to.focus()
+      const to = back.current
+      // Focus inside the closed popover fell back to <body>; leave it if the user put it somewhere else.
+      if (document.activeElement !== document.body || !(to instanceof HTMLElement) || !to.isConnected) return
+      if (opener?.isConnected && opener !== to) return
+      to.focus()
     }
   }, [open, opener])
 }

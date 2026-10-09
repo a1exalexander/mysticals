@@ -20,14 +20,17 @@ test('week view events work from the keyboard: Tab, Enter, the menu key, ↑/↓
   for (let i = 0; i < 40 && !(await focused.count()); i++) await page.keyboard.press('Tab')
   await expect(focused).toHaveAttribute('data-testid', 'event-block')
 
-  // Enter opens its details; focus stays on the event.
+  // Enter opens its details and focus moves in; closing hands it back to the event.
   const title = (await focused.locator('.ev-title').textContent()) ?? ''
   await page.keyboard.press('Enter')
   const details = page.getByTestId('details')
   await expect(details).toBeVisible()
   await expect(details).toContainText(title)
+  await expect(details.getByRole('heading')).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(details).toBeHidden()
+  await expect(focused).toHaveAttribute('data-testid', 'event-block')
+  await expect(focused.locator('.ev-title')).toHaveText(title)
 
   // The menu key and Shift+F10 open its menu, with an item focused; closing it hands focus back to the pill.
   // Retried: a scroll (focusing scrolls the grid) closes menus and may land after the key.
@@ -80,6 +83,7 @@ test('week view events work from the keyboard: Tab, Enter, the menu key, ↑/↓
   await page.keyboard.press('Space')
   await expect(details).toBeVisible()
   await page.keyboard.press('Escape')
+  await expect(next).toHaveAttribute('tabindex', '-1')
 
   // ←/→ (h/l) step to the neighbouring day's events and leave the period alone; so do t and the view keys.
   const stops = page.locator('.tg-col > [tabindex="0"]')

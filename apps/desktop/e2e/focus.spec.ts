@@ -45,30 +45,35 @@ test('the editor and the scope prompt keep focus inside; popovers take it and gi
   await page.keyboard.press('Escape')
   await expect(prompt).toHaveCount(0)
 
-  // Opened from a grid block (which doesn't take focus), closing doesn't jump back to whatever had focus before.
-  await page.getByRole('button', { name: 'today', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'today', exact: true })).toBeFocused()
-  await page.getByTestId('event-block').filter({ hasText: 'Gym' }).first().click()
-  await expect(page.getByTestId('details').getByRole('heading')).toBeFocused()
-  await page.keyboard.press('Escape')
-  await expect(page.getByTestId('details')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'today', exact: true })).not.toBeFocused()
-
-  // Details: focus moves to its heading, and back to the row that opened it on close.
-  await page.keyboard.press('a')
-  const row = page.locator('.ag-row').filter({ hasText: 'Quarterly roadmap sync' })
-  await row.dblclick()
+  // Opened with the mouse from a grid event: nothing gets focus back, neither the event (no ring, no tooltip a second
+  // later) nor what had keyboard focus before (grid events don't take focus on click).
+  const today = page.getByRole('button', { name: 'today', exact: true })
+  await today.focus()
+  const gym = page.getByTestId('event-block').filter({ hasText: 'Gym' }).first()
+  await gym.click()
   const details = page.getByTestId('details')
   await expect(details.getByRole('heading')).toBeFocused()
+  await page.mouse.move(5, 790)
   await page.keyboard.press('Escape')
   await expect(details).toHaveCount(0)
-  await expect(row).toBeFocused()
+  await expect(today).not.toBeFocused()
+  await expect(gym).not.toBeFocused()
+  await page.waitForTimeout(1200)
+  await expect(page.getByTestId('event-tooltip')).toHaveCount(0)
 
-  // Invites panel: the same.
-  await page.getByTestId('invites-button').click()
+  // Invites panel from the keyboard: focus moves in, and back to its button on close; after a click it doesn't.
+  const invites = page.getByTestId('invites-button')
+  await invites.focus()
+  await page.keyboard.press('Enter')
   await expect(page.locator('.invites-title')).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(page.locator('.invites-panel')).toHaveCount(0)
-  await expect(page.getByTestId('invites-button')).toBeFocused()
+  await expect(invites).toBeFocused()
+  await invites.evaluate((el) => (el as HTMLElement).blur())
+  await invites.click()
+  await expect(page.locator('.invites-title')).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.invites-panel')).toHaveCount(0)
+  await expect(invites).not.toBeFocused()
   await app.close()
 })
