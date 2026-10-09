@@ -56,24 +56,34 @@ test('editor requires an explicit account; RSVP goes through the invite account'
   await app.close()
 })
 
-test('switches on light themes: the off knob is white, not the ink that reads as on', async () => {
+test('switches on light themes: off is a white knob on a pale track, not the ink that reads as on', async () => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()
   await expect(page.getByTestId('calendar-view')).toBeVisible()
-  await page.evaluate(() => localStorage.setItem('mysticals-theme', 'light'))
-  await page.reload()
-  await expect(page.locator('html')).toHaveAttribute('data-scheme', 'light')
-  await expect(page.getByTestId('calendar-view')).toBeVisible()
+  // Off track is --line, checked track --accent; Cartoon's ink --line-strong track used to read as on.
+  const themes = [
+    { id: 'light', off: 'rgb(229, 229, 229)', on: 'rgb(17, 17, 17)' },
+    { id: 'toon', off: 'rgb(241, 225, 164)', on: 'rgb(123, 63, 242)' }
+  ]
+  for (const { id, off, on } of themes) {
+    await page.evaluate((id) => localStorage.setItem('mysticals-theme', id), id)
+    await page.reload()
+    await expect(page.locator('html')).toHaveAttribute('data-scheme', 'light')
+    await expect(page.getByTestId('calendar-view')).toBeVisible()
 
-  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.send('menu', 'new-event'))
-  const allDay = page.getByTestId('editor').getByRole('switch', { name: 'All-day' })
-  await expect(allDay).not.toBeChecked()
-  const knob = (): Promise<string> => allDay.evaluate((el) => getComputedStyle(el, '::after').backgroundColor)
-  expect(await knob()).toBe('rgb(255, 255, 255)')
-  // Checked stays as it was: the --on-accent knob on the accent track.
-  await allDay.click()
-  await expect(allDay).toBeChecked()
-  expect(await knob()).toBe('rgb(255, 255, 255)')
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.send('menu', 'new-event'))
+    const allDay = page.getByTestId('editor').getByRole('switch', { name: 'All-day' })
+    await expect(allDay).not.toBeChecked()
+    const knob = (): Promise<string> => allDay.evaluate((el) => getComputedStyle(el, '::after').backgroundColor)
+    const track = (): Promise<string> => allDay.evaluate((el) => getComputedStyle(el).backgroundColor)
+    expect(await knob()).toBe('rgb(255, 255, 255)')
+    await expect.poll(track).toBe(off)
+    // Checked stays as it was: the --on-accent knob on the accent track.
+    await allDay.click()
+    await expect(allDay).toBeChecked()
+    expect(await knob()).toBe('rgb(255, 255, 255)')
+    await expect.poll(track).toBe(on)
+  }
 
   await page.evaluate(() => localStorage.removeItem('mysticals-theme'))
   await app.close()
