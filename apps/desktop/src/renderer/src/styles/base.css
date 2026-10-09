@@ -601,6 +601,12 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
   position: absolute; left: 0; right: 0; z-index: 0; pointer-events: none;
   background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--muted) 12%, transparent) 0 5px, transparent 5px 10px);
 }
+/* "+N" in the last column a narrow day fits: the side-by-side blocks past it; opens the day. */
+.tg-more {
+  position: absolute; z-index: 1; border: 0; border-radius: 0; padding: 3px 0 0; display: flex; justify-content: center; align-items: flex-start;
+  background: var(--hover); color: var(--muted); font: 600 10.5px/14px var(--mono);
+}
+.tg-more:hover { z-index: 2; color: var(--fg); }
 .tg-busy.is-capped { border-block: 1px solid color-mix(in srgb, var(--muted) 35%, transparent); }
 .ev-meta { font: 10px/14px var(--mono); opacity: 0.8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ev-timed.is-short { flex-direction: row; gap: 6px; align-items: center; padding-top: 0; padding-bottom: 0; }

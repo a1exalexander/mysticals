@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { addDays, format, isSameDay, isToday, startOfDay } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
@@ -6,7 +6,7 @@ import { tooltipHover } from '../components/EventTooltip'
 import { eventButton, eventMenu, slotMenu } from '../components/EventMenu'
 import { eventPlace } from '@mysticals/core/logic/meeting'
 import { nav } from './nav'
-import { dragRange, eventBounds, eventsOnDay, isPast, layoutDayLong, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
+import { dragRange, eventBounds, eventsOnDay, fitColumns, isPast, layoutDayLong, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
 import { moveRange, resizeEnd, resizeStart } from './drag'
 import { currentLocale, fmt, t } from '../i18n'
@@ -17,7 +17,14 @@ const MAX_ALLDAY = 3 // all-day events per day before the row collapses
 const MIN_DUR = 22 // minutes; shorter events render (and pack) as if this long
 const RAIL = 8 // px per rail lane (6px bar + gap) for long events in rails mode
 const CASCADE = 14 // px each overlapping block steps right in cascade mode
+const MIN_BLOCK = 48 // px; side-by-side blocks any narrower fold into a "+N"
 const pxOf = (min: number): number => (min / 60) * HOUR
+
+/** Left and width of a block in column `col` of `cols`, `span` columns wide, right of `inset` rail lanes. */
+const beside = (col: number, cols: number, span: number, inset: number): React.CSSProperties => ({
+  left: `calc(${inset * RAIL}px + (100% - ${inset * RAIL}px) * ${col / cols} + 1px)`,
+  width: `calc((100% - ${inset * RAIL}px) * ${span / cols} - 3px)`
+})
 
 const hhmm = (d: Date): string => format(d, 'HH:mm')
 /** "10–23", "9:30–20": the hours a long event covers on a day, for its all-day chip. */
@@ -73,6 +80,9 @@ interface Moving {
 
 export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Props): React.JSX.Element {
   const scroller = useRef<HTMLDivElement>(null)
+  const body = useRef<HTMLDivElement>(null)
+  // Width of the day columns together, for how many blocks fit side by side.
+  const [area, setArea] = useState(Infinity)
   const [now, setNow] = useState(() => new Date())
   const [drag, setDrag] = useState<{ day: Date; a: number; b: number } | null>(null)
   const [moving, setMoving] = useState<Moving | null>(null)
@@ -154,6 +164,16 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
     el.scrollTop = pxOf(Math.max(0, top) * 60) - 8
   }, [todays]) // not on ‹ › steps: they keep the user's scroll
 
+  useLayoutEffect(() => {
+    const el = body.current
+    if (!el) return
+    const measure = (): void => setArea(el.clientWidth - (el.querySelector<HTMLElement>('.tg-gutter')?.offsetWidth ?? 0))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   // Tick on the minute so the now-line and its clock never lag behind the real time.
   useEffect(() => {
     let t: ReturnType<typeof setTimeout>
@@ -199,8 +219,11 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
   const multi = days.length > 1
   const showsToday = days.some((d) => isToday(d))
   const layouts = days.map((d) => layoutDayLong(events, d, MIN_DUR, long))
+  // Side by side, as many columns as stay MIN_BLOCK wide (at least one beside the "+N"); the "+N" opens the day.
+  const fits = layouts.map((l) => Math.max(2, Math.floor((area / days.length - RAIL * Math.max(0, ...l.timed.map((p) => p.inset))) / MIN_BLOCK)))
+  const fitted = layouts.map((l, i) => fitColumns(l.timed, fits[i], MIN_DUR))
   // One Tab stop per day column, its earliest event; ↑/↓ reach the others.
-  const firsts = layouts.map((l) => [...l.rails, ...l.timed].sort((a, b) => a.start - b.start)[0]?.item)
+  const firsts = layouts.map((l, i) => [...l.rails, ...fitted[i].shown].sort((a, b) => a.start - b.start)[0]?.item)
   /** All-day events, then long timed ones moved up (all-day mode) with their hours as a tag. */
   const allDayOf = (i: number): { e: CalEvent; tag?: string }[] => [
     ...eventsOnDay(events, days[i]).filter((e) => e.allDay).map((e) => ({ e })),
@@ -281,7 +304,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
         </div>
       </div>
 
-      <div className="tg-body" style={{ height: pxOf(1440) }}>
+      <div className="tg-body" style={{ height: pxOf(1440) }} ref={body}>
         <div className="tg-gutter">
           {Array.from({ length: 23 }, (_, i) => i + 1).map((h) => (
             <span
@@ -334,7 +357,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
                 {...eventMenu(e)}
               />
             ))}
-            {layouts[dayIdx].timed.map(({ item: e, start, end, col, cols, span, inset, level }, order) => {
+            {fitted[dayIdx].shown.map(({ item: e, start, end, col, cols, span, inset, level }, order) => {
               const b = eventBounds(e)
               const h = pxOf(Math.max(end - start, MIN_DUR))
               const short = h < 34
@@ -355,10 +378,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
                       height: h - 1,
                       ...(indent
                         ? ({ left: `calc(${indent} + 1px)`, width: `calc(100% - ${indent} - 3px)`, '--z': order + 1 } as React.CSSProperties)
-                        : {
-                            left: `calc(${inset * RAIL}px + (100% - ${inset * RAIL}px) * ${col / cols} + 1px)`,
-                            width: `calc((100% - ${inset * RAIL}px) * ${span / cols} - 3px)`
-                          })
+                        : beside(col, cols, span, inset))
                     } as React.CSSProperties
                   }
                   onMouseDown={onEventDown(e, dayIdx, 'move')}
@@ -383,6 +403,21 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
                 </div>
               )
             })}
+            {fitted[dayIdx].more.map(({ start, end, items }) => (
+              <button
+                key={start}
+                type="button"
+                className="tg-more"
+                data-testid="more-events"
+                aria-label={t('grid.showMore', { n: items.length })}
+                style={{ top: pxOf(start), height: pxOf(end - start) - 1, ...beside(fits[dayIdx] - 1, fits[dayIdx], 1, Math.max(...items.map((p) => p.inset))) }}
+                onMouseDown={stop}
+                onDoubleClick={stop}
+                onClick={() => nav.set({ view: 'day', date: d })}
+              >
+                +{items.length}
+              </button>
+            ))}
             {moving?.day === dayIdx &&
               (() => {
                 const e = events.find((x) => keyOf(x) === moving.key)

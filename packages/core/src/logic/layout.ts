@@ -182,6 +182,34 @@ function cascade(items: { item: CalEvent; start: number; end: number }[], minDur
 }
 
 /**
+ * Side-by-side blocks stay readable in up to `fit` columns. A cluster with more keeps its first `fit - 1` columns
+ * (blocks there stop short of the last one); the blocks from there on make way for a "+N" in the last column, one per
+ * run of them that overlap (`minDur` as in packColumns).
+ */
+export function fitColumns<P extends Placed<unknown>>(
+  placed: P[],
+  fit: number,
+  minDur = 0
+): { shown: P[]; more: { start: number; end: number; items: P[] }[] } {
+  const shown: P[] = []
+  const more: { start: number; end: number; items: P[] }[] = []
+  for (const p of placed) {
+    if (p.cols <= fit) shown.push(p)
+    else if (p.col < fit - 1) shown.push({ ...p, cols: fit, span: Math.min(p.span, fit - 1 - p.col) })
+  }
+  const hidden = placed.filter((p) => p.cols > fit && p.col >= fit - 1).sort((a, b) => a.start - b.start)
+  for (const p of hidden) {
+    const end = Math.max(p.end, p.start + minDur)
+    const last = more[more.length - 1]
+    if (last && p.start < last.end) {
+      last.end = Math.max(last.end, end)
+      last.items.push(p)
+    } else more.push({ start: p.start, end, items: [p] })
+  }
+  return { shown, more }
+}
+
+/**
  * How many of a month cell's `n` events it lists, `height` px tall (its clientHeight; base.css `.mg-*`): 4px padding,
  * the 21px date, then 18px rows 2px apart. When they don't all fit, "+N more" (16px) takes the last row; at least one
  * event shows.

@@ -424,6 +424,7 @@ export const en = {
   'grid.allDay': 'all-day',
   'grid.collapseAllDay': 'Collapse all-day events',
   'grid.showMoreAllDay': { one: 'Show {n} more all-day event', other: 'Show {n} more all-day events' },
+  'grid.showMore': { one: 'Show {n} more event', other: 'Show {n} more events' },
   'dur.m': '{m}m',
   'dur.h': '{h}h',
   'dur.hm': '{h}h {m}m',
