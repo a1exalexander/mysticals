@@ -347,6 +347,8 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
   justify-self: center; width: 26px; height: 22px; border: 0; border-radius: var(--r-sm);
   background: none; font: 11px/22px var(--mono); padding: 0;
 }
+/* The days the main view shows: a faint tint under the hover, today and selection styles. */
+.mini-day.in-range { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .mini-day:hover { background: var(--hover); }
 .mini-day.is-other { color: var(--faint); }
 .mini-day.is-today { color: var(--pink); font-weight: 700; }

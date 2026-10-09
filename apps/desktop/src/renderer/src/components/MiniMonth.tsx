@@ -1,18 +1,52 @@
-import { useEffect, useState } from 'react'
-import { addMonths, format, isSameDay, isSameMonth, isToday, startOfMonth } from 'date-fns'
+import { useEffect, useRef, useState } from 'react'
+import { addDays, addMonths, format, isSameDay, isSameMonth, isToday, startOfMonth } from 'date-fns'
 import { nav, useNav } from '../views/nav'
-import { monthGrid } from '@mysticals/core/logic/layout'
+import { monthGrid, viewDays } from '@mysticals/core/logic/layout'
 import { fmt, t, useLocale } from '../i18n'
 
-/** Sidebar month picker; clicking a day navigates the main view. */
+const STEP: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }
+
+/** Sidebar month picker; clicking a day navigates the main view. One tab stop, arrow keys move between days. */
 export function MiniMonth(): React.JSX.Element {
-  const { date } = useNav()
+  const { date, view } = useNav()
   useLocale()
   const [shown, setShown] = useState(() => startOfMonth(date))
   const monthKey = startOfMonth(date).getTime()
   useEffect(() => setShown(new Date(monthKey)), [monthKey])
+  // The keyboard-focused day (the grid's one tab stop); follows the selected day.
+  const [focus, setFocus] = useState(date)
+  useEffect(() => setFocus(date), [date])
+  // Set by a key press: move DOM focus to the new tab stop (paging months re-renders the old one away).
+  const moved = useRef(false)
+  const grid = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (moved.current) grid.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus()
+    moved.current = false
+  }, [focus])
 
   const days = monthGrid(shown)
+  // ‹ › may page away from the focused day: the month's first day takes the tab stop then.
+  const stop = isSameMonth(focus, shown) ? focus : shown
+  // The days the main view shows; the month view is this whole grid, so it tints nothing.
+  const range = view === 'month' ? [] : viewDays(view === 'agenda' ? 'day' : view, date)
+  const onKey = (e: React.KeyboardEvent): void => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return
+    const i = days.findIndex((d) => isSameDay(d, stop))
+    const k = e.key
+    const next =
+      k in STEP ? addDays(stop, STEP[k])
+      : k === 'Home' ? days[i - (i % 7)]
+      : k === 'End' ? days[i - (i % 7) + 6]
+      : k === 'PageUp' || k === 'PageDown' ? addMonths(stop, k === 'PageUp' ? -1 : 1)
+      : null
+    if (!next) return
+    // Arrows here move the focus, not the main view (CalendarView listens on window).
+    e.preventDefault()
+    e.stopPropagation()
+    moved.current = true
+    setFocus(next)
+    if (!isSameMonth(next, shown)) setShown(startOfMonth(next))
+  }
   return (
     <div className="mini">
       <div className="mini-head">
@@ -24,7 +58,7 @@ export function MiniMonth(): React.JSX.Element {
           ›
         </button>
       </div>
-      <div className="mini-grid">
+      <div className="mini-grid" ref={grid} onKeyDown={onKey}>
         {days.slice(0, 7).map((d) => (
           <span key={`h${d.getTime()}`} className="mini-dow">
             {fmt(d, 'EEEEE')}
@@ -36,11 +70,16 @@ export function MiniMonth(): React.JSX.Element {
             className={[
               'mini-day',
               !isSameMonth(d, shown) && 'is-other',
+              range.some((r) => isSameDay(r, d)) && 'in-range',
               isToday(d) && 'is-today',
               isSameDay(d, date) && 'is-selected'
             ]
               .filter(Boolean)
               .join(' ')}
+            aria-label={fmt(d, 'EEEE, d MMMM yyyy')}
+            aria-current={isToday(d) ? 'date' : undefined}
+            aria-pressed={isSameDay(d, date)}
+            tabIndex={isSameDay(d, stop) ? 0 : -1}
             onClick={() => nav.set({ date: d })}
           >
             {format(d, 'd')}

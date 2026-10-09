@@ -1,4 +1,5 @@
 import { test, expect, _electron as electron } from '@playwright/test'
+import { addDays, addMonths, endOfWeek, format, startOfWeek } from 'date-fns'
 
 test('sidebar collapses and expands, remembers it, and ⌘\\ / Ctrl+\\ toggles it', async () => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
@@ -46,5 +47,64 @@ test('sidebar collapses and expands, remembers it, and ⌘\\ / Ctrl+\\ toggles i
   await toggle.click()
   await expect(sidebar).toBeVisible()
   await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  await app.close()
+})
+
+test('mini-month is one labelled tab stop, arrow keys move within it, and it tints the visible days', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 1200, height: 800 })
+  await expect(page.locator('.app-loader')).toBeHidden()
+  const label = (d: Date): string => format(d, 'EEEE, d MMMM yyyy')
+  const today = new Date()
+  const title = page.locator('.toolbar-title')
+  const stop = page.locator('.mini-day[tabindex="0"]')
+  const focused = page.locator('.mini-day:focus')
+
+  // Week view: today is the one tab stop, current and selected; the visible week is tinted.
+  await expect(stop).toHaveCount(1)
+  await expect(stop).toHaveAttribute('aria-label', label(today))
+  await expect(stop).toHaveAttribute('aria-current', 'date')
+  await expect(stop).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('.mini-day.in-range')).toHaveCount(7)
+  await page.locator('.mini').screenshot({ path: 'e2e/screens/mini-month.png' })
+
+  // Arrows move the focus a day / a week without stepping the main view.
+  const week = await title.textContent()
+  await stop.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(focused).toHaveAttribute('aria-label', label(addDays(today, 1)))
+  await page.keyboard.press('ArrowDown')
+  await expect(focused).toHaveAttribute('aria-label', label(addDays(today, 8)))
+  await page.keyboard.press('ArrowUp')
+  await page.keyboard.press('ArrowLeft')
+  await expect(focused).toHaveAttribute('aria-label', label(today))
+  await expect(title).toHaveText(week!)
+  await expect(stop).toHaveCount(1)
+
+  // Home / End: start and end of the week; PageDown: a month on, and the shown month follows.
+  await page.keyboard.press('Home')
+  await expect(focused).toHaveAttribute('aria-label', label(startOfWeek(today, { weekStartsOn: 1 })))
+  await page.keyboard.press('End')
+  const end = endOfWeek(today, { weekStartsOn: 1 })
+  await expect(focused).toHaveAttribute('aria-label', label(end))
+  await page.keyboard.press('PageDown')
+  const target = addMonths(end, 1)
+  await expect(focused).toHaveAttribute('aria-label', label(target))
+  await expect(page.locator('.mini-title')).toHaveText(format(target, 'LLLL yyyy'))
+
+  // Enter selects it: the main view moves there and the tint follows.
+  await page.keyboard.press('Enter')
+  await expect(focused).toHaveAttribute('aria-pressed', 'true')
+  await expect(title).not.toHaveText(week!)
+  await expect(page.locator('.mini-day.in-range')).toHaveCount(7)
+  await expect(page.locator(`.mini-day.in-range[aria-label="${label(target)}"]`)).toHaveCount(1)
+
+  await page.getByTestId('view-switch-3day').click()
+  await expect(page.locator('.mini-day.in-range')).toHaveCount(3)
+  await page.getByTestId('view-switch-day').click()
+  await expect(page.locator('.mini-day.in-range')).toHaveCount(1)
+  await page.getByTestId('view-switch-month').click()
+  await expect(page.locator('.mini-day.in-range')).toHaveCount(0)
   await app.close()
 })
