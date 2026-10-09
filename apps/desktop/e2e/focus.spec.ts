@@ -1,4 +1,5 @@
 import { test, expect, _electron as electron } from '@playwright/test'
+import { stackDialog } from './stackDialog'
 
 test('the editor and the scope prompt keep focus inside; popovers take it and give it back', async () => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
@@ -33,6 +34,12 @@ test('the editor and the scope prompt keep focus inside; popovers take it and gi
     await page.keyboard.press('Tab')
     expect(await focusIn('scope-prompt')).toBe(true)
   }
+  // Esc in a dialog stacked on top (Reauth opens by itself) closes that one only.
+  await page.evaluate(stackDialog)
+  await page.keyboard.press('Escape')
+  await expect(page.locator('#on-top')).not.toHaveAttribute('open')
+  await expect(prompt).toBeVisible()
+  await prompt.getByRole('button', { name: 'This event' }).focus()
   await page.keyboard.press('Escape')
   await expect(prompt).toHaveCount(0)
 

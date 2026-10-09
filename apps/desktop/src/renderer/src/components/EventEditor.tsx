@@ -126,6 +126,9 @@ export function EventEditorHost(): React.JSX.Element | null {
   useEffect(() => {
     if (!opened) return
     const onKey = (e: KeyboardEvent): void => {
+      // Keys in a dialog stacked on top (Reauth opens by itself on a disconnect) are that dialog's.
+      const d = (e.target as Element).closest?.('dialog')
+      if (d && d !== dialog.current) return
       if (e.key === 'Escape') {
         e.preventDefault() // not the dialog's own cancel: that would close it behind React's back
         if (askScope) setAskScope(false)

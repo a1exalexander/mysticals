@@ -21,6 +21,9 @@ export function ScopePromptHost(): React.JSX.Element | null {
     if (!ask) return
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== 'Escape') return
+      // Esc in a dialog stacked on top (Reauth opens by itself) is that dialog's.
+      const d = (e.target as Element).closest?.('dialog')
+      if (d && d !== dialog.current) return
       e.stopPropagation()
       e.preventDefault() // not the dialog's own cancel too
       setAsk(null)

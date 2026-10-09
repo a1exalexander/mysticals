@@ -1,5 +1,6 @@
 import { test, expect, _electron as electron } from '@playwright/test'
 import { choose, optionLabels } from './choose'
+import { stackDialog } from './stackDialog'
 
 test('editor requires an explicit account; RSVP goes through the invite account', async () => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
@@ -161,5 +162,25 @@ test('Esc or a click outside asks before discarding changes; an untouched editor
   await expect(page.getByTestId('editor-repeat')).toHaveAttribute('data-value', 'daily')
   await page.keyboard.press('Escape')
   await expect(editor).toHaveCount(0)
+  await app.close()
+})
+
+test('Esc and Cmd+Enter in a dialog stacked on the editor stay with that dialog', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await expect(page.getByTestId('calendar-view')).toBeVisible()
+  await page.getByTestId('new-event').click()
+  const editor = page.getByTestId('editor')
+  await choose(page.getByTestId('editor-account'), 'personal')
+  await editor.getByRole('textbox', { name: 'Title' }).fill('Not yet')
+
+  await page.evaluate(stackDialog)
+  await expect(page.getByLabel('On top')).toBeFocused()
+  await page.keyboard.press('Control+Enter')
+  await page.keyboard.press('Escape')
+  await expect(page.locator('#on-top')).not.toHaveAttribute('open')
+  await expect(editor.getByRole('group', { name: 'Discard changes?' })).toHaveCount(0)
+  await expect(page.getByTestId('editor-save')).toBeVisible()
+  await expect(editor.getByRole('textbox', { name: 'Title' })).toHaveValue('Not yet')
   await app.close()
 })
