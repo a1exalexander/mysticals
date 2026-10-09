@@ -114,3 +114,52 @@ test('editor fields are named by their labels, a label click focuses its field, 
   await page.screenshot({ path: 'e2e/screens/editor-labels.png' })
   await app.close()
 })
+
+test('Esc or a click outside asks before discarding changes; an untouched editor just closes', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 1200, height: 800 })
+  await expect(page.getByTestId('calendar-view')).toBeVisible()
+  const editor = page.getByTestId('editor')
+  const title = editor.getByRole('textbox', { name: 'Title' })
+  const discard = editor.getByRole('group', { name: 'Discard changes?' })
+
+  await page.getByTestId('new-event').click()
+  await expect(title).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(editor).toHaveCount(0)
+
+  await page.getByTestId('new-event').click()
+  await title.fill('Half-written')
+  await page.keyboard.press('Escape')
+  await expect(discard).toBeVisible()
+  await expect(discard.getByRole('button', { name: 'Keep editing' })).toBeFocused()
+  await expect(page.getByTestId('editor-save')).toHaveCount(0)
+  await page.waitForTimeout(250) // let the sheet's drop-in finish
+  await page.screenshot({ path: 'e2e/screens/editor-discard.png' })
+  // Esc again keeps editing.
+  await page.keyboard.press('Escape')
+  await expect(discard).toHaveCount(0)
+  await expect(title).toHaveValue('Half-written')
+  await expect(title).toBeFocused()
+
+  // A click on the backdrop asks too; an invitee still being typed counts as a change.
+  await title.fill('')
+  await editor.getByLabel('Invitees', { exact: true }).fill('bob@example.com')
+  await page.mouse.click(100, 600)
+  await expect(discard).toBeVisible()
+  await discard.getByRole('button', { name: 'Keep editing' }).click()
+  await expect(discard).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await discard.getByRole('button', { name: 'Discard' }).click()
+  await expect(editor).toHaveCount(0)
+
+  // Editing without a change: the series' rule loading in isn't one.
+  await page.getByTestId('view-switch-day').click()
+  await page.getByTestId('event-block').filter({ hasText: 'Morning run' }).first().click()
+  await page.getByTestId('details').getByRole('button', { name: 'Edit' }).click()
+  await expect(page.getByTestId('editor-repeat')).toHaveAttribute('data-value', 'daily')
+  await page.keyboard.press('Escape')
+  await expect(editor).toHaveCount(0)
+  await app.close()
+})

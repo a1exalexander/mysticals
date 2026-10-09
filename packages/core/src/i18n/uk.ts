@@ -318,6 +318,9 @@ export const uk: Record<Key, Msg> = {
   'editor.chooseWhich': 'Оберіть, до якого облікового запису належить подія.',
   'editor.saving': 'Збереження…',
   'editor.add': 'Додати подію',
+  'editor.discardTitle': 'Відкинути зміни?',
+  'editor.discard': 'Відкинути',
+  'editor.keepEditing': 'Продовжити редагування',
   'scope.changeRule': 'Змінити правило повторення:',
   'scope.save': 'Зберегти повторювану подію',
 

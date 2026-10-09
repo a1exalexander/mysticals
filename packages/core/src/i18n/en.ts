@@ -317,6 +317,9 @@ export const en = {
   'editor.chooseWhich': 'Choose which account this event belongs to.',
   'editor.saving': 'Saving…',
   'editor.add': 'Add Event',
+  'editor.discardTitle': 'Discard changes?',
+  'editor.discard': 'Discard',
+  'editor.keepEditing': 'Keep editing',
   'scope.changeRule': 'Change the repeat rule for',
   'scope.save': 'Save recurring event',
 

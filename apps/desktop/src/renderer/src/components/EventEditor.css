@@ -43,6 +43,7 @@
 }
 .editor-warn { color: var(--orange); }
 .editor-error { margin-top: 10px; color: var(--red); }
+.editor-discard { margin-right: auto; align-self: center; }
 
 .editor-muted { color: var(--muted); }
 .editor-repeat-row { display: flex; align-items: center; gap: 8px; }

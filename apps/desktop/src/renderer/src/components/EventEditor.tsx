@@ -23,11 +23,14 @@ export function EventEditorHost(): React.JSX.Element | null {
   useLocale()
   const [opened, setOpened] = useState<Opened | null>(null)
   const [form, setForm] = useState<EventForm | null>(null)
+  const [initial, setInitial] = useState<EventForm | null>(null) // the form as opened, to tell an edit apart
   const [draft, setDraft] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   // Saving a recurring event first asks which part of the series the edit is for.
   const [askScope, setAskScope] = useState(false)
+  // Esc or a click outside with changes asks before throwing them away.
+  const [discard, setDiscard] = useState(false)
   const [repeatFailed, setRepeatFailed] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
   const dialog = useRef<HTMLDialogElement>(null)
@@ -38,6 +41,7 @@ export function EventEditorHost(): React.JSX.Element | null {
       session.current++
       setSaving(false)
       setAskScope(false)
+      setDiscard(false)
       setRepeatFailed(false)
       setOpened(o)
       setForm(null)
@@ -54,13 +58,20 @@ export function EventEditorHost(): React.JSX.Element | null {
 
   useEffect(() => {
     if (!opened || form || !loaded) return
-    setForm(opened.mode === 'edit' ? formFromEvent(opened.event) : emptyForm(accounts, calendars, opened.prefill))
+    const f = opened.mode === 'edit' ? formFromEvent(opened.event) : emptyForm(accounts, calendars, opened.prefill)
+    setForm(f)
+    setInitial(f)
     requestAnimationFrame(() => titleRef.current?.focus())
     // A series' rule isn't cached: read it from the provider; until then the rule can't be changed.
     if (opened.mode === 'edit' && opened.event.recurringEventId) {
       const mine = session.current
       window.api.events.recurrence(opened.event).then(
-        (rule) => session.current === mine && setForm((f) => f && withLoadedRepeat(f, rule)),
+        (rule) => {
+          if (session.current !== mine) return
+          const load = (f: EventForm | null): EventForm | null => f && withLoadedRepeat(f, rule)
+          setForm(load)
+          setInitial(load) // loading the rule isn't an edit
+        },
         () => session.current === mine && setRepeatFailed(true)
       )
     }
@@ -79,6 +90,17 @@ export function EventEditorHost(): React.JSX.Element | null {
   const pendingEmails = splitEmails(draft)
   const invitees = form ? [...form.attendees, ...pendingEmails] : []
   const canSave = !!form && !!form.accountId && !!form.calendarId && !saving
+  const dirty = !!draft.trim() || JSON.stringify(form) !== JSON.stringify(initial)
+
+  const requestClose = (): void => {
+    if (!dirty) return close()
+    setAskScope(false)
+    setDiscard(true)
+  }
+  const keepEditing = (): void => {
+    setDiscard(false)
+    titleRef.current?.focus()
+  }
 
   const save = async (scope?: DeleteScope): Promise<void> => {
     if (!form || !canSave) return
@@ -107,7 +129,8 @@ export function EventEditorHost(): React.JSX.Element | null {
       if (e.key === 'Escape') {
         e.preventDefault() // not the dialog's own cancel: that would close it behind React's back
         if (askScope) setAskScope(false)
-        else close()
+        else if (discard) keepEditing()
+        else requestClose()
       } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         void save()
@@ -141,7 +164,11 @@ export function EventEditorHost(): React.JSX.Element | null {
       ref={dialog}
       className="mc-overlay"
       onCancel={(e) => e.preventDefault()}
-      onMouseDown={(e) => e.target === e.currentTarget && close()}
+      onMouseDown={(e) => {
+        if (e.target !== e.currentTarget) return
+        e.preventDefault() // keeps focus where the discard prompt puts it
+        requestClose()
+      }}
     >
       <form
         className="mc-sheet editor"
@@ -276,6 +303,12 @@ export function EventEditorHost(): React.JSX.Element | null {
             onPick={(scope) => void save(scope)}
             onCancel={() => setAskScope(false)}
           />
+        ) : discard ? (
+          <div className="mc-actions" role="group" aria-label={t('editor.discardTitle')}>
+            <span className="editor-discard">{t('editor.discardTitle')}</span>
+            <button type="button" className="mc-btn danger" onClick={close}>{t('editor.discard')}</button>
+            <button type="button" className="mc-btn" autoFocus onClick={keepEditing}>{t('editor.keepEditing')}</button>
+          </div>
         ) : (
           <div className="mc-actions">
             <button type="button" className="mc-btn" onClick={close}>{t('common.cancel')}</button>
