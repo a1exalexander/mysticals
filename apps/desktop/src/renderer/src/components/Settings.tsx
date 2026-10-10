@@ -391,9 +391,9 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
             />
             {t('settings.reminders.fullscreen')}
           </label>
-          <button type="button" className="mc-btn acc-test" data-testid="reminder-preview" onClick={() => void window.reminders.preview().catch((e) => setError(errorText(e)))}>
+          <TestButton testId="reminder-preview" icon={<EyeIcon />} run={() => window.reminders.preview().catch((e) => setError(errorText(e)))}>
             {t('settings.reminders.preview')}
-          </button>
+          </TestButton>
         </div>
         <div className="acc-reminders-row">
           <label className="set-check">
@@ -407,9 +407,9 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
             />
             {t('settings.reminders.sound')}
           </label>
-          <button type="button" className="mc-btn acc-test" data-testid="reminder-sound-test" onClick={() => void window.reminders.testSound().catch((e) => setError(errorText(e)))}>
+          <TestButton testId="reminder-sound-test" icon={<PlayIcon />} run={() => window.reminders.testSound().catch((e) => setError(errorText(e)))}>
             {t('settings.reminders.testSound')}
-          </button>
+          </TestButton>
         </div>
         <p className="acc-hint-line">{t('settings.reminders.hint')}</p>
       </div>
@@ -469,6 +469,38 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
     </div>
   )
 }
+
+/** Preview / Listen: a spinner in place of the icon until what it started is done (the screen shown, the sound played). */
+function TestButton({ testId, icon, run, children }: { testId: string; icon: React.ReactNode; run: () => Promise<void>; children: React.ReactNode }): React.JSX.Element {
+  const [busy, setBusy] = useState(false)
+  const click = (): void => {
+    setBusy(true)
+    void run().finally(() => setBusy(false))
+  }
+  return (
+    <button type="button" className="mc-btn acc-test" data-testid={testId} disabled={busy} aria-busy={busy || undefined} onClick={click}>
+      {busy ? <span className="acc-spin" aria-hidden /> : icon}
+      {children}
+    </button>
+  )
+}
+
+const Icon = ({ children }: { children: React.ReactNode }): React.JSX.Element => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    {children}
+  </svg>
+)
+const EyeIcon = (): React.JSX.Element => (
+  <Icon>
+    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+    <circle cx="12" cy="12" r="3" />
+  </Icon>
+)
+const PlayIcon = (): React.JSX.Element => (
+  <Icon>
+    <path d="M8 5v14l11-7z" />
+  </Icon>
+)
 
 /** The list dot: ok, syncing, failed or signed out. */
 const stateOf = (a: Account): 'ok' | 'syncing' | 'err' => (a.syncing ? 'syncing' : a.error || a.authError ? 'err' : 'ok')

@@ -11,8 +11,8 @@ import { t } from '@mysticals/core/i18n'
 import { currentLocale } from './locale'
 import { hour12 } from './clock'
 import { readPrefs, writePrefs } from './prefs'
-import { showReminderScreen, startReminderScreen } from './reminderWindow'
-import { playSound, reminderSound } from './sound'
+import { keepSpareScreen, showReminderScreen, startReminderScreen } from './reminderWindow'
+import { playSound, reminderSound, warmSound } from './sound'
 
 const TICK_MS = 20_000
 
@@ -38,6 +38,12 @@ const readJson = (file: string): unknown => {
 
 /** Settings > Notifications: full-screen reminder for events with a Call link, off by default. */
 export const fullscreenReminder = (): boolean => readPrefs().fullscreenReminder === true
+
+/** Once the main window is up: the sound and Full-screen reminder windows load ahead, so neither lags when due. */
+export function warmReminders(): void {
+  warmSound()
+  keepSpareScreen(fullscreenReminder())
+}
 
 const meeting = (e: CalEvent, url: string, calendars: Calendar[], accounts: Account[]): ReminderMeeting => {
   const account = accounts.find((a) => a.id === e.accountId)
@@ -74,6 +80,7 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts
   ipcMain.handle(IPC.remindersFullscreenSet, (_e, on: unknown) => {
     if (typeof on !== 'boolean') throw new Error('Invalid full-screen reminder')
     writePrefs({ fullscreenReminder: on })
+    keepSpareScreen(on)
     void tick()
   })
   ipcMain.handle(IPC.remindersSoundGet, reminderSound)
@@ -85,8 +92,8 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts
   // Built here, not taken from the renderer: Join opens the meeting's url.
   ipcMain.handle(IPC.remindersPreview, () => {
     const start = Date.now() + Math.max(reminderMin(), 1) * 60_000
-    playSound('bell')
-    showReminderScreen([
+    void playSound('bell')
+    return showReminderScreen([
       { key: 'preview', title: t(currentLocale(), 'reminder.preview'), start: new Date(start).toISOString(), end: new Date(start + 30 * 60_000).toISOString(), color: '', account: 'Mysticals', url: 'https://meet.google.com/' }
     ])
   })
@@ -129,8 +136,8 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts
       const popped = Notification.isSupported() ? split.banner : []
       for (const e of popped) show(reminderText(e, now, currentLocale(), hour12()))
       // One sound per tick, however many are due; the screen's bell wins over the Banner chime.
-      if (split.fullscreen.length) playSound('bell')
-      else if (popped.length) playSound('chime')
+      if (split.fullscreen.length) void playSound('bell')
+      else if (popped.length) void playSound('chime')
       const next = screenMeetings(onScreen, split.fullscreen, shown, now)
       if (!onScreen.length && !next.length) return
       // No await from here on: a dismiss in between would be undone.
@@ -139,7 +146,7 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts
         const url = eventMeetingUrl(e)
         return url ? [meeting(e, url, calendars, accounts)] : []
       })
-      showReminderScreen(list)
+      void showReminderScreen(list)
     } catch (e) {
       console.error('reminders failed', e)
     } finally {

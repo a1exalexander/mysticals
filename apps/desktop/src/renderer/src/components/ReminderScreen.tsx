@@ -12,22 +12,42 @@ export function ReminderScreen(): React.JSX.Element {
   useClock()
   const [meetings, setMeetings] = useState<ReminderMeeting[]>([])
   const [now, setNow] = useState(Date.now)
-  // The window opens hidden and main focuses it once shown: the enter animation waits for that, or it plays unseen.
-  const [shown, setShown] = useState(() => document.hasFocus())
+  // The window opens hidden (a spare one long before it is due) and main shows and focuses it once its meetings are
+  // painted: the enter animation waits for that, or it plays unseen.
+  const [shown, setShown] = useState(false)
+  const due = meetings.length > 0
   useEffect(() => {
-    if (shown) return
+    if (!due || shown) return
     const show = (): void => setShown(true)
-    window.addEventListener('focus', show, { once: true })
-    // Never stay invisible if focus doesn't come (some Linux window managers refuse it).
-    const late = setTimeout(show, 1500)
-    return () => {
-      window.removeEventListener('focus', show)
-      clearTimeout(late)
+    if (document.hasFocus()) return show()
+    const visible = (): void => {
+      if (!document.hidden) show()
     }
-  }, [shown])
+    let late: ReturnType<typeof setTimeout> | undefined
+    const frame = requestAnimationFrame(() => {
+      // Never stay invisible if focus doesn't come once shown (some Linux window managers refuse it).
+      void window.reminderScreen.ready().then(
+        () => (late = setTimeout(show, 300)),
+        () => {}
+      )
+    })
+    window.addEventListener('focus', show)
+    document.addEventListener('visibilitychange', visible)
+    return () => {
+      cancelAnimationFrame(frame)
+      clearTimeout(late)
+      window.removeEventListener('focus', show)
+      document.removeEventListener('visibilitychange', visible)
+    }
+  }, [due, shown])
   useEffect(() => {
-    void window.reminderScreen.meetings().then(setMeetings, () => {})
-    const off = window.reminderScreen.onMeetings(setMeetings)
+    // A spare window waited a while: count down from when the meetings came.
+    const take = (list: ReminderMeeting[]): void => {
+      setNow(Date.now())
+      setMeetings(list)
+    }
+    void window.reminderScreen.meetings().then(take, () => {})
+    const off = window.reminderScreen.onMeetings(take)
     const timer = setInterval(() => setNow(Date.now()), 10_000)
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== 'Escape' && e.key !== 'Backspace') return
