@@ -22,12 +22,11 @@ describe('mouse', () => {
 
   it('click selects an event, a second click opens it; the preview pane follows', async () => {
     t = renderApp()
-    await t.waitFor('Gym')
-    await t.waitFor('Up next')
-    await t.click('Gym')
+    await t.waitFor('Up next') // the pane shows Gym, the next event
+    await t.click('Morning run')
     await t.waitFor('Selected')
     expect(t.lastFrame()).not.toContain('esc close')
-    await t.click('Gym')
+    await t.click('Morning run')
     await t.waitFor('esc close')
     await t.click('esc close')
     await t.waitFor((f) => !f.includes('esc close'))

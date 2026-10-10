@@ -83,6 +83,8 @@ const PANE_MIN_WIDTH = 100
 /** Below this the layout can't fit; the app asks for a bigger terminal instead. */
 const MIN_WIDTH = 40
 const MIN_HEIGHT = 12
+/** How long an action's result stays in the status line. */
+const MESSAGE_MS = 5000
 
 function Header({ nav, width, onView, onShift, onToday }: {
   nav: Nav
@@ -95,8 +97,11 @@ function Header({ nav, width, onView, onShift, onToday }: {
     <Box width={width} height={1} overflow="hidden">
       {TABS.map((v) => (
         <Clickable key={v} flexShrink={0} onClick={() => onView(v)}>
+          {/* the underlined first letter is the tab's key */}
           <Text inverse={v === nav.view} color={v === nav.view ? C.accent : C.muted} bold={v === nav.view}>
-            {` ${VIEW_LABEL[v]} `}
+            {' '}
+            <Text underline>{VIEW_LABEL[v][0]}</Text>
+            {`${VIEW_LABEL[v].slice(1)} `}
           </Text>
         </Clickable>
       ))}
@@ -105,7 +110,9 @@ function Header({ nav, width, onView, onShift, onToday }: {
           <Text color={C.cyan}>{' ‹ '}</Text>
         </Clickable>
         <Clickable onClick={onToday}>
-          <Text color={C.muted}>today</Text>
+          <Text color={C.muted}>
+            <Text underline>t</Text>oday
+          </Text>
         </Clickable>
         <Clickable onClick={() => onShift(1)}>
           <Text color={C.cyan}>{' › '}</Text>
@@ -144,7 +151,9 @@ function Preview({ event, selected, now, width, height, onOpen }: {
     >
       {event ? (
         <>
-          <Text color={C.muted}>{selected ? 'Selected · enter or click to open' : 'Up next · ←/→ to select'}</Text>
+          <Text color={C.muted}>
+            {selected ? 'Selected · enter or click to open' : `${eventBounds(event).start <= now ? 'Now' : 'Up next'} · ↑↓ to select`}
+          </Text>
           <EventInfo event={event} account={account} calendar={calendar} now={now} showAll={showAll} onToggleAll={() => setShowAll(!showAll)} />
         </>
       ) : (
@@ -154,14 +163,36 @@ function Preview({ event, selected, now, width, height, onOpen }: {
   )
 }
 
-/** While `pending` (nothing to show yet) and a new account is on its first sync: a spinner instead of `children`. */
-function FirstSync({ pending, width, height, children }: { pending: boolean; width: number; height: number; children: ReactNode }) {
-  return pending ? <FirstSyncCheck width={width} height={height}>{children}</FirstSyncCheck> : <>{children}</>
+type FirstSyncProps = { width: number; height: number; onAccounts(): void; children: ReactNode }
+
+/**
+ * While `pending` (nothing to show yet): a welcome that points at the accounts panel when there are no accounts,
+ * a spinner while a new account is on its first sync, else `children`.
+ */
+function FirstSync({ pending, ...props }: FirstSyncProps & { pending: boolean }) {
+  return pending ? <FirstSyncCheck {...props} /> : <>{props.children}</>
 }
 
 // Split out so the accounts load only runs while the view is empty.
-function FirstSyncCheck({ width, height, children }: { width: number; height: number; children: ReactNode }) {
-  const first = useDirectory().accounts.filter((a) => a.syncing && !a.synced)
+function FirstSyncCheck({ width, height, onAccounts, children }: FirstSyncProps) {
+  const { accounts, loaded } = useDirectory()
+  if (loaded && !accounts.length) {
+    return (
+      <Box width={width} height={height} alignItems="center" justifyContent="center">
+        <Clickable flexDirection="column" borderStyle="round" borderColor={C.accent} paddingX={2} onClick={onAccounts}>
+          <Text bold color={C.accent}>Welcome to mysticals</Text>
+          <Text>Add your first calendar to get started.</Text>
+          <Text>
+            <Text inverse bold color={C.accent}>s</Text> add a Google, iCloud, Fastmail or other CalDAV account
+          </Text>
+          <Text>
+            <Text inverse bold color={C.accent}>?</Text> all keys
+          </Text>
+        </Clickable>
+      </Box>
+    )
+  }
+  const first = accounts.filter((a) => a.syncing && !a.synced)
   if (!first.length) return <>{children}</>
   return (
     <Box width={width} height={height} alignItems="center" justifyContent="center">
@@ -207,7 +238,13 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
   const { width, height } = useTermSize()
   const [selectedKey, setSelectedKey] = useState<string>()
   const [overlay, setOverlay] = useState<Overlay>()
-  const [message, setMessage] = useState(notice)
+  // `fade`: an action's result ("Synced") clears itself; failures and the notice stay until the next message.
+  const [message, setMessage] = useState<{ text: string; fade?: boolean } | undefined>(notice ? { text: notice } : undefined)
+  useEffect(() => {
+    if (!message?.fade) return
+    const t = setTimeout(() => setMessage((m) => (m === message ? undefined : m)), MESSAGE_MS)
+    return () => clearTimeout(t)
+  }, [message])
   const [update, setUpdate] = useState<string>()
   useEffect(() => void updateCheck?.then(setUpdate), [updateCheck])
 
@@ -313,8 +350,8 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
   const syncNow = (): void => {
     setMessage(undefined)
     api.sync.now().then(
-      () => setMessage('Synced'),
-      (e: unknown) => setMessage(`Sync failed: ${errorText(e)}`)
+      () => setMessage({ text: 'Synced', fade: true }),
+      (e: unknown) => setMessage({ text: `Sync failed: ${errorText(e)}` })
     )
   }
 
@@ -363,7 +400,9 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
   const ViewComponent = VIEWS[nav.view]
   const bodyHeight = Math.max(height - 3, 1) // header + 2-row bottom bar
   const paneWidth = !overlay && (nav.view === 'agenda' || nav.view === 'day' || nav.view === '2day') && width >= PANE_MIN_WIDTH ? Math.min(56, Math.floor(width * 0.4)) : 0
-  const previewed = selectedIdx >= 0 ? ordered[selectedIdx] : ordered.find((e) => eventBounds(e).end > now)
+  // nothing selected: what's on or next, a timed event before an all-day one that is already under way
+  const ahead = ordered.filter((e) => eventBounds(e).end > now)
+  const previewed = selectedIdx >= 0 ? ordered[selectedIdx] : ahead.find((e) => !e.allDay) ?? ahead[0]
 
   const body = (): ReactNode => {
     switch (overlay?.kind) {
@@ -381,7 +420,7 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
         return <Help height={bodyHeight} onClose={close} />
       default:
         return (
-          <FirstSync pending={!events.length} width={width} height={bodyHeight}>
+          <FirstSync pending={!events.length} width={width} height={bodyHeight} onAccounts={() => setOverlay({ kind: 'accounts' })}>
             <ViewComponent
               events={events}
               date={nav.date}
@@ -434,9 +473,10 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
         nav={nav}
         events={events}
         now={now}
-        message={error ? `Error: ${error}` : message}
+        message={error ? `Error: ${error}` : message?.text}
         update={update}
         width={width}
+        hints={!overlay}
         onOpen={(event) => !overlay && setOverlay({ kind: 'details', event })}
         onInvites={() => !overlay && setOverlay({ kind: 'invites' })}
         onAccounts={() => !overlay && setOverlay({ kind: 'accounts' })}

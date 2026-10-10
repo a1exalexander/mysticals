@@ -13,6 +13,8 @@ mysticals
 
 Needs Node.js 20.3 or newer. `mysticals --help` lists options, `mysticals --version` prints the version.
 
+The first run shows a welcome: press `s` (or click it) to add a Google, iCloud, Fastmail or other CalDAV account. `?` lists every key.
+
 - **macOS**: nothing else. The credential key goes in the Keychain; notifications use `osascript`.
 - **Linux**: `secret-tool` (package `libsecret-tools` on Debian/Ubuntu, `libsecret` on Fedora/Arch) and a running keyring such as GNOME Keyring or KWallet. Optional: `notify-send` for notifications, `xdg-open` to open Google sign-in in the browser.
 - **Windows**: nothing else. The credential key is sealed with DPAPI and notifications are toasts, both through the built-in Windows PowerShell.
@@ -28,6 +30,8 @@ set "MYSTICALS_MOCK=1" && mysticals         # Windows cmd
 ```
 
 ## Keys
+
+The underlined letter of each view tab is its key.
 
 | Key | Action |
 | --- | --- |
@@ -54,9 +58,10 @@ In an open event:
 | `e` | Edit (saving a repeating event asks `1` this, `2` this and following, `3` all; a changed repeat rule offers only `2` and `3`) |
 | `x` | Delete (confirm with `y`; for a repeating event `1` this, `2` this and following, `3` all) |
 | `a` | Show all / fewer attendees (long guest lists) |
+| `↑` `↓` `PgUp` `PgDn` | Scroll an event that doesn't fit on screen |
 | `esc` `q` | Close |
 
-The bottom bar has two rows. The first shows what's on now, the next event within 24 hours, the number of pending invites, and accounts whose last sync failed. The second has buttons for new, sync, invites, accounts, help and quit.
+The bottom bar has two rows. The first shows what's on now, the next event within 24 hours, the number of pending invites, and accounts whose last sync failed. The second has buttons for new, sync, invites, accounts, help and quit, followed by a reminder of how to move and open events.
 
 The agenda shows each day as a heading (relative day, event count, busy time) followed by two-line event cards: start and end time, a bar in the calendar's colour, the title with badges (`● now · ends in 25m`, `in 25m` for the next one today, `RSVP`, `maybe`, `declined`), and a detail line (account · calendar, `↻ repeats`, `⚠ overlaps`, place or `video call`, number of people). Days without events collapse into `free` rows.
 
@@ -66,9 +71,11 @@ Colours come from your terminal theme: the app only uses the 16 ANSI colours and
 
 ### Mouse
 
-Everything with a key also works with a click: view tabs, `‹ today ›`, the buttons in the bottom bar, the key buttons at the bottom of each panel, and the parts of the info row (now/next event, invites, failed sync). Click an event to select it and click it again to open it. Click a day heading to open that day, or a free cell of the time grid to create an event there. The scroll wheel moves the selection.
+Everything with a key also works with a click: view tabs, `‹ today ›`, the buttons in the bottom bar, the key buttons at the bottom of each panel, and the parts of the info row (now/next event, invites, failed sync). Click an event to select it and click it again to open it. Click a day heading to open that day. The scroll wheel scrolls the agenda, the hours of the time grid, and panels that are longer than the screen.
 
-At 100 columns or wider, the agenda, day and 2 days views show the selected event (or the next one ahead) in a pane on the right.
+At 100 columns or wider, the agenda, day and 2 days views show the selected event in a pane on the right. With nothing selected it shows what's on now or next, preferring a timed event over an all-day one.
+
+Panels that don't fit (a long event description, many calendars) scroll and keep their buttons on screen. The app needs at least 40×12 cells and asks for a bigger window below that.
 
 mysticals runs in the terminal's alternate screen with mouse reporting on, so a plain drag no longer selects text. To select and copy, hold ⌥ Option while dragging on macOS, or Shift on most Linux and Windows terminals (Shift in some macOS terminals too). In tmux, turn on `set -g mouse on` to pass clicks through.
 

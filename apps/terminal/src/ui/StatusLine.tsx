@@ -2,7 +2,7 @@
  * Bottom bar, two rows truncated to `width`:
  *   1. info: a spinner while accounts sync, current event(s) and the next one within 24h (core `pickNowNext`, `startsLabel`), pending invite count,
  *      accounts whose last sync failed, a transient `message` from the shell, and last a newer-version hint (`update`);
- *   2. actions: new, sync, invites, accounts, help, quit as key buttons.
+ *   2. actions: new, sync, invites, accounts, help, quit as key buttons, then (with `hints`) how to move and open.
  * Every part is clickable (opens the event / overlay, or runs the action).
  * Now/next and invites come from a today+60d fetch, so they don't depend on the viewed range.
  */
@@ -25,6 +25,8 @@ export interface StatusLineProps {
   /** Newer published version (see `checkUpdate`); shows an install hint at the end of the info row. */
   update?: string
   width: number
+  /** Show the move/open hint after the buttons (off while a panel has the keys). */
+  hints?: boolean
   onOpen?(e: CalEvent): void
   onInvites?(): void
   onAccounts?(): void
@@ -48,7 +50,7 @@ export function Spinner() {
   return <Text color={C.accent}>{FRAMES[i]}</Text>
 }
 
-export function StatusLine({ now, message, update, width, onOpen, onInvites, onAccounts, onHelp, onNew, onSync, onQuit }: StatusLineProps) {
+export function StatusLine({ now, message, update, width, hints, onOpen, onInvites, onAccounts, onHelp, onNew, onSync, onQuit }: StatusLineProps) {
   const { events } = useUpcoming(now)
   const { accounts } = useDirectory()
   const failed = accounts.filter((a) => a.error)
@@ -90,6 +92,11 @@ export function StatusLine({ now, message, update, width, onOpen, onInvites, onA
         <Button k="s" label="accounts" onPress={onAccounts ?? noop} />
         <Button k="?" label="help" onPress={onHelp ?? noop} />
         <Button k="q" label="quit" onPress={onQuit ?? noop} />
+        {hints && (
+          <Box flexShrink={0}>
+            <Text color={C.muted}>←→↑↓ move · enter open</Text>
+          </Box>
+        )}
       </Box>
     </Box>
   )
