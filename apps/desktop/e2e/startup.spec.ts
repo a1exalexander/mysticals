@@ -18,7 +18,8 @@ test('a second copy on the same profile exits and leaves accounts.json alone', a
   const second = spawn(bin, ['.', `--user-data-dir=${dir}`], { env, stdio: 'ignore' })
   const code = await new Promise<number | null>((resolve) => second.on('exit', resolve))
   expect(code).toBe(0)
-  expect(app.windows()).toHaveLength(1)
+  // The hidden sound window (a data: page) aside, still the one app window.
+  expect(app.windows().filter((w) => !w.url().startsWith('data:'))).toHaveLength(1)
   expect(readFileSync(join(dir, 'accounts.json'), 'utf8')).toBe('[]')
   await app.close()
 })
