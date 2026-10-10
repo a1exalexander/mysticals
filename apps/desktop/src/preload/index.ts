@@ -68,6 +68,7 @@ contextBridge.exposeInMainWorld('reminders', reminders)
 const reminderScreen: ReminderScreenApi = {
   meetings: call(IPC.reminderScreenMeetings),
   onMeetings: (cb) => on<ReminderMeeting[]>(IPC.reminderScreenMeetings, cb),
+  ready: call(IPC.reminderScreenReady),
   close: call(IPC.reminderScreenClose)
 } as ReminderScreenApi
 contextBridge.exposeInMainWorld('reminderScreen', reminderScreen)

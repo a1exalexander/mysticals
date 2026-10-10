@@ -30,8 +30,11 @@ test('full-screen reminder: call events open the reminder window instead of a ba
   await page.getByRole('button', { name: 'Settings' }).click()
   await page.getByTestId('settings-tab-accounts').click()
 
-  // Settings test buttons: the sound plays (mocked out here), Preview opens the screen with a test meeting.
-  await page.getByTestId('reminder-sound-test').click()
+  // Settings test buttons: Listen is busy while the sound plays (mocked out here), Preview opens the screen with a test meeting.
+  const listen = page.getByTestId('reminder-sound-test')
+  await listen.click()
+  await expect(listen).toHaveAttribute('aria-busy', 'true')
+  await expect(listen).not.toHaveAttribute('aria-busy')
   const previewing = app.waitForEvent('window')
   await page.getByTestId('reminder-preview').click()
   const preview = await previewing

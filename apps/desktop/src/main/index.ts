@@ -19,7 +19,7 @@ import { currentLocale, startLocale } from './locale'
 import { hour12, startClock } from './clock'
 import { startUpdater } from './update'
 import { startDesktopTelemetry } from './telemetry'
-import { mutedAccounts, startReminders } from './reminders'
+import { mutedAccounts, startReminders, warmReminders } from './reminders'
 import { createActivityLog, registerActivityLog, type ActivityLog } from './activityLog'
 import { electronTriggers } from './sync/electronTriggers'
 import { loadRenderer, lockDown, themeBg, webPreferences } from './window'
@@ -172,8 +172,15 @@ function createWindow(): void {
     webPreferences
   })
   mainWin = win
-  win.on('closed', () => mainWin === win && (mainWin = null))
-  win.once('ready-to-show', () => win.show())
+  win.on('closed', () => {
+    if (mainWin === win) mainWin = null
+    // Windows/Linux quit with the main window: the hidden sound and reminder windows would keep the app running.
+    if (!MAC) app.quit()
+  })
+  win.once('ready-to-show', () => {
+    win.show()
+    warmReminders()
+  })
   lockDown(win)
 
   // Right-click: copy selected text and links, the usual edit actions in fields.
