@@ -3,8 +3,9 @@
  * Per-account isolation: no default account/calendar unless there is exactly one choice (`soleId`); editing never
  * changes an event's account or calendar.
  *
- * Keys (overlay owns all input): tab/shift-tab or ↓/↑ move between fields, typing edits text fields, ←/→ or space
- * cycle pickers / toggle all-day, enter moves on (saves on the last field), ctrl+s saves, esc cancels.
+ * Keys (overlay owns all input): tab/shift-tab or ↓/↑ move between fields, typing edits text fields (←/→ move the
+ * cursor, see `editLine`), ←/→ or space cycle pickers / toggle all-day, enter moves on (saves on the last field),
+ * ctrl+s saves, esc cancels (after a changed form, a second esc confirms dropping the changes).
  * Saving a recurring event asks 1 this event / 2 this and following / 3 all events (esc back to the form);
  * a changed repeat rule offers only 2 and 3. Repeat: ←/→ cycles presets and "custom" (every / on days / stops fields).
  * Mouse: click a field to focus it (a focused picker / all-day again to cycle / toggle it); Save and Cancel buttons.
@@ -23,6 +24,7 @@ import {
 import type { CalEvent, DeleteScope, Recurrence } from '@mysticals/core/shared/types'
 import { extraEmail } from '@mysticals/core/logic/details'
 import { useApi, useDirectory } from '../hooks'
+import { editLine, LineView, type Line } from '../lineEdit'
 import { Button, Clickable, useKeys } from '../mouse'
 import { useHeight, useScroll } from '../scroll'
 import { C } from '../theme'
@@ -81,6 +83,8 @@ interface State {
   form: EventForm
   texts: Texts
   focus: number
+  /** Cursor in the focused text field. */
+  at: number
   /** "custom" picked for the repeat rule (also shown for a rule no preset matches). */
   custom: boolean
 }
@@ -141,6 +145,19 @@ export function EventEditor({ event, initialStart, onClose, height = Infinity }:
     asking.current = on
     setAskScopeState(on)
   }
+  // esc on a changed form asks first; `pristine` is the form as opened (and as loaded, for a series' rule).
+  const pristine = useRef('')
+  const snap = (s: State): string => JSON.stringify([s.form, s.texts])
+  const [discard, setDiscardState] = useState(false)
+  const discarding = useRef(false)
+  const setDiscard = (on: boolean): void => {
+    discarding.current = on
+    setDiscardState(on)
+  }
+  const cancel = (): void => {
+    if (discarding.current || !latest.current || snap(latest.current) === pristine.current) return onClose()
+    setDiscard(true)
+  }
   const [repeatFailed, setRepeatFailed] = useState(false)
   const alive = useRef(true)
   useEffect(() => () => void (alive.current = false), [])
@@ -149,7 +166,9 @@ export function EventEditor({ event, initialStart, onClose, height = Infinity }:
     if (latest.current || !loaded) return
     // emptyForm rounds `now` up to the next hour, so the new event lands on the navigated day.
     const form = event ? formFromEvent(event) : emptyForm(accounts, calendars, {}, initialStart)
-    latest.current = { form, texts: textsFrom(form), focus: 0, custom: false }
+    const texts = textsFrom(form)
+    latest.current = { form, texts, focus: 0, at: [...texts.title].length, custom: false }
+    pristine.current = snap(latest.current)
     setState(latest.current)
     // A series' rule isn't cached: read it; until then the rule can't be changed.
     if (event?.recurringEventId) {
@@ -157,7 +176,9 @@ export function EventEditor({ event, initialStart, onClose, height = Infinity }:
         (rule) => {
           if (!alive.current || !latest.current) return
           const f = withLoadedRepeat(latest.current.form, rule)
+          const clean = snap(latest.current) === pristine.current
           update({ form: f, texts: { ...latest.current.texts, ...repeatTexts(rule, f.start) } })
+          if (clean) pristine.current = snap(latest.current)
         },
         () => alive.current && setRepeatFailed(true)
       )
@@ -243,7 +264,7 @@ export function EventEditor({ event, initialStart, onClose, height = Infinity }:
     }
   }
 
-  const edit = ({ form, texts }: State, field: TextField, value: string): void => {
+  const edit = ({ form, texts }: State, field: TextField, { value, at }: Line): void => {
     const next = { ...texts, [field]: value }
     if (field === 'startDate' || field === 'startTime') {
       // Keep the duration: once the start parses, the end follows it (core moveStart).
@@ -251,13 +272,19 @@ export function EventEditor({ event, initialStart, onClose, height = Infinity }:
       const start = toLocal(next.startDate, form.allDay ? form.start.slice(11) : next.startTime)
       if (start) {
         const f = moveStart(form, start)
-        return update({ form: f, texts: { ...next, endDate: f.end.slice(0, 10), endTime: f.end.slice(11) } })
+        return update({ form: f, at, texts: { ...next, endDate: f.end.slice(0, 10), endTime: f.end.slice(11) } })
       }
     } else if (field === 'endDate' || field === 'endTime') {
       const end = toLocal(next.endDate, form.allDay ? form.end.slice(11) : next.endTime)
-      if (end) return update({ form: { ...form, end }, texts: next })
+      if (end) return update({ form: { ...form, end }, at, texts: next })
     }
-    update({ texts: next })
+    update({ texts: next, at })
+  }
+
+  /** Focuses field `i`, with the cursor at the end of its text. */
+  const focusOn = (s: State, i: number): void => {
+    const f = fieldsFor(s, !!event)[i]
+    update({ focus: i, at: f && !PICKERS.has(f) ? [...s.texts[f as TextField]].length : 0 })
   }
 
   const clickField = (f: Field): void => {
@@ -266,12 +293,13 @@ export function EventEditor({ event, initialStart, onClose, height = Infinity }:
     const i = fieldsFor(s, !!event).indexOf(f)
     if (i < 0) return // fixed rows (account/calendar while editing)
     if (i === s.focus && PICKERS.has(f)) return pick(s, f, 1)
-    update({ focus: i })
+    focusOn(s, i)
   }
 
   useKeys((input, key) => {
     if (key.escape && asking.current && !busy.current) return setAskScope(false)
-    if (key.escape) return onClose()
+    if (key.escape) return busy.current ? onClose() : cancel()
+    if (discarding.current) return setDiscard(false) // any other key keeps editing
     const s = latest.current
     if (!s || busy.current) return
     if (asking.current) {
@@ -282,7 +310,7 @@ export function EventEditor({ event, initialStart, onClose, height = Infinity }:
     const fields = fieldsFor(s, !!event)
     const i = Math.min(s.focus, fields.length - 1)
     const field = fields[i]
-    const move = (dir: 1 | -1): void => update({ focus: (i + dir + fields.length) % fields.length })
+    const move = (dir: 1 | -1): void => focusOn(s, (i + dir + fields.length) % fields.length)
     if (key.tab) return move(key.shift ? -1 : 1)
     if (key.downArrow) return move(1)
     if (key.upArrow) return move(-1)
@@ -293,11 +321,8 @@ export function EventEditor({ event, initialStart, onClose, height = Infinity }:
       return
     }
     const text = field as TextField
-    if (key.backspace || key.delete) return edit(s, text, s.texts[text].slice(0, -1))
-    if (key.ctrl || key.meta || !input) return
-    // ponytail: append-only single-line editing (no cursor movement); a real cursor if users ask for it.
-    const printable = input.replace(/[\u0000-\u001f\u007f]/g, '')
-    if (printable) edit(s, text, s.texts[text] + printable)
+    const line = editLine({ value: s.texts[text], at: s.at }, input, key)
+    if (line) edit(s, text, line)
   })
 
   const fields = state ? fieldsFor(state, !!event) : []
@@ -353,10 +378,20 @@ export function EventEditor({ event, initialStart, onClose, height = Infinity }:
             <Box flexShrink={0}>
               <Text color={on ? C.cyan : undefined}>{on ? '› ' : '  '}{LABELS[f].padEnd(11)}</Text>
             </Box>
-            {/* one row each: a long value shows its end while typing, its start otherwise */}
-            <Text wrap={on && !picker ? 'truncate-start' : 'truncate-end'} color={v.dim ? C.muted : undefined} inverse={on && !v.dim && !picker}>
-              {v.text}
-            </Text>
+            {on && !PICKERS.has(f) ? (
+              texts[f as TextField] ? (
+                <LineView value={texts[f as TextField]} at={state.at} />
+              ) : (
+                <Text wrap="truncate-end">
+                  <Text inverse> </Text>
+                  <Text color={C.muted}>{HINTS[f] ?? ''}</Text>
+                </Text>
+              )
+            ) : (
+              <Text wrap="truncate-end" color={v.dim ? C.muted : undefined} inverse={on && !v.dim && !picker}>
+                {v.text}
+              </Text>
+            )}
             {on && picker && (
               <Box flexShrink={0}>
                 <Text color={C.muted}>  ←/→ or click</Text>
@@ -369,6 +404,12 @@ export function EventEditor({ event, initialStart, onClose, height = Infinity }:
         {error && <Text color={C.red}>{error}</Text>}
         {saving ? (
           <Text color={C.yellow}>Saving…</Text>
+        ) : discard ? (
+          <Box flexWrap="wrap">
+            <Text color={C.yellow}>Discard your changes? </Text>
+            <Button k="esc" label="discard" color={C.red} onPress={onClose} />
+            <Button k="enter" label="keep editing" onPress={() => setDiscard(false)} />
+          </Box>
         ) : askScope ? (
           <Box flexWrap="wrap">
             <Text color={C.yellow}>{askScope === 'rule' ? 'Change the repeat rule for: ' : 'Save recurring event: '}</Text>
@@ -380,10 +421,10 @@ export function EventEditor({ event, initialStart, onClose, height = Infinity }:
         ) : (
           <Box flexWrap="wrap">
             <Box marginRight={2}>
-              <Text color={C.muted}>tab/↑↓ move · ←/→/space pick</Text>
+              <Text color={C.muted}>tab/↑↓ field · ←/→ cursor or pick</Text>
             </Box>
             <Button k="ctrl+s" label="save" color={C.green} onPress={() => void save()} />
-            <Button k="esc" label="cancel" onPress={onClose} />
+            <Button k="esc" label="cancel" onPress={cancel} />
           </Box>
         )}
       </Box>

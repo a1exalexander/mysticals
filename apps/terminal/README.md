@@ -61,6 +61,8 @@ In an open event:
 | `↑` `↓` `PgUp` `PgDn` | Scroll an event that doesn't fit on screen |
 | `esc` `q` | Close |
 
+In text fields (new or edited event, adding a CalDAV account, renaming an account) `←` `→` move the cursor, `home` `end` (or `ctrl+a` `ctrl+e`) jump to the start or end, and `ctrl+u` erases everything before the cursor. `esc` on an event you changed asks before dropping the changes.
+
 The bottom bar has two rows. The first shows what's on now, the next event within 24 hours, the number of pending invites, and accounts whose last sync failed. The second has buttons for new, sync, invites, accounts, help and quit, followed by a reminder of how to move and open events.
 
 The agenda shows each day as a heading (relative day, event count, busy time) followed by two-line event cards: start and end time, a bar in the calendar's colour, the title with badges (`● now · ends in 25m`, `in 25m` for the next one today, `RSVP`, `maybe`, `declined`), and a detail line (account · calendar, `↻ repeats`, `⚠ overlaps`, place or `video call`, number of people). Days without events collapse into `free` rows.

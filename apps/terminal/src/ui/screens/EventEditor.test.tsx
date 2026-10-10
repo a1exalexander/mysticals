@@ -165,9 +165,41 @@ describe('EventEditor', () => {
     await t.press(KEY.tab, KEY.right, '\u0013')
     await t.waitFor('boom')
     expect(onClose).not.toHaveBeenCalled()
+    await t.press(KEY.esc) // the form was changed: asks first
+    await t.waitFor('Discard your changes?')
+    expect(onClose).not.toHaveBeenCalled()
     await t.press(KEY.esc)
     expect(onClose).toHaveBeenCalled()
   })
+
+  it('edits text at the cursor and saves it', async () => {
+    t = renderWith(<EventEditor initialStart={new Date(2026, 8, 23, 9)} onClose={vi.fn()} />)
+    await t.waitFor('New event')
+    await t.press('Stndup', KEY.left, KEY.left, KEY.left, KEY.left, 'a') // cursor after "St"
+    await t.waitFor('Standup')
+    await t.press('\u0005', ' daily', '\u0001', '\u0015') // ctrl+e, type, ctrl+a, ctrl+u (nothing before the cursor)
+    await t.waitFor('Standup daily')
+    await t.press(KEY.tab, KEY.right, '\u0013')
+    await t.waitFor(() => t.client.events.create.mock.calls.length > 0)
+    expect(t.client.events.create).toHaveBeenCalledWith(expect.objectContaining({ title: 'Standup daily' }))
+  })
+
+  it('esc closes an untouched form at once; a changed one asks, and any other key keeps editing', async () => {
+    const onClose = vi.fn()
+    t = renderWith(<EventEditor initialStart={new Date(2026, 8, 23, 9)} onClose={onClose} />)
+    await t.waitFor('New event')
+    await t.press('Gym')
+    await t.press(KEY.esc)
+    await t.waitFor('Discard your changes?')
+    await t.press('x') // keeps editing, and isn't typed
+    await t.waitFor((f) => !f.includes('Discard your changes?'))
+    expect(t.lastFrame()).toMatch(/Title +Gym/)
+    expect(t.lastFrame()).not.toContain('Gymx')
+    expect(onClose).not.toHaveBeenCalled()
+    await t.press(KEY.backspace, KEY.backspace, KEY.backspace, KEY.esc) // back to how it opened
+    expect(onClose).toHaveBeenCalled()
+  })
+
   it('scrolls the fields with the focus when the panel is short', async () => {
     t = renderWith(<EventEditor initialStart={new Date(2026, 8, 23, 9)} onClose={vi.fn()} height={12} />)
     let f = await t.waitFor((x) => x.includes('↑↓ more fields') && x.split('\n').length <= 12)

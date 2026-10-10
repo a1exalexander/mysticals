@@ -16,7 +16,8 @@ import { useApi, useDirectory } from '../hooks'
 import { Button, Clickable, useKeys } from '../mouse'
 import { useHeight, useScroll } from '../scroll'
 import { ansiOf, C } from '../theme'
-import { AddCaldav, PALETTE, cycle, editText, useKeyState } from './AddCaldav'
+import { AddCaldav, PALETTE, cycle, useKeyState } from './AddCaldav'
+import { cursorText, editLine } from '../lineEdit'
 import { Spinner } from '../StatusLine'
 import { openUrl } from '../../daemon/google'
 
@@ -31,9 +32,9 @@ export interface AccountsProps {
 type Row = { account: Account; calendar?: Calendar }
 type Mode =
   | { kind: 'list' | 'google' | 'caldav' }
-  | { kind: 'rename'; account: Account; value: string }
+  | { kind: 'rename'; account: Account; value: string; at: number }
   | { kind: 'confirm'; account: Account }
-  | { kind: 'reauth'; account: Account; value: string }
+  | { kind: 'reauth'; account: Account; value: string; at: number }
 
 export function Accounts({ onClose, height = Infinity }: AccountsProps) {
   const api = useApi()
@@ -105,7 +106,7 @@ export function Accounts({ onClose, height = Infinity }: AccountsProps) {
       )
     }
     if (input === 'r') return run(`Syncing ${a.label}…`, `Synced ${a.label}`, () => api.sync.now(a.id))
-    if (input === 'e') return setMode({ kind: 'rename', account: a, value: a.label })
+    if (input === 'e') return setMode({ kind: 'rename', account: a, value: a.label, at: [...a.label].length })
     if (input === 'c') {
       const color = cycle(PALETTE, a.color, 1)
       return run('Saving…', `${a.label} colour changed`, () => api.accounts.update(a.id, { color }))
@@ -114,7 +115,7 @@ export function Accounts({ onClose, height = Infinity }: AccountsProps) {
     if (input === 'p' && a.authError) {
       if (a.kind === 'google') return googleSignIn(() => api.accounts.reauth(a.id), () => `${a.label} reconnected`)
       setMessage(undefined)
-      return setMode({ kind: 'reauth', account: a, value: '' })
+      return setMode({ kind: 'reauth', account: a, value: '', at: 0 })
     }
   }
   const confirmRemove = (yes: boolean): void => {
@@ -151,8 +152,8 @@ export function Accounts({ onClose, height = Infinity }: AccountsProps) {
           run('Reconnecting…', `${label} reconnected`, () => api.accounts.reauth(id, { password }))
           return setMode({ kind: 'list' })
         }
-        const value = editText(mode.value, input, key)
-        if (value !== undefined) setMode({ ...mode, value })
+        const line = editLine(mode, input, key)
+        if (line) setMode({ ...mode, ...line })
         return
       }
       if (mode.kind === 'rename') {
@@ -165,8 +166,8 @@ export function Accounts({ onClose, height = Infinity }: AccountsProps) {
           }
           return setMode({ kind: 'list' })
         }
-        const value = editText(mode.value, input, key)
-        if (value !== undefined) setMode({ ...mode, value })
+        const line = editLine(mode, input, key)
+        if (line) setMode({ ...mode, ...line })
         return
       }
       if (key.escape || input === 'q') return onClose()
@@ -201,7 +202,7 @@ export function Accounts({ onClose, height = Infinity }: AccountsProps) {
         <Text wrap="truncate-end" inverse={sel && !renaming}>
           {mark}
           <Text color={ansiOf(a.color)}>●</Text>{' '}
-          {renaming ? <Text color={C.cyan}>{mode.value}▏</Text> : <Text bold>{a.label}</Text>}{' '}
+          {renaming ? <Text color={C.cyan}>{cursorText(mode)}</Text> : <Text bold>{a.label}</Text>}{' '}
           <Text color={C.muted}>
             {a.email} · {a.kind === 'google' ? 'Google' : 'CalDAV'}
           </Text>
@@ -222,7 +223,7 @@ export function Accounts({ onClose, height = Infinity }: AccountsProps) {
       out.push(
         <Text key={`${a.id}/password`} wrap="truncate-start">
           {'    New app password: '}
-          <Text color={C.cyan}>{'•'.repeat(mode.value.length)}▏</Text>
+          <Text color={C.cyan}>{cursorText(mode, '•')}</Text>
         </Text>
       )
     }

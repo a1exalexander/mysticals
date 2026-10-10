@@ -1,8 +1,9 @@
 /** Add-CalDAV form inside the Accounts overlay. Mirrors desktop components/Accounts.tsx CaldavForm. Fields and buttons are clickable. */
 import { useRef, useState, type ReactNode } from 'react'
-import { Box, Text, type Key } from 'ink'
+import { Box, Text } from 'ink'
 import { errorText } from '@mysticals/core/logic/editor'
 import { useApi } from '../hooks'
+import { editLine, LineView } from '../lineEdit'
 import { Button, Clickable, useKeys } from '../mouse'
 import { ansiOf, C } from '../theme'
 import { Spinner } from '../StatusLine'
@@ -26,18 +27,11 @@ export function suggestLabel(email: string): string {
   return PERSONAL_DOMAINS.test(domain) ? 'Personal' : 'Work'
 }
 
-/** One-line text editing: printable input appends, backspace/delete drops the last char; other keys → undefined. */
-export function editText(value: string, input: string, key: Key): string | undefined {
-  if (key.backspace || key.delete) return value.slice(0, -1)
-  if (key.ctrl || key.meta || key.escape || key.return || key.tab || key.upArrow || key.downArrow) return undefined
-  if (key.leftArrow || key.rightArrow) return undefined
-  return input ? value + input : undefined
-}
-
 export const cycle = <T,>(list: readonly T[], cur: T, dir: number): T =>
   list[(list.indexOf(cur) + dir + list.length) % list.length]
 
 type Field = 'provider' | 'serverUrl' | 'username' | 'password' | 'label' | 'color'
+type TextField = Exclude<Field, 'provider' | 'color'>
 const FIELDS: Field[] = ['provider', 'serverUrl', 'username', 'password', 'label', 'color']
 const NAMES: Record<Field, string> = {
   provider: 'Provider',
@@ -73,6 +67,8 @@ const INITIAL = {
   label: '',
   labelTouched: false,
   color: PALETTE[0],
+  /** Cursor in the focused text field. */
+  at: 0,
   busy: false,
   error: ''
 }
@@ -81,6 +77,9 @@ export function AddCaldav({ onBack, onDone }: { onBack(): void; onDone(): void }
   const api = useApi()
   const [get, set] = useKeyState(INITIAL)
   const patch = (p: Partial<typeof INITIAL>): void => set({ ...get(), ...p })
+  /** Focuses `field`, with the cursor at the end of its text. */
+  const focus = (field: Field): void =>
+    patch({ field, at: field === 'provider' || field === 'color' ? 0 : [...get()[field]].length })
 
   const submit = (): void => {
     const v = get()
@@ -100,7 +99,7 @@ export function AddCaldav({ onBack, onDone }: { onBack(): void; onDone(): void }
   const clickField = (f: Field): void => {
     const v = get()
     if (v.busy) return
-    if (f !== v.field) return patch({ field: f })
+    if (f !== v.field) return focus(f)
     if (f === 'color') patch({ color: cycle(PALETTE, v.color, 1) })
     if (f === 'provider') {
       const p = cycle(PRESETS, PRESETS.find((x) => x.id === v.preset)!, 1)
@@ -114,8 +113,8 @@ export function AddCaldav({ onBack, onDone }: { onBack(): void; onDone(): void }
     if (v.busy) return
     if (key.escape) return onBack()
     if (key.return) return submit()
-    if (key.tab || key.downArrow) return patch({ field: cycle(FIELDS, v.field, key.shift ? -1 : 1) })
-    if (key.upArrow) return patch({ field: cycle(FIELDS, v.field, -1) })
+    if (key.tab || key.downArrow) return focus(cycle(FIELDS, v.field, key.shift ? -1 : 1))
+    if (key.upArrow) return focus(cycle(FIELDS, v.field, -1))
     const { field } = v
     if (field === 'provider' || field === 'color') {
       const dir = key.leftArrow || input === 'h' ? -1 : key.rightArrow || input === 'l' || input === ' ' ? 1 : 0
@@ -124,10 +123,12 @@ export function AddCaldav({ onBack, onDone }: { onBack(): void; onDone(): void }
       const p = cycle(PRESETS, PRESETS.find((x) => x.id === v.preset)!, dir)
       return patch({ preset: p.id, serverUrl: p.url })
     }
-    const next = editText(v[field], input, key)
-    if (next === undefined) return
+    const line = editLine({ value: v[field], at: v.at }, input, key)
+    if (!line) return
+    const next = line.value
     patch({
       [field]: next,
+      at: line.at,
       ...(field === 'username' && !v.labelTouched && { label: suggestLabel(next) }),
       ...(field === 'serverUrl' && { preset: 'custom' }),
       ...(field === 'label' && { labelTouched: true })
@@ -147,12 +148,20 @@ export function AddCaldav({ onBack, onDone }: { onBack(): void; onDone(): void }
       <Text bold>Add CalDAV account</Text>
       <Text color={C.muted}>Each account is isolated: events and invitations are only sent from the account they belong to.</Text>
       {FIELDS.map((f) => (
-        <Clickable key={f} onClick={() => clickField(f)}>
-          <Text>
+        <Clickable key={f} height={1} onClick={() => clickField(f)}>
+          <Box flexShrink={0}>
             <Text color={f === v.field ? C.cyan : undefined}>{`${f === v.field ? '›' : ' '} ${NAMES[f].padEnd(13)}`}</Text>
-            {shown(f)}
-            {f === v.field && f !== 'provider' && f !== 'color' ? <Text color={C.cyan}>▏</Text> : null}
-          </Text>
+          </Box>
+          {f !== v.field || f === 'provider' || f === 'color' ? (
+            <Text wrap="truncate-end">{shown(f)}</Text>
+          ) : v[f] ? (
+            <LineView value={v[f]} at={v.at} mask={f === 'password' ? '•' : undefined} />
+          ) : (
+            <Text wrap="truncate-end">
+              <Text inverse> </Text>
+              {shown(f)}
+            </Text>
+          )}
         </Clickable>
       ))}
       <Text color={C.muted}>Use an app-specific password from your provider's security settings, not your login password.</Text>
