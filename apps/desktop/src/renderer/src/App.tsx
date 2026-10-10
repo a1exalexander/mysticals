@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { CalendarView } from './views/CalendarView'
 import { EventEditorHost } from './components/EventEditor'
@@ -14,7 +14,16 @@ import { ReauthHost } from './components/Reauth'
 import { useDirectory } from './components/ui/useDirectory'
 import { t, useLocale } from './i18n'
 import { useClock } from './clock'
-import { toggleSidebar, useSidebarCollapsed } from './sidebar'
+import {
+  SIDEBAR_DEFAULT,
+  SIDEBAR_MAX,
+  SIDEBAR_MIN,
+  resetSidebarWidth,
+  setSidebarWidth,
+  toggleSidebar,
+  useSidebarCollapsed,
+  useSidebarWidth
+} from './sidebar'
 
 // Layout shell. Each child is owned by a different unit; communicate via ./bus.
 export function App(): React.JSX.Element {
@@ -29,6 +38,15 @@ export function App(): React.JSX.Element {
   }, [])
   const done = loaded || timedOut
   const collapsed = useSidebarCollapsed()
+  const width = useSidebarWidth()
+  // Pointer x and width when a drag on the sidebar's edge began.
+  const resize = useRef<{ x: number; width: number } | null>(null)
+  const endResize = (): void => {
+    if (!resize.current) return
+    resize.current = null
+    delete document.body.dataset.dragging
+    setSidebarWidth(width)
+  }
   // ⌘\ / Ctrl+\ shows or hides the sidebar (the View menu only displays the shortcut).
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -40,11 +58,45 @@ export function App(): React.JSX.Element {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   return (
-    <div className="app" data-sidebar={collapsed ? 'collapsed' : 'expanded'}>
+    <div className="app" data-sidebar={collapsed ? 'collapsed' : 'expanded'} style={{ '--sidebar-w': `${width}px` } as React.CSSProperties}>
       <Sidebar collapsed={collapsed} />
       <main className="main">
         <CalendarView />
       </main>
+      {/* Drag the sidebar's edge to resize it, double-click to reset. After <main> like the toggle below. */}
+      {!collapsed && (
+        <div
+          className="sidebar-resize"
+          data-testid="sidebar-resize"
+          role="separator"
+          aria-orientation="vertical"
+          aria-valuenow={width}
+          aria-valuemin={SIDEBAR_MIN}
+          aria-valuemax={SIDEBAR_MAX}
+          aria-label={t('sidebar.resize')}
+          title={width === SIDEBAR_DEFAULT ? undefined : t('sidebar.resetWidth')}
+          tabIndex={0}
+          onPointerDown={(e) => {
+            if (e.button !== 0) return
+            e.currentTarget.setPointerCapture(e.pointerId)
+            resize.current = { x: e.clientX, width }
+            document.body.dataset.dragging = 'col-resize'
+          }}
+          onPointerMove={(e) => {
+            if (resize.current) setSidebarWidth(resize.current.width + e.clientX - resize.current.x, false)
+          }}
+          onPointerUp={endResize}
+          onPointerCancel={endResize}
+          onDoubleClick={resetSidebarWidth}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') setSidebarWidth(width + (e.key === 'ArrowLeft' ? -16 : 16))
+            else if (e.key === 'Enter' || e.key === 'Home') resetSidebarWidth()
+            else return
+            e.preventDefault()
+            e.stopPropagation() // not the grid's ←/→ period step
+          }}
+        />
+      )}
       {/* The one sidebar toggle, on the sidebar's right edge at toolbar height; it rides the column as it folds.
           After <main>: app-regions resolve in DOM order, so placed earlier the toolbar's drag region would
           swallow clicks once the toggle sits over it (collapsed, on macOS). */}
