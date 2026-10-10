@@ -14,9 +14,7 @@ export function useApi(): ClientApi {
   return api
 }
 
-/** Stable id across accounts (provider event ids are only unique within their calendar). */
-export const eventKey = (e: Pick<CalEvent, 'accountId' | 'calendarId' | 'id'>): string =>
-  `${e.accountId}/${e.calendarId}/${e.id}`
+export { eventKey } from '@mysticals/core/logic/layout'
 
 /** Runs `load` now and whenever any account changes; drops stale responses. */
 function useLive<T>(load: (api: ClientApi) => Promise<T>, deps: unknown[]): { data?: T; error?: string; reload(): void } {

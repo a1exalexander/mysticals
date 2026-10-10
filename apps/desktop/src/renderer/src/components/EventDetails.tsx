@@ -3,17 +3,19 @@ import { addDays, subDays } from 'date-fns'
 import type { CalEvent, PartStat } from '@shared/types'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
-import { deleteEvent } from './EventMenu'
+import { deleteEvent, name } from './EventMenu'
 import { canEdit, cleanNotes, formatWhen, isHtml, linkify, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
-import { eventBounds } from '@mysticals/core/logic/layout'
+import { eventBounds, eventKey } from '@mysticals/core/logic/layout'
 import { eventLinks, linkLabel, locationText } from '@mysticals/core/logic/meeting'
 import { LinkIcon } from './LinkIcon'
 import { notesFragment } from './notesHtml'
+import { usePopoverFocus } from './ui/usePopover'
 import './ui/ui.css'
 import './EventDetails.css'
 import type { Key } from '@mysticals/core/i18n'
 import { currentLocale, t, useLocale } from '../i18n'
+import { hour12 } from '../clock'
 
 type Reply = Exclude<PartStat, 'needsAction'>
 const REPLIES: [Reply, Key][] = [['accepted', 'rsvp.accept'], ['tentative', 'rsvp.maybe'], ['declined', 'rsvp.decline']]
@@ -39,7 +41,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const current = useRef<string | null>(null) // id of the shown event; late replies for another event are dropped
-  current.current = opened ? `${opened.event.accountId}/${opened.event.id}` : null
+  current.current = opened ? eventKey(opened.event) : null
 
   useEffect(
     () =>
@@ -85,6 +87,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
     setPos((p) => (p && p.left === left && p.top === top ? p : { left, top }))
   }, [opened])
   useLayoutEffect(place, [place])
+  usePopoverFocus(!!opened, () => ref.current?.querySelector('h2'), opened?.el)
   useEffect(() => {
     const el = ref.current
     if (!opened || !el) return
@@ -99,9 +102,9 @@ export function EventDetailsHost(): React.JSX.Element | null {
 
   // Follow the event while shown: edits from elsewhere update it, a deletion shows a notice.
   const accountId = opened?.event.accountId
-  const eventId = opened?.event.id
+  const key = opened && eventKey(opened.event)
   useEffect(() => {
-    if (!opened || !accountId || !eventId) return
+    if (!opened || !accountId || !key) return
     let live = true
     const b = eventBounds(opened.event)
     // A window around the event: finds it after small moves without pulling every cached event over IPC.
@@ -110,9 +113,9 @@ export function EventDetailsHost(): React.JSX.Element | null {
       if (changed !== accountId) return
       window.api.events.list(range).then((events) => {
         if (!live) return
-        const fresh = events.find((e) => e.accountId === accountId && e.id === eventId)
+        const fresh = events.find((e) => eventKey(e) === key)
         setGone(!fresh)
-        if (fresh) setOpened((o) => (o && o.event.id === eventId ? { ...o, event: fresh } : o))
+        if (fresh) setOpened((o) => (o && eventKey(o.event) === key ? { ...o, event: fresh } : o))
       }, console.error)
     })
     return () => {
@@ -120,7 +123,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
       off()
     }
     // Re-subscribes per shown event, not per refreshed copy of it.
-  }, [accountId, eventId])
+  }, [accountId, key])
 
   if (!opened) return null
 
@@ -132,7 +135,6 @@ export function EventDetailsHost(): React.JSX.Element | null {
   const where = locationText(event.location)
   const owner = ownerLine(calendar?.name ?? t('editor.calendar'), account?.label ?? event.accountId, account?.email)
 
-  const key = `${event.accountId}/${event.id}`
   const still = (): boolean => current.current === key
   const run = async (fn: () => Promise<void>): Promise<void> => {
     setBusy(true)
@@ -163,7 +165,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
         className={`mc-popover details${gone ? ' is-gone' : ''}`}
         data-testid="details"
         role="dialog"
-        aria-label={event.title}
+        aria-label={name(event)}
         style={{ '--cal': calendar?.color ?? account?.color, left: pos?.left ?? -9999, top: pos?.top ?? 0 } as React.CSSProperties}
       >
         {gone && (
@@ -178,9 +180,9 @@ export function EventDetailsHost(): React.JSX.Element | null {
         )}
         <div className="details-head">
           <span className="mc-dot details-dot" />
-          <h2>{event.title || t('common.untitled')}</h2>
+          <h2 tabIndex={-1}>{name(event)}</h2>
         </div>
-        <div className="details-when">{formatWhen(event, currentLocale())}</div>
+        <div className="details-when">{formatWhen(event, currentLocale(), hour12())}</div>
         <div className="details-owner mc-muted">
           {owner.calendar && <>{t('details.calendarIn', { calendar: owner.calendar })} </>}<b>{owner.label}</b>
           {owner.email && <> · {owner.email}</>}

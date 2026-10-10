@@ -1,4 +1,6 @@
 import { test, expect, _electron as electron } from '@playwright/test'
+import { endOfWeek, format, getWeek, startOfWeek } from 'date-fns'
+import { choose } from './choose'
 
 test('settings tabs: accounts (with sync and notifications), themes, general', async () => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
@@ -13,6 +15,21 @@ test('settings tabs: accounts (with sync and notifications), themes, general', a
   // Sync and notifications live on each account's one card, not in tabs of their own.
   await expect(page.getByTestId('sync-work')).toContainText('Up to date')
   await expect(page.getByTestId('account-work').getByTestId('notify-account-work')).toBeVisible()
+  // Colour swatches read out by name, not hex.
+  const work = page.getByTestId('account-work')
+  await expect(work.getByRole('radio', { name: 'Cyan' })).toHaveAttribute('aria-checked', 'true')
+  // Arrows step from the focused swatch: two in a row, the second before the first colour has come back over IPC.
+  await work.getByRole('radio', { name: 'Cyan' }).focus()
+  const arrows = (key: string): Promise<void> =>
+    page.evaluate((key) => {
+      for (let i = 0; i < 2; i++) document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }))
+    }, key)
+  await arrows('ArrowRight')
+  await expect(work.getByRole('radio', { name: 'Orange' })).toBeFocused()
+  await expect(work.getByRole('radio', { name: 'Orange' })).toHaveAttribute('tabindex', '0')
+  await expect(work.getByRole('radio', { name: 'Orange' })).toHaveAttribute('aria-checked', 'true')
+  await arrows('ArrowLeft')
+  await expect(work.getByRole('radio', { name: 'Cyan' })).toHaveAttribute('aria-checked', 'true')
   await expect(page.getByTestId('reminder-select')).toBeVisible()
   await expect(page.getByTestId('settings-tab-sync')).toHaveCount(0)
   await expect(page.getByTestId('settings-tab-notifications')).toHaveCount(0)
@@ -36,6 +53,16 @@ test('settings tabs: accounts (with sync and notifications), themes, general', a
   const panelBox = (await panel.boundingBox())!
   expect(firstCard.x - 3).toBeGreaterThanOrEqual(panelBox.x - 0.5)
   expect(firstCard.y - 3).toBeGreaterThanOrEqual(panelBox.y - 0.5)
+  // The themes are one radio group: a single Tab stop, and the arrow keys move the selection.
+  await expect(page.getByTestId('theme-tokyo')).toHaveAttribute('tabindex', '-1')
+  await page.getByTestId('theme-dracula').focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'tokyo')
+  await expect(page.getByTestId('theme-tokyo')).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByTestId('theme-tokyo')).toBeFocused()
+  await expect(page.getByTestId('theme-tokyo')).toHaveAttribute('tabindex', '0')
+  await page.keyboard.press('ArrowLeft')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dracula')
   await page.getByTestId('theme-catppuccin').click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'catppuccin')
   await expect(page.getByTestId('theme-catppuccin')).toHaveCSS('box-shadow', /inset/)
@@ -93,5 +120,94 @@ test('general tab: usage stats toggle is on by default and persists', async () =
   await page.getByRole('button', { name: 'Settings' }).click()
   await page.getByTestId('settings-tab-general').click()
   await expect(page.getByTestId('telemetry-toggle')).not.toBeChecked()
+  await app.close()
+})
+
+test('general tab: 12-hour times and a Sunday week start', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  // Mock runs see a 24-hour, Monday-first region.
+  const hours = page.locator('.tg-hour')
+  await expect(hours.nth(8)).toHaveText('09:00')
+  await expect(page.locator('.tg-dayhead .dow').first()).toHaveText('Mon')
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByTestId('settings-tab-general').click()
+  await expect(page.getByTestId('time-format-select')).toHaveText('Auto (24-hour)')
+  await expect(page.getByTestId('week-start-select')).toHaveText('Auto (Monday)')
+  await choose(page.getByTestId('time-format-select'), '12')
+  await choose(page.getByTestId('week-start-select'), 'sun')
+  await expect(page.getByTestId('time-format-select')).toHaveText('12-hour')
+  await page.screenshot({ path: 'e2e/screens/settings-clock.png' })
+  await page.keyboard.press('Escape')
+
+  await expect(hours.nth(8)).toHaveText('9 AM')
+  await expect(hours.nth(12)).toHaveText('1 PM')
+  await expect(page.getByTestId('now-clock')).toHaveText(/^\d{1,2}:\d\d [AP]M$/)
+  await expect(page.locator('.tg-dayhead .dow').first()).toHaveText('Sun')
+  await expect(page.locator('.tg-dayhead .dow').last()).toHaveText('Sat')
+  // The title and week number follow the Sunday-first week (US numbering: week 1 holds 1 January).
+  const sun = startOfWeek(new Date(), { weekStartsOn: 0 })
+  const sat = endOfWeek(sun, { weekStartsOn: 0 })
+  await expect(page.locator('.toolbar-title')).toContainText(sun.getMonth() === sat.getMonth() ? format(sun, 'LLLL') : `${format(sun, 'LLL')} – ${format(sat, 'LLL')}`)
+  await expect(page.locator('.toolbar-sub')).toHaveText(new RegExp(`W${getWeek(new Date(), { weekStartsOn: 0, firstWeekContainsDate: 1 })}$`))
+  await page.screenshot({ path: 'e2e/screens/week-12h-sunday.png' })
+  await page.getByTestId('view-switch-month').click()
+  await expect(page.locator('.mg-dows div').first()).toHaveText('Sun')
+  await expect(page.locator('.mg-time').first()).toHaveText(/^\d{1,2}:\d\d [AP]M$/)
+  // The agenda's time column fits "10:00 AM" on one line.
+  await page.getByTestId('view-switch-agenda').click()
+  await expect(page.locator('.ag-time').first()).toHaveText(/^\d{1,2}:\d\d [AP]M$/)
+  for (const time of await page.locator('.ag-time').all()) expect((await time.boundingBox())!.height).toBeLessThan(16)
+
+  // A fresh renderer reads both back from main (prefs.json in userData).
+  await page.reload()
+  await page.getByTestId('view-switch-week').click()
+  await expect(hours.nth(8)).toHaveText('9 AM')
+  await expect(page.locator('.tg-dayhead .dow').first()).toHaveText('Sun')
+
+  // The editor's pickers: 12-hour slots that fit the trigger, typed "9:30 pm", a Sunday-first calendar.
+  await page.getByTestId('new-event').click()
+  const editor = page.getByTestId('editor')
+  const starts = editor.getByRole('button', { name: 'Starts time' })
+  await starts.click()
+  await expect(page.getByRole('dialog', { name: 'Starts time' }).getByRole('option').nth(54)).toHaveText('1:30 PM')
+  await page.getByLabel('Starts time, h:mm AM/PM').fill('9:30 pm')
+  await page.keyboard.press('Enter')
+  await expect(starts).toHaveText('9:30 PM')
+  expect(await starts.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+  await editor.getByRole('button', { name: 'Starts date' }).click()
+  await expect(page.locator('.rdp-weekday').first()).toHaveText('Su')
+  await page.keyboard.press('Escape')
+  // Weekly repeat days start on Sunday too.
+  await choose(page.getByTestId('editor-repeat'), 'custom')
+  await choose(editor.getByLabel('Repeat unit'), 'weekly')
+  await expect(editor.getByRole('group', { name: 'Repeat on' }).getByRole('button')).toHaveText(['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'])
+  await app.close()
+})
+
+test('settings scroll as one area in the smallest window', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 960, height: 600 })
+  await page.getByRole('button', { name: 'Settings' }).click()
+  const detail = page.getByTestId('account-work')
+  await expect(detail).toBeVisible()
+  // The account details grow with their content; only the panel around them scrolls.
+  const nested = await detail.evaluate((el) => {
+    const out: string[] = []
+    for (let e: Element | null = el; e && !e.classList.contains('set-panel'); e = e.parentElement)
+      if (/auto|scroll/.test(getComputedStyle(e).overflowY)) out.push(e.className)
+    return out
+  })
+  expect(nested).toEqual([])
+  // Scrolling that one panel to the bottom reaches Remove, and its confirmation.
+  const toBottom = (): Promise<void> => page.getByRole('tabpanel').evaluate((el) => void (el.scrollTop = el.scrollHeight))
+  const remove = detail.getByRole('button', { name: 'Remove', exact: true })
+  await toBottom()
+  await expect(remove).toBeInViewport()
+  await remove.click()
+  await toBottom()
+  await expect(detail.getByRole('button', { name: 'Remove account' })).toBeInViewport()
+  await page.screenshot({ path: 'e2e/screens/settings-960.png' })
   await app.close()
 })

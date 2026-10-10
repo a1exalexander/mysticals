@@ -1,4 +1,5 @@
 import type { Locale, LocaleSetting } from '../i18n'
+import type { TimeFormat, WeekStart } from '../logic/clock'
 import type {
   Account,
   Calendar,
@@ -88,6 +89,10 @@ export interface ReminderApi {
   /** A sound with each reminder (Banner chime, Full-screen reminder bell); on by default. */
   sound(): Promise<boolean>
   setSound(on: boolean): Promise<void>
+  /** Plays the sound reminders make now (bell with the Full-screen reminder on, else chime), even with sound off. */
+  testSound(): Promise<void>
+  /** Opens the Full-screen reminder with a test meeting. */
+  preview(): Promise<void>
 }
 
 /** One meeting on the full-screen reminder (ISO start/end, calendar colour, account label, its Call link). */
@@ -123,6 +128,23 @@ export interface LocaleApi {
   set(setting: LocaleSetting): Promise<LocaleState>
   /** Fires when the language changes. Returns unsubscribe. */
   onChange(cb: (s: LocaleState) => void): () => void
+}
+
+/** Clock: the Settings choices, what is in use and what Auto means here (from the OS region, shown next to "Auto"). */
+export interface ClockState {
+  timeFormat: TimeFormat
+  weekStart: WeekStart
+  hour12: boolean
+  weekStartsOn: 0 | 1
+  system: { hour12: boolean; weekStartsOn: 0 | 1 }
+}
+
+/** Desktop-only Settings > General time format and first day of the week, exposed as `window.clock`. */
+export interface ClockApi {
+  get(): Promise<ClockState>
+  set(patch: { timeFormat?: TimeFormat; weekStart?: WeekStart }): Promise<ClockState>
+  /** Fires when either changes. Returns unsubscribe. */
+  onChange(cb: (s: ClockState) => void): () => void
 }
 
 /** Desktop-only: matches the native window (title bar, background) to the picked theme. Exposed as `window.appTheme`. */
@@ -174,12 +196,17 @@ export const IPC = {
   remindersFullscreenSet: 'reminders:fullscreen-set',
   remindersSoundGet: 'reminders:sound-get',
   remindersSoundSet: 'reminders:sound-set',
+  remindersSoundTest: 'reminders:sound-test',
+  remindersPreview: 'reminders:preview',
   reminderScreenMeetings: 'reminder-screen:meetings',
   reminderScreenClose: 'reminder-screen:close',
   themeSet: 'theme:set',
   localeGet: 'locale:get',
   localeSet: 'locale:set',
   locale: 'locale',
+  clockGet: 'clock:get',
+  clockSet: 'clock:set',
+  clock: 'clock',
   logsList: 'logs:list',
   logsOpen: 'logs:open',
   logsAppended: 'logs:appended'

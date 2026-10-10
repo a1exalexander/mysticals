@@ -6,6 +6,7 @@ import { DateTimeField } from './ui/DateTimeField'
 import { RecurringScope } from './ui/RecurringScope'
 import { RepeatField } from './ui/RepeatField'
 import { Select } from './ui/Select'
+import { useModal } from './ui/usePopover'
 import { extraEmail } from '@mysticals/core/logic/details'
 import {
   applyForm, emptyForm, setAllDay, errorText, formFromEvent, formToInput, isEmail, moveStart, repeatChanged, soleId, splitEmails,
@@ -23,26 +24,42 @@ export function EventEditorHost(): React.JSX.Element | null {
   useLocale()
   const [opened, setOpened] = useState<Opened | null>(null)
   const [form, setForm] = useState<EventForm | null>(null)
+  const [initial, setInitial] = useState<EventForm | null>(null) // the form as opened, to tell an edit apart
   const [draft, setDraft] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   // Saving a recurring event first asks which part of the series the edit is for.
   const [askScope, setAskScope] = useState(false)
+  // Esc or a click outside with changes asks before throwing them away.
+  const [discard, setDiscard] = useState(false)
   const [repeatFailed, setRepeatFailed] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
+  const dialog = useRef<HTMLDialogElement>(null)
   const session = useRef(0) // bumps on every open/close so a late save can't touch a newer editor
+  const changed = useRef(false) // `dirty` for the listeners below
+  const pending = useRef<Opened | null>(null) // asked for while the form had changes: Discard opens it
+
+  // Only setters and refs, so the listeners below can keep the first render's copy.
+  const open = (o: Opened, discarding = false): void => {
+    // A changed form isn't replaced unasked: the app menu's New Event (Cmd+N) reaches past the modal.
+    if (changed.current && !discarding) {
+      pending.current = o
+      setAskScope(false)
+      return setDiscard(true)
+    }
+    pending.current = null
+    session.current++
+    setSaving(false)
+    setAskScope(false)
+    setDiscard(false)
+    setRepeatFailed(false)
+    setOpened(o)
+    setForm(null)
+    setDraft('')
+    setError('')
+  }
 
   useEffect(() => {
-    const open = (o: Opened): void => {
-      session.current++
-      setSaving(false)
-      setAskScope(false)
-      setRepeatFailed(false)
-      setOpened(o)
-      setForm(null)
-      setDraft('')
-      setError('')
-    }
     const offs = [
       bus.on('event:create', (prefill) => open({ mode: 'create', prefill })),
       bus.on('event:edit', ({ event }) => open({ mode: 'edit', event })),
@@ -53,13 +70,20 @@ export function EventEditorHost(): React.JSX.Element | null {
 
   useEffect(() => {
     if (!opened || form || !loaded) return
-    setForm(opened.mode === 'edit' ? formFromEvent(opened.event) : emptyForm(accounts, calendars, opened.prefill))
+    const f = opened.mode === 'edit' ? formFromEvent(opened.event) : emptyForm(accounts, calendars, opened.prefill)
+    setForm(f)
+    setInitial(f)
     requestAnimationFrame(() => titleRef.current?.focus())
     // A series' rule isn't cached: read it from the provider; until then the rule can't be changed.
     if (opened.mode === 'edit' && opened.event.recurringEventId) {
       const mine = session.current
       window.api.events.recurrence(opened.event).then(
-        (rule) => session.current === mine && setForm((f) => f && withLoadedRepeat(f, rule)),
+        (rule) => {
+          if (session.current !== mine) return
+          const load = (f: EventForm | null): EventForm | null => f && withLoadedRepeat(f, rule)
+          setForm(load)
+          setInitial(load) // loading the rule isn't an edit
+        },
         () => session.current === mine && setRepeatFailed(true)
       )
     }
@@ -78,9 +102,24 @@ export function EventEditorHost(): React.JSX.Element | null {
   const pendingEmails = splitEmails(draft)
   const invitees = form ? [...form.attendees, ...pendingEmails] : []
   const canSave = !!form && !!form.accountId && !!form.calendarId && !saving
+  const dirty = !!form && (!!draft.trim() || JSON.stringify(form) !== JSON.stringify(initial))
+  changed.current = dirty
+
+  const requestClose = (): void => {
+    pending.current = null
+    if (!dirty) return close()
+    setAskScope(false)
+    setDiscard(true)
+  }
+  const keepEditing = (): void => {
+    pending.current = null
+    setDiscard(false)
+    titleRef.current?.focus()
+  }
 
   const save = async (scope?: DeleteScope): Promise<void> => {
     if (!form || !canSave) return
+    setDiscard(false)
     if (editing?.recurringEventId && !scope) return setAskScope(true)
     const mine = session.current
     setError('')
@@ -103,9 +142,14 @@ export function EventEditorHost(): React.JSX.Element | null {
   useEffect(() => {
     if (!opened) return
     const onKey = (e: KeyboardEvent): void => {
+      // Keys in a dialog stacked on top (Reauth opens by itself on a disconnect) are that dialog's.
+      const d = (e.target as Element).closest?.('dialog')
+      if (d && d !== dialog.current) return
       if (e.key === 'Escape') {
+        e.preventDefault() // not the dialog's own cancel: that would close it behind React's back
         if (askScope) setAskScope(false)
-        else close()
+        else if (discard) keepEditing()
+        else requestClose()
       } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         void save()
@@ -114,6 +158,9 @@ export function EventEditorHost(): React.JSX.Element | null {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   })
+
+  // A modal dialog: Tab stays inside and the app behind is inert.
+  useModal(dialog, !!opened && !!form)
 
   if (!opened || !form) return null
 
@@ -129,7 +176,17 @@ export function EventEditorHost(): React.JSX.Element | null {
   const cal = account?.color ?? 'var(--muted)'
 
   return (
-    <div className="mc-overlay" onMouseDown={(e) => e.target === e.currentTarget && close()}>
+    <dialog
+      ref={dialog}
+      className="mc-overlay"
+      aria-label={editing ? form.title || t('common.untitled') : t('common.newEvent')}
+      onCancel={(e) => e.preventDefault()}
+      onMouseDown={(e) => {
+        if (e.target !== e.currentTarget) return
+        e.preventDefault() // keeps focus where the discard prompt puts it
+        requestClose()
+      }}
+    >
       <form
         className="mc-sheet editor"
         data-testid="editor"
@@ -144,6 +201,7 @@ export function EventEditorHost(): React.JSX.Element | null {
           <input
             ref={titleRef}
             className="editor-title"
+            aria-label={t('editor.title')}
             placeholder={editing ? t('editor.title') : t('common.newEvent')}
             value={form.title}
             onChange={(e) => set({ title: e.target.value })}
@@ -151,11 +209,13 @@ export function EventEditorHost(): React.JSX.Element | null {
         </div>
 
         <div className="editor-grid">
-          <label>{t('editor.account')}</label>
+          {/* Editing shows plain text, no control to point at. */}
+          <label htmlFor={editing ? undefined : 'ed-account'}>{t('editor.account')}</label>
           {editing ? (
             <div className="editor-static" data-testid="editor-account">{account?.label ?? editing.accountId}</div>
           ) : (
             <Select
+              id="ed-account"
               data-testid="editor-account"
               aria-label={t('editor.account')}
               placeholder={t('editor.chooseAccount')}
@@ -165,11 +225,12 @@ export function EventEditorHost(): React.JSX.Element | null {
             />
           )}
 
-          <label>{t('editor.calendar')}</label>
+          <label htmlFor={editing ? undefined : 'ed-calendar'}>{t('editor.calendar')}</label>
           {editing ? (
             <div className="editor-static" data-testid="editor-calendar">{calendar?.name ?? editing.calendarId}</div>
           ) : (
             <Select
+              id="ed-calendar"
               data-testid="editor-calendar"
               aria-label={t('editor.calendar')}
               placeholder={form.accountId ? t('editor.chooseCalendar') : t('editor.accountFirst')}
@@ -180,9 +241,10 @@ export function EventEditorHost(): React.JSX.Element | null {
             />
           )}
 
-          <label>{t('editor.allDay')}</label>
+          <label htmlFor="ed-allday">{t('editor.allDay')}</label>
           <label className="editor-switch">
             <input
+              id="ed-allday"
               type="checkbox"
               role="switch"
               className="mc-switch"
@@ -192,11 +254,11 @@ export function EventEditorHost(): React.JSX.Element | null {
             />
           </label>
 
-          <label>{t('editor.starts')}</label>
-          <DateTimeField label={t('editor.starts')} value={form.start} dateOnly={form.allDay} onChange={(start) => setForm(moveStart(form, start))} />
+          <label htmlFor="ed-starts">{t('editor.starts')}</label>
+          <DateTimeField id="ed-starts" label={t('editor.starts')} value={form.start} dateOnly={form.allDay} onChange={(start) => setForm(moveStart(form, start))} />
 
-          <label>{t('editor.ends')}</label>
-          <DateTimeField label={t('editor.ends')} value={form.end} dateOnly={form.allDay} onChange={(end) => set({ end })} />
+          <label htmlFor="ed-ends">{t('editor.ends')}</label>
+          <DateTimeField id="ed-ends" label={t('editor.ends')} value={form.end} dateOnly={form.allDay} onChange={(end) => set({ end })} />
 
           <RepeatField
             value={form.repeat}
@@ -205,10 +267,10 @@ export function EventEditorHost(): React.JSX.Element | null {
             onChange={(repeat) => set({ repeat })}
           />
 
-          <label>{t('editor.location')}</label>
-          <input placeholder={t('editor.addLocation')} value={form.location} onChange={(e) => set({ location: e.target.value })} />
+          <label htmlFor="ed-location">{t('editor.location')}</label>
+          <input id="ed-location" placeholder={t('editor.addLocation')} value={form.location} onChange={(e) => set({ location: e.target.value })} />
 
-          <label>{t('editor.invitees')}</label>
+          <label htmlFor="ed-invitees">{t('editor.invitees')}</label>
           <div className="editor-chips">
             {form.attendees.map((m) => (
               <span key={m} className={isEmail(m) ? 'chip' : 'chip bad'}>
@@ -217,6 +279,7 @@ export function EventEditorHost(): React.JSX.Element | null {
               </span>
             ))}
             <input
+              id="ed-invitees"
               placeholder={form.attendees.length ? '' : t('editor.addPeople')}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -232,8 +295,8 @@ export function EventEditorHost(): React.JSX.Element | null {
             />
           </div>
 
-          <label>{t('editor.notes')}</label>
-          <textarea rows={3} placeholder={t('editor.addNotes')} value={form.description} onChange={(e) => set({ description: e.target.value })} />
+          <label htmlFor="ed-notes">{t('editor.notes')}</label>
+          <textarea id="ed-notes" rows={3} placeholder={t('editor.addNotes')} value={form.description} onChange={(e) => set({ description: e.target.value })} />
         </div>
 
         <div className="editor-identity">
@@ -258,6 +321,14 @@ export function EventEditorHost(): React.JSX.Element | null {
             onPick={(scope) => void save(scope)}
             onCancel={() => setAskScope(false)}
           />
+        ) : discard ? (
+          <div className="mc-actions" role="group" aria-label={t('editor.discardTitle')}>
+            <span className="editor-discard">{t('editor.discardTitle')}</span>
+            <button type="button" className="mc-btn danger" onClick={() => (pending.current ? open(pending.current, true) : close())}>
+              {t('editor.discard')}
+            </button>
+            <button type="button" className="mc-btn" autoFocus onClick={keepEditing}>{t('editor.keepEditing')}</button>
+          </div>
         ) : (
           <div className="mc-actions">
             <button type="button" className="mc-btn" onClick={close}>{t('common.cancel')}</button>
@@ -267,6 +338,6 @@ export function EventEditorHost(): React.JSX.Element | null {
           </div>
         )}
       </form>
-    </div>
+    </dialog>
   )
 }

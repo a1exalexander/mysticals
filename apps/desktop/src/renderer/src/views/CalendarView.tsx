@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { addDays, format, getISOWeek, isToday, startOfDay } from 'date-fns'
+import { addDays, format, isToday, startOfDay } from 'date-fns'
 import type { CalEvent, DeleteScope } from '@shared/types'
 import type { MenuCommand } from '@shared/ipc'
 import { useCalendarData } from '../hooks/useCalendarData'
@@ -8,11 +8,12 @@ import { canEdit } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
 import { bus } from '../bus'
 import { nav, useNav, type DeskView } from './nav'
-import { rangeLabel, shiftDate, viewDays, viewRange, type View } from '@mysticals/core/logic/layout'
+import { eventKey, rangeLabel, shiftDate, viewDays, viewRange, weekLabel, type View } from '@mysticals/core/logic/layout'
 import { TimeGrid } from './TimeGrid'
 import { MonthGrid } from './MonthGrid'
 import { AHEAD_DAYS, Agenda } from './Agenda'
 import { cap, currentLocale, fmt, t, useLocale } from '../i18n'
+import { useClock, weekNo } from '../clock'
 import type { Key } from '@mysticals/core/i18n'
 import { SegTabs } from '../components/ui/SegTabs'
 import { toggleSidebar } from '../sidebar'
@@ -33,7 +34,6 @@ export type ColorOf = (e: CalEvent) => string
 export type MoveTo = (e: CalEvent, start: string, end: string) => void
 export type CanDrag = (e: CalEvent) => boolean
 
-const keyOf = (e: Pick<CalEvent, 'accountId' | 'id'>): string => `${e.accountId}/${e.id}`
 const same = (a: string, b: string): boolean => Date.parse(a) === Date.parse(b) || a === b
 
 const go = (dir: 1 | -1): void => {
@@ -41,7 +41,12 @@ const go = (dir: 1 | -1): void => {
   // The agenda steps one day at a time.
   nav.set({ date: shiftDate(view === 'agenda' ? 'day' : view, date, dir) })
 }
-const today = (): void => nav.set({ date: new Date() })
+// Each "today" bumps it, and the time grid scrolls back to now; ‹ › keep the user's scroll.
+let todays = 0
+const today = (): void => {
+  todays++
+  nav.set({ date: new Date() })
+}
 
 // Whether the agenda shows the next days too: a per-device preference.
 const AHEAD_KEY = 'mysticals-agenda-ahead'
@@ -56,6 +61,7 @@ const readAhead = (): boolean => {
 export function CalendarView(): React.JSX.Element {
   const { date: navDate, view: deskView } = useNav()
   useLocale()
+  const { weekStartsOn } = useClock()
   const agenda = deskView === 'agenda'
   // The agenda shows one day (today unless stepped away); underneath it loads like the day view.
   const view: View = agenda ? 'day' : deskView
@@ -71,22 +77,22 @@ export function CalendarView(): React.JSX.Element {
   }, [])
   const range = useMemo(
     () =>
-      agenda && ahead ? { start: date.toISOString(), end: addDays(date, AHEAD_DAYS + 1).toISOString() } : viewRange(view, date),
-    [view, date.getTime(), agenda, ahead]
+      agenda && ahead ? { start: date.toISOString(), end: addDays(date, AHEAD_DAYS + 1).toISOString() } : viewRange(view, date, weekStartsOn),
+    [view, date.getTime(), agenda, ahead, weekStartsOn]
   )
-  const days = useMemo(() => viewDays(view, date), [view, date.getTime()])
+  const days = useMemo(() => viewDays(view, date, weekStartsOn), [view, date.getTime(), weekStartsOn])
   const { accounts, calendars, events: all } = useCalendarData(range)
   // Dropped events show at their new time at once; an entry goes when the data has caught up or the save fails.
   const [moved, setMoved] = useState<Map<string, { start: string; end: string }>>(() => new Map())
   const events = useMemo(() => {
     const shown = visibleEvents(all, calendars)
-    return moved.size ? shown.map((e) => ({ ...e, ...moved.get(keyOf(e)) })) : shown
+    return moved.size ? shown.map((e) => ({ ...e, ...moved.get(eventKey(e)) })) : shown
   }, [all, calendars, moved])
   useEffect(() => {
     setMoved((m) => {
       if (!m.size) return m
       const caught = [...m].filter(([k, to]) => {
-        const e = all.find((x) => keyOf(x) === k)
+        const e = all.find((x) => eventKey(x) === k)
         return !e || (same(e.start, to.start) && same(e.end, to.end))
       })
       if (!caught.length) return m
@@ -107,7 +113,7 @@ export function CalendarView(): React.JSX.Element {
   )
 
   const move = useCallback((e: CalEvent, start: string, end: string, scope?: DeleteScope): void => {
-    const k = keyOf(e)
+    const k = eventKey(e)
     const drop = (): void =>
       setMoved((m) => {
         const next = new Map(m)
@@ -133,6 +139,8 @@ export function CalendarView(): React.JSX.Element {
   }, [])
   const moveTo = useCallback<MoveTo>((e, start, end) => move(e, start, end), [move])
   const firstSync = accounts.filter((a) => a.syncing && !a.synced)
+  // The visible days, not the picked date: a week can span two months or years.
+  const week = view === 'week' ? weekLabel(days[0], days[days.length - 1], currentLocale()) : null
 
   const colorOf = useMemo<ColorOf>(() => {
     const cal = new Map(calendars.map((c) => [`${c.accountId}/${c.id}`, c.color]))
@@ -148,8 +156,12 @@ export function CalendarView(): React.JSX.Element {
         (t instanceof HTMLInputElement && !['checkbox', 'radio', 'button'].includes(t.type))
       if (e.metaKey || e.ctrlKey || e.altKey || typing) return
       // Keys belong to the open sheet/popover, not the grid.
-      if (document.querySelector('dialog[open], .mc-overlay, [data-testid="details"]')) return
+      if (document.querySelector('dialog[open], [data-testid="details"]')) return
       const k = e.key
+      // A new period or view would unmount a focused event pill or day header (keyed by date) and drop the focus. Pills
+      // take ←/→/h/l themselves (EventMenu's eventButton).
+      const navKey = k === 'ArrowLeft' || k === 'ArrowRight' || k === 'h' || k === 'l' || k === 't' || k === 'T' || KEY_VIEW[k]
+      if (navKey && t.closest('.ev, .ev-rail, .tg-dayhead')) return
       if (k === 'ArrowLeft' || k === 'h') go(-1)
       else if (k === 'ArrowRight' || k === 'l') go(1)
       else if (k === 't' || k === 'T') today()
@@ -178,17 +190,17 @@ export function CalendarView(): React.JSX.Element {
       <header className="toolbar">
         {/* Keyed by the period so a step to the next one fades the new title in. */}
         <h1 className="toolbar-title" key={`${deskView}/${format(days[0], 'yyyy-MM-dd')}`}>
-          {agenda && isToday(date) ? t('common.today') : view === 'day' ? fmt(date, 'd MMMM') : view === '3day' ? rangeLabel(days[0], days[2], currentLocale()) : cap(fmt(date, 'LLLL'))}
+          {agenda && isToday(date) ? t('common.today') : view === 'day' ? fmt(date, 'd MMMM') : view === '3day' ? rangeLabel(days[0], days[2], currentLocale()) : cap(week?.title ?? fmt(date, 'LLLL'))}
           <span className="toolbar-sub">
             {agenda ? (
               cap(fmt(date, 'EEEE, d MMMM'))
             ) : (
               <>
-                {view !== '3day' && format(date, 'yyyy')}
+                {view !== '3day' && (week?.year ?? format(date, 'yyyy'))}
                 {view === 'day' && ` · ${fmt(date, 'EEE')}`}
                 {view === '3day' &&
-                  [...new Set(days.map((d) => t('toolbar.weekNo', { n: getISOWeek(d) })))].join('–')}
-                {(view === 'day' || view === 'week') && ` · ${t('toolbar.weekNo', { n: getISOWeek(date) })}`}
+                  [...new Set(days.map((d) => t('toolbar.weekNo', { n: weekNo(d) })))].join('–')}
+                {(view === 'day' || view === 'week') && ` · ${t('toolbar.weekNo', { n: weekNo(date) })}`}
               </>
             )}
           </span>
@@ -215,7 +227,7 @@ export function CalendarView(): React.JSX.Element {
       ) : view === 'month' ? (
         <MonthGrid date={date} events={events} colorOf={colorOf} canDrag={canDrag} moveTo={moveTo} />
       ) : (
-        <TimeGrid days={days} events={events} colorOf={colorOf} canDrag={canDrag} moveTo={moveTo} />
+        <TimeGrid days={days} events={events} colorOf={colorOf} canDrag={canDrag} moveTo={moveTo} todays={todays} />
       )}
       {firstSync.length > 0 && !events.length && (
         <div className="first-sync" role="status" data-testid="first-sync">

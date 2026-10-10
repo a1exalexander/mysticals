@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import type { ReminderMeeting } from '@shared/ipc'
 import { linkKind, linkLabel } from '@mysticals/core/logic/meeting'
-import { currentLocale, fmt, t, useLocale } from '../i18n'
+import { currentLocale, t, useLocale } from '../i18n'
+import { hm, useClock } from '../clock'
 import { followTheme } from '../theme'
 import './ReminderScreen.css'
 
 /** The Full-screen reminder window (`#reminder`): every due meeting with a Call link, until Join, Esc or Backspace. */
 export function ReminderScreen(): React.JSX.Element {
   useLocale()
+  useClock()
   const [meetings, setMeetings] = useState<ReminderMeeting[]>([])
   const [now, setNow] = useState(Date.now)
   // The window opens hidden and main focuses it once shown: the enter animation waits for that, or it plays unseen.
@@ -78,7 +80,7 @@ function Card({ m, now, i }: { m: ReminderMeeting; now: number; i: number }): Re
       </div>
       <h2 className="rs-title">{m.title || t('common.untitled')}</h2>
       <div className="rs-time">
-        {fmt(start, 'HH:mm')}–{fmt(new Date(m.end), 'HH:mm')}
+        {hm(start)}–{hm(new Date(m.end))}
       </div>
       <button type="button" className="mc-btn primary rs-join" onClick={() => void window.reminderScreen.close(m.url)}>
         {linkLabel(m.url, linkKind(m.url), currentLocale())}

@@ -6,9 +6,12 @@ import { useDirectory } from './ui/useDirectory'
 import { visibleEvents } from '@mysticals/core/logic/visible'
 import { formatWhen, ownerLine, pendingInvites } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
+import { eventKey } from '@mysticals/core/logic/layout'
+import { usePopoverFocus } from './ui/usePopover'
 import './ui/ui.css'
 import './Invites.css'
 import { currentLocale, t, useLocale } from '../i18n'
+import { hour12 } from '../clock'
 
 // Status-bar inbox of unanswered invites (next 60 days). Each reply goes through the invite's own account.
 export function InvitesPanel(): React.JSX.Element {
@@ -21,6 +24,7 @@ export function InvitesPanel(): React.JSX.Element {
   const [error, setError] = useState('')
   const [sending, setSending] = useState<Set<string>>(new Set())
   const ref = useRef<HTMLDivElement>(null)
+  usePopoverFocus(open, () => ref.current?.querySelector<HTMLElement>('.invites-title'))
 
   useEffect(() => {
     let live = true
@@ -57,9 +61,8 @@ export function InvitesPanel(): React.JSX.Element {
     }
   }, [open])
 
-  const keyOf = (e: CalEvent): string => `${e.accountId}/${e.id}`
   const reply = (e: CalEvent, status: 'accepted' | 'declined'): void => {
-    const k = keyOf(e)
+    const k = eventKey(e)
     if (sending.has(k)) return
     setError('')
     setSending((s) => new Set(s).add(k))
@@ -73,26 +76,26 @@ export function InvitesPanel(): React.JSX.Element {
     <div className="invites" ref={ref}>
       {open && (
         <div className="mc-popover invites-panel">
-          <div className="invites-title">{t('invites.title')}</div>
+          <div className="invites-title" tabIndex={-1}>{t('invites.title')}</div>
           {invites.length === 0 && <div className="mc-muted invites-empty">{t('invites.empty')}</div>}
           <ul>
             {invites.map((e) => {
               const a = accounts.find((x) => x.id === e.accountId)
               const o = ownerLine(undefined, a?.label ?? e.accountId, a?.email)
               return (
-                <li key={keyOf(e)} style={{ '--cal': a?.color } as React.CSSProperties}>
+                <li key={eventKey(e)} style={{ '--cal': a?.color } as React.CSSProperties}>
                   <button
                     type="button"
                     className="invites-open"
                     onClick={(ev) => bus.emit('event:open', { event: e, anchor: ev.currentTarget.getBoundingClientRect(), el: ev.currentTarget })}
                   >
                     <span className="invites-name">{e.title || t('common.untitled')}</span>
-                    <span className="mc-muted">{formatWhen(e, currentLocale())}</span>
+                    <span className="mc-muted">{formatWhen(e, currentLocale(), hour12())}</span>
                     <span className="invites-acc"><span className="mc-dot" /> {o.label}{o.email && <> · {o.email}</>}</span>
                   </button>
                   <div className="invites-actions">
-                    <button type="button" className="mc-btn primary" disabled={sending.has(keyOf(e))} onClick={() => reply(e, 'accepted')}>{t('rsvp.accept')}</button>
-                    <button type="button" className="mc-btn" disabled={sending.has(keyOf(e))} onClick={() => reply(e, 'declined')}>{t('rsvp.decline')}</button>
+                    <button type="button" className="mc-btn primary" disabled={sending.has(eventKey(e))} onClick={() => reply(e, 'accepted')}>{t('rsvp.accept')}</button>
+                    <button type="button" className="mc-btn" disabled={sending.has(eventKey(e))} onClick={() => reply(e, 'declined')}>{t('rsvp.decline')}</button>
                   </div>
                 </li>
               )

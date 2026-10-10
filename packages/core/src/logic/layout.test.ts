@@ -1,19 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import type { CalEvent } from '../shared/types'
 import {
+  columnsFit,
   dragRange,
+  eventKey,
   eventsOnDay,
+  fitColumns,
   isPast,
   layoutDay,
   layoutDayLong,
   monthGrid,
+  monthShown,
   packColumns,
+  type Placed,
   rangeLabel,
   shiftDate,
   slotAt,
   snapLongHours,
   viewDays,
-  viewRange
+  viewRange,
+  weekLabel
 } from './layout'
 
 const ev = (id: string, start: string, end: string, allDay = false): CalEvent => ({
@@ -158,12 +164,101 @@ describe('eventsOnDay', () => {
   })
 })
 
+describe('columnsFit', () => {
+  it('fits 48px columns right of the rails, at least two', () => {
+    expect(columnsFit(127.6, 0)).toBe(2) // a 1200px window's week column
+    expect(columnsFit(200, 0)).toBe(4)
+    expect(columnsFit(200, 2)).toBe(3)
+    expect(columnsFit(60, 0)).toBe(2)
+    expect(columnsFit(Infinity, 1)).toBe(Infinity)
+  })
+})
+
+describe('fitColumns', () => {
+  const lanes = <T>(placed: Placed<T>[]): (Placed<T> & { inset: number })[] => placed.map((p) => ({ ...p, inset: 0 }))
+  const four = lanes(packColumns(['a', 'b', 'c', 'd'].map((item) => ({ item, start: 600, end: 660 }))))
+
+  it('leaves clusters that fit alone', () => {
+    expect(fitColumns(four, 192)).toEqual({ shown: four, more: [] })
+  })
+
+  it('keeps the columns before the last that fits and folds the rest into one "+N" per overlapping run', () => {
+    const r = fitColumns([...four, ...lanes(packColumns([{ item: 'late', start: 900, end: 960 }]))], 144)
+    expect(r.shown.map((p) => [p.item, p.col, p.cols, p.span])).toEqual([['a', 0, 3, 1], ['b', 1, 3, 1], ['late', 0, 1, 1]])
+    expect(r.more.map((m) => [m.start, m.end, m.items.map((p) => p.item), m.cols])).toEqual([[600, 660, ['c', 'd'], 3]])
+  })
+
+  it('stops a widened block short of the "+N" column', () => {
+    const r = fitColumns(lanes(packColumns([
+      { item: 'long', start: 0, end: 600 },
+      { item: 'a', start: 60, end: 120 },
+      { item: 'b', start: 90, end: 150 },
+      { item: 'c', start: 100, end: 160 },
+      { item: 'late', start: 300, end: 360 } // spans columns 1-3 when all four show
+    ])), 144)
+    expect(r.shown.map((p) => [p.item, p.col, p.cols, p.span])).toEqual([['long', 0, 3, 1], ['a', 1, 3, 1], ['late', 1, 3, 1]])
+    expect(r.more.map((m) => m.items.map((p) => p.item))).toEqual([['b', 'c']])
+  })
+
+  it('shows a lone block past the last column in it instead of a "+1"', () => {
+    // A 1200px window's week column fits two: A 9–11, B 9–10, C 9:30–10:30, D 10:30–11.
+    const r = fitColumns(lanes(packColumns([
+      { item: 'A', start: 540, end: 660 },
+      { item: 'B', start: 540, end: 600 },
+      { item: 'C', start: 570, end: 630 },
+      { item: 'D', start: 630, end: 660 }
+    ])), 127.6)
+    expect(r.shown.map((p) => [p.item, p.col, p.cols, p.span])).toEqual([['A', 0, 2, 1], ['D', 1, 2, 1]])
+    expect(r.more.map((m) => [m.start, m.end, m.items.map((p) => p.item)])).toEqual([[540, 630, ['B', 'C']]])
+  })
+
+  it('merges hidden blocks that overlap only through minDur', () => {
+    const r = fitColumns(lanes(packColumns([0, 1, 2].map((i) => ({ item: i, start: 600 + i * 5, end: 605 + i * 5 })), 20)), 96, 20)
+    expect(r.more).toEqual([{ start: 605, end: 630, items: [expect.objectContaining({ item: 1 }), expect.objectContaining({ item: 2 })], cols: 2, inset: 0 }])
+  })
+
+  it('fits each cluster right of its own rails, and its "+N" right of the deepest', () => {
+    // A rail until 9:30 beside m1 only; the afternoon has none.
+    const l = layoutDayLong([
+      ev('rail', at(3), at(9, 30)),
+      ev('m1', at(9), at(10)),
+      ev('m2', at(9, 40), at(10, 40)),
+      ev('m3', at(9, 45), at(10, 45)),
+      ...['a1', 'a2', 'a3'].map((id) => ev(id, at(15), at(16)))
+    ], day, 0, { mode: 'rails', hours: 6 })
+    const r = fitColumns(l.timed, 148)
+    expect(r.shown.map((p) => [p.item.id, p.cols, p.inset])).toEqual([['m1', 2, 1], ['a1', 3, 0], ['a2', 3, 0], ['a3', 3, 0]])
+    expect(r.more.map((m) => [m.items.map((p) => p.item.id), m.cols, m.inset])).toEqual([[['m2', 'm3'], 2, 1]])
+  })
+})
+
+describe('monthShown', () => {
+  it('lists every event that fits, else the rows above "+N more", at least one', () => {
+    expect(monthShown(115, 4)).toBe(4) // 1200x800 window
+    expect(monthShown(115, 5)).toBe(3)
+    expect(monthShown(145, 5)).toBe(5) // full screen
+    expect(monthShown(145, 9)).toBe(4)
+    expect(monthShown(82, 5)).toBe(1) // minimum window
+    expect(monthShown(20, 3)).toBe(1)
+    expect(monthShown(115, 0)).toBe(0)
+  })
+})
+
 describe('monthGrid', () => {
   it('is 42 days starting on the Monday on/before the 1st', () => {
     const g = monthGrid(new Date(2026, 8, 15))
     expect(g).toHaveLength(42)
     expect(g[0]).toEqual(new Date(2026, 7, 31)) // Mon Aug 31
     expect(viewRange('month', day).start).toBe(g[0].toISOString())
+  })
+  it('starts on Sunday with weekStartsOn 0', () => {
+    const g = monthGrid(new Date(2026, 8, 15), 0)
+    expect(g[0]).toEqual(new Date(2026, 7, 30)) // Sun Aug 30
+    expect(viewRange('month', day, 0).start).toBe(g[0].toISOString())
+    const week = viewDays('week', new Date(2026, 8, 16), 0)
+    expect(week[0]).toEqual(new Date(2026, 8, 13)) // Sun Sep 13
+    expect(week[6]).toEqual(new Date(2026, 8, 19))
+    expect(viewDays('week', new Date(2026, 8, 16))[0]).toEqual(new Date(2026, 8, 14)) // Mon by default
   })
 })
 
@@ -183,6 +278,28 @@ describe('3day view', () => {
     expect(rangeLabel(new Date(2026, 8, 30), new Date(2026, 9, 2))).toBe('30 Sep – 2 Oct 2026')
     expect(rangeLabel(new Date(2026, 11, 31), new Date(2027, 0, 2))).toBe('31 Dec 2026 – 2 Jan 2027')
     expect(rangeLabel(new Date(2026, 8, 30), new Date(2026, 9, 2), 'uk')).toBe('30 верес. – 2 жовт. 2026')
+  })
+})
+
+describe('weekLabel', () => {
+  it('names the month, or both months and years, of the days shown', () => {
+    expect(weekLabel(new Date(2026, 8, 7), new Date(2026, 8, 13))).toEqual({ title: 'September', year: '2026' })
+    expect(weekLabel(new Date(2026, 8, 28), new Date(2026, 9, 4))).toEqual({ title: 'Sep – Oct', year: '2026' })
+    expect(weekLabel(new Date(2026, 11, 28), new Date(2027, 0, 3))).toEqual({ title: 'Dec – Jan', year: '2026 – 2027' })
+  })
+  it('localises the month names', () => {
+    expect(weekLabel(new Date(2026, 8, 7), new Date(2026, 8, 13), 'uk')).toEqual({ title: 'вересень', year: '2026' })
+    expect(weekLabel(new Date(2026, 8, 28), new Date(2026, 9, 4), 'uk')).toEqual({ title: 'верес. – жовт.', year: '2026' })
+    expect(weekLabel(new Date(2026, 11, 28), new Date(2027, 0, 3), 'uk')).toEqual({ title: 'груд. – січ.', year: '2026 – 2027' })
+  })
+})
+
+describe('eventKey', () => {
+  it('tells apart copies of one meeting in two accounts or two calendars', () => {
+    const work = ev('m1', at(9), at(10))
+    const personal = { ...work, accountId: 'b' }
+    const shared = { ...work, calendarId: 'team' }
+    expect(new Set([work, personal, shared].map(eventKey)).size).toBe(3)
   })
 })
 

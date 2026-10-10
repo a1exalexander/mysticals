@@ -16,6 +16,7 @@ import { createCaldavProvider, verifyCaldav } from '@mysticals/core/providers/ca
 import { createGoogleProvider, googleSignIn, setClientConfig } from '@mysticals/core/providers/google'
 import { registerApi } from './ipc/register'
 import { currentLocale, startLocale } from './locale'
+import { hour12, startClock } from './clock'
 import { startUpdater } from './update'
 import { startDesktopTelemetry } from './telemetry'
 import { mutedAccounts, startReminders } from './reminders'
@@ -75,7 +76,7 @@ function notify(store: AccountStore, log: ActivityLog, accountId: string, notes:
   }
   if (!supported || muted) return
   const shown = notes.filter((n) => !hidden.has(n.event.calendarId))
-  for (const { title, body } of noteText(shown, account.label, new Date(), currentLocale())) {
+  for (const { title, body } of noteText(shown, account.label, new Date(), currentLocale(), hour12())) {
     const n = new Notification({ title, body })
     banners.add(n)
     n.on('close', () => banners.delete(n))
@@ -231,6 +232,7 @@ app.whenReady().then(() => {
   // Packaged builds get the icon from electron-builder; in dev the dock would show Electron's.
   if (!app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'build/icon.png'))
   startLocale()
+  startClock()
   // Dev runs would register the bare Electron binary; electron-builder's `protocols` covers installed builds too.
   if (app.isPackaged && !MOCK) app.setAsDefaultProtocolClient(PROTOCOL)
   const track = startDesktopTelemetry()

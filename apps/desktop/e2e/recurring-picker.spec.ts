@@ -45,6 +45,7 @@ test('recurring edit: saving asks the scope; "All events" renames every instance
   await page.getByTestId('event-block').filter({ hasText: 'Morning run' }).first().click()
   await page.getByTestId('details').getByRole('button', { name: 'Edit' }).click()
   const editor = page.getByTestId('editor')
+  await expect(page.getByRole('dialog', { name: 'Morning run' })).toBeVisible()
   await editor.getByPlaceholder('Title').fill('Evening run')
   await page.getByTestId('editor-save').click()
   const scope = editor.getByRole('group', { name: 'Save recurring event' })

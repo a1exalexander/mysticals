@@ -32,6 +32,11 @@ test('settings logs list a change and an RSVP with their details', async () => {
   await page.getByTestId('log-account-work').click()
   await expect(rows).toHaveCount(2)
   await page.screenshot({ path: 'e2e/screens/logs.png' })
+
+  // Entry times follow Settings > General > Time format, seconds included.
+  await expect(rows.first().locator('.log-time')).toHaveText(/^\d\d:\d\d:\d\d$/)
+  await page.evaluate(() => window.clock.set({ timeFormat: '12' }))
+  await expect(rows.first().locator('.log-time')).toHaveText(/^\d{1,2}:\d\d:\d\d [AP]M$/)
   await app.close()
 })
 

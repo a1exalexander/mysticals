@@ -35,12 +35,13 @@ const SYNTH = `(kind) => {
 }`
 
 /**
- * Plays a reminder sound unless turned off in Settings. Main has no audio and the main window may be closed (macOS),
- * so a hidden, script-only window plays it and is closed once the tone has faded.
+ * Plays a reminder sound unless turned off in Settings (`force`: the Settings test button plays it anyway). Main has no
+ * audio and the main window may be closed (macOS), so a hidden, script-only window plays it and is closed once the tone
+ * has faded.
  */
-export function playSound(kind: ReminderSound): void {
+export function playSound(kind: ReminderSound, force = false): void {
   // Mock runs (e2e) count windows: no extra hidden one.
-  if (!reminderSound() || process.env.MYSTICALS_MOCK === '1') return
+  if ((!force && !reminderSound()) || process.env.MYSTICALS_MOCK === '1') return
   const w = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } })
   const html = `<!doctype html><script>(${SYNTH})(${JSON.stringify(kind)})</script>`
   void w.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`).catch((e) => console.error('reminder sound failed', e))

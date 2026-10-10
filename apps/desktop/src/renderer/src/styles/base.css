@@ -509,6 +509,9 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
     color-mix(in srgb, var(--ink) 7%, var(--bg));
   outline: 1px dashed var(--orange); outline-offset: -1px;
 }
+/* Drawn inside: the grid's scroller and the neighbouring pills would clip a ring outside. After .ev.is-pending (same
+   specificity), so a focused invite shows the ring instead of its dashed outline. */
+.ev:focus-visible, .ev-rail:focus-visible, .tg-dayhead:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 /* On a tinted canvas (pink Bubblegum, yellow Cartoon, cyan Cloud) an event of the same hue melts into it: a hairline
    at full strength within 30° of --ev-clash-h, fading out by 40°, none for greys. */
 .ev, .ag-chip {
@@ -531,7 +534,7 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .tg-gutter { width: 56px; flex: none; position: relative; }
 .tg-dayhead {
   flex: 1; min-width: 0; height: 34px; display: flex; align-items: center; justify-content: center;
-  gap: 6px; border-left: 1px solid var(--line); font: 10.5px/1 var(--mono); letter-spacing: 0.06em;
+  gap: 6px; padding: 0; border: 0; border-left: 1px solid var(--line); background: none; font: 10.5px/1 var(--mono); letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 .tg-single .tg-dayhead { justify-content: flex-start; padding-left: 12px; }
@@ -578,7 +581,7 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .ev-timed:hover { z-index: 2; filter: brightness(1.15); }
 /* Cascade mode: blocks overlap in start order; a 1px ground-coloured ring keeps stacked edges apart. */
 .ev-timed.is-cascade { z-index: var(--z); box-shadow: 0 0 0 1px var(--bg), inset 0 0 0 1px var(--ev-ring); }
-.ev-timed.is-cascade:hover { z-index: 1000; }
+.ev-timed.is-cascade:hover, .ev-timed.is-cascade:focus-visible { z-index: 1000; }
 /* Stacked blocks must stay opaque, or the titles underneath show through: dim past ones without opacity. */
 .ev.ev-timed.is-cascade.is-past { opacity: 1; filter: brightness(0.6) saturate(0.7); }
 .ev.ev-timed.is-cascade.is-past:hover { filter: brightness(0.9); }
@@ -598,6 +601,12 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
   position: absolute; left: 0; right: 0; z-index: 0; pointer-events: none;
   background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--muted) 12%, transparent) 0 5px, transparent 5px 10px);
 }
+/* "+N" in the last column a narrow day fits: the side-by-side blocks past it; opens the day. */
+.tg-more {
+  position: absolute; z-index: 1; border: 0; border-radius: 0; padding: 3px 0 0; display: flex; justify-content: center; align-items: flex-start;
+  background: var(--hover); color: var(--muted); font: 600 10.5px/14px var(--mono);
+}
+.tg-more:hover { z-index: 2; color: var(--fg); }
 .tg-busy.is-capped { border-block: 1px solid color-mix(in srgb, var(--muted) 35%, transparent); }
 .ev-meta { font: 10px/14px var(--mono); opacity: 0.8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ev-timed.is-short { flex-direction: row; gap: 6px; align-items: center; padding-top: 0; padding-bottom: 0; }
@@ -614,8 +623,10 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .tg-now.is-faint { border-top-width: 1px; opacity: 0.35; }
 .tg-now-clock {
   position: absolute; right: 4px; z-index: 3; transform: translateY(-50%); padding: 1px 4px; border-radius: 3px;
-  background: var(--pink); color: var(--on-accent); font: 700 10px/1.2 var(--mono);
+  background: var(--pink); color: var(--on-accent); font: 700 10px/1.2 var(--mono); white-space: nowrap;
 }
+/* "11:45 AM" fills the 56px gutter: the pill reaches the column edge. */
+[data-clock='12'] .tg-now-clock { right: 0; padding: 1px 3px; }
 
 /* Month grid */
 .mg { flex: 1; display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--line); }
@@ -626,7 +637,7 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 }
 .mg-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(6, 1fr); }
 .mg-cell {
-  min-width: 0; min-height: 0; overflow: hidden; padding: 4px; display: flex; flex-direction: column; gap: 2px;
+  container-type: inline-size; min-width: 0; min-height: 0; overflow: hidden; padding: 4px; display: flex; flex-direction: column; gap: 2px;
   border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
 }
 .mg-cell:nth-child(7n) { border-right: 0; }
@@ -642,6 +653,8 @@ a[href], button, select, summary, input[type=checkbox], label:has(input[type=che
 .mg-ev .ev-title { flex: 1; font-weight: 500; }
 .mg-dot { width: 6px; height: 6px; border-radius: 2px; background: var(--ink); flex: none; }
 .mg-time { font: 10px/1 var(--mono); color: var(--muted); flex: none; }
+/* Narrow cells (the smallest windows): the title gets the row; the time stays in the tooltip and the accessible name. */
+@container (max-width: 120px) { .mg-time { display: none; } }
 .mg-more {
   align-self: flex-start; border: 0; background: none; padding: 0 5px; font: 10.5px/16px var(--mono); color: var(--muted);
 }

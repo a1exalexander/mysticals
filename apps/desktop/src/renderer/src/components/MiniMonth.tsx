@@ -3,6 +3,7 @@ import { addDays, addMonths, format, isSameDay, isSameMonth, isToday, startOfMon
 import { nav, useNav } from '../views/nav'
 import { monthGrid, viewDays } from '@mysticals/core/logic/layout'
 import { cap, fmt, t, useLocale } from '../i18n'
+import { weekStartsOn } from '../clock'
 
 const STEP: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }
 
@@ -28,11 +29,11 @@ export function MiniMonth(): React.JSX.Element {
     moved.current = false
   }, [focus])
 
-  const days = monthGrid(shown)
+  const days = monthGrid(shown, weekStartsOn())
   // ‹ › may page away from the focused day: the month's first day takes the tab stop then.
   const stop = isSameMonth(focus, shown) ? focus : shown
   // The days the main view shows; the month view is this whole grid, so it tints nothing.
-  const range = view === 'month' ? [] : viewDays(view === 'agenda' ? 'day' : view, date)
+  const range = view === 'month' ? [] : viewDays(view === 'agenda' ? 'day' : view, date, weekStartsOn())
   const onKey = (e: React.KeyboardEvent): void => {
     if (e.metaKey || e.ctrlKey || e.altKey) return
     // The button's own click selects the day; no window shortcut should see the key too.

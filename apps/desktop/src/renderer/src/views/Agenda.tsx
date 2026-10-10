@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { addDays, differenceInMinutes, format, isSameDay } from 'date-fns'
+import { addDays, differenceInMinutes, isSameDay } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import { eventMeetingUrl, eventPlace, JOIN_EARLY_MIN, joinable, linkKind, locationText } from '@mysticals/core/logic/meeting'
 import { LinkIcon } from '../components/LinkIcon'
 import { pickNowNext, startsLabel } from '@mysticals/core/logic/status'
-import { eventBounds, isPast, overlapsDay } from '@mysticals/core/logic/layout'
+import { eventBounds, eventKey, isPast, overlapsDay } from '@mysticals/core/logic/layout'
 import { bus } from '../bus'
 import { useDirectory } from '../components/ui/useDirectory'
 import { Notes, PARTSTAT } from '../components/EventDetails'
@@ -15,8 +15,8 @@ import '../components/EventDetails.css'
 import type { ColorOf } from './CalendarView'
 import './Agenda.css'
 import { cap, currentLocale, fmt, t } from '../i18n'
+import { hm, hour12 } from '../clock'
 
-const keyOf = (e: CalEvent): string => `${e.accountId}/${e.id}`
 /** How far "show upcoming" looks past the shown day. */
 export const AHEAD_DAYS = 7
 // Goes through the main process's window-open handler: http(s) only, opened in the system browser / meeting app.
@@ -47,9 +47,9 @@ const Gap = ({ m }: { m: number }): React.JSX.Element => (
 /** "now · ends in 25m" / "starts in 12m" / "ended 14:30", and the state screen readers hear (soon: within JOIN_EARLY_MIN). */
 function statusOf(e: CalEvent, now: Date): { text: string; state?: 'soon' | 'live' | 'ended' } {
   const { start, end } = eventBounds(e)
-  if (end <= now) return { text: t('agenda.ended', { time: format(end, 'HH:mm') }), state: 'ended' }
+  if (end <= now) return { text: t('agenda.ended', { time: hm(end) }), state: 'ended' }
   if (start <= now) return { text: t('agenda.endsIn', { n: Math.max(differenceInMinutes(end, now, { roundingMethod: 'ceil' }), 1) }), state: 'live' }
-  return { text: t('agenda.starts', { when: startsLabel(e.start, now, currentLocale()) }), state: +start - +now <= JOIN_EARLY_MIN * 60_000 ? 'soon' : undefined }
+  return { text: t('agenda.starts', { when: startsLabel(e.start, now, currentLocale(), hour12()) }), state: +start - +now <= JOIN_EARLY_MIN * 60_000 ? 'soon' : undefined }
 }
 
 const TICK = 15_000
@@ -96,14 +96,14 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
   const walk = [...timed, ...upcomingTimed]
   const { current, next } = isToday ? pickNowNext(timed, now) : { current: [], next: undefined }
   const [picked, setPicked] = useState<string>()
-  const focus = walk.find((e) => keyOf(e) === picked) ?? current[0] ?? next
+  const focus = walk.find((e) => eventKey(e) === picked) ?? current[0] ?? next
   // While an event runs, the now line crosses that row where "now" falls within it (the latest-started one when
   // several overlap), so it never reads as "already over"; otherwise it goes before the first event still to start.
   const liveAt = timed.reduce((at, e, i) => (current.includes(e) ? i : at), -1)
   const nowAt = !isToday || liveAt >= 0 ? -2 : timed.findIndex((e) => eventBounds(e).start > now)
   const nowIndex = nowAt === -1 ? timed.length : nowAt
   const gaps = useMemo(() => breaksBefore(timed), [timed])
-  const pick = (e: CalEvent): void => setPicked(focus === e ? undefined : keyOf(e))
+  const pick = (e: CalEvent): void => setPicked(focus === e ? undefined : eventKey(e))
   // Read out from a live region outside the keyed card, so it persists while focus moves: today's call starting soon,
   // starting and ending (the one live on the previous tick, which focus has already left), never the minute countdown.
   // ponytail: assumes ticks TICK apart; a throttled timer (hidden window) can skip an end, keep the previous tick's live
@@ -115,7 +115,7 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
   useEffect(() => {
     const onKey = (ev: KeyboardEvent): void => {
       if (ev.metaKey || ev.ctrlKey || ev.altKey || (ev.target as HTMLElement).closest('input, textarea, select')) return
-      if (document.querySelector('dialog[open], .mc-overlay, [data-testid="details"]')) return
+      if (document.querySelector('dialog[open], [data-testid="details"]')) return
       const step = ev.key === 'j' || ev.key === 'ArrowDown' ? 1 : ev.key === 'k' || ev.key === 'ArrowUp' ? -1 : 0
       const url = focus && joinable(focus, now)
       // Enter on a button or link activates it; the rows are the list j/k walks, so Enter there joins the selected call.
@@ -123,7 +123,7 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
       if (ev.key === 'Escape' && picked) setPicked(undefined)
       else if (step && walk.length) {
         const i = focus ? walk.indexOf(focus) : -1
-        setPicked(keyOf(walk[Math.min(Math.max(i + step, 0), walk.length - 1)]))
+        setPicked(eventKey(walk[Math.min(Math.max(i + step, 0), walk.length - 1)]))
       } else if (ev.key === 'Enter' && url && !onControl) join(url)
       else return
       ev.preventDefault()
@@ -136,7 +136,7 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
     evs.length ? (
       <div className="ag-allday">
         {evs.map((e) => (
-          <button key={keyOf(e)} type="button" className="ag-chip" style={{ '--c': colorOf(e) } as React.CSSProperties} onClick={(ev) => open(e, ev.currentTarget)} {...eventMenu(e)}>
+          <button key={eventKey(e)} type="button" className="ag-chip" style={{ '--c': colorOf(e) } as React.CSSProperties} onClick={(ev) => open(e, ev.currentTarget)} {...eventMenu(e)}>
             {e.title || t('common.untitled')}
           </button>
         ))}
@@ -167,7 +167,7 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
               return [
                 gap && <Gap key={`gap-${i}`} m={gap} />,
                 i === nowIndex && <NowLine key="now" now={now} />,
-                <Row key={keyOf(e)} e={e} i={i} now={now} color={colorOf(e)} focused={focus === e} next={e === next} nowLine={i === liveAt} onPick={pick} />
+                <Row key={eventKey(e)} e={e} i={i} now={now} color={colorOf(e)} focused={focus === e} next={e === next} nowLine={i === liveAt} onPick={pick} />
               ]
             })}
             {timed.length > 0 && nowIndex === timed.length && <NowLine now={now} />}
@@ -192,7 +192,7 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
                       const dayGaps = breaksBefore(dayTimed)
                       return dayTimed.flatMap((e, i) => [
                         dayGaps[i] && <Gap key={`gap-${i}`} m={dayGaps[i]} />,
-                        <Row key={keyOf(e)} e={e} i={i} now={now} color={colorOf(e)} focused={focus === e} onPick={pick} />
+                        <Row key={eventKey(e)} e={e} i={i} now={now} color={colorOf(e)} focused={focus === e} onPick={pick} />
                       ])
                     })()}
                   </ol>
@@ -202,7 +202,7 @@ export function Agenda({ day, events, colorOf, ahead, onAhead }: {
           )}
         </section>
         {focus ? (
-          <Focus key={keyOf(focus)} e={focus} now={now} color={colorOf(focus)} calendar={calendars.find((c) => c.accountId === focus.accountId && c.id === focus.calendarId)?.name} />
+          <Focus key={eventKey(focus)} e={focus} now={now} color={colorOf(focus)} calendar={calendars.find((c) => c.accountId === focus.accountId && c.id === focus.calendarId)?.name} />
         ) : (
           <section className="ag-focus ag-focus-empty" data-testid="agenda-focus-empty">
             <p>{t(!timed.length ? (isToday ? 'agenda.noCalls' : 'agenda.nothingDay') : isToday && !picked ? 'agenda.allDone' : 'agenda.pickHint')}</p>
@@ -234,12 +234,12 @@ function Row({ e, i, now, color, focused, next, nowLine, onPick }: {
         onDoubleClick={(ev) => open(e, ev.currentTarget)}
         {...eventMenu(e)}
       >
-        <span className="ag-time">{format(eventBounds(e).start, 'HH:mm')}</span>
+        <span className="ag-time">{hm(eventBounds(e).start)}</span>
         <span className="ag-bar" />
         <span className="ag-main">
           <span className="ag-title">{e.title || t('common.untitled')}</span>
           <span className="ag-meta">
-            {st.state === 'live' ? <span className="ag-live">{t('agenda.now')}</span> : !past && next ? startsLabel(e.start, now, currentLocale()) : dur(e)}
+            {st.state === 'live' ? <span className="ag-live">{t('agenda.now')}</span> : !past && next ? startsLabel(e.start, now, currentLocale(), hour12()) : dur(e)}
             {eventPlace(e, currentLocale()) && ` · ${eventPlace(e, currentLocale())}`}
           </span>
         </span>
@@ -266,7 +266,7 @@ function progress(e: CalEvent, now: Date): number {
  * (0..1), drawn across the running event's row at that point.
  */
 function NowLine({ now, at }: { now: Date; at?: number }): React.JSX.Element {
-  const clock = <span className="ag-now-clock">{format(now, 'HH:mm')}</span>
+  const clock = <span className="ag-now-clock">{hm(now)}</span>
   return at === undefined ? (
     <li className="ag-now" aria-hidden data-testid="agenda-now">
       {clock}
@@ -291,7 +291,7 @@ function Focus({ e, now, color, calendar }: { e: CalEvent; now: Date; color: str
       <div className={st.state === 'live' ? 'ag-status live' : 'ag-status'}>{st.text}</div>
       <h2 className="ag-focus-title">{e.title || t('common.untitled')}</h2>
       <div className="ag-focus-when">
-        {format(start, 'HH:mm')} – {format(end, 'HH:mm')} <span>· {dur(e)}</span>
+        {hm(start)} – {hm(end)} <span>· {dur(e)}</span>
       </div>
       <dl className="ag-facts">
         {calendar && (

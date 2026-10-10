@@ -7,6 +7,7 @@ import { DateTimeField } from './DateTimeField'
 import { NumberField } from './NumberField'
 import { Select } from './Select'
 import { currentLocale, t } from '../../i18n'
+import { weekStartsOn } from '../../clock'
 
 type Ends = 'never' | 'until' | 'count'
 
@@ -30,10 +31,11 @@ export function RepeatField({ value, start, status, onChange }: Props): React.JS
   if (status) {
     return (
       <>
-        <label>{t('repeat.label')}</label>
-        <div className="editor-static editor-muted" data-testid="editor-repeat">
+        <label htmlFor="ed-repeat">{t('repeat.label')}</label>
+        {/* <output>: a status a label can point at. */}
+        <output id="ed-repeat" className="editor-static editor-muted" data-testid="editor-repeat">
           {status === 'loading' ? t('repeat.loading') : t('repeat.loadFailed')}
-        </div>
+        </output>
       </>
     )
   }
@@ -54,8 +56,9 @@ export function RepeatField({ value, start, status, onChange }: Props): React.JS
 
   return (
     <>
-      <label>{t('repeat.label')}</label>
+      <label htmlFor="ed-repeat">{t('repeat.label')}</label>
       <Select
+        id="ed-repeat"
         data-testid="editor-repeat"
         aria-label={t('repeat.label')}
         value={showCustom ? 'custom' : preset}
@@ -69,9 +72,9 @@ export function RepeatField({ value, start, status, onChange }: Props): React.JS
 
       {showCustom && value && (
         <>
-          <label>{t('repeat.every')}</label>
+          <label htmlFor="ed-repeat-every">{t('repeat.every')}</label>
           <div className="editor-repeat-row">
-            <NumberField aria-label={t('repeat.everyAria')} value={value.interval ?? 1} onChange={(interval) => set({ interval })} />
+            <NumberField id="ed-repeat-every" aria-label={t('repeat.everyAria')} value={value.interval ?? 1} onChange={(interval) => set({ interval })} />
             <Select
               compact
               aria-label={t('repeat.unitAria')}
@@ -84,7 +87,8 @@ export function RepeatField({ value, start, status, onChange }: Props): React.JS
             <>
               <label>{t('repeat.on')}</label>
               <div className="editor-days" role="group" aria-label={t('repeat.onAria')}>
-                {WEEKDAYS.map((d) => {
+                {/* In the week's order; the rule itself keeps RFC order (MO..SU). */}
+                {(weekStartsOn() === 0 ? [WEEKDAYS[6], ...WEEKDAYS.slice(0, 6)] : WEEKDAYS).map((d) => {
                   const on = days.includes(d)
                   return (
                     <button
@@ -107,9 +111,10 @@ export function RepeatField({ value, start, status, onChange }: Props): React.JS
 
       {value && !value.rule && (
         <>
-          <label>{t('repeat.stops')}</label>
+          <label htmlFor="ed-repeat-stops">{t('repeat.stops')}</label>
           <div className="editor-repeat-row">
             <Select
+              id="ed-repeat-stops"
               compact
               aria-label={t('repeat.stopsAria')}
               value={ends}

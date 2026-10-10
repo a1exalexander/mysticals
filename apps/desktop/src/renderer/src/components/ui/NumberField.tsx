@@ -5,11 +5,13 @@ type Props = {
   onChange: (v: number) => void
   min?: number
   max?: number
+  /** The input's id, for a <label htmlFor>. */
+  id?: string
   'aria-label': string
 }
 
 /** A small integer field with −/+ steppers in place of the native spinners; clamps to [min, max]. */
-export function NumberField({ value, onChange, min = 1, max = 999, ...rest }: Props): React.JSX.Element {
+export function NumberField({ value, onChange, min = 1, max = 999, id, ...rest }: Props): React.JSX.Element {
   const clamp = (n: number): number => Math.min(max, Math.max(min, Math.round(n) || min))
   return (
     <div className="mnum">
@@ -17,6 +19,7 @@ export function NumberField({ value, onChange, min = 1, max = 999, ...rest }: Pr
         −
       </button>
       <input
+        id={id}
         className="mnum-input"
         inputMode="numeric"
         aria-label={rest['aria-label']}

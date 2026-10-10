@@ -23,13 +23,15 @@ type Props<T extends string> = {
   disabled?: boolean
   /** Size to the content instead of filling the row. */
   compact?: boolean
+  /** The trigger's id, for a <label htmlFor>. */
+  id?: string
   'aria-label'?: string
   'data-testid'?: string
 }
 
 // A themed listbox in place of a native <select>: the trigger keeps focus, arrows/Home/End/letters move the
 // highlighted option, Enter/Space picks it, Esc/Tab close.
-export function Select<T extends string>({ value, options, onChange, placeholder, disabled, compact, ...rest }: Props<T>): React.JSX.Element {
+export function Select<T extends string>({ value, options, onChange, placeholder, disabled, compact, id: triggerId, ...rest }: Props<T>): React.JSX.Element {
   const [anchor, setAnchor] = useState<DOMRect | null>(null)
   const [active, setActive] = useState(-1)
   const typed = useRef({ text: '', at: 0 })
@@ -91,6 +93,7 @@ export function Select<T extends string>({ value, options, onChange, placeholder
     <div className={compact ? 'msel compact' : 'msel'} ref={root}>
       <button
         type="button"
+        id={triggerId}
         role="combobox"
         className="msel-trigger"
         aria-haspopup="listbox"

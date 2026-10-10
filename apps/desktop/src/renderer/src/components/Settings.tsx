@@ -4,7 +4,9 @@ import { bus } from '../bus'
 import { THEMES, applyTheme, themeName, useTheme } from '../theme'
 import { KindIcon, Sheet, Swatches, errorText } from './AccountsShared'
 import { SegTabs } from './ui/SegTabs'
-import { currentLocale, setLanguage, t, useLocale } from '../i18n'
+import { useRadioGroup } from './ui/roving'
+import { cap, currentLocale, fmt, setLanguage, t, useLocale } from '../i18n'
+import { setClock, useClock } from '../clock'
 import { LOCALE_NAME, LOCALES, type Key, type LocaleSetting } from '@mysticals/core/i18n'
 import { REMINDER_CHOICES } from '@mysticals/core/logic/reminders'
 import { LONG_RANGE, LONG_MODES, usesThreshold, type LongMode } from '@mysticals/core/logic/layout'
@@ -96,6 +98,8 @@ export function SettingsHost(): React.JSX.Element | null {
             <>
               <h3 className="set-heading set-heading-first">{t('settings.language.title')}</h3>
               <LanguagePicker />
+              <h3 className="set-heading">{t('settings.clock.title')}</h3>
+              <ClockPicker />
               <h3 className="set-heading">{t('settings.privacy.title')}</h3>
               <PrivacyPanel />
             </>
@@ -135,6 +139,56 @@ function LanguagePicker(): React.JSX.Element {
   )
 }
 
+/** 24- or 12-hour times and the first day of the week; Auto follows the OS region and says what that is. */
+function ClockPicker(): React.JSX.Element {
+  const { timeFormat, weekStart, system } = useClock()
+  const [error, setError] = useState('')
+  const pick = (patch: Parameters<typeof setClock>[0]): void => {
+    setError('')
+    setClock(patch).catch((e) => setError(errorText(e)))
+  }
+  const hours = (h12: boolean): string => t(h12 ? 'settings.clock.12' : 'settings.clock.24')
+  // 2 Jan 2000 was a Sunday: the weekday named in the UI language.
+  const day = (d: 0 | 1): string => cap(fmt(new Date(2000, 0, 2 + d), 'EEEE'))
+  return (
+    <>
+      <div className="acc-reminders">
+        <div className="acc-reminders-row">
+          <span>{t('settings.clock.time')}</span>
+          <Select
+            compact
+            data-testid="time-format-select"
+            aria-label={t('settings.clock.time')}
+            value={timeFormat}
+            options={[
+              { value: 'auto', label: t('settings.clock.auto', { name: hours(system.hour12) }) },
+              { value: '24', label: hours(false) },
+              { value: '12', label: hours(true) }
+            ]}
+            onChange={(timeFormat) => pick({ timeFormat })}
+          />
+        </div>
+        <div className="acc-reminders-row">
+          <span>{t('settings.clock.week')}</span>
+          <Select
+            compact
+            data-testid="week-start-select"
+            aria-label={t('settings.clock.week')}
+            value={weekStart}
+            options={[
+              { value: 'auto', label: t('settings.clock.auto', { name: day(system.weekStartsOn) }) },
+              { value: 'mon', label: day(1) },
+              { value: 'sun', label: day(0) }
+            ]}
+            onChange={(weekStart) => pick({ weekStart })}
+          />
+        </div>
+      </div>
+      {error && <p className="acc-error" role="alert">{error}</p>}
+    </>
+  )
+}
+
 const MODE_TEXT = {
   rails: ['settings.events.rails', 'settings.events.railsHint'],
   allday: ['settings.events.allday', 'settings.events.alldayHint'],
@@ -148,17 +202,19 @@ const hoursText = (n: number): string => t('settings.events.hours', { n: n.toLoc
 /** How timed events longer than a threshold show in the day grids; a per-device preference. */
 function EventsPanel(): React.JSX.Element {
   const long = useLongEvents()
+  const modes = useRadioGroup(LONG_MODES, long.mode, (mode) => setLongEvents({ mode }))
   return (
     <>
       <h3 className="set-heading set-heading-first">{t('settings.events.long')}</h3>
       <p className="acc-note">{t('settings.events.note')}</p>
-      <div className="long-grid" role="radiogroup" aria-label={t('settings.events.mode')}>
+      <div className="long-grid" role="radiogroup" aria-label={t('settings.events.mode')} {...modes.props}>
         {LONG_MODES.map((m) => (
           <button
             key={m}
             type="button"
             role="radio"
             aria-checked={long.mode === m}
+            tabIndex={modes.tabIndex(m)}
             className="long-opt"
             data-testid={`long-mode-${m}`}
             onClick={() => setLongEvents({ mode: m })}
@@ -216,14 +272,16 @@ function LongPreview({ mode }: { mode: LongMode }): React.JSX.Element {
 
 function ThemePicker(): React.JSX.Element {
   const theme = useTheme()
+  const group = useRadioGroup(THEMES.map((th) => th.id), theme, applyTheme)
   return (
-    <div className="theme-grid" role="radiogroup" aria-label={t('settings.theme')}>
+    <div className="theme-grid" role="radiogroup" aria-label={t('settings.theme')} {...group.props}>
       {THEMES.map((th) => (
         <button
           key={th.id}
           type="button"
           role="radio"
           aria-checked={theme === th.id}
+          tabIndex={group.tabIndex(th.id)}
           className="theme-opt"
           data-testid={`theme-${th.id}`}
           onClick={() => applyTheme(th.id)}
@@ -321,28 +379,38 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
             onChange={(v) => pick(Number(v))}
           />
         </div>
-        <label className="set-check">
-          <input
-            type="checkbox"
-            className="mc-check"
-            data-testid="fullscreen-reminder-toggle"
-            checked={fullscreen ?? false}
-            disabled={fullscreen === undefined || !min}
-            onChange={(e) => pickFullscreen(e.target.checked)}
-          />
-          {t('settings.reminders.fullscreen')}
-        </label>
-        <label className="set-check">
-          <input
-            type="checkbox"
-            className="mc-check"
-            data-testid="reminder-sound-toggle"
-            checked={sound ?? false}
-            disabled={sound === undefined || !min}
-            onChange={(e) => pickSound(e.target.checked)}
-          />
-          {t('settings.reminders.sound')}
-        </label>
+        <div className="acc-reminders-row">
+          <label className="set-check">
+            <input
+              type="checkbox"
+              className="mc-check"
+              data-testid="fullscreen-reminder-toggle"
+              checked={fullscreen ?? false}
+              disabled={fullscreen === undefined || !min}
+              onChange={(e) => pickFullscreen(e.target.checked)}
+            />
+            {t('settings.reminders.fullscreen')}
+          </label>
+          <button type="button" className="mc-btn acc-test" data-testid="reminder-preview" onClick={() => void window.reminders.preview().catch((e) => setError(errorText(e)))}>
+            {t('settings.reminders.preview')}
+          </button>
+        </div>
+        <div className="acc-reminders-row">
+          <label className="set-check">
+            <input
+              type="checkbox"
+              className="mc-check"
+              data-testid="reminder-sound-toggle"
+              checked={sound ?? false}
+              disabled={sound === undefined || !min}
+              onChange={(e) => pickSound(e.target.checked)}
+            />
+            {t('settings.reminders.sound')}
+          </label>
+          <button type="button" className="mc-btn acc-test" data-testid="reminder-sound-test" onClick={() => void window.reminders.testSound().catch((e) => setError(errorText(e)))}>
+            {t('settings.reminders.testSound')}
+          </button>
+        </div>
         <p className="acc-hint-line">{t('settings.reminders.hint')}</p>
       </div>
       {error && <p className="acc-error" role="alert">{error}</p>}

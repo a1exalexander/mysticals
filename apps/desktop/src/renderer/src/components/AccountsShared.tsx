@@ -1,11 +1,23 @@
 import { useEffect, useRef } from 'react'
 import './Accounts.css'
 import { t as tr } from '@mysticals/core/i18n'
-import type { Locale } from '@mysticals/core/i18n'
+import type { Key, Locale } from '@mysticals/core/i18n'
 import { currentLocale, t } from '../i18n'
+import { useRadioGroup } from './ui/roving'
 
 /** Dracula accents: purple, green, cyan, pink, orange, yellow, red, comment. */
 export const SWATCHES = ['#bd93f9', '#50fa7b', '#8be9fd', '#ff79c6', '#ffb86c', '#f1fa8c', '#ff5555', '#6272a4']
+/** Spoken names of SWATCHES, in the same order. */
+const SWATCH_NAMES: readonly Key[] = [
+  'accounts.colour.purple',
+  'accounts.colour.green',
+  'accounts.colour.cyan',
+  'accounts.colour.pink',
+  'accounts.colour.orange',
+  'accounts.colour.yellow',
+  'accounts.colour.red',
+  'accounts.colour.blueGrey'
+]
 
 export const PRESETS = [
   { id: 'privateemail', name: 'Private Email', url: 'https://dav.privateemail.com/dav.php/' },
@@ -65,15 +77,17 @@ export function Sheet(props: {
 }
 
 export function Swatches(props: { value: string; onChange: (c: string) => void; name: string }): React.JSX.Element {
+  const group = useRadioGroup(SWATCHES, props.value, props.onChange)
   return (
-    <div className="acc-swatches" role="radiogroup" aria-label={props.name}>
-      {SWATCHES.map((c) => (
+    <div className="acc-swatches" role="radiogroup" aria-label={props.name} {...group.props}>
+      {SWATCHES.map((c, i) => (
         <button
           key={c}
           type="button"
           role="radio"
           aria-checked={props.value === c}
-          aria-label={c}
+          aria-label={t(SWATCH_NAMES[i])}
+          tabIndex={group.tabIndex(c)}
           className="acc-swatch"
           style={{ background: c }}
           onClick={() => props.onChange(c)}

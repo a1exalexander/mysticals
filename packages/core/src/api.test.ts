@@ -184,6 +184,40 @@ describe('createApi local edits', () => {
     expect(gone('one')).toEqual(['s2'])
     expect(gone('following')).toEqual(['s2', 's3'])
     expect(gone('all')).toEqual(['s1', 's2', 's3'])
+    expect(deletedBy(events[3], 'one', { ...events[3], calendarId: 'other' })).toBe(false)
+  })
+
+  it('edits, answers and deletes the copy of a meeting in the calendar asked for, keeping the other', async () => {
+    // One account shows the same meeting (same id) in two of its calendars.
+    const copy = (calendarId: string): CalEvent => ({
+      id: 'm', accountId: 'a', calendarId, title: calendarId, allDay: false, attendees: [],
+      start: '2026-09-23T10:00:00Z', end: '2026-09-23T11:00:00Z'
+    })
+    const account: Account = { id: 'a', kind: 'google', label: 'A', email: 'a@x.example', color: '#0a84ff' }
+    let events = [copy('c1'), copy('c2')]
+    const provider = {
+      updateEvent: vi.fn(async (e: CalEvent) => e),
+      deleteEvent: vi.fn(async () => {}),
+      respond: vi.fn(async (e: CalEvent, myStatus: CalEvent['myStatus']) => ({ ...e, myStatus }))
+    }
+    const store = {
+      list: () => [account],
+      get: () => account,
+      getProvider: () => provider,
+      readCache: () => ({ calendars: [{ id: 'c1', readOnly: false }, { id: 'c2', readOnly: false }], events }),
+      patchCache: (_: string, fn: (c: { events: CalEvent[] }) => { events: CalEvent[] }) => void (events = fn({ events }).events)
+    } as unknown as AccountStore
+    const api = createApi(store, { syncNow: vi.fn(async () => {}), edited: vi.fn() } as unknown as SyncEngine, { verifyCaldav: vi.fn(), googleSignIn: vi.fn() })
+    const shown = (): string[] => events.map((e) => `${e.calendarId}:${e.title}:${e.myStatus ?? ''}`)
+
+    await api.events.update({ ...copy('c2'), title: 'moved' })
+    expect(provider.updateEvent).toHaveBeenCalledWith(expect.objectContaining({ calendarId: 'c2', title: 'moved' }), 'one')
+    expect(shown()).toEqual(['c1:c1:', 'c2:moved:'])
+    await api.events.respond(copy('c2'), 'accepted')
+    expect(shown()).toEqual(['c1:c1:', 'c2:moved:accepted'])
+    await api.events.delete(copy('c2'))
+    expect(provider.deleteEvent).toHaveBeenCalledWith(expect.objectContaining({ calendarId: 'c2' }), 'one')
+    expect(shown()).toEqual(['c1:c1:'])
   })
 })
 

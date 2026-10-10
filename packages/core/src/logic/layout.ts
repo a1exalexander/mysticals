@@ -13,10 +13,13 @@ import { fmt, type Locale } from '../i18n'
 import { awaitsReply } from './details'
 import type { CalEvent, TimeRange } from '../shared/types'
 
-// ponytail: Monday week start is hardcoded; move to settings when someone needs Sunday.
+/** Default first day of the week (Monday); the desktop passes its Settings choice, 0 for Sunday. */
 export const WEEK_STARTS_ON = 1 as const
 export const SLOT_MIN = 15
 export type View = 'day' | '3day' | 'week' | 'month'
+
+/** Identity of an event on screen: Google gives every copy of a meeting (one per account or calendar) the same id. */
+export const eventKey = (e: Pick<CalEvent, 'accountId' | 'calendarId' | 'id'>): string => `${e.accountId}/${e.calendarId}/${e.id}`
 
 /** Parsed bounds; all-day end is exclusive, zero/negative lengths are widened so the event still shows. */
 export function eventBounds(e: CalEvent): { start: Date; end: Date } {
@@ -181,22 +184,90 @@ function cascade(items: { item: CalEvent; start: number; end: number }[], minDur
   return out.map(({ last: _, ...p }) => p)
 }
 
+/** Px per rail lane (6px bar + gap) for long events in rails mode. */
+export const RAIL = 8
+/** Px; side-by-side blocks any narrower fold into a "+N". */
+export const MIN_BLOCK = 48
+
+/** Side-by-side columns that stay MIN_BLOCK wide in a `width` px day right of `inset` rail lanes; at least two (a block and "+N"). */
+export const columnsFit = (width: number, inset: number): number => Math.max(2, Math.floor((width - inset * RAIL) / MIN_BLOCK))
+
+/**
+ * Side-by-side blocks in a `width` px day stay readable in as many columns as fit right of their cluster's rail lanes
+ * (columnsFit, the cluster's largest `inset`). A cluster with more keeps its first `fit - 1` columns (blocks there stop
+ * short of the last one); the blocks from there on make way for a "+N" in the last column, one per run of them that
+ * overlap (`minDur` as in packColumns). A run of one is no fold: that block takes the column itself.
+ */
+export function fitColumns<P extends Placed<unknown> & { inset: number }>(
+  placed: P[],
+  width: number,
+  minDur = 0
+): { shown: P[]; more: { start: number; end: number; items: P[]; cols: number; inset: number }[] } {
+  // Clusters as packColumns made them: each block's fit, and the lanes its column keeps clear of.
+  const of = new Map<P, { fit: number; inset: number }>()
+  let cluster: P[] = []
+  let clusterEnd = -Infinity
+  const flush = (): void => {
+    const inset = Math.max(0, ...cluster.map((p) => p.inset))
+    for (const p of cluster) of.set(p, { fit: columnsFit(width, inset), inset })
+    cluster = []
+  }
+  for (const p of [...placed].sort((a, b) => a.start - b.start)) {
+    if (p.start >= clusterEnd) flush()
+    cluster.push(p)
+    clusterEnd = Math.max(clusterEnd, p.end, p.start + minDur)
+  }
+  flush()
+  const shown: P[] = []
+  const hidden: P[] = []
+  for (const p of placed) {
+    const { fit } = of.get(p)!
+    if (p.cols <= fit) shown.push(p)
+    else if (p.col < fit - 1) shown.push({ ...p, cols: fit, span: Math.min(p.span, fit - 1 - p.col) })
+    else hidden.push(p)
+  }
+  const runs: { start: number; end: number; items: P[]; cols: number; inset: number }[] = []
+  for (const p of hidden.sort((a, b) => a.start - b.start)) {
+    const end = Math.max(p.end, p.start + minDur)
+    const last = runs[runs.length - 1]
+    if (last && p.start < last.end) {
+      last.end = Math.max(last.end, end)
+      last.items.push(p)
+    } else {
+      const { fit, inset } = of.get(p)!
+      runs.push({ start: p.start, end, items: [p], cols: fit, inset })
+    }
+  }
+  for (const { items, cols, inset } of runs) if (items.length === 1) shown.push({ ...items[0], col: cols - 1, cols, span: 1, inset })
+  return { shown, more: runs.filter((r) => r.items.length > 1) }
+}
+
+/**
+ * How many of a month cell's `n` events it lists, `height` px tall (its clientHeight; base.css `.mg-*`): 4px padding,
+ * the 21px date, then 18px rows 2px apart. When they don't all fit, "+N more" (16px) takes the last row; at least one
+ * event shows.
+ */
+export function monthShown(height: number, n: number): number {
+  const room = height - 29
+  return n * 20 <= room ? n : Math.max(1, Math.floor((room - 18) / 20))
+}
+
 /** 6-week grid (42 days) covering the month of `date`. */
-export function monthGrid(date: Date): Date[] {
-  const first = startOfWeek(startOfMonth(date), { weekStartsOn: WEEK_STARTS_ON })
+export function monthGrid(date: Date, weekStartsOn: 0 | 1 = WEEK_STARTS_ON): Date[] {
+  const first = startOfWeek(startOfMonth(date), { weekStartsOn })
   return Array.from({ length: 42 }, (_, i) => addDays(first, i))
 }
 
-export function viewDays(view: View, date: Date): Date[] {
-  if (view === 'month') return monthGrid(date)
+export function viewDays(view: View, date: Date, weekStartsOn: 0 | 1 = WEEK_STARTS_ON): Date[] {
+  if (view === 'month') return monthGrid(date, weekStartsOn)
   if (view === 'day') return [startOfDay(date)]
   if (view === '3day') return [0, 1, 2].map((i) => addDays(startOfDay(date), i))
-  const first = startOfWeek(date, { weekStartsOn: WEEK_STARTS_ON })
+  const first = startOfWeek(date, { weekStartsOn })
   return Array.from({ length: 7 }, (_, i) => addDays(first, i))
 }
 
-export function viewRange(view: View, date: Date): TimeRange {
-  const days = viewDays(view, date)
+export function viewRange(view: View, date: Date, weekStartsOn: 0 | 1 = WEEK_STARTS_ON): TimeRange {
+  const days = viewDays(view, date, weekStartsOn)
   return { start: days[0].toISOString(), end: addDays(days[days.length - 1], 1).toISOString() }
 }
 
@@ -211,6 +282,14 @@ export function shiftDate(view: View, date: Date, dir: 1 | -1): Date {
 export function rangeLabel(a: Date, b: Date, locale: Locale = 'en'): string {
   const head = a.getFullYear() !== b.getFullYear() ? 'd MMM yyyy' : a.getMonth() !== b.getMonth() ? 'd MMM' : 'd'
   return `${fmt(locale, a, head)} – ${fmt(locale, b, 'd MMM yyyy')}`
+}
+
+/** Week heading from its first and last day: "September" or "Sep – Oct", and "2026" or "2026 – 2027". */
+export function weekLabel(a: Date, b: Date, locale: Locale = 'en'): { title: string; year: string } {
+  return {
+    title: a.getMonth() === b.getMonth() ? fmt(locale, a, 'LLLL') : `${fmt(locale, a, 'LLL')} – ${fmt(locale, b, 'LLL')}`,
+    year: a.getFullYear() === b.getFullYear() ? fmt(locale, a, 'yyyy') : `${fmt(locale, a, 'yyyy')} – ${fmt(locale, b, 'yyyy')}`
+  }
 }
 
 /** Floor a minute offset to its slot, clamped to the day. */

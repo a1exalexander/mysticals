@@ -1,28 +1,35 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { addDays, format, isSameDay, isToday, startOfDay } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
-import { eventMenu, slotMenu } from '../components/EventMenu'
-import { eventMeetingUrl, eventPlace } from '@mysticals/core/logic/meeting'
+import { eventButton, eventMenu, name, slotMenu } from '../components/EventMenu'
+import { eventPlace } from '@mysticals/core/logic/meeting'
 import { nav } from './nav'
-import { dragRange, eventBounds, eventsOnDay, isPast, layoutDayLong, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
+import { dragRange, eventBounds, eventKey, eventsOnDay, fitColumns, isPast, layoutDayLong, RAIL, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
 import { moveRange, resizeEnd, resizeStart } from './drag'
 import { currentLocale, fmt, t } from '../i18n'
 import { useLongEvents } from '../longEvents'
+import { hm, hour12, hourLabel } from '../clock'
 
 const HOUR = 48 // px per hour
 const MAX_ALLDAY = 3 // all-day events per day before the row collapses
 const MIN_DUR = 22 // minutes; shorter events render (and pack) as if this long
-const RAIL = 8 // px per rail lane (6px bar + gap) for long events in rails mode
 const CASCADE = 14 // px each overlapping block steps right in cascade mode
 const pxOf = (min: number): number => (min / 60) * HOUR
 
-const hhmm = (d: Date): string => format(d, 'HH:mm')
-/** "10–23", "9:30–20": the hours a long event covers on a day, for its all-day chip. */
+/** Left and width of a block in column `col` of `cols`, `span` columns wide, right of `inset` rail lanes. */
+const beside = (col: number, cols: number, span: number, inset: number): React.CSSProperties => ({
+  left: `calc(${inset * RAIL}px + (100% - ${inset * RAIL}px) * ${col / cols} + 1px)`,
+  width: `calc((100% - ${inset * RAIL}px) * ${span / cols} - 3px)`
+})
+
+const hhmm = hm
+/** "10–23", "9:30–20" (or "10 AM–11 PM"): the hours a long event covers on a day, for its all-day chip. */
 const hourSpan = (a: number, b: number): string => {
-  const h = (m: number): string => (m % 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : String(m / 60))
+  const h = (m: number): string =>
+    hour12() ? (m % 60 ? hm : hourLabel)(new Date(2000, 0, 1, 0, m)) : m % 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : String(m / 60)
   return `${h(a)}–${h(b)}`
 }
 
@@ -42,7 +49,6 @@ const emitTimed = (day: Date, start: number, end: number): void =>
 
 const stop = (e: React.MouseEvent): void => e.stopPropagation()
 const minutesOf = (d: Date): number => d.getHours() * 60 + d.getMinutes()
-const keyOf = (e: CalEvent): string => `${e.accountId}/${e.id}`
 
 /** Minutes of `day` an event covers, when it starts that day and ends that day (or at the next midnight). */
 function sameDaySpan(e: CalEvent, day: Date): { start: number; end: number } | null {
@@ -58,6 +64,8 @@ interface Props {
   colorOf: ColorOf
   canDrag?: CanDrag
   moveTo?: MoveTo
+  /** Bumped by "today": scroll back to now. */
+  todays?: number
 }
 
 /** An event being dragged: where it would land (day index in `days`, minutes of that day). */
@@ -69,8 +77,11 @@ interface Moving {
   end: number
 }
 
-export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): React.JSX.Element {
+export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Props): React.JSX.Element {
   const scroller = useRef<HTMLDivElement>(null)
+  const body = useRef<HTMLDivElement>(null)
+  // Width of the day columns together, for how many blocks fit side by side.
+  const [area, setArea] = useState(Infinity)
   const [now, setNow] = useState(() => new Date())
   const [drag, setDrag] = useState<{ day: Date; a: number; b: number } | null>(null)
   const [moving, setMoving] = useState<Moving | null>(null)
@@ -115,7 +126,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
           : mode === 'resize'
             ? { start: span.start, end: resizeEnd(span.start, pointer) }
             : { start: resizeStart(span.end, pointer), end: span.end }
-      to = { key: keyOf(e), mode, day, ...r }
+      to = { key: eventKey(e), mode, day, ...r }
       setMoving(to)
       document.body.dataset.dragging = mode
     }
@@ -142,7 +153,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
     window.addEventListener('keydown', key, true)
   }
 
-  // Opens on a whole hour: with today shown, the one that puts now about a third down the grid, else 08:00.
+  // Opens (and returns on "today") on a whole hour: with today shown, the one that puts now about a third down the grid, else 08:00.
   useEffect(() => {
     const el = scroller.current
     if (!el) return
@@ -150,7 +161,17 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
     const hours = (el.clientHeight - (el.querySelector<HTMLElement>('.tg-head')?.offsetHeight ?? 0)) / HOUR
     const top = days.some((d) => isToday(d)) ? Math.floor(t.getHours() + t.getMinutes() / 60 - hours / 3) : 8
     el.scrollTop = pxOf(Math.max(0, top) * 60) - 8
-  }, []) // only on mount: later steps keep the user's scroll
+  }, [todays]) // not on ‹ › steps: they keep the user's scroll
+
+  useLayoutEffect(() => {
+    const el = body.current
+    if (!el) return
+    const measure = (): void => setArea(el.clientWidth - (el.querySelector<HTMLElement>('.tg-gutter')?.offsetWidth ?? 0))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   // Tick on the minute so the now-line and its clock never lag behind the real time.
   useEffect(() => {
@@ -197,12 +218,18 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
   const multi = days.length > 1
   const showsToday = days.some((d) => isToday(d))
   const layouts = days.map((d) => layoutDayLong(events, d, MIN_DUR, long))
+  // Side by side, as many columns as fit (fitColumns); the "+N" opens the day, which never folds: there it would lead nowhere.
+  const fitted = layouts.map((l) => fitColumns(l.timed, multi ? area / days.length : Infinity, MIN_DUR))
+  // One Tab stop per day column, its earliest event; ↑/↓ reach the others.
+  const firsts = layouts.map((l, i) => [...l.rails, ...fitted[i].shown].sort((a, b) => a.start - b.start)[0]?.item)
   /** All-day events, then long timed ones moved up (all-day mode) with their hours as a tag. */
   const allDayOf = (i: number): { e: CalEvent; tag?: string }[] => [
     ...eventsOnDay(events, days[i]).filter((e) => e.allDay).map((e) => ({ e })),
     ...layouts[i].allDay.map((x) => ({ e: x.item, tag: hourSpan(x.start, x.end) }))
   ]
   const allDayOverflows = days.some((_, i) => allDayOf(i).length > MAX_ALLDAY)
+  // Multi-day views: a day's header switches to that day.
+  const DayHead = multi ? 'button' : 'div'
 
   return (
     <div className={`tg${multi ? '' : ' tg-single'}`} ref={scroller}>
@@ -210,14 +237,15 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
         <div className="tg-row">
           <div className="tg-gutter" />
           {days.map((d) => (
-            <div
+            <DayHead
               key={d.getTime()}
+              type={multi ? 'button' : undefined}
               className={`tg-dayhead${isToday(d) ? ' is-today' : ''}`}
               onClick={() => multi && nav.set({ view: 'day', date: d })}
             >
               <span className="dow">{fmt(d, 'EEE')}</span>
               <span className="num">{format(d, 'd')}</span>
-            </div>
+            </DayHead>
           ))}
         </div>
         <div className="tg-row tg-allday">
@@ -241,20 +269,21 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
               >
                 {list
                   .slice(0, list.length - more)
-                  .map(({ e, tag }) => (
+                  .map(({ e, tag }, n) => (
                     <div
-                      key={e.id}
+                      key={eventKey(e)}
                       data-testid="event-block"
                       data-account-id={e.accountId}
                       className={`ev ev-allday${tag ? ' is-promoted' : ''}${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}`}
                       style={{ '--c': colorOf(e) } as React.CSSProperties}
                       onClick={open(e)}
                       onDoubleClick={stop}
+                      {...eventButton(e, n === 0)}
                       {...tooltipHover(e)}
                       {...eventMenu(e)}
                     >
                       {tag && <span className="ev-hours">{tag}</span>}
-                      <span className="ev-title">{e.title}</span>
+                      <span className="ev-title">{name(e)}</span>
                     </div>
                   ))}
                 {more > 0 && (
@@ -273,7 +302,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
         </div>
       </div>
 
-      <div className="tg-body" style={{ height: pxOf(1440) }}>
+      <div className="tg-body" style={{ height: pxOf(1440) }} ref={body}>
         <div className="tg-gutter">
           {Array.from({ length: 23 }, (_, i) => i + 1).map((h) => (
             <span
@@ -282,7 +311,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
               // the now clock takes the place of an hour label it would overlap
               style={{ top: pxOf(h * 60), visibility: showsToday && Math.abs(nowMin - h * 60) < 12 ? 'hidden' : undefined }}
             >
-              {String(h).padStart(2, '0')}:00
+              {hourLabel(new Date(2000, 0, 1, h))}
             </span>
           ))}
           {showsToday && (
@@ -313,30 +342,30 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
             ))}
             {layouts[dayIdx].rails.map(({ item: e, start, end, col }) => (
               <div
-                key={e.id}
+                key={eventKey(e)}
                 data-testid="event-rail"
                 data-account-id={e.accountId}
                 className={`ev-rail${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}`}
                 style={{ '--c': colorOf(e), top: pxOf(start), height: pxOf(end - start) - 1, left: 2 + col * RAIL } as React.CSSProperties}
-                aria-label={`${e.title}, ${hhmm(eventBounds(e).start)} – ${hhmm(eventBounds(e).end)}`}
                 onMouseDown={stop}
                 onDoubleClick={stop}
                 onClick={open(e)}
+                {...eventButton(e, e === firsts[dayIdx])}
                 {...tooltipHover(e)}
                 {...eventMenu(e)}
               />
             ))}
-            {layouts[dayIdx].timed.map(({ item: e, start, end, col, cols, span, inset, level }, order) => {
+            {fitted[dayIdx].shown.map(({ item: e, start, end, col, cols, span, inset, level }, order) => {
               const b = eventBounds(e)
               const h = pxOf(Math.max(end - start, MIN_DUR))
               const short = h < 34
               const draggable = !!moveTo && !!canDrag?.(e) && !!sameDaySpan(e, d)
-              const dragged = moving?.key === keyOf(e)
+              const dragged = moving?.key === eventKey(e)
               // cascade: full width less a step per overlapped block, painted in order (later on top)
               const indent = level === undefined ? null : `min(${level * CASCADE}px, 45%)`
               return (
                 <div
-                  key={e.id}
+                  key={eventKey(e)}
                   data-testid="event-block"
                   data-account-id={e.accountId}
                   className={`ev ev-timed${indent ? ' is-cascade' : ''}${statusClass(e)}${isPast(e, now) ? ' is-past' : ''}${short ? ' is-short' : ''}${draggable ? ' is-draggable' : ''}${dragged ? ' is-dragged' : ''}`}
@@ -347,20 +376,17 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                       height: h - 1,
                       ...(indent
                         ? ({ left: `calc(${indent} + 1px)`, width: `calc(100% - ${indent} - 3px)`, '--z': order + 1 } as React.CSSProperties)
-                        : {
-                            left: `calc(${inset * RAIL}px + (100% - ${inset * RAIL}px) * ${col / cols} + 1px)`,
-                            width: `calc((100% - ${inset * RAIL}px) * ${span / cols} - 3px)`
-                          })
+                        : beside(col, cols, span, inset))
                     } as React.CSSProperties
                   }
-                  title={eventMeetingUrl(e) ? undefined : `${e.title}\n${hhmm(b.start)} – ${hhmm(b.end)}`}
                   onMouseDown={onEventDown(e, dayIdx, 'move')}
                   onDoubleClick={stop}
                   onClick={open(e)}
+                  {...eventButton(e, e === firsts[dayIdx])}
                   {...tooltipHover(e)}
                   {...eventMenu(e)}
                 >
-                  <span className="ev-title">{e.title}</span>
+                  <span className="ev-title">{name(e)}</span>
                   <span className="ev-meta">
                     {hhmm(b.start)}
                     {/* a one-line (is-short) block keeps its room for the title */}
@@ -375,9 +401,24 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                 </div>
               )
             })}
+            {fitted[dayIdx].more.map(({ start, end, items, cols, inset }) => (
+              <button
+                key={start}
+                type="button"
+                className="tg-more"
+                data-testid="more-events"
+                aria-label={t('grid.showMore', { n: items.length })}
+                style={{ top: pxOf(start), height: pxOf(end - start) - 1, ...beside(cols - 1, cols, 1, inset) }}
+                onMouseDown={stop}
+                onDoubleClick={stop}
+                onClick={() => nav.set({ view: 'day', date: d })}
+              >
+                +{items.length}
+              </button>
+            ))}
             {moving?.day === dayIdx &&
               (() => {
-                const e = events.find((x) => keyOf(x) === moving.key)
+                const e = events.find((x) => eventKey(x) === moving.key)
                 if (!e) return null
                 return (
                   <div
@@ -393,7 +434,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo }: Props): Rea
                       } as React.CSSProperties
                     }
                   >
-                    <span className="ev-title">{e.title}</span>
+                    <span className="ev-title">{name(e)}</span>
                     <span className="ev-meta">
                       {hhmm(atMinute(d, moving.start))} – {hhmm(atMinute(d, moving.end))}
                     </span>
