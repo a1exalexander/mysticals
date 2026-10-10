@@ -50,6 +50,63 @@ test('sidebar collapses and expands, remembers it, and ⌘\\ / Ctrl+\\ toggles i
   await app.close()
 })
 
+test('sidebar edge drags to resize, remembers it, and double-click resets it', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
+  const page = await app.firstWindow()
+  await page.setViewportSize({ width: 1200, height: 800 })
+  await expect(page.locator('.app-loader')).toBeHidden()
+  const sidebar = page.getByTestId('sidebar')
+  const toggle = page.getByTestId('sidebar-toggle')
+  const handle = page.getByTestId('sidebar-resize')
+  const width = async (): Promise<number> => (await sidebar.boundingBox())!.width
+  const centred = async (): Promise<number> => {
+    const tb = (await toggle.boundingBox())!
+    const sb = (await sidebar.boundingBox())!
+    return Math.abs(tb.x + tb.width / 2 - (sb.x + sb.width))
+  }
+
+  // Default width: no reset hint.
+  expect(await width()).toBe(240)
+  await expect(handle).not.toHaveAttribute('title')
+  const hb = (await handle.boundingBox())!
+  await handle.hover()
+  await page.screenshot({ path: 'e2e/screens/sidebar-resize-hover.png' })
+
+  // Drag the edge 80px right: wider, the toggle still on the edge, and a hint to reset.
+  const x = hb.x + hb.width / 2
+  const y = hb.y + hb.height / 2
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  await page.mouse.move(x + 40, y, { steps: 4 })
+  await page.mouse.move(x + 80, y, { steps: 4 })
+  await page.mouse.up()
+  expect(Math.abs((await width()) - 320)).toBeLessThan(2)
+  await expect(handle).toHaveAttribute('aria-valuenow', '320')
+  await expect(handle).toHaveAttribute('title', 'Double-click to reset width')
+  await expect.poll(centred).toBeLessThan(2)
+  await page.screenshot({ path: 'e2e/screens/sidebar-wide.png' })
+
+  // Survives a reload.
+  await page.reload()
+  await expect(page.locator('.app-loader')).toBeHidden()
+  expect(await width()).toBe(320)
+
+  // Arrow keys step it 16px.
+  await handle.focus()
+  await page.keyboard.press('ArrowLeft')
+  await expect(handle).toHaveAttribute('aria-valuenow', '304')
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('ArrowRight')
+  await expect(handle).toHaveAttribute('aria-valuenow', '336')
+
+  // Double-click puts it back to the default, and the hint goes.
+  await handle.dblclick()
+  await expect.poll(width).toBe(240)
+  await expect(handle).not.toHaveAttribute('title')
+  await expect.poll(centred).toBeLessThan(2)
+  await app.close()
+})
+
 test('mini-month is one labelled tab stop, arrow keys move within it, and it tints the visible days', async () => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()

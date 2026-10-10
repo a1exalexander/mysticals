@@ -428,6 +428,8 @@ export const en = {
   'sidebar.readOnlyTitle': 'Read-only',
   'sidebar.readOnly': 'read-only',
   'sidebar.add': 'Add calendar',
+  'sidebar.resize': 'Resize sidebar',
+  'sidebar.resetWidth': 'Double-click to reset width',
 
   // ---- desktop: calendar grids and agenda ----
   'month.more': '+{n} more',

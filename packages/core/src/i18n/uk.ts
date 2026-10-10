@@ -429,6 +429,8 @@ export const uk: Record<Key, Msg> = {
   'sidebar.readOnlyTitle': 'Лише перегляд',
   'sidebar.readOnly': 'лише перегляд',
   'sidebar.add': 'Додати календар',
+  'sidebar.resize': 'Змінити ширину бічної панелі',
+  'sidebar.resetWidth': 'Двічі клацніть, щоб скинути ширину',
 
   // ---- desktop: calendar grids and agenda ----
   'month.more': 'ще {n}',
