@@ -13,9 +13,9 @@
  * Props: ViewProps (ui/hooks.ts). Keys: the App shell owns them all; the view keeps the selected card scrolled into
  * view within `height` lines.
  *
- * Also exports the row helpers (useOwnerOf, useColorOf, useScroll, clickEvent, rsvpMark, eventPlace) the other views reuse.
+ * Also exports the row helpers (useOwnerOf, useColorOf, clickEvent, rsvpMark, eventPlace) the other views reuse.
  */
-import { useMemo, useReducer, useRef, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { Box, Text } from 'ink'
 import { addDays, differenceInCalendarDays, differenceInMinutes, format, isSameDay, startOfDay } from 'date-fns'
 import { eventBounds, eventsOnDay, isPast, ymd } from '@mysticals/core/logic/layout'
@@ -25,6 +25,7 @@ import { startsLabel } from '@mysticals/core/logic/status'
 import type { CalEvent } from '@mysticals/core/shared/types'
 import { AGENDA_DAYS, eventKey, useDirectory, type ViewProps } from '../hooks'
 import { Clickable } from '../mouse'
+import { useScroll, WHEEL_STEP } from '../scroll'
 import { ansiOf, C } from '../theme'
 import { duration } from '../screens/EventDetails'
 
@@ -47,36 +48,6 @@ export const useColorOf = (): ((e: CalEvent) => string) => useOwnerOf().colorOf
 /** Click selects; a click on the already selected event opens it. */
 export const clickEvent = (e: CalEvent, selected: boolean, { onSelect, onOpen }: Pick<ViewProps, 'onSelect' | 'onOpen'>) =>
   () => (selected ? onOpen(e) : onSelect(e))
-
-/**
- * First visible row of a `total`-row list shown `height` rows at a time, plus `scrollBy` for the mouse wheel.
- * When `first..last` (the selection) changes, moves only as far as needed to keep it in view (so j/k don't jump
- * the page; `first` wins if they don't fit), starting at `first`. A wheel scroll stays until the selection moves.
- */
-export function useScroll(first: number, last: number, height: number, total: number): [number, (rows: number) => void] {
-  const off = useRef<number>(undefined)
-  const followed = useRef('')
-  const [, rerender] = useReducer((n: number) => n + 1, 0)
-  const clamp = (o: number): number => Math.max(0, Math.min(o, total - height))
-  let o = off.current ?? first
-  if (followed.current !== `${first}/${last}`) {
-    followed.current = `${first}/${last}`
-    if (last >= o + height) o = last - height + 1
-    if (first < o) o = first
-  }
-  o = clamp(o)
-  off.current = o
-  const scrollBy = (rows: number): void => {
-    const next = clamp((off.current ?? 0) + rows)
-    if (next === off.current) return
-    off.current = next
-    rerender()
-  }
-  return [o, scrollBy]
-}
-
-/** Wheel notch in lines. */
-export const WHEEL_STEP = 3
 
 /** RSVP marker for invites not yet accepted; empty otherwise. */
 export const rsvpMark = (e: CalEvent): string =>

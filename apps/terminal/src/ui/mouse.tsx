@@ -32,8 +32,10 @@ type Region = { node: { current: DOMElement | null }; handlers: { current: Handl
 
 const Regions = createContext<Set<Region> | null>(null)
 
+type Rect = { x: number; y: number; w: number; h: number }
+
 /** Absolute cell rectangle of a rendered element (sum of Yoga offsets up to the root). */
-function rect(el: DOMElement): { x: number; y: number; w: number; h: number } | undefined {
+function box(el: DOMElement): Rect | undefined {
   if (!el.yogaNode) return
   let x = 0
   let y = 0
@@ -42,6 +44,23 @@ function rect(el: DOMElement): { x: number; y: number; w: number; h: number } | 
     y += n.yogaNode.getComputedTop()
   }
   return { x, y, w: el.yogaNode.getComputedWidth(), h: el.yogaNode.getComputedHeight() }
+}
+
+/** The visible part of an element: its box cut by every `overflow: hidden` ancestor (scrolled-away rows can't be hit). */
+function rect(el: DOMElement): Rect | undefined {
+  let r = box(el)
+  for (let n = el.parentNode; r && n?.yogaNode; n = n.parentNode) {
+    const clipX = n.style.overflow === 'hidden' || n.style.overflowX === 'hidden'
+    const clipY = n.style.overflow === 'hidden' || n.style.overflowY === 'hidden'
+    const c = (clipX || clipY) && box(n)
+    if (!c) continue
+    const x = clipX ? Math.max(r.x, c.x) : r.x
+    const y = clipY ? Math.max(r.y, c.y) : r.y
+    const w = (clipX ? Math.min(r.x + r.w, c.x + c.w) : r.x + r.w) - x
+    const h = (clipY ? Math.min(r.y + r.h, c.y + c.h) : r.y + r.h) - y
+    r = w > 0 && h > 0 ? { x, y, w, h } : undefined
+  }
+  return r
 }
 
 function Dispatcher({ regions }: { regions: Set<Region> }) {

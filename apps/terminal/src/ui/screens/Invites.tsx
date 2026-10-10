@@ -2,7 +2,7 @@
  * Invites overlay (key `i`): unanswered invitations of the next 60 days (visible calendars only).
  * Each reply goes through the invite's own account (api.events.respond with the event itself).
  * Keys: j/k ↓/↑ move, y accept, n decline, m maybe, esc/q close. Mouse: click a row to select it, wheel moves,
- * the buttons reply to the selected invite.
+ * the buttons reply to the selected invite. A list taller than `height` scrolls with the selection.
  */
 import { useMemo, useRef, useState } from 'react'
 import { Box, Text } from 'ink'
@@ -12,6 +12,7 @@ import { errorText } from '@mysticals/core/logic/editor'
 import type { CalEvent, PartStat } from '@mysticals/core/shared/types'
 import { eventKey, useApi, useDirectory, useEvents } from '../hooks'
 import { Button, Clickable, useKeys } from '../mouse'
+import { useHeight, useScroll } from '../scroll'
 import { ansiOf, C } from '../theme'
 
 export const INVITE_DAYS = 60
@@ -28,9 +29,11 @@ const REPLY: Record<string, Reply> = { y: 'accepted', n: 'declined', m: 'tentati
 
 export interface InvitesProps {
   onClose(): void
+  /** Rows the overlay may take, border included. */
+  height?: number
 }
 
-export function Invites({ onClose }: InvitesProps) {
+export function Invites({ onClose, height = Infinity }: InvitesProps) {
   const api = useApi()
   const [now] = useState(() => new Date())
   const { events, loaded } = useUpcoming(now)
@@ -42,6 +45,9 @@ export function Invites({ onClose }: InvitesProps) {
   const busy = useRef(new Set<string>()) // sync guard against key repeats landing before a re-render
   const [error, setError] = useState('')
   const sel = Math.min(idx, Math.max(invites.length - 1, 0))
+  const [foot, footHeight] = useHeight()
+  const fit = Math.max(height - 4 - footHeight, 1) // border, heading, the gap above the buttons
+  const [top] = useScroll(sel, sel, fit, invites.length)
 
   const reply = (e: CalEvent, status: Reply): void => {
     const k = eventKey(e)
@@ -71,13 +77,17 @@ export function Invites({ onClose }: InvitesProps) {
 
   return (
     <Clickable flexDirection="column" borderStyle="round" borderColor={C.muted} paddingX={1} onWheel={move}>
-      <Text bold>Invitations</Text>
+      <Text>
+        <Text bold>Invitations</Text>
+        {invites.length > fit && <Text color={C.muted}>{` · ${invites.length} · ↑↓ more`}</Text>}
+      </Text>
       {!loaded ? (
         <Text color={C.muted}>Loading…</Text>
       ) : invites.length === 0 ? (
         <Text color={C.muted}>No pending invites</Text>
       ) : (
-        invites.map((e, i) => {
+        invites.slice(top, top + fit).map((e, j) => {
+          const i = top + j
           const a = accounts.find((x) => x.id === e.accountId)
           const o = ownerLine(undefined, a?.label ?? e.accountId, a?.email)
           return (
@@ -93,15 +103,17 @@ export function Invites({ onClose }: InvitesProps) {
           )
         })
       )}
-      {error ? <Text color={C.red}>{error}</Text> : null}
-      <Box marginTop={1} flexWrap="wrap">
-        {invites.length > 0 && <Button k="y" label="accept" color={C.green} onPress={() => replySelected('accepted')} />}
-        {invites.length > 0 && <Button k="n" label="decline" color={C.red} onPress={() => replySelected('declined')} />}
-        {invites.length > 0 && <Button k="m" label="maybe" color={C.yellow} onPress={() => replySelected('tentative')} />}
-        <Box marginRight={2}>
-          <Text color={C.muted}>j/k move</Text>
+      <Box ref={foot} flexDirection="column" flexShrink={0} marginTop={1}>
+        {error ? <Text color={C.red}>{error}</Text> : null}
+        <Box flexWrap="wrap">
+          {invites.length > 0 && <Button k="y" label="accept" color={C.green} onPress={() => replySelected('accepted')} />}
+          {invites.length > 0 && <Button k="n" label="decline" color={C.red} onPress={() => replySelected('declined')} />}
+          {invites.length > 0 && <Button k="m" label="maybe" color={C.yellow} onPress={() => replySelected('tentative')} />}
+          <Box marginRight={2}>
+            <Text color={C.muted}>j/k move</Text>
+          </Box>
+          <Button k="esc" label="close" onPress={onClose} />
         </Box>
-        <Button k="esc" label="close" onPress={onClose} />
       </Box>
     </Clickable>
   )

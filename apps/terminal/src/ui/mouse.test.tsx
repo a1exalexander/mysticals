@@ -1,5 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { renderApp, type Rendered } from '../test/harness'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { Box, Text } from 'ink'
+import { renderApp, renderWith, type Rendered } from '../test/harness'
+import { Clickable, MouseProvider } from './mouse'
 
 let t: Rendered
 afterEach(() => t?.unmount())
@@ -75,5 +77,30 @@ describe('mouse', () => {
     const f = await t.waitFor('› Location')
     expect(f).not.toContain('[<')
     expect(f).toMatch(/Location +x/)
+  })
+  it('rows clipped by an overflow-hidden box take no clicks', async () => {
+    const hidden = vi.fn()
+    const below = vi.fn()
+    t = renderWith(
+      <MouseProvider>
+        <Box flexDirection="column">
+          <Box height={1} overflow="hidden" flexDirection="column">
+            <Box flexShrink={0}>
+              <Text>shown</Text>
+            </Box>
+            <Clickable flexShrink={0} onClick={hidden}>
+              <Text>hidden</Text>
+            </Clickable>
+          </Box>
+          <Clickable onClick={below}>
+            <Text>the row under the clipped box</Text>
+          </Clickable>
+        </Box>
+      </MouseProvider>
+    )
+    await t.waitFor('the row under')
+    await t.click('the row under')
+    expect(below).toHaveBeenCalled()
+    expect(hidden).not.toHaveBeenCalled()
   })
 })

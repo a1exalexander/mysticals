@@ -6,6 +6,7 @@
  *
  * While open this overlay owns ALL input; esc/q closes (esc backs out of sub-forms first).
  * Mouse: click a row to select it (a selected calendar again to show/hide it), wheel moves, buttons act on the selection.
+ * A list taller than `height` scrolls with the cursor.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Box, Text, useStdout } from 'ink'
@@ -13,6 +14,7 @@ import { errorText } from '@mysticals/core/logic/editor'
 import type { Account, Calendar } from '@mysticals/core/shared/types'
 import { useApi, useDirectory } from '../hooks'
 import { Button, Clickable, useKeys } from '../mouse'
+import { useHeight, useScroll } from '../scroll'
 import { ansiOf, C } from '../theme'
 import { AddCaldav, PALETTE, cycle, editText, useKeyState } from './AddCaldav'
 import { Spinner } from '../StatusLine'
@@ -22,6 +24,8 @@ const DONATE_URL = 'https://base.monobank.ua/4VzJ6ms12UeMhR#donate'
 
 export interface AccountsProps {
   onClose(): void
+  /** Rows the overlay may take, border included. */
+  height?: number
 }
 
 type Row = { account: Account; calendar?: Calendar }
@@ -31,7 +35,7 @@ type Mode =
   | { kind: 'confirm'; account: Account }
   | { kind: 'reauth'; account: Account; value: string }
 
-export function Accounts({ onClose }: AccountsProps) {
+export function Accounts({ onClose, height = Infinity }: AccountsProps) {
   const api = useApi()
   const { accounts, calendars, loaded, error: loadError } = useDirectory()
   const [getCursor, setCursor] = useKeyState(0)
@@ -173,6 +177,72 @@ export function Accounts({ onClose }: AccountsProps) {
     { isActive: mode.kind !== 'caldav' }
   )
 
+  /** An account or calendar row as one-row lines (an account adds its loading, error and new-password lines). */
+  const rowLines = (r: Row, i: number): ReactNode[] => {
+    const sel = i === idx
+    const mark = <Text color={C.cyan}>{sel ? '› ' : '  '}</Text>
+    if (r.calendar) {
+      const c = r.calendar
+      return [
+        <Clickable key={`${c.accountId}/${c.id}`} height={1} onClick={() => click(i)}>
+          <Text wrap="truncate-end" inverse={sel}>
+            {mark}
+            {'    '}
+            {c.visible === false ? '[ ]' : '[x]'} <Text color={ansiOf(c.color)}>●</Text> {c.name}
+            {c.readOnly && <Text color={C.muted}> (read-only)</Text>}
+          </Text>
+        </Clickable>
+      ]
+    }
+    const a = r.account
+    const renaming = mode.kind === 'rename' && mode.account.id === a.id
+    const out: ReactNode[] = [
+      <Clickable key={a.id} height={1} onClick={() => click(i)}>
+        <Text wrap="truncate-end" inverse={sel && !renaming}>
+          {mark}
+          <Text color={ansiOf(a.color)}>●</Text>{' '}
+          {renaming ? <Text color={C.cyan}>{mode.value}▏</Text> : <Text bold>{a.label}</Text>}{' '}
+          <Text color={C.muted}>
+            {a.email} · {a.kind === 'google' ? 'Google' : 'CalDAV'}
+          </Text>
+        </Text>
+      </Clickable>
+    ]
+    if (a.syncing && !a.synced) {
+      out.push(
+        <Text key={`${a.id}/loading`} color={C.muted}>
+          {'    '}
+          <Spinner /> Loading calendars…
+        </Text>
+      )
+    }
+    const problem = a.authError ? `Disconnected: ${a.error ?? 'credentials rejected'} — p to reconnect` : a.error && `Last sync failed: ${a.error}`
+    if (problem) out.push(<Text key={`${a.id}/error`} wrap="truncate-end" color={C.red}>{`    ${problem}`}</Text>)
+    if (mode.kind === 'reauth' && mode.account.id === a.id) {
+      out.push(
+        <Text key={`${a.id}/password`} wrap="truncate-start">
+          {'    New app password: '}
+          <Text color={C.cyan}>{'•'.repeat(mode.value.length)}▏</Text>
+        </Text>
+      )
+    }
+    return out
+  }
+
+  // The list as one-row lines, so it can scroll: each row's first and last line, for following the cursor.
+  const lines: ReactNode[] = []
+  const span: [number, number][] = []
+  rows.forEach((r, i) => {
+    const from = lines.length
+    lines.push(...rowLines(r, i))
+    span.push([from, lines.length - 1])
+  })
+  const [foot, footHeight] = useHeight()
+  const empty = loaded && !accounts.length
+  const fit = Math.max(height - 3 - (empty ? 1 : 0) - footHeight, 1) // border, heading
+  const [first, last] = span[idx] ?? [0, 0]
+  const [top] = useScroll(first, last, fit, lines.length)
+
   if (mode.kind === 'caldav') {
     return (
       <Box flexDirection="column" borderStyle="round" borderColor={C.muted} paddingX={1}>
@@ -194,120 +264,69 @@ export function Accounts({ onClose }: AccountsProps) {
 
   return (
     <Clickable flexDirection="column" borderStyle="round" borderColor={C.muted} paddingX={1} onWheel={(dir) => listing() && move(dir)}>
-      <Text bold>Accounts & calendars</Text>
-      <Text color={C.muted}>Accounts sync automatically every 2 minutes.</Text>
-      {loaded && !accounts.length && <Text color={C.muted}>No accounts yet. Press g (Google) or a (CalDAV) to add one.</Text>}
-      {rows.map((r, i) => {
-        const sel = i === idx
-        const mark = <Text color={C.cyan}>{sel ? '› ' : '  '}</Text>
-        if (r.calendar) {
-          const c = r.calendar
-          return (
-            <Clickable key={`${c.accountId}/${c.id}`} onClick={() => click(i)}>
-              <Text inverse={sel}>
-                {mark}
-                {'    '}
-                {c.visible === false ? '[ ]' : '[x]'} <Text color={ansiOf(c.color)}>●</Text> {c.name}
-                {c.readOnly && <Text color={C.muted}> (read-only)</Text>}
-              </Text>
-            </Clickable>
-          )
-        }
-        const a = r.account
-        const renaming = mode.kind === 'rename' && mode.account.id === a.id
-        return (
-          <Box key={a.id} flexDirection="column">
-            <Clickable onClick={() => click(i)}>
-              <Text inverse={sel && !renaming}>
-                {mark}
-                <Text color={ansiOf(a.color)}>●</Text>{' '}
-                {renaming ? (
-                  <Text color={C.cyan}>
-                    {mode.value}▏
-                  </Text>
-                ) : (
-                  <Text bold>{a.label}</Text>
-                )}{' '}
-                <Text color={C.muted}>
-                  {a.email} · {a.kind === 'google' ? 'Google' : 'CalDAV'}
-                </Text>
-              </Text>
-            </Clickable>
-            {a.syncing && !a.synced && (
-              <Text color={C.muted}>
-                {'    '}
-                <Spinner /> Loading calendars…
-              </Text>
-            )}
-            {a.authError ? (
-              <Text color={C.red}>{`    Disconnected: ${a.error ?? 'credentials rejected'} — p to reconnect`}</Text>
-            ) : (
-              a.error && <Text color={C.red}>{`    Last sync failed: ${a.error}`}</Text>
-            )}
-            {mode.kind === 'reauth' && mode.account.id === a.id && (
-              <Text>
-                {'    New app password: '}
-                <Text color={C.cyan}>{'•'.repeat(mode.value.length)}▏</Text>
-              </Text>
-            )}
-          </Box>
-        )
-      })}
-      {mode.kind === 'confirm' && (
-        <Box flexDirection="column" marginTop={1}>
-          <Text color={C.red} bold>
-            Remove {mode.account.label} ({mode.account.email})? [y/N]
-          </Text>
-          <Text>Removes local data and credentials for {mode.account.email}. Nothing is deleted on the server.</Text>
-          <Box>
-            <Button k="y" label="remove" color={C.red} onPress={() => confirmRemove(true)} />
-            <Button k="n" label="keep" onPress={() => confirmRemove(false)} />
-          </Box>
-        </Box>
-      )}
-      {mode.kind === 'google' && (
-        <Box flexDirection="column">
-          <Text color={C.yellow}>Opening browser — finish sign-in there… (esc to stop waiting)</Text>
-          {authUrl && (
-            <>
-              <Text color={C.muted}>No browser? Open this link yourself (c copies it):</Text>
-              <Text>{authUrl}</Text>
-              <Text color={C.muted}>{`Over SSH, forward its port first: ssh -L ${loopbackPort(authUrl)}:127.0.0.1:${loopbackPort(authUrl)} <host>`}</Text>
-            </>
-          )}
-        </Box>
-      )}
-      {(mode.kind === 'rename' || mode.kind === 'reauth') && <Text color={C.muted}>enter save  esc cancel</Text>}
-      {loadError && <Text color={C.red}>{loadError}</Text>}
-      {message && <Text color={message.error ? C.red : C.green}>{message.text}</Text>}
-      {mode.kind === 'list' && (
-        <Box marginTop={1} flexWrap="wrap">
-          <Box marginRight={2}>
-            <Text color={C.muted}>j/k move</Text>
-          </Box>
-          {row?.calendar && button('space', 'show/hide', ' ')}
-          {row && button('r', 'sync')}
-          {button('R', 'sync all')}
-          {row && button('e', 'rename')}
-          {row && button('c', 'colour')}
-          {row && button('x', 'remove')}
-          {row?.account.authError && button('p', 'reconnect')}
-          {button('g', 'add Google')}
-          {button('a', 'add CalDAV')}
-          <Button k="esc" label="close" onPress={onClose} />
-        </Box>
-      )}
-      {mode.kind === 'list' && (
-        <Box marginTop={1}>
-          <Text color={C.muted}>Made in Ukraine · </Text>
-          <Clickable onClick={() => void openUrl(DONATE_URL).catch(() => {})}>
-            <Text color={C.magenta}>♥ </Text>
-            <Text color={C.cyan} underline>
-              Donate on monobank Base
+      <Text>
+        <Text bold>Accounts & calendars</Text>
+        <Text color={C.muted}> · sync every 2 min{lines.length > fit ? ' · ↑↓ more' : ''}</Text>
+      </Text>
+      {empty && <Text color={C.muted}>No accounts yet. Press g (Google) or a (CalDAV) to add one.</Text>}
+      {lines.slice(top, top + fit)}
+      <Box ref={foot} flexDirection="column" flexShrink={0}>
+        {mode.kind === 'confirm' && (
+          <Box flexDirection="column" marginTop={1}>
+            <Text color={C.red} bold>
+              Remove {mode.account.label} ({mode.account.email})? [y/N]
             </Text>
-          </Clickable>
-        </Box>
-      )}
+            <Text>Removes local data and credentials for {mode.account.email}. Nothing is deleted on the server.</Text>
+            <Box>
+              <Button k="y" label="remove" color={C.red} onPress={() => confirmRemove(true)} />
+              <Button k="n" label="keep" onPress={() => confirmRemove(false)} />
+            </Box>
+          </Box>
+        )}
+        {mode.kind === 'google' && (
+          <Box flexDirection="column">
+            <Text color={C.yellow}>Opening browser — finish sign-in there… (esc to stop waiting)</Text>
+            {authUrl && (
+              <>
+                <Text color={C.muted}>No browser? Open this link yourself (c copies it):</Text>
+                <Text>{authUrl}</Text>
+                <Text color={C.muted}>{`Over SSH, forward its port first: ssh -L ${loopbackPort(authUrl)}:127.0.0.1:${loopbackPort(authUrl)} <host>`}</Text>
+              </>
+            )}
+          </Box>
+        )}
+        {(mode.kind === 'rename' || mode.kind === 'reauth') && <Text color={C.muted}>enter save  esc cancel</Text>}
+        {loadError && <Text color={C.red}>{loadError}</Text>}
+        {message && <Text color={message.error ? C.red : C.green}>{message.text}</Text>}
+        {mode.kind === 'list' && (
+          <Box marginTop={1} flexWrap="wrap">
+            <Box marginRight={2}>
+              <Text color={C.muted}>j/k move</Text>
+            </Box>
+            {row?.calendar && button('space', 'show/hide', ' ')}
+            {row && button('r', 'sync')}
+            {button('R', 'sync all')}
+            {row && button('e', 'rename')}
+            {row && button('c', 'colour')}
+            {row && button('x', 'remove')}
+            {row?.account.authError && button('p', 'reconnect')}
+            {button('g', 'add Google')}
+            {button('a', 'add CalDAV')}
+            <Button k="esc" label="close" onPress={onClose} />
+          </Box>
+        )}
+        {mode.kind === 'list' && (
+          <Box>
+            <Text color={C.muted}>Made in Ukraine · </Text>
+            <Clickable onClick={() => void openUrl(DONATE_URL).catch(() => {})}>
+              <Text color={C.magenta}>♥ </Text>
+              <Text color={C.cyan} underline>
+                Donate on monobank Base
+              </Text>
+            </Clickable>
+          </Box>
+        )}
+      </Box>
     </Clickable>
   )
 }

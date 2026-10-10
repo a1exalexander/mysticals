@@ -6,6 +6,7 @@ import { errorText } from '@mysticals/core/logic/editor'
 import type { CalEvent } from '@mysticals/core/shared/types'
 import { AGENDA_DAYS, eventKey, navRange, shiftNav, useApi, useDirectory, useEvents, useNav, useNow, useTermSize, type Nav, type View, type ViewProps } from './hooks'
 import { Clickable, MouseProvider, useKeys } from './mouse'
+import { Scroll, useScrollArea } from './scroll'
 import { C } from './theme'
 import { Agenda } from './views/Agenda'
 import { Day, TwoDay } from './views/Day'
@@ -30,35 +31,48 @@ const VIEW_KEYS: Record<string, View> = { a: 'agenda', d: 'day', '2': '2day', w:
 const VIEW_LABEL: Record<View, string> = { agenda: 'Agenda', day: 'Day', '2day': '2 Days', week: 'Week', month: 'Month' }
 
 const HELP: [string, string][] = [
-  ['a d 2 w m', 'agenda / day / 2 days / week / month'],
-  ['← →', 'previous / next day (agenda: event); also h l'],
-  ['↑ ↓', 'previous / next event of the day (month: any day)'],
+  ['a d 2 w m', 'agenda, day, 2 days, week or month view'],
+  ['← → (h l)', 'previous / next day; in the agenda: event'],
+  ['↑ ↓', 'previous / next event of the day; in month: any event'],
   ['j k', 'next / previous event'],
-  ['⇧← ⇧→', 'previous / next page (also H L)'],
-  ['t', 'today'],
-  ['enter', 'open selected event'],
+  ['⇧← ⇧→ (H L)', 'previous / next page'],
+  ['t', 'go to today'],
+  ['enter', 'open the selected event'],
   ['n', 'new event'],
-  ['i', 'invites'],
-  ['s', 'accounts & calendars'],
+  ['i', 'invitations to answer'],
+  ['s', 'accounts & calendars: add, show / hide, sync'],
   ['r', 'sync now'],
   ['?', 'this help'],
-  ['q', 'quit'],
-  ['click', 'tabs, buttons, events (click again to open), day headers'],
-  ['wheel', 'scroll the list / hours'],
+  ['q', 'quit (esc or q closes a panel first)'],
+  ['click', 'tabs, buttons, days; an event selects it, again opens it'],
+  ['wheel', 'scroll the list or the hours'],
   process.platform === 'darwin' ? ['⌥ drag', 'select text (Shift in some terminals)'] : ['⇧ drag', 'select text']
 ]
 
-function Help({ onClose }: { onClose(): void }) {
-  useKeys(() => onClose())
+function Help({ onClose, height }: { onClose(): void; height: number }) {
+  const scroll = useScrollArea(height - 2) // border
+  useKeys((_, key) => {
+    if (scroll.more && (key.upArrow || key.downArrow)) return scroll.scrollBy(key.upArrow ? -1 : 1)
+    if (scroll.more && (key.pageUp || key.pageDown)) return scroll.scrollBy((key.pageUp ? -1 : 1) * Math.max(scroll.view.rows - 1, 1))
+    onClose()
+  })
   return (
     <Clickable flexDirection="column" borderStyle="round" borderColor={C.accent} paddingX={1} onClick={onClose}>
-      <Text bold color={C.accent}>Keys</Text>
-      {HELP.map(([k, d]) => (
-        <Text key={k}>
-          <Text color={C.cyan}>{k.padEnd(10)}</Text> {d}
+      <Scroll {...scroll.view}>
+        <Text>
+          <Text bold color={C.accent}>Keys</Text>
+          {scroll.more && <Text color={C.muted}> · ↑↓ scroll</Text>}
         </Text>
-      ))}
-      <Text color={C.muted}>any key or click to close</Text>
+        {HELP.map(([k, d]) => (
+          <Box key={k}>
+            <Box width={13} flexShrink={0}>
+              <Text color={C.cyan}>{k}</Text>
+            </Box>
+            <Text>{d}</Text>
+          </Box>
+        ))}
+        <Text color={C.muted}>any other key or a click closes this</Text>
+      </Scroll>
     </Clickable>
   )
 }
@@ -66,6 +80,9 @@ function Help({ onClose }: { onClose(): void }) {
 const TABS: View[] = ['agenda', 'day', '2day', 'week', 'month']
 /** Preview pane beside agenda/day/2day when the terminal is at least this wide. */
 const PANE_MIN_WIDTH = 100
+/** Below this the layout can't fit; the app asks for a bigger terminal instead. */
+const MIN_WIDTH = 40
+const MIN_HEIGHT = 12
 
 function Header({ nav, width, onView, onShift, onToday }: {
   nav: Nav
@@ -352,16 +369,16 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
     switch (overlay?.kind) {
       case 'details':
         return (
-          <EventDetails event={overlay.event} onClose={close} onEdit={(event) => setOverlay({ kind: 'editor', event })} />
+          <EventDetails event={overlay.event} height={bodyHeight} onClose={close} onEdit={(event) => setOverlay({ kind: 'editor', event })} />
         )
       case 'editor':
-        return <EventEditor event={overlay.event} initialStart={overlay.initialStart} onClose={close} />
+        return <EventEditor event={overlay.event} initialStart={overlay.initialStart} height={bodyHeight} onClose={close} />
       case 'accounts':
-        return <Accounts onClose={close} />
+        return <Accounts height={bodyHeight} onClose={close} />
       case 'invites':
-        return <Invites onClose={close} />
+        return <Invites height={bodyHeight} onClose={close} />
       case 'help':
-        return <Help onClose={close} />
+        return <Help height={bodyHeight} onClose={close} />
       default:
         return (
           <FirstSync pending={!events.length} width={width} height={bodyHeight}>
@@ -393,6 +410,14 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
     }
   }
 
+  if (width < MIN_WIDTH || height < MIN_HEIGHT) {
+    return (
+      <Box width={width} height={height} alignItems="center" justifyContent="center">
+        <Text color={C.muted}>{`Make the terminal bigger (at least ${MIN_WIDTH}×${MIN_HEIGHT}) · q quits`}</Text>
+      </Box>
+    )
+  }
+
   return (
     <Box flexDirection="column" width={width} height={height}>
       <Header
@@ -402,7 +427,7 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
         onShift={(dir) => !overlay && shift(dir)}
         onToday={() => !overlay && goToday()}
       />
-      <Box flexDirection={overlay ? 'column' : 'row'} height={bodyHeight}>
+      <Box flexDirection={overlay ? 'column' : 'row'} height={bodyHeight} overflow="hidden">
         {body()}
       </Box>
       <StatusLine
