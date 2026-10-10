@@ -95,8 +95,9 @@
 
 /* Settings > Accounts: reminders on top; the accounts listed on the left, the selected one's details on the right. */
 .acc-panel { display: flex; flex-direction: column; gap: 12px; min-height: 100%; }
-.acc-reminders { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+.acc-reminders { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
 .acc-reminders-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.acc-test { height: 22px; padding: 0 10px; }
 .acc-hint-line { margin: 0; color: var(--muted); font-size: 11.5px; line-height: 1.45; }
 .acc-md {
   flex: 1; min-height: 340px; display: grid; grid-template-columns: 200px minmax(0, 1fr);

@@ -379,28 +379,38 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
             onChange={(v) => pick(Number(v))}
           />
         </div>
-        <label className="set-check">
-          <input
-            type="checkbox"
-            className="mc-check"
-            data-testid="fullscreen-reminder-toggle"
-            checked={fullscreen ?? false}
-            disabled={fullscreen === undefined || !min}
-            onChange={(e) => pickFullscreen(e.target.checked)}
-          />
-          {t('settings.reminders.fullscreen')}
-        </label>
-        <label className="set-check">
-          <input
-            type="checkbox"
-            className="mc-check"
-            data-testid="reminder-sound-toggle"
-            checked={sound ?? false}
-            disabled={sound === undefined || !min}
-            onChange={(e) => pickSound(e.target.checked)}
-          />
-          {t('settings.reminders.sound')}
-        </label>
+        <div className="acc-reminders-row">
+          <label className="set-check">
+            <input
+              type="checkbox"
+              className="mc-check"
+              data-testid="fullscreen-reminder-toggle"
+              checked={fullscreen ?? false}
+              disabled={fullscreen === undefined || !min}
+              onChange={(e) => pickFullscreen(e.target.checked)}
+            />
+            {t('settings.reminders.fullscreen')}
+          </label>
+          <button type="button" className="mc-btn acc-test" data-testid="reminder-preview" onClick={() => void window.reminders.preview().catch((e) => setError(errorText(e)))}>
+            {t('settings.reminders.preview')}
+          </button>
+        </div>
+        <div className="acc-reminders-row">
+          <label className="set-check">
+            <input
+              type="checkbox"
+              className="mc-check"
+              data-testid="reminder-sound-toggle"
+              checked={sound ?? false}
+              disabled={sound === undefined || !min}
+              onChange={(e) => pickSound(e.target.checked)}
+            />
+            {t('settings.reminders.sound')}
+          </label>
+          <button type="button" className="mc-btn acc-test" data-testid="reminder-sound-test" onClick={() => void window.reminders.testSound().catch((e) => setError(errorText(e)))}>
+            {t('settings.reminders.testSound')}
+          </button>
+        </div>
         <p className="acc-hint-line">{t('settings.reminders.hint')}</p>
       </div>
       {error && <p className="acc-error" role="alert">{error}</p>}

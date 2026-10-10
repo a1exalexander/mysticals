@@ -71,6 +71,7 @@ export const en = {
   'reminder.copied': 'Copied',
   'reminder.dismiss': 'Esc or Backspace to dismiss',
   'reminder.close': 'Close',
+  'reminder.preview': 'Test reminder',
 
   // ---- desktop: menus, dialogs, update ----
   'menu.file': 'File',
@@ -219,6 +220,8 @@ export const en = {
   'settings.reminders.off': 'Off',
   'settings.reminders.fullscreen': 'Full-screen reminder for calls',
   'settings.reminders.sound': 'Play a sound',
+  'settings.reminders.testSound': 'Listen',
+  'settings.reminders.preview': 'Preview',
   'settings.reminders.min': '{n} min before',
   'settings.reminders.accountFor': 'Notifications for {name}',
   'settings.reminders.hint': 'Pops up while Mysticals is open, with a Join button when the event has a link. Declined, all-day and hidden-calendar events stay silent.',

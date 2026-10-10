@@ -29,6 +29,18 @@ test('full-screen reminder: call events open the reminder window instead of a ba
 
   await page.getByRole('button', { name: 'Settings' }).click()
   await page.getByTestId('settings-tab-accounts').click()
+
+  // Settings test buttons: the sound plays (mocked out here), Preview opens the screen with a test meeting.
+  await page.getByTestId('reminder-sound-test').click()
+  const previewing = app.waitForEvent('window')
+  await page.getByTestId('reminder-preview').click()
+  const preview = await previewing
+  await expect(preview.getByRole('heading', { name: 'Test reminder' })).toBeVisible()
+  await expect(preview.getByRole('button', { name: 'Join Google Meet' })).toBeVisible()
+  await preview.waitForTimeout(1100)
+  await Promise.all([preview.waitForEvent('close'), preview.keyboard.down('Escape').catch(() => {})])
+  await expect(page.locator('.acc-error')).toHaveCount(0)
+
   const toggle = page.getByTestId('fullscreen-reminder-toggle')
   await expect(toggle).not.toBeChecked()
   await toggle.check()

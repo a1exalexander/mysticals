@@ -7,6 +7,7 @@ import { snap } from '@mysticals/core/logic/activity'
 import { DEFAULT_REMINDER_MIN, dueReminders, isReminderMin, loadReminded, pruneReminded, REMINDED_KEEP_MS, reminderKey, reminderText, screenMeetings, splitReminders } from '@mysticals/core/logic/reminders'
 import { visibleEvents } from '@mysticals/core/logic/visible'
 import { eventMeetingUrl } from '@mysticals/core/logic/meeting'
+import { t } from '@mysticals/core/i18n'
 import { currentLocale } from './locale'
 import { hour12 } from './clock'
 import { readPrefs, writePrefs } from './prefs'
@@ -79,6 +80,15 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts
   ipcMain.handle(IPC.remindersSoundSet, (_e, on: unknown) => {
     if (typeof on !== 'boolean') throw new Error('Invalid reminder sound')
     writePrefs({ reminderSound: on })
+  })
+  ipcMain.handle(IPC.remindersSoundTest, () => playSound(fullscreenReminder() ? 'bell' : 'chime', true))
+  // Built here, not taken from the renderer: Join opens the meeting's url.
+  ipcMain.handle(IPC.remindersPreview, () => {
+    const start = Date.now() + Math.max(reminderMin(), 1) * 60_000
+    playSound('bell')
+    showReminderScreen([
+      { key: 'preview', title: t(currentLocale(), 'reminder.preview'), start: new Date(start).toISOString(), end: new Date(start + 30 * 60_000).toISOString(), color: '', account: 'Mysticals', url: 'https://meet.google.com/' }
+    ])
   })
 
   // reminder key → event start (ms), to forget old ones. On disk so a restart inside the reminder window stays quiet.

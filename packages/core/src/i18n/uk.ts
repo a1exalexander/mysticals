@@ -72,6 +72,7 @@ export const uk: Record<Key, Msg> = {
   'reminder.copied': 'Скопійовано',
   'reminder.dismiss': 'Esc або Backspace, щоб закрити',
   'reminder.close': 'Закрити',
+  'reminder.preview': 'Тестове нагадування',
 
   // ---- desktop: menus, dialogs, update ----
   'menu.file': 'Файл',
@@ -220,6 +221,8 @@ export const uk: Record<Key, Msg> = {
   'settings.reminders.off': 'Вимкнено',
   'settings.reminders.fullscreen': 'Повноекранне нагадування для дзвінків',
   'settings.reminders.sound': 'Відтворювати звук',
+  'settings.reminders.testSound': 'Прослухати',
+  'settings.reminders.preview': 'Перевірити',
   'settings.reminders.min': 'за {n} хв',
   'settings.reminders.accountFor': 'Сповіщення для {name}',
   'settings.reminders.hint': 'З’являється, поки Mysticals відкритий, з кнопкою «Приєднатися», якщо в події є посилання. Відхилені, цілоденні події та події з прихованих календарів без сповіщень.',
