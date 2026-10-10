@@ -247,6 +247,7 @@ export const uk: Record<Key, Msg> = {
   'settings.clock.time': 'Формат часу',
   'settings.clock.week': 'Перший день тижня',
   'settings.clock.auto': 'Автоматично ({name})',
+  'settings.clock.autoShort': 'Авто',
   'settings.clock.24': '24-годинний',
   'settings.clock.12': '12-годинний',
   'settings.sync.syncing': 'Синхронізація…',

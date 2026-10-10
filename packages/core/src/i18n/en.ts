@@ -246,6 +246,7 @@ export const en = {
   'settings.clock.time': 'Time format',
   'settings.clock.week': 'Week starts on',
   'settings.clock.auto': 'Auto ({name})',
+  'settings.clock.autoShort': 'Auto',
   'settings.clock.24': '24-hour',
   'settings.clock.12': '12-hour',
   'settings.sync.syncing': 'Syncing…',

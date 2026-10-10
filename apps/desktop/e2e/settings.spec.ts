@@ -132,11 +132,23 @@ test('general tab: 12-hour times and a Sunday week start', async () => {
   await expect(page.locator('.tg-dayhead .dow').first()).toHaveText('Mon')
   await page.getByRole('button', { name: 'Settings' }).click()
   await page.getByTestId('settings-tab-general').click()
-  await expect(page.getByTestId('time-format-select')).toHaveText('Auto (24-hour)')
-  await expect(page.getByTestId('week-start-select')).toHaveText('Auto (Monday)')
-  await choose(page.getByTestId('time-format-select'), '12')
-  await choose(page.getByTestId('week-start-select'), 'sun')
-  await expect(page.getByTestId('time-format-select')).toHaveText('12-hour')
+  // Segmented switches; Auto's tooltip says what the region resolves to.
+  const timeFormat = page.getByRole('radiogroup', { name: 'Time format' })
+  const weekStart = page.getByRole('radiogroup', { name: 'Week starts on' })
+  await expect(timeFormat.getByRole('radio', { name: 'Auto' })).toHaveAttribute('aria-checked', 'true')
+  await expect(timeFormat.getByRole('radio', { name: 'Auto' })).toHaveAttribute('title', 'Auto (24-hour)')
+  await expect(weekStart.getByRole('radio', { name: 'Auto' })).toHaveAttribute('aria-checked', 'true')
+  await expect(weekStart.getByRole('radio', { name: 'Auto' })).toHaveAttribute('title', 'Auto (Monday)')
+  await page.screenshot({ path: 'e2e/screens/settings-clock-auto.png' })
+  // Arrows / Home / End pick and focus, like native radios.
+  await timeFormat.getByRole('radio', { name: 'Auto' }).focus()
+  await page.keyboard.press('End')
+  await expect(page.getByTestId('time-format-12')).toBeFocused()
+  await expect(page.getByTestId('time-format-12')).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByTestId('time-format-auto')).toHaveAttribute('aria-checked', 'false')
+  await weekStart.getByRole('radio', { name: 'Sunday' }).click()
+  await expect(page.getByTestId('week-start-sun')).toHaveAttribute('aria-checked', 'true')
+  await page.waitForTimeout(500) // the thumb's slide
   await page.screenshot({ path: 'e2e/screens/settings-clock.png' })
   await page.keyboard.press('Escape')
 
