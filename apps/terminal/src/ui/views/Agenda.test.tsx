@@ -79,4 +79,18 @@ describe('Agenda view', () => {
     await t.waitFor('today ─')
     expect(t.lastFrame()).toContain('Gym')
   })
+
+  it('draws the now-line across the full width, without an ellipsis', () => {
+    t = renderWith(view([ev('Late', { start: at(23, 15), end: at(23, 16) })], { width: 60 }))
+    const line = t.lastFrame()!.split('\n').find((l) => l.includes('12:00 ─'))!
+    expect(line).not.toContain('…')
+    expect(line.length).toBe(60)
+  })
+
+  it('keeps wide (CJK, emoji) titles inside the row', () => {
+    t = renderWith(view([ev('wide', { title: '会议会议会议会议会议会议会议会议会议会议会议 ✅', start: at(23, 15), end: at(23, 16) })], { width: 50 }))
+    const row = t.lastFrame()!.split('\n').find((l) => l.includes('会议'))!
+    expect(row).toContain('…')
+    expect(row).toMatch(/1h$/) // the duration column still lands at the right edge
+  })
 })

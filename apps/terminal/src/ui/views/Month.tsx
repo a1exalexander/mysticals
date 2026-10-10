@@ -85,7 +85,8 @@ export function Month({ events, date, now, cursor, selectedKey, width, height, o
                     inverse={here}
                     color={today ? C.now : here ? C.accent : isSameMonth(day, date) ? undefined : C.muted}
                   >
-                    {here ? ` ${format(day, 'd')} ` : format(day, 'd')}
+                    {/* same padding with or without the cursor, so moving it never shifts the number */}
+                    {`${format(day, 'd')} `}
                     {cellHeight === 1 && items.length > 0 && <Text color={C.muted}> ·{items.length}</Text>}
                   </Text>
                 </Clickable>
