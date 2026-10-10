@@ -17,7 +17,7 @@ describe('EventEditor', () => {
     await t.press('Standup', KEY.tab) // title → account
     await t.press(KEY.right, KEY.right) // none → work → personal (only writable calendar is preselected)
     await t.waitFor('me@gmail.example')
-    expect(t.lastFrame()).toContain('Organizer: me@gmail.example')
+    expect(t.lastFrame()).toMatch(/Account +Personal · me@gmail\.example/)
     await t.press('\u0013') // ctrl+s
     await t.waitFor('Gym')
     expect(t.client.events.create).toHaveBeenCalledWith(
@@ -167,5 +167,15 @@ describe('EventEditor', () => {
     expect(onClose).not.toHaveBeenCalled()
     await t.press(KEY.esc)
     expect(onClose).toHaveBeenCalled()
+  })
+  it('scrolls the fields with the focus when the panel is short', async () => {
+    t = renderWith(<EventEditor initialStart={new Date(2026, 8, 23, 9)} onClose={vi.fn()} height={12} />)
+    let f = await t.waitFor((x) => x.includes('↑↓ more fields') && x.split('\n').length <= 12)
+    expect(f).toContain('› Title')
+    expect(f).not.toContain('Invitees')
+    await t.press(KEY.up) // wraps to the last field
+    f = await t.waitFor('› Invitees')
+    expect(f).not.toContain('Title')
+    expect(f).toContain('ctrl+s')
   })
 })

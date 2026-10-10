@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { KEY, renderApp, renderWith, type Rendered } from '../../test/harness'
+import { KEY, createTestClient, renderApp, renderWith, type Rendered } from '../../test/harness'
 import { Accounts } from './Accounts'
 
 let t: Rendered
@@ -163,5 +163,20 @@ describe('Accounts overlay', () => {
     await t.press('j', 'j', 'p')
     expect(t.client.accounts.reauth).toHaveBeenCalledWith('personal')
     await t.waitFor('Personal reconnected')
+  })
+  it('scrolls a long list with the cursor and keeps the heading and buttons on screen', async () => {
+    const client = createTestClient()
+    const many = Array.from({ length: 20 }, (_, i) => ({ id: `c${i}`, accountId: 'work', name: `Team ${i + 1}`, color: '#50fa7b', readOnly: false }))
+    client.calendars.list.mockResolvedValue(many)
+    t = renderWith(<Accounts onClose={() => {}} height={16} />, client)
+    let f = await t.waitFor((x) => x.includes('Team 3') && x.includes('↑↓ more') && x.split('\n').length <= 16)
+    expect(f).toContain('Accounts & calendars')
+    expect(f).toContain('esc close')
+    expect(f).not.toContain('Team 20')
+    for (let i = 0; i < 20; i++) await t.press('j')
+    f = await t.waitFor('Team 20')
+    expect(f).toContain('Accounts & calendars')
+    expect(f).toContain('esc close')
+    expect(f.split('\n').length).toBeLessThanOrEqual(16)
   })
 })

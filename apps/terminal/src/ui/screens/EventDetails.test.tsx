@@ -127,4 +127,28 @@ describe('EventDetails', () => {
     await t.click('show 3 more')
     await t.waitFor('p7@x.example')
   })
+  it('long notes scroll inside the given height and the buttons stay on screen', async () => {
+    const description = Array.from({ length: 40 }, (_, i) => `Line ${i + 1}`).join('\n')
+    const event: CalEvent = {
+      id: 'zoom', accountId: 'work', calendarId: 'work-main', title: 'Long invite', allDay: false, attendees: [], description,
+      start: new Date(2026, 8, 23, 10).toISOString(), end: new Date(2026, 8, 23, 11).toISOString()
+    }
+    t = renderWith(
+      <MouseProvider>
+        <EventDetails event={event} onClose={vi.fn()} onEdit={vi.fn()} height={16} />
+      </MouseProvider>
+    )
+    let f = await t.waitFor('↑↓ scroll')
+    expect(f.split('\n').length).toBeLessThanOrEqual(16)
+    expect(f).toContain('esc close')
+    expect(f).toContain('Long invite')
+    expect(f).not.toContain('Line 40')
+    await t.press(KEY.down)
+    f = await t.waitFor((x) => !x.includes('Long invite'))
+    expect(f).toContain('esc close')
+    await t.wheel('Line 5', 1)
+    await t.press('\u001B[6~', '\u001B[6~', '\u001B[6~', '\u001B[6~') // PgDn
+    f = await t.waitFor('Line 40')
+    expect(f).toContain('esc close')
+  })
 })

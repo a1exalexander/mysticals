@@ -25,7 +25,8 @@ import { eventKey, type ViewProps } from '../hooks'
 import { Clickable } from '../mouse'
 import { duration } from '../screens/EventDetails'
 import { C } from '../theme'
-import { clickEvent, eventPlace, rsvpMark, useColorOf, useScroll } from './Agenda'
+import { useScroll } from '../scroll'
+import { clickEvent, eventPlace, rsvpMark, useColorOf } from './Agenda'
 import { fit } from './Month'
 
 const GUTTER = 6 // "09:00 "

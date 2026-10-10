@@ -2,6 +2,7 @@
  * Event details overlay: title, when, owner, location/meeting link, attendees (first 5, "a" or click for all), notes; RSVP, edit, delete (keys or clicks).
  * Also exports EventInfo (the read-only body), reused by the shell's preview pane.
  * Owns ALL input while open. RSVPs and deletes always go through the event's own account (the event object itself).
+ * Taller than `height` rows: the body scrolls (↑/↓, PgUp/PgDn, wheel) and the action buttons stay at the bottom.
  */
 import { useState } from 'react'
 import { Box, Text } from 'ink'
@@ -14,12 +15,15 @@ import type { Account, Calendar, CalEvent, DeleteScope, PartStat } from '@mystic
 import { openUrl as openInBrowser } from '../../daemon/google'
 import { useApi, useDirectory, useNow } from '../hooks'
 import { Button, Clickable, useKeys } from '../mouse'
+import { Scroll, useHeight, useScrollArea } from '../scroll'
 import { ansiOf, C } from '../theme'
 
 export interface EventDetailsProps {
   event: CalEvent
   onClose(): void
   onEdit(event: CalEvent): void
+  /** Rows the overlay may take, border included. */
+  height?: number
 }
 
 type Reply = Exclude<PartStat, 'needsAction'>
@@ -31,7 +35,7 @@ const STATUS_COLOR: Record<PartStat, string> = { accepted: C.green, declined: C.
 // Argument vector, no shell (see openCommand): the URL comes from event data and must never be interpreted.
 const openUrl = (url: string): void => void openInBrowser(url).catch(() => {})
 
-export function EventDetails({ event: initial, onClose, onEdit }: EventDetailsProps) {
+export function EventDetails({ event: initial, onClose, onEdit, height = Infinity }: EventDetailsProps) {
   const api = useApi()
   const { accounts, calendars } = useDirectory()
   const [event, setEvent] = useState(initial)
@@ -47,6 +51,8 @@ export function EventDetails({ event: initial, onClose, onEdit }: EventDetailsPr
   const recurring = !!event.recurringEventId
   const url = eventMeetingUrl(event)
   const now = useNow()
+  const [foot, footHeight] = useHeight()
+  const scroll = useScrollArea(height - 2 - footHeight) // 2: border
 
   const run = (label: string, fn: () => Promise<void>): void => {
     setBusy(label)
@@ -70,6 +76,8 @@ export function EventDetails({ event: initial, onClose, onEdit }: EventDetailsPr
   useKeys((input, key) => {
     if (key.escape && confirm) return setConfirm(false)
     if (key.escape || input === 'q') return onClose()
+    if (key.upArrow || key.downArrow) return scroll.scrollBy(key.upArrow ? -1 : 1)
+    if (key.pageUp || key.pageDown) return scroll.scrollBy((key.pageUp ? -1 : 1) * Math.max(scroll.view.rows - 1, 1))
     if (busy) return
     if (confirm) {
       if (recurring && Object.hasOwn(SCOPE_KEYS, input)) return remove(SCOPE_KEYS[input])
@@ -86,37 +94,42 @@ export function EventDetails({ event: initial, onClose, onEdit }: EventDetailsPr
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor={C.muted} paddingX={1}>
-      <EventInfo event={event} account={account} calendar={calendar} now={now} showAll={showAll} onToggleAll={() => setShowAll(!showAll)} />
-      {error && <Text color={C.red}>{error}</Text>}
-      <Box marginTop={1} flexWrap="wrap">
-        {busy ? (
-          <Text color={C.yellow}>{busy}</Text>
-        ) : confirm && recurring ? (
-          <>
-            <Text color={C.red}>Delete recurring event: </Text>
-            <Button k="1" label="this event" color={C.red} onPress={() => remove('one')} />
-            <Button k="2" label="this and following" color={C.red} onPress={() => remove('following')} />
-            <Button k="3" label="all events" color={C.red} onPress={() => remove('all')} />
-            <Button k="esc" label="cancel" onPress={() => setConfirm(false)} />
-          </>
-        ) : confirm ? (
-          <>
-            <Text color={C.red}>Delete this event? </Text>
-            <Button k="y" label="yes" color={C.red} onPress={() => remove('one')} />
-            <Button k="n" label="no" onPress={() => setConfirm(false)} />
-          </>
-        ) : (
-          <>
-            {event.myStatus && <Button k="y" label="accept" color={C.green} onPress={() => respond('accepted')} />}
-            {event.myStatus && <Button k="n" label="decline" color={C.red} onPress={() => respond('declined')} />}
-            {event.myStatus && <Button k="m" label="maybe" color={C.yellow} onPress={() => respond('tentative')} />}
-            {url && <Button k="o" label="open link" onPress={() => openUrl(url)} />}
-            {editable && <Button k="e" label="edit" onPress={() => onEdit(event)} />}
-            {editable && <Button k="x" label="delete" onPress={() => setConfirm(true)} />}
-            {manyAttendees && <Button k="a" label={showAll ? 'fewer attendees' : 'all attendees'} onPress={() => setShowAll(!showAll)} />}
-            <Button k="esc" label="close" onPress={onClose} />
-          </>
-        )}
+      <Scroll {...scroll.view}>
+        <EventInfo event={event} account={account} calendar={calendar} now={now} showAll={showAll} onToggleAll={() => setShowAll(!showAll)} />
+      </Scroll>
+      <Box ref={foot} flexDirection="column" flexShrink={0}>
+        {error && <Text color={C.red}>{error}</Text>}
+        <Box marginTop={1} flexWrap="wrap">
+          {busy ? (
+            <Text color={C.yellow}>{busy}</Text>
+          ) : confirm && recurring ? (
+            <>
+              <Text color={C.red}>Delete recurring event: </Text>
+              <Button k="1" label="this event" color={C.red} onPress={() => remove('one')} />
+              <Button k="2" label="this and following" color={C.red} onPress={() => remove('following')} />
+              <Button k="3" label="all events" color={C.red} onPress={() => remove('all')} />
+              <Button k="esc" label="cancel" onPress={() => setConfirm(false)} />
+            </>
+          ) : confirm ? (
+            <>
+              <Text color={C.red}>Delete this event? </Text>
+              <Button k="y" label="yes" color={C.red} onPress={() => remove('one')} />
+              <Button k="n" label="no" onPress={() => setConfirm(false)} />
+            </>
+          ) : (
+            <>
+              {event.myStatus && <Button k="y" label="accept" color={C.green} onPress={() => respond('accepted')} />}
+              {event.myStatus && <Button k="n" label="decline" color={C.red} onPress={() => respond('declined')} />}
+              {event.myStatus && <Button k="m" label="maybe" color={C.yellow} onPress={() => respond('tentative')} />}
+              {url && <Button k="o" label="open link" onPress={() => openUrl(url)} />}
+              {editable && <Button k="e" label="edit" onPress={() => onEdit(event)} />}
+              {editable && <Button k="x" label="delete" onPress={() => setConfirm(true)} />}
+              {manyAttendees && <Button k="a" label={showAll ? 'fewer attendees' : 'all attendees'} onPress={() => setShowAll(!showAll)} />}
+              <Button k="esc" label="close" onPress={onClose} />
+              {scroll.more && <Text color={C.muted}>↑↓ scroll</Text>}
+            </>
+          )}
+        </Box>
       </Box>
     </Box>
   )

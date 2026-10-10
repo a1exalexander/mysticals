@@ -8,6 +8,7 @@
  * Saving a recurring event asks 1 this event / 2 this and following / 3 all events (esc back to the form);
  * a changed repeat rule offers only 2 and 3. Repeat: ←/→ cycles presets and "custom" (every / on days / stops fields).
  * Mouse: click a field to focus it (a focused picker / all-day again to cycle / toggle it); Save and Cancel buttons.
+ * Fields that don't fit in `height` rows scroll with the focused one.
  */
 import { useEffect, useRef, useState } from 'react'
 import { Box, Text } from 'ink'
@@ -23,12 +24,15 @@ import type { CalEvent, DeleteScope, Recurrence } from '@mysticals/core/shared/t
 import { extraEmail } from '@mysticals/core/logic/details'
 import { useApi, useDirectory } from '../hooks'
 import { Button, Clickable, useKeys } from '../mouse'
+import { useHeight, useScroll } from '../scroll'
 import { C } from '../theme'
 
 export interface EventEditorProps {
   event?: CalEvent
   initialStart?: Date
   onClose(): void
+  /** Rows the overlay may take, border included. */
+  height?: number
 }
 
 type TextField =
@@ -115,7 +119,7 @@ function readRepeat(s: State): Recurrence | null {
   return { ...rule, ...parseEnds(s.texts.repeatEnds) }
 }
 
-export function EventEditor({ event, initialStart, onClose }: EventEditorProps) {
+export function EventEditor({ event, initialStart, onClose, height = Infinity }: EventEditorProps) {
   const api = useApi()
   const { accounts, calendars, loaded } = useDirectory()
   const [state, setState] = useState<State>()
@@ -296,11 +300,17 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
     if (printable) edit(s, text, s.texts[text] + printable)
   })
 
+  const fields = state ? fieldsFor(state, !!event) : []
+  const current = fields[Math.min(state?.focus ?? 0, fields.length - 1)]
+  // Edit mode shows account/calendar as fixed rows that can't take focus.
+  const rows: Field[] = event ? ['title', 'account', 'calendar', ...fields.slice(1)] : fields
+  const [foot, footHeight] = useHeight()
+  const fit = Math.max(height - 4 - footHeight, 1) // border, heading, the gap above the footer
+  const at = Math.max(rows.indexOf(current), 0)
+  const [top] = useScroll(at, at, fit, rows.length)
+
   if (!state) return <Text color={C.muted}>Loading…</Text>
   const { form, texts } = state
-  const fields = fieldsFor(state, !!event)
-  const current = fields[Math.min(state.focus, fields.length - 1)]
-
 
   const account = accounts.find((a) => a.id === form.accountId)
   const calendar = calendars.find((c) => c.accountId === form.accountId && c.id === form.calendarId)
@@ -328,51 +338,55 @@ export function EventEditor({ event, initialStart, onClose }: EventEditorProps) 
     }
   }
 
-  // Edit mode shows account/calendar as fixed rows that can't take focus.
-  const rows: Field[] = event ? ['title', 'account', 'calendar', ...fields.slice(1)] : fields
-
   return (
     <Box flexDirection="column" borderStyle="round" borderColor={C.muted} paddingX={1}>
-      <Text bold>{event ? 'Edit event' : 'New event'}</Text>
-      {rows.map((f) => {
+      <Text bold>
+        {event ? 'Edit event' : 'New event'}
+        {rows.length > fit && <Text color={C.muted} bold={false}>  ↑↓ more fields</Text>}
+      </Text>
+      {rows.slice(top, top + fit).map((f) => {
         const on = f === current
         const v = value(f)
         const picker = (!event && (f === 'account' || f === 'calendar')) || f === 'repeat'
         return (
-          <Clickable key={f} onClick={() => clickField(f)}>
-            <Text color={on ? C.cyan : undefined}>{on ? '› ' : '  '}{LABELS[f].padEnd(11)}</Text>
-            <Text color={v.dim ? C.muted : undefined} inverse={on && !v.dim && !picker}>
+          <Clickable key={f} height={1} onClick={() => clickField(f)}>
+            <Box flexShrink={0}>
+              <Text color={on ? C.cyan : undefined}>{on ? '› ' : '  '}{LABELS[f].padEnd(11)}</Text>
+            </Box>
+            {/* one row each: a long value shows its end while typing, its start otherwise */}
+            <Text wrap={on && !picker ? 'truncate-start' : 'truncate-end'} color={v.dim ? C.muted : undefined} inverse={on && !v.dim && !picker}>
               {v.text}
             </Text>
-            {on && picker && <Text color={C.muted}>  ←/→ or click</Text>}
+            {on && picker && (
+              <Box flexShrink={0}>
+                <Text color={C.muted}>  ←/→ or click</Text>
+              </Box>
+            )}
           </Clickable>
         )
       })}
-      <Box marginTop={1}>
-        <Text color={C.muted}>
-          {account ? `Organizer: ${account.email}` : 'Choose which account this event belongs to.'}
-        </Text>
-      </Box>
-      {error && <Text color={C.red}>{error}</Text>}
-      {saving ? (
-        <Text color={C.yellow}>Saving…</Text>
-      ) : askScope ? (
-        <Box flexWrap="wrap">
-          <Text color={C.yellow}>{askScope === 'rule' ? 'Change the repeat rule for: ' : 'Save recurring event: '}</Text>
-          {askScope !== 'rule' && <Button k="1" label="this event" color={C.green} onPress={() => void save('one')} />}
-          <Button k="2" label="this and following" color={C.green} onPress={() => void save('following')} />
-          <Button k="3" label="all events" color={C.green} onPress={() => void save('all')} />
-          <Button k="esc" label="back" onPress={() => setAskScope(false)} />
-        </Box>
-      ) : (
-        <Box flexWrap="wrap">
-          <Box marginRight={2}>
-            <Text color={C.muted}>tab/↑↓ move · ←/→/space pick</Text>
+      <Box ref={foot} flexDirection="column" flexShrink={0} marginTop={1}>
+        {error && <Text color={C.red}>{error}</Text>}
+        {saving ? (
+          <Text color={C.yellow}>Saving…</Text>
+        ) : askScope ? (
+          <Box flexWrap="wrap">
+            <Text color={C.yellow}>{askScope === 'rule' ? 'Change the repeat rule for: ' : 'Save recurring event: '}</Text>
+            {askScope !== 'rule' && <Button k="1" label="this event" color={C.green} onPress={() => void save('one')} />}
+            <Button k="2" label="this and following" color={C.green} onPress={() => void save('following')} />
+            <Button k="3" label="all events" color={C.green} onPress={() => void save('all')} />
+            <Button k="esc" label="back" onPress={() => setAskScope(false)} />
           </Box>
-          <Button k="ctrl+s" label="save" color={C.green} onPress={() => void save()} />
-          <Button k="esc" label="cancel" onPress={onClose} />
-        </Box>
-      )}
+        ) : (
+          <Box flexWrap="wrap">
+            <Box marginRight={2}>
+              <Text color={C.muted}>tab/↑↓ move · ←/→/space pick</Text>
+            </Box>
+            <Button k="ctrl+s" label="save" color={C.green} onPress={() => void save()} />
+            <Button k="esc" label="cancel" onPress={onClose} />
+          </Box>
+        )}
+      </Box>
     </Box>
   )
 }
