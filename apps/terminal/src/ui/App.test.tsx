@@ -82,7 +82,7 @@ describe('App shell', () => {
     t = renderApp()
     const f = await t.waitFor('invite (i)')
     const lines = f.split('\n')
-    expect(lines.at(-1)).toMatch(/n new +r sync +i invites +s accounts +\? help +q quit/)
+    expect(lines.at(-1)).toMatch(/n new +r sync +i invites +s accounts +\? help +q quit +←→↑↓ move · enter open/)
     expect(lines.at(-2)).toContain('invite (i)')
     expect(lines[0]).not.toContain('mysticals')
   })
@@ -110,6 +110,27 @@ describe('App shell', () => {
     await t.press('r')
     await t.waitFor('Synced')
     expect(t.client.sync.now).toHaveBeenCalled()
+    await t.waitFor((f) => !f.includes('Synced'), 7000) // the result fades
+  })
+
+  it('welcomes a first run with no accounts and points at the accounts panel', async () => {
+    const client = createTestClient()
+    client.accounts.list.mockResolvedValue([])
+    client.calendars.list.mockResolvedValue([])
+    client.events.list.mockResolvedValue([])
+    t = renderApp({ client })
+    await t.waitFor('Welcome to mysticals')
+    expect(t.lastFrame()).toContain('add a Google, iCloud, Fastmail or other CalDAV account')
+    await t.click('Welcome to mysticals')
+    await t.waitFor('No accounts yet')
+  })
+
+  it('previews the next timed event, not an all-day one already under way', async () => {
+    t = renderApp() // today at 12:00: a Holiday all day, Gym at 19:00
+    const f = await t.waitFor('Up next')
+    const lines = f.split('\n')
+    const at = lines.findIndex((l) => l.includes('Up next · ↑↓ to select'))
+    expect(lines[at + 1]).toContain('Gym')
   })
 
   it('reloads events on a change push', async () => {

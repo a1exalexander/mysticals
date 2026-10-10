@@ -268,7 +268,7 @@ export function Accounts({ onClose, height = Infinity }: AccountsProps) {
         <Text bold>Accounts & calendars</Text>
         <Text color={C.muted}> · sync every 2 min{lines.length > fit ? ' · ↑↓ more' : ''}</Text>
       </Text>
-      {empty && <Text color={C.muted}>No accounts yet. Press g (Google) or a (CalDAV) to add one.</Text>}
+      {empty && <Text color={C.muted}>No accounts yet. Press g for Google, or a for iCloud, Fastmail, Private Email or another CalDAV server.</Text>}
       {lines.slice(top, top + fit)}
       <Box ref={foot} flexDirection="column" flexShrink={0}>
         {mode.kind === 'confirm' && (

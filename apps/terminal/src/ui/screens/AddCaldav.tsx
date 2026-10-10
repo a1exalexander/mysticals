@@ -155,7 +155,7 @@ export function AddCaldav({ onBack, onDone }: { onBack(): void; onDone(): void }
           </Text>
         </Clickable>
       ))}
-      <Text color={C.muted}>Check your provider's docs if connection fails.</Text>
+      <Text color={C.muted}>Use an app-specific password from your provider's security settings, not your login password.</Text>
       {v.busy && (
         <Text>
           <Spinner /> Signing in to {URL.canParse(v.serverUrl.trim()) ? new URL(v.serverUrl.trim()).host : 'the server'}…
