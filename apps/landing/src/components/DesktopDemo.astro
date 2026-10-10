@@ -6,15 +6,24 @@
  * calendar, and a pending invite is accepted from the status-bar invites popover.
  * Markup and styles mirror apps/desktop/src/renderer (styles/base.css, components/ui/ui.css, views/Agenda.css,
  * EventEditor.css, Invites.css), scaled to em. The palette comes from src/themes.ts (Dracula unless `theme` is set);
- * ThemeShowcase swaps it at runtime.
+ * ThemeShowcase swaps it at runtime. With `followPage` it tracks the page theme instead: Dracula on a dark page,
+ * Light on a light one, set by CSS so it holds before the first paint and follows the footer switch.
  * The script only fills dates from the viewer's today and pauses the loop off screen.
  * Base styles are the final frame (the week), so reduced motion (animations off in global.css) shows a still.
  * On /uk/ the UI speaks Ukrainian like the app: labels from packages/core/src/i18n/uk.ts, dates like its date-fns uk.
  */
 import { THEMES, themeVars } from '../themes'
 import { langOf } from '../i18n'
-interface Props { theme?: string }
+interface Props { theme?: string; followPage?: boolean }
 const th = THEMES.find((x) => x.id === Astro.props.theme) ?? THEMES[0]
+const { followPage } = Astro.props
+// Same selectors as the page's own light theme in global.css; inline styles would beat them, so these are rules
+const light = THEMES.find((x) => x.id === 'light')!
+const followCss = followPage
+  ? `.dwin[data-follow] { ${themeVars(th)} }
+@media (prefers-color-scheme: light) { :root:not([data-theme='dark']) .dwin[data-follow] { ${themeVars(light)} } }
+:root[data-theme='light'] .dwin[data-follow] { ${themeVars(light)} }`
+  : ''
 const lang = langOf(Astro.url)
 // English text → Ukrainian; anything missing stays English
 const UK: Record<string, string> = {
@@ -85,7 +94,8 @@ const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" />
 const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
 ---
 <figure class="ddemo" data-lang={lang}>
-  <div class="dwin" aria-hidden="true" data-theme={th.id} style={themeVars(th)}>
+  {followPage && <style is:inline set:html={followCss} />}
+  <div class="dwin" aria-hidden="true" data-theme={th.id} data-follow={followPage ? '' : undefined} style={followPage ? undefined : themeVars(th)}>
     <div class="lights"><i></i><i></i><i></i></div>
     <aside class="side">
       <div class="mini">
