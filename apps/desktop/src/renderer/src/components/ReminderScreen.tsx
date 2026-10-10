@@ -18,27 +18,10 @@ export function ReminderScreen(): React.JSX.Element {
   const due = meetings.length > 0
   useEffect(() => {
     if (!due || shown) return
+    // Main shows the window once told the cards are committed, and answers after: the enter animation starts then.
+    // Not focus or visibility: a hidden window can report both. Not requestAnimationFrame: it gets no frames.
     const show = (): void => setShown(true)
-    if (document.hasFocus()) return show()
-    const visible = (): void => {
-      if (!document.hidden) show()
-    }
-    let late: ReturnType<typeof setTimeout> | undefined
-    const frame = requestAnimationFrame(() => {
-      // Never stay invisible if focus doesn't come once shown (some Linux window managers refuse it).
-      void window.reminderScreen.ready().then(
-        () => (late = setTimeout(show, 300)),
-        () => {}
-      )
-    })
-    window.addEventListener('focus', show)
-    document.addEventListener('visibilitychange', visible)
-    return () => {
-      cancelAnimationFrame(frame)
-      clearTimeout(late)
-      window.removeEventListener('focus', show)
-      document.removeEventListener('visibilitychange', visible)
-    }
+    void window.reminderScreen.ready().then(show, show)
   }, [due, shown])
   useEffect(() => {
     // A spare window waited a while: count down from when the meetings came.
