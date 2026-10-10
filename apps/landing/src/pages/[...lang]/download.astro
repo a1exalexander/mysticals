@@ -1,0 +1,250 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import { PREVIEW } from '../../preview'
+import { langOf, langPaths, to } from '../../i18n'
+export const getStaticPaths = langPaths
+const lang = langOf(Astro.url)
+if (PREVIEW) return Astro.redirect(to(lang, '/'))
+import OsIcon from '../../components/OsIcon.astro'
+import desktop from '../../../../desktop/package.json'
+import terminal from '../../../../terminal/package.json'
+const gh = 'https://github.com/a1exalexander/mysticals'
+// Installer names carry no version (electron-builder.yml), so GitHub redirects to the file on the newest release.
+const dl = (name: string) => `${gh}/releases/latest/download/${name}`
+const v = desktop.version
+const t = {
+  en: {
+    title: 'Download Mysticals',
+    description: 'Download the Mysticals desktop app for macOS, Windows or Linux, or install the terminal app from npm.',
+    lead: 'Two apps, one idea. Both are free, both run on macOS, Windows and Linux, and they keep separate accounts. Install one or both.',
+    desktop: 'Desktop app', pickHint: 'Pick your system. The button for this computer is highlighted.',
+    rec: 'For this computer',
+    armSub: 'Macs with an Apple M chip: M1 and newer, late 2020 onward', intel: 'Apple Intel', intelSub: 'Older Macs with an Intel processor',
+    macHint: 'Not sure which Mac you have? Apple menu → About This Mac. “Chip: Apple M…” is Apple Silicon, “Processor: Intel…” is Intel.',
+    winSub: 'Windows 10 and 11, 64-bit',
+    linuxX: 'Linux Intel / AMD', linuxXSub: 'Most PCs and laptops (x86_64), any distro',
+    linuxA: 'Linux ARM', linuxASub: 'Raspberry Pi 4 and 5, ARM laptops and boards (arm64), any distro',
+    linuxHint: 'Not sure? Run <code>uname -m</code>: <code>x86_64</code> is Intel / AMD, <code>aarch64</code> is ARM.',
+    signed: 'The Mac app is signed and notarized by Apple. On Windows, if SmartScreen warns about an unknown publisher, click More info → Run anyway.',
+    steps: 'Step by step →', else: 'Everything else, including the Mac <code>.zip</code>:', latest: 'latest release →',
+    terminal: 'Terminal app',
+    termLead: 'Installs from npm as a global command and needs Node.js 20.3 or newer. Works in any terminal: Terminal.app, iTerm2, Ghostty, WezTerm, Windows Terminal, GNOME Terminal, tmux.',
+    copy: 'copy', copyAria: 'Copy install command', keys: '# press ? for keys',
+    mock: 'Try it with two fake accounts first:', pkg: 'Package page:',
+    platforms: 'Platforms', head: ['system', 'desktop', 'terminal', 'notes'],
+    notes: ['Recommended', 'Supported', 'Credentials sealed with DPAPI', 'Needs a Secret Service keyring (GNOME Keyring, KWallet)', 'Same keyring requirement as x64'],
+    updates: 'Updates',
+    updatesText: 'On macOS the desktop app downloads new releases for its architecture and updates itself. On Windows and Linux it tells you and opens the release page. The terminal app checks npm once a day and shows a hint in the status line, then you run <code>npm i -g mysticals</code> again.',
+    releases: 'All releases and changelogs →',
+    source: 'Build from source', oauth: '# Google OAuth values, optional', installers: '# desktop installers in apps/desktop/dist', termOut: '# terminal app in apps/terminal/dist',
+    sourceNote: 'Needs Node.js 20.3+ and pnpm 10. Without the Google values only CalDAV accounts work, see <a class="ul" href="GH/blob/main/CONTRIBUTING.md#google-oauth-client-for-google-accounts">CONTRIBUTING</a>. Electron binary missing after install? Run <code>node apps/desktop/node_modules/electron/install.js</code>.',
+  },
+  uk: {
+    title: 'Завантажити Mysticals',
+    description: 'Завантажте десктопний застосунок Mysticals для macOS, Windows чи Linux або встановіть термінальний з npm.',
+    lead: 'Два застосунки, одна ідея. Обидва безкоштовні, обидва працюють на macOS, Windows і Linux, і в кожного свої акаунти. Ставте один або обидва.',
+    desktop: 'Десктопний застосунок', pickHint: 'Оберіть свою систему. Кнопку для цього компʼютера підсвічено.',
+    rec: 'Для цього компʼютера',
+    armSub: 'Mac із чипом Apple M: M1 і новіші, з кінця 2020 року', intel: 'Apple Intel', intelSub: 'Старіші Mac із процесором Intel',
+    macHint: 'Не знаєте, який у вас Mac? Меню Apple → Про цей Mac. «Чип: Apple M…» означає Apple Silicon, «Процесор: Intel…» означає Intel.',
+    winSub: 'Windows 10 і 11, 64-бітні',
+    linuxX: 'Linux Intel / AMD', linuxXSub: 'Більшість ПК і ноутбуків (x86_64), будь-який дистрибутив',
+    linuxA: 'Linux ARM', linuxASub: 'Raspberry Pi 4 і 5, ноутбуки й плати на ARM (arm64), будь-який дистрибутив',
+    linuxHint: 'Не впевнені? Виконайте <code>uname -m</code>: <code>x86_64</code> означає Intel / AMD, <code>aarch64</code> означає ARM.',
+    signed: 'Застосунок для Mac підписаний, і Apple його нотаризувала. На Windows SmartScreen може попередити про невідомого видавця: розгорніть подробиці й запустіть усе одно (в англійській Windows це More info → Run anyway).',
+    steps: 'Покроково →', else: 'Усе інше, зокрема <code>.zip</code> для Mac:', latest: 'останній реліз →',
+    terminal: 'Термінальний застосунок',
+    termLead: 'Ставиться з npm як глобальна команда, потрібен Node.js 20.3 або новіший. Працює в будь-якому терміналі: Terminal.app, iTerm2, Ghostty, WezTerm, Windows Terminal, GNOME Terminal, tmux. Інтерфейс поки що англійською.',
+    copy: 'копіювати', copyAria: 'Скопіювати команду встановлення', keys: '# натисніть ?, щоб побачити клавіші',
+    mock: 'Спершу можна спробувати з двома вигаданими акаунтами:', pkg: 'Сторінка пакета:',
+    platforms: 'Платформи', head: ['система', 'десктоп', 'термінал', 'примітки'],
+    notes: ['Рекомендовано', 'Підтримується', 'Облікові дані захищені DPAPI', 'Потрібне сховище ключів Secret Service (GNOME Keyring, KWallet)', 'Те саме сховище ключів, що й для x64'],
+    updates: 'Оновлення',
+    updatesText: 'На macOS десктопний застосунок сам завантажує нові версії для своєї архітектури й оновлюється. На Windows і Linux він повідомляє про нову версію та відкриває сторінку релізу. Термінальний раз на день перевіряє npm і показує підказку в рядку стану. Тоді просто знову виконайте <code>npm i -g mysticals</code>.',
+    releases: 'Усі релізи та журнали змін →',
+    source: 'Зібрати з вихідного коду', oauth: '# значення Google OAuth, необовʼязково', installers: '# десктопні інсталятори в apps/desktop/dist', termOut: '# термінальний застосунок в apps/terminal/dist',
+    sourceNote: 'Потрібні Node.js 20.3+ і pnpm 10. Без значень Google працюють тільки акаунти CalDAV, див. <a class="ul" href="GH/blob/main/CONTRIBUTING.md#google-oauth-client-for-google-accounts">CONTRIBUTING</a>. Після встановлення бракує бінарника Electron? Виконайте <code>node apps/desktop/node_modules/electron/install.js</code>.',
+  },
+}[lang]
+---
+<Layout title={t.title} description={t.description}>
+  <section class="wrap page-head">
+    <span class="eyebrow">$ mysticals --version → {v}</span>
+    <h1>{t.title}</h1>
+    <p class="lead">{t.lead}</p>
+  </section>
+
+  <section class="wrap grid2">
+    <article class="card">
+      <div class="card-head">
+        <div>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2" /><path d="M8 21h8" /><path d="M12 17v4" /></svg>
+          <h2>{t.desktop}</h2>
+        </div>
+        <span class="tag">v{v}</span>
+      </div>
+      <p class="muted">{t.pickHint}</p>
+      <div class="os-group">
+        <h3><OsIcon os="macos" size={18} />macOS</h3>
+        <div class="picks">
+          <a class="pick btn" data-pick="mac-arm64" href={dl('Mysticals-arm64.dmg')} data-track="download_click" data-props='{"os":"macos","arch":"arm64","format":"dmg"}'>
+            <OsIcon os="macos" /><span><b>Apple Silicon <em class="rec">{t.rec}</em></b><small>{t.armSub}</small><small class="mono file">Mysticals-arm64.dmg</small></span><svg class="arrow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+          </a>
+          <a class="pick ghost" data-pick="mac-x64" href={dl('Mysticals-x64.dmg')} data-track="download_click" data-props='{"os":"macos","arch":"x64","format":"dmg"}'>
+            <OsIcon os="macos" /><span><b>{t.intel} <em class="rec">{t.rec}</em></b><small>{t.intelSub}</small><small class="mono file">Mysticals-x64.dmg</small></span><svg class="arrow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+          </a>
+        </div>
+        <p class="hint">{t.macHint}</p>
+      </div>
+      <div class="os-group">
+        <h3><OsIcon os="windows" size={18} />Windows</h3>
+        <div class="picks">
+          <a class="pick ghost" data-pick="win-x64" href={dl('Mysticals-x64-setup.exe')} data-track="download_click" data-props='{"os":"windows","arch":"x64","format":"exe"}'>
+            <OsIcon os="windows" /><span><b>Windows <em class="rec">{t.rec}</em></b><small>{t.winSub}</small><small class="mono file">Mysticals-x64-setup.exe</small></span><svg class="arrow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+          </a>
+        </div>
+      </div>
+      <div class="os-group">
+        <h3><OsIcon os="linux" size={18} />Linux</h3>
+        <div class="picks">
+          <div class="pair">
+            <a class="pick ghost" data-pick="linux-x64" href={dl('Mysticals-x86_64.AppImage')} data-track="download_click" data-props='{"os":"linux","arch":"x64","format":"appimage"}'>
+              <OsIcon os="linux" /><span><b>{t.linuxX} <em class="rec">{t.rec}</em></b><small>{t.linuxXSub}</small><small class="mono file">Mysticals-x86_64.AppImage</small></span><svg class="arrow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+            </a>
+            <a class="deb ghost" href={dl('Mysticals-amd64.deb')} data-track="download_click" data-props='{"os":"linux","arch":"x64","format":"deb"}'><b>.deb</b><small>Debian / Ubuntu</small></a>
+          </div>
+          <div class="pair">
+            <a class="pick ghost" data-pick="linux-arm64" href={dl('Mysticals-arm64.AppImage')} data-track="download_click" data-props='{"os":"linux","arch":"arm64","format":"appimage"}'>
+              <OsIcon os="linux" /><span><b>{t.linuxA} <em class="rec">{t.rec}</em></b><small>{t.linuxASub}</small><small class="mono file">Mysticals-arm64.AppImage</small></span><svg class="arrow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+            </a>
+            <a class="deb ghost" href={dl('Mysticals-arm64.deb')} data-track="download_click" data-props='{"os":"linux","arch":"arm64","format":"deb"}'><b>.deb</b><small>Debian / Ubuntu</small></a>
+          </div>
+        </div>
+        <p class="hint" set:html={t.linuxHint} />
+      </div>
+      <div class="notes">
+        <span>{t.signed} <a class="ul" href={to(lang, '/install/')}>{t.steps}</a></span>
+        <span><Fragment set:html={t.else} /> <a class="ul" href={`${gh}/releases/latest`}>{t.latest}</a></span>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-head">
+        <div>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="18" rx="2" /><path d="m6 9 3 3-3 3" /><path d="M12 15h5" /></svg>
+          <h2>{t.terminal}</h2>
+        </div>
+        <span class="tag">npm · v{terminal.version}</span>
+      </div>
+      <p class="muted">{t.termLead}</p>
+      <div class="shell mono">
+        <div class="shell-bar">
+          <span>zsh</span>
+          <button class="copy" type="button" data-copy="npm i -g mysticals" data-track="npm_copy" data-props='{"location":"download"}' aria-label={t.copyAria}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></svg>
+            <span class="lbl">{t.copy}</span>
+          </button>
+        </div>
+        <div class="code">
+          <div>npm i -g mysticals</div>
+          <div>mysticals <span class="c">{t.keys}</span></div>
+        </div>
+      </div>
+      <div class="notes">
+        <span>{t.mock} <code>MYSTICALS_MOCK=1 mysticals</code> · PowerShell: <code>$env:MYSTICALS_MOCK=1; mysticals</code> · cmd: <code>set "MYSTICALS_MOCK=1" &amp;&amp; mysticals</code></span>
+        <span>{t.pkg} <a class="ul" href="https://www.npmjs.com/package/mysticals">npmjs.com/package/mysticals</a></span>
+      </div>
+    </article>
+  </section>
+
+  <section class="wrap block">
+    <h2>{t.platforms}</h2>
+    <div class="table" style="--cols: 4">
+      <div>{t.head.map((h) => <span>{h}</span>)}</div>
+      <div><b>macOS · Apple Silicon</b><span class="dot">.dmg arm64</span><span class="dot">npm</span><span class="muted">{t.notes[0]}</span></div>
+      <div><b>macOS · Intel</b><span class="dot">.dmg x64</span><span class="dot">npm</span><span class="muted">{t.notes[1]}</span></div>
+      <div><b>Windows · x64</b><span class="dot">.exe setup</span><span class="dot">npm</span><span class="muted">{t.notes[2]}</span></div>
+      <div><b>Linux · x64</b><span class="dot">.AppImage / .deb</span><span class="dot">npm</span><span class="muted">{t.notes[3]}</span></div>
+      <div><b>Linux · arm64</b><span class="dot">.AppImage / .deb</span><span class="dot">npm</span><span class="muted">{t.notes[4]}</span></div>
+    </div>
+  </section>
+
+  <section class="wrap grid2 block last">
+    <div class="more">
+      <h3>{t.updates}</h3>
+      <p class="muted" set:html={t.updatesText} />
+      <a class="ul" href={`${gh}/releases`}>{t.releases}</a>
+    </div>
+    <div class="more">
+      <h3>{t.source}</h3>
+      <div class="code">
+        <div>git clone {gh}</div>
+        <div>cd mysticals</div>
+        <div>cp .env.example .env <span class="c">{t.oauth}</span></div>
+        <div>pnpm i</div>
+        <div>pnpm dist <span class="c">{t.installers}</span></div>
+        <div>pnpm --filter mysticals build <span class="c">{t.termOut}</span></div>
+      </div>
+      <span class="muted small" set:html={t.sourceNote.replace('GH', gh)} />
+    </div>
+  </section>
+  <script>
+    // Highlight the button for this computer. Only the OS is reliable from a browser; Linux ARM also shows up in
+    // the user agent or client hints. Macs keep Apple Silicon (Safari reports "Intel" on every Mac).
+    const pick = (key: string) => {
+      const el = document.querySelector<HTMLElement>(`[data-pick="${key}"]`)
+      if (!el) return
+      for (const p of document.querySelectorAll<HTMLElement>('[data-pick]')) p.classList.replace('btn', 'ghost')
+      el.classList.replace('ghost', 'btn')
+      el.classList.add('is-rec')
+    }
+    const ua = navigator.userAgent
+    const hints = (navigator as Navigator & { userAgentData?: { getHighEntropyValues(h: string[]): Promise<{ architecture?: string }> } }).userAgentData
+    if (/Windows/.test(ua)) pick('win-x64')
+    else if (/Mac OS X|Macintosh/.test(ua) && !/iPhone|iPad/.test(ua)) pick('mac-arm64')
+    else if (/Linux/.test(ua) && !/Android/.test(ua)) {
+      pick(/aarch64|arm/i.test(ua) ? 'linux-arm64' : 'linux-x64')
+      hints?.getHighEntropyValues(['architecture']).then((h) => { if (h.architecture === 'arm') pick('linux-arm64') }, () => {})
+    }
+  </script>
+</Layout>
+
+<style>
+  .card { border-color: var(--line-strong); }
+  .os-group { display: flex; flex-direction: column; gap: 12px; }
+  .os-group h3 { display: flex; align-items: center; gap: 10px; font: 13px var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .picks { display: flex; flex-direction: column; gap: 10px; }
+  .pick { min-height: 84px; padding: 14px 22px; border-radius: 12px; gap: 18px; }
+  .pick > span { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .pick .os-icon { flex: none; }
+  .pick .arrow { flex: none; }
+  .pick b { font-weight: 600; font-size: 17px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+  .pick small { font-size: 14px; font-weight: 400; color: var(--muted); overflow-wrap: anywhere; }
+  .pick .file { font-size: 12.5px; color: var(--muted); opacity: .7; }
+  .btn.pick small, .btn.pick .file { color: color-mix(in srgb, var(--bg) 60%, var(--fg)); }
+  .rec { display: none; font: 11.5px var(--mono); font-style: normal; font-weight: 400; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor; opacity: .7; }
+  .is-rec .rec { display: inline-block; }
+  .pair { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+  .deb { min-height: 84px; border-radius: 12px; padding: 0 18px; flex-direction: column; justify-content: center; gap: 0; }
+  .deb b { font-weight: 600; font-family: var(--mono); }
+  .deb small { font-size: 12.5px; color: var(--muted); }
+  .hint { font-size: 14px; color: var(--muted); }
+  @media (max-width: 520px) {
+    .pick { padding: 14px 16px; gap: 14px; }
+    .pair { grid-template-columns: 1fr; }
+    .deb { min-height: 52px; flex-direction: row; gap: 10px; }
+  }
+  .notes { padding-top: 20px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: var(--muted); }
+  .notes a, .more a { color: var(--fg); }
+  .shell { border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg); overflow: hidden; }
+  .shell-bar { height: 40px; padding: 0 8px 0 18px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+  .shell .code { border: 0; border-radius: 0; background: none; padding: 20px 18px; font-size: 16px; gap: 10px; }
+  .block { padding-top: clamp(48px, 5vw, 72px); display: flex; flex-direction: column; gap: 32px; }
+  .block h2 { font-size: 32px; letter-spacing: -.035em; }
+  .last { display: grid; padding-bottom: clamp(48px, 6vw, 80px); }
+  .more { border-top: 1px solid var(--line); padding-top: 28px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .more p { line-height: 1.65; }
+  .more a { font-size: 15px; }
+  .small { font-size: 14px; }
+  .hi { color: var(--fg); }
+</style>

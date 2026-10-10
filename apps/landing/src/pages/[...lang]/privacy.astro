@@ -1,0 +1,195 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import { langOf, langPaths, to } from '../../i18n'
+export const getStaticPaths = langPaths
+const lang = langOf(Astro.url)
+const email = 'forcewizu@gmail.com'
+const t = {
+  en: {
+    title: 'Privacy Policy · Mysticals', description: 'What the Mysticals desktop and terminal apps and this website do with your data. Short version: your calendars stay on your device.',
+    h1: 'Privacy Policy', lead: 'Mysticals has no servers. Your accounts, passwords and calendar events travel only between your device and your calendar provider.',
+  },
+  uk: {
+    title: 'Політика конфіденційності · Mysticals', description: 'Що десктопний і термінальний застосунки Mysticals та цей сайт роблять з вашими даними. Коротко: календарі лишаються на вашому пристрої.',
+    h1: 'Політика конфіденційності', lead: 'У Mysticals немає серверів. Ваші акаунти, паролі й події передаються тільки між вашим пристроєм і вашим провайдером календаря.',
+  },
+}[lang]
+const updated = lang === 'uk' ? '10 жовтня 2026 року' : 'October 10, 2026'
+---
+<Layout title={t.title} description={t.description}>
+  <section class="wrap page-head">
+    <span class="eyebrow">$ cat PRIVACY</span>
+    <h1>{t.h1}</h1>
+    <p class="lead">{t.lead}</p>
+  </section>
+
+  <article class="wrap prose">
+    {lang === 'uk' ? <>
+    <p class="muted">Чинна з {updated}. Ця політика стосується десктопного застосунку Mysticals, термінального застосунку Mysticals (npm-пакет <code>mysticals</code>) і сайту mysticals.sashkoratushnyi.com. Mysticals має відкритий код, а веде проєкт Олександр Ратушний («ми»). Код лежить на <a class="ul" href="https://github.com/a1exalexander/mysticals">GitHub</a>, тож кожне твердження тут можна перевірити. Це переклад для зручності; якщо він десь розходиться з <a class="ul" href="/privacy/" hreflang="en" data-set-lang="en">англійською версією</a>, чинною є англійська.</p>
+
+    <h2 id="apps">З якими даними працюють застосунки</h2>
+    <p>Щоб показати ваші календарі, застосунки підключаються напряму з вашого пристрою до провайдерів, яких ви додали:</p>
+    <ul>
+      <li><b>Акаунти Google.</b> Вхід відбувається у вашому браузері через Google OAuth. Застосунок отримує токен доступу, токен оновлення та вашу адресу пошти.</li>
+      <li><b>Акаунти CalDAV</b> (iCloud, Fastmail, Private Email або ваш власний сервер). Ви вводите адресу сервера, імʼя користувача й пароль застосунку.</li>
+    </ul>
+    <p>Де ці дані зберігаються:</p>
+    <ul>
+      <li><b>Облікові дані</b> (токени, паролі) зашифровані на вашому пристрої. Десктопний застосунок використовує захищене сховище операційної системи (macOS Keychain, Windows DPAPI, GNOME Keyring або KWallet на Linux). Термінальний шифрує їх алгоритмом AES-256-GCM, а ключ тримає в системному сховищі ключів.</li>
+      <li><b>Дані календарів</b> (календарі, події, учасники) кешуються в папці даних застосунку на вашому пристрої, щоб він працював і без мережі.</li>
+      <li>Акаунти ізольовані один від одного. Десктопний і термінальний застосунки не діляться даними.</li>
+    </ul>
+    <p>Нічого з цього не надсилається ні нам, ні комусь іншому, крім провайдера, якому ці дані належать. У нас немає бекенду, і ми не бачимо ваших акаунтів чи подій.</p>
+
+    <h2 id="google">Дані користувачів Google</h2>
+    <p>Для акаунтів Google застосунки запитують такі дозволи (scopes):</p>
+    <ul>
+      <li><code>openid</code> і <code>email</code>: щоб показати, який акаунт Google підключено.</li>
+      <li><code>https://www.googleapis.com/auth/calendar.calendarlist.readonly</code>: щоб отримати список календарів у вашому акаунті з їхніми назвами й кольорами та знати, які з них можна редагувати. Лише читання: застосунки не можуть створювати, видаляти календарі чи ділитися ними.</li>
+      <li><code>https://www.googleapis.com/auth/calendar.events</code>: щоб показувати ваші події, а також створювати, редагувати, видаляти їх і відповідати на них, коли ви про це просите.</li>
+    </ul>
+    <p>Застосунки не запитують доступу до налаштувань спільного доступу до календарів, налаштувань календарів, Gmail, Контактів, Диска чи будь-якого іншого сервісу Google.</p>
+    <p>Дані Google використовуються лише для цих функцій календаря всередині застосунку на вашому пристрої. Вони ніколи не передаються нам чи третім сторонам, ніколи не продаються, не використовуються для реклами й не використовуються для навчання моделей ШІ чи машинного навчання. Жодна людина їх не читає.</p>
+    <p>Mysticals використовує й передає інформацію, отриману з Google API, відповідно до <a class="ul" href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, зокрема вимог Limited Use.</p>
+    <p>Щоб відʼєднати акаунт, видаліть його в застосунку. Це видалить його токени й кешовані події з вашого пристрою. Також ви будь-коли можете відкликати доступ на <a class="ul" href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</p>
+
+    <h2 id="security">Як ми захищаємо ваші дані</h2>
+    <p>Ваші облікові дані, зокрема токени Google OAuth, і дані календарів чутливі. Застосунки захищають їх так:</p>
+    <ul>
+      <li><b>Жодної копії на сервері.</b> У Mysticals немає бекенду. Дані Google передаються тільки між вашим пристроєм і Google, тож немає центральної бази даних користувачів, яку можна зламати.</li>
+      <li><b>Шифрування під час передавання.</b> Увесь трафік до Google і серверів CalDAV іде через HTTPS (TLS). Вхід у Google використовує OAuth 2.0 з PKCE (S256) і випадковим значенням <code>state</code>, а одноразовий код авторизації приходить лише на loopback-адресу (<code>127.0.0.1</code>) на вашому ж пристрої.</li>
+      <li><b>Шифрування під час зберігання.</b> Токени доступу й оновлення OAuth і паролі CalDAV ніколи не зберігаються відкритим текстом. Десктопний застосунок шифрує їх за допомогою захищеного сховища операційної системи (macOS Keychain, Windows DPAPI, GNOME Keyring або KWallet); якщо жодного немає, він відмовляється їх зберігати, а не переходить на відкритий текст. Термінальний шифрує їх алгоритмом AES-256-GCM випадковим 256-бітним ключем, який лежить у системному сховищі ключів (на Windows під захистом DPAPI).</li>
+      <li><b>Контроль доступу на пристрої.</b> Файли з обліковими даними й кешем календарів записуються з правами лише для власника (<code>0600</code> на macOS і Linux), тож інші користувачі того самого компʼютера не можуть їх прочитати. Облікові дані лишаються в головному процесі застосунку й ніколи не потрапляють до його інтерфейсу.</li>
+      <li><b>Мінімальні привілеї.</b> Застосунки запитують тільки перелічені вище дозволи Google, найвужчі з тих, що потрібні для їхніх функцій.</li>
+      <li><b>Мінімум даних і строки зберігання.</b> Застосунки тримають лише те, що потрібно, щоб показати ваші календарі: токени, вашу адресу пошти й кеш календарів і подій. Видалення акаунта одразу стирає з пристрою його токени й кешовані дані. Відкликати доступ можна будь-коли у вашому акаунті Google.</li>
+      <li><b>Жодного людського доступу.</b> Ми не маємо доступу до ваших даних Google, і жодна людина їх не читає. Телеметрія їх ніколи не містить.</li>
+      <li><b>Відкритий код, який можна перевірити.</b> Увесь код публічний, тож будь-хто може перевірити цей захист. Залежності ми оновлюємо, а про проблеми з безпекою можна приватно написати на адресу нижче; такі проблеми ми виправляємо першочергово.</li>
+    </ul>
+
+    <h2 id="telemetry">Анонімна статистика в застосунках</h2>
+    <p>Щоб знати, скільки людей користуються Mysticals, застосунки надсилають дві події в <a class="ul" href="https://posthog.com">PostHog</a> з серверами в ЄС:</p>
+    <ul>
+      <li><code>app_installed</code>, один раз, під час першого запуску.</li>
+      <li><code>account_added</code>, коли ви додаєте акаунт. Містить тип провайдера (Google чи CalDAV) і обране готове налаштування (iCloud, Fastmail, Private Email або інший).</li>
+    </ul>
+    <p>Кожна подія містить тип застосунку (десктопний чи термінальний), його версію, вашу ОС і архітектуру процесора та випадковий ID, згенерований на вашому пристрої. Це все. Жодних адрес пошти, імен, адрес серверів, календарів чи подій. Визначення місця за IP вимкнене, а PostHog налаштовано так, щоб він не зберігав IP-адреси.</p>
+    <p>Як вимкнути статистику:</p>
+    <ul>
+      <li>Десктоп: Налаштування → Загальні → Конфіденційність → зніміть позначку «Надсилати анонімну статистику використання».</li>
+      <li>Обидва застосунки: задайте змінну середовища <code>MYSTICALS_TELEMETRY=0</code> або <code>DO_NOT_TRACK=1</code>.</li>
+    </ul>
+
+    <h2 id="website">Цей сайт</h2>
+    <p>Сайт рахує перегляди сторінок і натискання кнопок завантаження через PostHog (ЄС). Він не ставить cookie і нічого не зберігає у вашому браузері для аналітики: її стан живе в памʼяті й зникає, коли ви закриваєте вкладку. Запису сесій немає, а сигнал Do Not Track вимикає аналітику. Окремо сайт памʼятає у вашому браузері (localStorage) вибрані тему й мову й нікуди їх не надсилає. Шрифти завантажуються з Google Fonts, який отримує вашу IP-адресу разом із запитом.</p>
+
+    <h2 id="third-parties">Інші сервіси, до яких звертаються застосунки</h2>
+    <ul>
+      <li><b>Google</b> (<code>accounts.google.com</code>, <code>googleapis.com</code>) і <b>ваш сервер CalDAV</b>: дані ваших календарів, відповідно до їхніх власних політик конфіденційності.</li>
+      <li><b>GitHub</b>: десктопний застосунок перевіряє нові версії на <code>api.github.com</code> і завантажує оновлення з GitHub Releases.</li>
+      <li><b>npm</b>: термінальний застосунок перевіряє <code>registry.npmjs.org</code>, чи немає новішої версії.</li>
+      <li><b>PostHog (ЄС)</b>: анонімна статистика, описана вище.</li>
+    </ul>
+    <p>Ці перевірки оновлень не надсилають жодних особистих даних, крім того, що містить будь-який HTTP-запит, наприклад вашої IP-адреси.</p>
+
+    <h2 id="delete">Видалення даних</h2>
+    <p>Усе лежить на вашому пристрої, тож контроль у вас. Видаліть акаунт у застосунку, щоб стерти його облікові дані й кеш. Щоб прибрати все, видаліть папку даних:</p>
+    <ul>
+      <li>Десктоп: <code>~/Library/Application Support/mysticals</code> на macOS, <code>%APPDATA%\mysticals</code> на Windows, <code>~/.config/mysticals</code> на Linux.</li>
+      <li>Термінал: <code>~/Library/Application Support/mysticals-terminal</code> на macOS, <code>%APPDATA%\mysticals-terminal</code> на Windows, <code>~/.local/share/mysticals-terminal</code> на Linux (або <code>$MYSTICALS_HOME</code>).</li>
+    </ul>
+    <p>Ми не тримаємо копії ваших даних, тож нам нічого видаляти. Анонімну статистику не можна повʼязати з вами, але якщо ви надішлете нам випадковий ID з файлу <code>telemetry-id</code> у папці даних, ми видалимо його події.</p>
+
+    <h2 id="children">Діти</h2>
+    <p>Mysticals не призначений для дітей до 13 років, і ми свідомо не збираємо їхніх даних.</p>
+
+    <h2 id="changes">Зміни</h2>
+    <p>Якщо ця політика зміниться, ми оновимо цю сторінку й дату набрання чинності. Історія всіх змін є в публічному репозиторії.</p>
+
+    <h2 id="contact">Контакти</h2>
+    <p>Питання чи запити: <a class="ul" href={`mailto:${email}`}>{email}</a>.</p>
+    </> : <>
+    <p class="muted">Effective {updated}. This policy covers the Mysticals desktop app, the Mysticals terminal app (the <code>mysticals</code> npm package) and the website mysticals.sashkoratushnyi.com. Mysticals is an open-source project run by Oleksandr Ratushnyi (“we”). The source code is on <a class="ul" href="https://github.com/a1exalexander/mysticals">GitHub</a>, so every claim here can be checked.</p>
+
+    <h2 id="apps">What the apps handle</h2>
+    <p>To show your calendars, the apps connect directly from your device to the providers you add:</p>
+    <ul>
+      <li><b>Google accounts.</b> Sign-in happens in your browser through Google’s OAuth. The app receives an access token, a refresh token and your email address.</li>
+      <li><b>CalDAV accounts</b> (iCloud, Fastmail, Private Email or your own server). You enter a server address, a username and an app password.</li>
+    </ul>
+    <p>Where this data lives:</p>
+    <ul>
+      <li><b>Credentials</b> (tokens, passwords) are encrypted on your device. The desktop app uses the operating system’s secure storage (macOS Keychain, Windows DPAPI, or the GNOME Keyring or KWallet on Linux). The terminal app encrypts them with AES-256-GCM, with a key held in the OS keychain.</li>
+      <li><b>Calendar data</b> (calendars, events, attendees) is cached in the app’s data folder on your device so the app works offline.</li>
+      <li>Accounts stay isolated from each other. The desktop and terminal apps don’t share data.</li>
+    </ul>
+    <p>None of this is sent to us or to anyone other than the provider it belongs to. We don’t operate a backend, and we can’t see your accounts or events.</p>
+
+    <h2 id="google">Google user data</h2>
+    <p>For Google accounts the apps request these scopes:</p>
+    <ul>
+      <li><code>openid</code> and <code>email</code>: to show which Google account is connected.</li>
+      <li><code>https://www.googleapis.com/auth/calendar.calendarlist.readonly</code>: to list the calendars in your account with their names and colors, and to know which ones you can edit. Read-only: the apps can’t create, delete or share calendars.</li>
+      <li><code>https://www.googleapis.com/auth/calendar.events</code>: to show your events and to create, edit, delete and respond to events when you ask.</li>
+    </ul>
+    <p>The apps don’t request access to calendar sharing settings, calendar settings, Gmail, Contacts, Drive or any other Google service.</p>
+    <p>Google data is used only to provide these calendar features inside the app on your device. It is never transferred to us or to third parties, never sold, never used for advertising, and never used to train AI or machine-learning models. No person reads it.</p>
+    <p>Mysticals’ use and transfer of information received from Google APIs will adhere to the <a class="ul" href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+    <p>To disconnect, remove the account in the app. That deletes its tokens and cached events from your device. You can also revoke access at any time at <a class="ul" href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</p>
+
+    <h2 id="security">How we protect your data</h2>
+    <p>Your credentials, including Google OAuth tokens, and your calendar data are sensitive. The apps protect them like this:</p>
+    <ul>
+      <li><b>No server-side copy.</b> Mysticals has no backend. Google data goes only between your device and Google, so there is no central database of user data to breach.</li>
+      <li><b>Encryption in transit.</b> All traffic to Google and CalDAV servers uses HTTPS (TLS). Google sign-in uses OAuth 2.0 with PKCE (S256) and a random <code>state</code> value, and the one-time authorization code is received only on a loopback address (<code>127.0.0.1</code>) on your own device.</li>
+      <li><b>Encryption at rest.</b> OAuth access and refresh tokens and CalDAV passwords are never stored in plain text. The desktop app encrypts them with the operating system’s secure storage (macOS Keychain, Windows DPAPI, GNOME Keyring or KWallet); if none is available it refuses to save them rather than falling back to plain text. The terminal app encrypts them with AES-256-GCM using a random 256-bit key kept in the OS keychain (DPAPI-protected on Windows).</li>
+      <li><b>Access control on your device.</b> Credential and calendar cache files are written with owner-only permissions (<code>0600</code> on macOS and Linux), so other users on the same computer can’t read them. Credentials stay in the app’s main process and are never exposed to its user interface.</li>
+      <li><b>Least privilege.</b> The apps request only the Google scopes listed above, the narrowest ones that support their features.</li>
+      <li><b>Data minimization and retention.</b> The apps keep only what they need to show your calendars: tokens, your email address and a cache of calendars and events. Removing an account deletes its tokens and cached data from your device immediately. You can revoke access at any time in your Google account.</li>
+      <li><b>No human access.</b> We can’t access your Google data, and no person reads it. Telemetry never contains it.</li>
+      <li><b>Open and reviewable.</b> The full source code is public, so anyone can audit these protections. Dependencies are kept up to date, and security issues can be reported privately to the contact address below; we fix them as a priority.</li>
+    </ul>
+
+    <h2 id="telemetry">Anonymous usage stats in the apps</h2>
+    <p>To know how many people use Mysticals, the apps send two events to <a class="ul" href="https://posthog.com">PostHog</a>, hosted in the EU:</p>
+    <ul>
+      <li><code>app_installed</code>, once, on first launch.</li>
+      <li><code>account_added</code>, when you add an account. This includes the provider type (Google or CalDAV) and which preset you picked (iCloud, Fastmail, Private Email or custom).</li>
+    </ul>
+    <p>Each event carries the app (desktop or terminal), its version, your OS and CPU architecture, and a random ID generated on your device. That’s all. No emails, names, server addresses, calendars or events. GeoIP lookup is disabled and PostHog is set to discard IP addresses.</p>
+    <p>To turn the stats off:</p>
+    <ul>
+      <li>Desktop: Settings → General → Privacy → uncheck “Share anonymous usage stats”.</li>
+      <li>Both apps: set <code>MYSTICALS_TELEMETRY=0</code> or <code>DO_NOT_TRACK=1</code> in your environment.</li>
+    </ul>
+
+    <h2 id="website">This website</h2>
+    <p>The website counts page views and download-button clicks with PostHog (EU). It sets no cookies and stores nothing in your browser for analytics: its state lives in memory and is gone when you close the tab. There’s no session recording, and a Do Not Track signal turns analytics off. Separately, the site remembers your theme and language choice in your browser (localStorage) and never sends it anywhere. Fonts are loaded from Google Fonts, which receives your IP address as part of the request.</p>
+
+    <h2 id="third-parties">Other services the apps contact</h2>
+    <ul>
+      <li><b>Google</b> (<code>accounts.google.com</code>, <code>googleapis.com</code>) and <b>your CalDAV server</b>: your calendar data, under their own privacy policies.</li>
+      <li><b>GitHub</b>: the desktop app checks for new releases on <code>api.github.com</code> and downloads updates from GitHub Releases.</li>
+      <li><b>npm</b>: the terminal app checks <code>registry.npmjs.org</code> for a newer version.</li>
+      <li><b>PostHog (EU)</b>: the anonymous stats above.</li>
+    </ul>
+    <p>These update checks send no personal data beyond what any HTTP request contains, like your IP address.</p>
+
+    <h2 id="delete">Deleting your data</h2>
+    <p>Everything is on your device, so you’re in control. Remove an account in the app to delete its credentials and cache. To remove everything, delete the data folder:</p>
+    <ul>
+      <li>Desktop: <code>~/Library/Application Support/mysticals</code> on macOS, <code>%APPDATA%\mysticals</code> on Windows, <code>~/.config/mysticals</code> on Linux.</li>
+      <li>Terminal: <code>~/Library/Application Support/mysticals-terminal</code> on macOS, <code>%APPDATA%\mysticals-terminal</code> on Windows, <code>~/.local/share/mysticals-terminal</code> on Linux (or <code>$MYSTICALS_HOME</code>).</li>
+    </ul>
+    <p>We hold no copy of your data, so there is nothing for us to delete. The anonymous stats can’t be tied to you, but if you send us the random ID from the <code>telemetry-id</code> file in the data folder, we’ll delete its events.</p>
+
+    <h2 id="children">Children</h2>
+    <p>Mysticals isn’t directed at children under 13 and we don’t knowingly collect their data.</p>
+
+    <h2 id="changes">Changes</h2>
+    <p>If this policy changes, we’ll update this page and its effective date. The history of every change is in the public repository.</p>
+
+    <h2 id="contact">Contact</h2>
+    <p>Questions or requests: <a class="ul" href={`mailto:${email}`}>{email}</a>.</p>
+    </>}
+  </article>
+</Layout>

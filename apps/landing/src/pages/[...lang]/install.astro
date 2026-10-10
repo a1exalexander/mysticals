@@ -1,0 +1,293 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import { PREVIEW } from '../../preview'
+import { langOf, langPaths, to } from '../../i18n'
+export const getStaticPaths = langPaths
+const lang = langOf(Astro.url)
+if (PREVIEW) return Astro.redirect(to(lang, '/'))
+const keyCaps: string[][] = [['a', 'd', '2', 'w', 'm'], ['←', '→'], ['↑', '↓'], ['j', 'k'], ['Shift ←', 'Shift →'], ['t'], ['enter'], ['n'], ['i'], ['o', 'e', 'x', 'a'], ['s'], ['r'], ['?'], ['q']]
+const t = {
+  en: {
+    title: 'Install Mysticals', description: 'Install the Mysticals desktop or terminal app on macOS, Windows or Linux and connect Google and CalDAV calendars.',
+    h1: 'Install guide', lead: 'Pick an app and your system. About five minutes from download to your first synced calendar.',
+    app: 'app', appAria: 'App', system: 'system', systemAria: 'System', apps: ['Desktop', 'Terminal'],
+    toDownloads: 'Go to downloads',
+    dmg: 'Download the .dmg for your chip', dmgText: 'Apple menu → About This Mac. “Chip: Apple M…” → <code>arm64</code>. “Processor: Intel…” → <code>x64</code>.',
+    drag: 'Drag Mysticals into Applications', dragText: 'Open the .dmg, drag the icon onto the Applications folder, then eject the disk image.',
+    first: 'Add your first account',
+    firstText: 'Add calendar → Google (you sign in in the browser) or CalDAV (pick a preset below). Give it a label and a colour. Repeat for every account, and each one gets its own box.',
+    auto: 'That’s it. Updates are automatic', autoText: 'The app downloads new releases for your architecture and updates itself.',
+    exe: 'Download the setup .exe', exeText: '<code>Mysticals-x64-setup.exe</code> from the latest release.',
+    run: 'Run the installer',
+    runText: 'Mysticals is shared unsigned, so SmartScreen warns about an unknown publisher. Click More info → Run anyway, then follow the installer. It asks whether to install just for you or for everyone on this computer (that one needs admin rights) and lets you pick the folder.',
+    dpapi: 'Credentials are sealed with Windows DPAPI for your user.',
+    updates: 'Updates', winUpdates: 'When a new release is out, the status bar offers it. Click it to open the release page and run the new setup .exe over the old one.',
+    appimage: 'Download the AppImage or .deb',
+    appimageText: 'Intel / AMD PCs take <code>Mysticals-x86_64.AppImage</code>, ARM machines (Raspberry Pi 4 and 5, ARM laptops) take <code>Mysticals-arm64.AppImage</code>. <code>uname -m</code> tells you which: <code>x86_64</code> or <code>aarch64</code>. The AppImage runs on most distros, and on Debian or Ubuntu you can take the <code>.deb</code> instead.',
+    runIt: 'Install or run it', or: '# or', onArm: '# on ARM: Mysticals-arm64.AppImage / Mysticals-arm64.deb',
+    keyring: 'Make sure a keyring is running',
+    keyringText: 'Credentials are encrypted with the Secret Service (GNOME Keyring, KWallet). GNOME and KDE desktops have one already. Without one, Mysticals refuses to store credentials rather than keep them in plain text.',
+    linuxFirst: 'Add calendar → Google (you sign in in the browser) or CalDAV (pick a preset below). Repeat for every account. New releases show up in the status bar and open the release page.',
+    node: 'Check Node.js 20.3+', nodeText: 'No Node yet? Install it from nodejs.org, Homebrew (<code>brew install node</code>), winget (<code>winget install OpenJS.NodeJS.LTS</code>), your distro or your version manager.', newer: '# v20.3.0 or newer',
+    npm: 'Install from npm', runTerm: 'Run it',
+    runTermText: 'Press <code>?</code> for keys. Want a look first? Mock mode gives you two fake isolated accounts and touches nothing real.',
+    keychain: 'Allow the Keychain item', keychainText: 'On first use macOS asks to access the <code>mysticals-terminal</code> Keychain item. Choose Always Allow: it holds the key that encrypts your credentials.',
+    nothing: 'Nothing to allow', nothingText: 'The key that encrypts your credentials is sealed with Windows DPAPI for your user, in <code>master.key</code> in the data folder. Use Windows Terminal for the best mouse and colour support.',
+    secret: 'Have a keyring and secret-tool', secretText: 'The key that encrypts your credentials goes into the Secret Service (GNOME Keyring, KWallet) through <code>secret-tool</code>. Notifications use <code>notify-send</code>.',
+    withS: 'Add accounts with s', withSText: 'Press <code>s</code> → add Google or CalDAV. To update later, run <code>npm i -g mysticals</code> again. The status line tells you when.',
+    keys: 'Keys', keyHead: ['key', 'action'],
+    keyText: ['Agenda, Day, 2 Days, Week, Month', 'Previous / next day (or h l); in Agenda, previous / next event', 'Previous / next event within the selected day; in Agenda and Month, across days', 'Next / previous event in time order', 'Previous / next page (or H L)', 'Jump to today', 'Open event', 'New event', 'Invites: j k move, y accept, n decline, m maybe', 'In an open event: open meeting link, edit, delete (confirm y, or 1 2 3 for a repeating event), show all attendees; y n m reply; esc or q closes', 'Accounts and calendars', 'Sync now', 'Help', 'Quit'],
+    mouse: 'Mouse works too: click to select, click again to open, the wheel scrolls.',
+    req: 'requirements', reqRows: [['System', 'macOS, Windows, Linux'], ['Chips', 'Apple Silicon, Intel · x64 on Windows · x64 and arm64 on Linux'], ['Terminal app', 'Node.js 20.3+']],
+    data: 'where data lives',
+    dataText: 'Terminal: <code class="path">mysticals-terminal</code> in <code class="path">~/Library/Application Support</code> (macOS), <code class="path">%APPDATA%</code> (Windows) or <code class="path">~/.local/share</code> (Linux)',
+    dataNote: 'Credentials are encrypted per account. The desktop and terminal apps never share data.',
+    connect: 'Connect your calendars', connectText: 'Same steps in both apps. For CalDAV, use an app password. You need one when 2FA is on, and it’s a good idea anyway.',
+    provHead: ['provider', 'server', 'password'],
+    google: ['Sign in with Google in the browser', 'None, it’s OAuth'], pe: 'App password from Private Email webmail', icloud: 'App-specific password from appleid.apple.com',
+    fastmail: 'Settings → Privacy &amp; Security → App passwords', any: ['Any CalDAV server', 'Choose Custom and paste its URL', 'Whatever your server issues'],
+    username: 'Username is your full email address. Presets fill in the server URL for you.',
+    trouble: 'Troubleshooting',
+    facts: [
+      ['Windows: “Windows protected your PC”', 'The Windows build isn’t code-signed yet, so SmartScreen warns about an unknown publisher. Click More info → Run anyway.'],
+      ['Linux: “Secure storage is unavailable”', 'No Secret Service keyring is running. Install and unlock GNOME Keyring or KWallet (and <code>libsecret-tools</code> for the terminal app).'],
+      ['Terminal daemon won’t start', 'Read <code>daemon.log</code> in the data folder. Stuck? Close every window, then <code>pkill -f \'cli.js --daemon\'</code> (Windows: end the Node.js process in Task Manager).'],
+      ['Can’t select text in the TUI', 'Hold ⌥ Option while dragging on macOS, Shift in most Linux and Windows terminals. In tmux, set <code>mouse on</code> to pass clicks through.'],
+    ],
+  },
+  uk: {
+    title: 'Встановити Mysticals', description: 'Як встановити десктопний чи термінальний застосунок Mysticals на macOS, Windows або Linux і підключити календарі Google та CalDAV.',
+    h1: 'Як встановити', lead: 'Оберіть застосунок і систему. Від завантаження до першого синхронізованого календаря десь пʼять хвилин.',
+    app: 'застосунок', appAria: 'Застосунок', system: 'система', systemAria: 'Система', apps: ['Десктоп', 'Термінал'],
+    toDownloads: 'До завантажень',
+    dmg: 'Завантажте .dmg для свого чипа', dmgText: 'Меню Apple → Про цей Mac. «Чип: Apple M…» → <code>arm64</code>. «Процесор: Intel…» → <code>x64</code>.',
+    drag: 'Перетягніть Mysticals у Програми', dragText: 'Відкрийте .dmg, перетягніть іконку на папку «Програми» і вийміть образ диска.',
+    first: 'Додайте перший акаунт',
+    firstText: 'Додати календар → Google (вхід у браузері) або CalDAV (оберіть готове налаштування нижче). Дайте акаунту назву й колір. Повторіть для кожного акаунта, і кожен житиме окремо.',
+    auto: 'От і все. Оновлення автоматичні', autoText: 'Застосунок сам завантажує нові версії для вашої архітектури й оновлюється.',
+    exe: 'Завантажте інсталятор .exe', exeText: '<code>Mysticals-x64-setup.exe</code> з останнього релізу.',
+    run: 'Запустіть інсталятор',
+    runText: 'Mysticals поширюється без підпису, тому SmartScreen попередить про невідомого видавця. Розгорніть подробиці, запустіть усе одно (в англійській Windows це More info → Run anyway) і пройдіть інсталятор. Він спитає, чи ставити тільки для вас, чи для всіх користувачів компʼютера (для цього потрібні права адміністратора), і дасть обрати папку.',
+    dpapi: 'Облікові дані захищені Windows DPAPI для вашого користувача.',
+    updates: 'Оновлення', winUpdates: 'Коли виходить нова версія, рядок стану її пропонує. Натисніть на неї, щоб відкрити сторінку релізу, і запустіть новий інсталятор поверх старого.',
+    appimage: 'Завантажте AppImage або .deb',
+    appimageText: 'Для ПК на Intel / AMD беріть <code>Mysticals-x86_64.AppImage</code>, а для ARM (Raspberry Pi 4 і 5, ноутбуки на ARM) беріть <code>Mysticals-arm64.AppImage</code>. Яка у вас архітектура, підкаже <code>uname -m</code>: <code>x86_64</code> або <code>aarch64</code>. AppImage працює на більшості дистрибутивів, а на Debian чи Ubuntu можна взяти <code>.deb</code>.',
+    runIt: 'Встановіть або запустіть', or: '# або', onArm: '# на ARM: Mysticals-arm64.AppImage / Mysticals-arm64.deb',
+    keyring: 'Переконайтеся, що працює сховище ключів',
+    keyringText: 'Облікові дані шифруються через Secret Service (GNOME Keyring, KWallet). У GNOME і KDE таке сховище вже є. Без нього Mysticals відмовиться зберігати облікові дані, щоб не тримати їх відкритим текстом.',
+    linuxFirst: 'Додати календар → Google (вхід у браузері) або CalDAV (оберіть готове налаштування нижче). Повторіть для кожного акаунта. Про нові версії підкаже рядок стану, а клік по підказці відкриє сторінку релізу.',
+    node: 'Перевірте Node.js 20.3+', nodeText: 'Ще немає Node? Поставте його з nodejs.org, через Homebrew (<code>brew install node</code>), winget (<code>winget install OpenJS.NodeJS.LTS</code>), пакетами дистрибутива або менеджером версій.', newer: '# v20.3.0 або новіший',
+    npm: 'Встановіть з npm', runTerm: 'Запустіть',
+    runTermText: 'Натисніть <code>?</code>, щоб побачити клавіші. Хочете спершу просто подивитися? Демо-режим дає два вигадані ізольовані акаунти й нічого справжнього не чіпає. Інтерфейс термінального застосунку поки що англійською.',
+    keychain: 'Дозвольте доступ до Keychain', keychainText: 'Під час першого запуску macOS спитає, чи дозволити доступ до запису <code>mysticals-terminal</code> у Keychain. Оберіть «Завжди дозволяти»: там лежить ключ, яким шифруються ваші облікові дані.',
+    nothing: 'Нічого дозволяти не треба', nothingText: 'Ключ, яким шифруються облікові дані, захищений Windows DPAPI для вашого користувача й лежить у <code>master.key</code> у папці даних. Для найкращої підтримки миші й кольорів беріть Windows Terminal.',
+    secret: 'Потрібні сховище ключів і secret-tool', secretText: 'Ключ, яким шифруються облікові дані, зберігається в Secret Service (GNOME Keyring, KWallet) через <code>secret-tool</code>. Сповіщення працюють через <code>notify-send</code>.',
+    withS: 'Додайте акаунти клавішею s', withSText: 'Натисніть <code>s</code> → додайте Google або CalDAV. Щоб потім оновитися, знову виконайте <code>npm i -g mysticals</code>. Коли саме, підкаже рядок стану.',
+    keys: 'Клавіші', keyHead: ['клавіша', 'дія'],
+    keyText: ['Розклад, день, 2 дні, тиждень, місяць', 'Попередній / наступний день (або h l); у розкладі перемикає на попередню / наступну подію', 'Попередня / наступна подія в межах вибраного дня; у режимах розкладу й місяця переходить між днями', 'Наступна / попередня подія за часом', 'Попередня / наступна сторінка (або H L)', 'Перейти до сьогодні', 'Відкрити подію', 'Нова подія', 'Запрошення: j k вибрати, y прийняти, n відхилити, m можливо', 'У відкритій події: відкрити посилання на зустріч, редагувати, видалити (підтвердження y або 1 2 3 для повторюваної події), показати всіх учасників; y n m відповісти; esc або q закрити', 'Акаунти й календарі', 'Синхронізувати зараз', 'Довідка', 'Вийти'],
+    mouse: 'Миша теж працює: клік вибирає, повторний клік відкриває, коліщатко прокручує.',
+    req: 'вимоги', reqRows: [['Система', 'macOS, Windows, Linux'], ['Чипи', 'Apple Silicon, Intel · x64 на Windows · x64 і arm64 на Linux'], ['Термінальний застосунок', 'Node.js 20.3+']],
+    data: 'де лежать дані',
+    dataText: 'Термінальний застосунок: <code class="path">mysticals-terminal</code> у <code class="path">~/Library/Application Support</code> (macOS), <code class="path">%APPDATA%</code> (Windows) або <code class="path">~/.local/share</code> (Linux)',
+    dataNote: 'Облікові дані шифруються окремо для кожного акаунта. Десктопний і термінальний застосунки ніколи не діляться даними.',
+    connect: 'Підключіть календарі', connectText: 'В обох застосунках усе однаково. Для CalDAV використовуйте пароль застосунку: він потрібен, коли ввімкнено 2FA, та й загалом так безпечніше.',
+    provHead: ['провайдер', 'сервер', 'пароль'],
+    google: ['Вхід через Google у браузері', 'Не потрібен, це OAuth'], pe: 'Пароль застосунку з вебпошти Private Email', icloud: 'Пароль застосунку з appleid.apple.com',
+    fastmail: 'Settings → Privacy &amp; Security → App passwords', any: ['Будь-який сервер CalDAV', 'Оберіть «Інший» і вставте його URL', 'Той, що видає ваш сервер'],
+    username: 'Як імʼя користувача вводьте повну адресу пошти. Готові налаштування самі підставлять адресу сервера.',
+    trouble: 'Якщо щось пішло не так',
+    facts: [
+      ['Windows: SmartScreen не дає запустити', 'Збірка для Windows поки не підписана, тому SmartScreen попереджає про невідомого видавця. Розгорніть подробиці й запустіть усе одно (в англійській Windows це More info → Run anyway).'],
+      ['Linux: «Захищене сховище недоступне»', 'Не запущено сховище ключів Secret Service. Встановіть і розблокуйте GNOME Keyring або KWallet (а для термінального застосунку ще й <code>libsecret-tools</code>).'],
+      ['Демон термінала не запускається', 'Гляньте <code>daemon.log</code> у папці даних. Не допомогло? Закрийте всі вікна й виконайте <code>pkill -f \'cli.js --daemon\'</code> (на Windows завершіть процес Node.js у Диспетчері завдань).'],
+      ['Не виходить виділити текст у TUI', 'На macOS тягніть із затиснутою ⌥ Option, а в більшості терміналів Linux і Windows затисніть Shift. У tmux увімкніть <code>mouse on</code>, щоб кліки доходили до застосунку.'],
+    ],
+  },
+}[lang]
+const apps = [['desktop', t.apps[0]], ['terminal', t.apps[1]]]
+const systems = [['mac', 'macOS'], ['windows', 'Windows'], ['linux', 'Linux']]
+const downloads = to(lang, '/download/')
+---
+<Layout title={t.title} description={t.description}>
+  <section class="wrap page-head">
+    <span class="eyebrow">$ man mysticals</span>
+    <h1>{t.h1}</h1>
+    <p class="lead">{t.lead}</p>
+  </section>
+
+  <section class="wrap pickers">
+    <div class="picker" role="group" aria-label={t.appAria}>
+      <span class="eyebrow">{t.app}</span>
+      <div class="seg">{apps.map(([id, l], i) => <button type="button" data-app={id} aria-pressed={i === 0 ? 'true' : 'false'}>{l}</button>)}</div>
+    </div>
+    <div class="picker" role="group" aria-label={t.systemAria}>
+      <span class="eyebrow">{t.system}</span>
+      <div class="seg">{systems.map(([id, l], i) => <button type="button" data-os={id} aria-pressed={i === 0 ? 'true' : 'false'}>{l}</button>)}</div>
+    </div>
+  </section>
+
+  <section class="wrap guide">
+    <div class="panels">
+      <ol class="steps" data-panel="desktop-mac">
+        <li><div><h3>{t.dmg}</h3>
+          <p set:html={t.dmgText} />
+          <a class="btn" href={downloads}>{t.toDownloads}</a></div></li>
+        <li><div><h3>{t.drag}</h3>
+          <p>{t.dragText}</p></div></li>
+        <li><div><h3>{t.first}</h3>
+          <p>{t.firstText}</p></div></li>
+        <li><div><h3>{t.auto}</h3>
+          <p>{t.autoText}</p></div></li>
+      </ol>
+
+      <ol class="steps" data-panel="desktop-windows" hidden>
+        <li><div><h3>{t.exe}</h3>
+          <p set:html={t.exeText} />
+          <a class="btn" href={downloads}>{t.toDownloads}</a></div></li>
+        <li><div><h3>{t.run}</h3>
+          <p>{t.runText}</p></div></li>
+        <li><div><h3>{t.first}</h3>
+          <p>{t.firstText} {t.dpapi}</p></div></li>
+        <li><div><h3>{t.updates}</h3>
+          <p>{t.winUpdates}</p></div></li>
+      </ol>
+
+      <ol class="steps" data-panel="desktop-linux" hidden>
+        <li><div><h3>{t.appimage}</h3>
+          <p set:html={t.appimageText} />
+          <a class="btn" href={downloads}>{t.toDownloads}</a></div></li>
+        <li><div><h3>{t.runIt}</h3>
+          <div class="code"><div>chmod +x Mysticals-x86_64.AppImage &amp;&amp; ./Mysticals-x86_64.AppImage</div><div class="c">{t.or}</div><div>sudo apt install ./Mysticals-amd64.deb</div><div class="c">{t.onArm}</div></div></div></li>
+        <li><div><h3>{t.keyring}</h3>
+          <p>{t.keyringText}</p></div></li>
+        <li><div><h3>{t.first}</h3>
+          <p>{t.linuxFirst}</p></div></li>
+      </ol>
+
+      <div data-panel="terminal" hidden>
+        <ol class="steps">
+          <li><div><h3>{t.node}</h3>
+            <p set:html={t.nodeText} />
+            <div class="code"><div>node -v <span class="c">{t.newer}</span></div></div></div></li>
+          <li><div><h3>{t.npm}</h3>
+            <div class="code"><div>npm i -g mysticals</div></div></div></li>
+          <li><div><h3>{t.runTerm}</h3>
+            <p set:html={t.runTermText} />
+            <div class="code"><div>mysticals</div><div>MYSTICALS_MOCK=1 mysticals <span class="c"># macOS, Linux</span></div><div>$env:MYSTICALS_MOCK=1; mysticals <span class="c"># Windows PowerShell</span></div><div>set "MYSTICALS_MOCK=1" &amp;&amp; mysticals <span class="c"># Windows cmd</span></div></div></div></li>
+          <li data-only="mac"><div><h3>{t.keychain}</h3>
+            <p set:html={t.keychainText} /></div></li>
+          <li data-only="windows" hidden><div><h3>{t.nothing}</h3>
+            <p set:html={t.nothingText} /></div></li>
+          <li data-only="linux" hidden><div><h3>{t.secret}</h3>
+            <p set:html={t.secretText} />
+            <div class="code"><div>sudo apt install libsecret-tools <span class="c"># Fedora/Arch: libsecret</span></div></div></div></li>
+          <li><div><h3>{t.withS}</h3>
+            <p set:html={t.withSText} /></div></li>
+        </ol>
+        <div class="keys">
+          <h3>{t.keys}</h3>
+          <div class="table" style="--cols: 2">
+            <div>{t.keyHead.map((h) => <span>{h}</span>)}</div>
+            {keyCaps.map((ks, i) => <div><span>{ks.map((k) => <kbd>{k}</kbd>)}</span><span class="muted">{t.keyText[i]}</span></div>)}
+          </div>
+          <p class="muted">{t.mouse}</p>
+        </div>
+      </div>
+    </div>
+
+    <aside>
+      <div class="side">
+        <span class="eyebrow">{t.req}</span>
+        {t.reqRows.map(([k, v]) => <div><span class="muted">{k}</span><span>{v}</span></div>)}
+      </div>
+      <div class="side">
+        <span class="eyebrow">{t.data}</span>
+        <span class="muted" set:html={t.dataText} />
+        <span class="muted">{t.dataNote}</span>
+      </div>
+    </aside>
+  </section>
+
+  <section class="wrap block">
+    <div class="head">
+      <h2>{t.connect}</h2>
+      <p class="muted">{t.connectText}</p>
+    </div>
+    <div class="table">
+      <div>{t.provHead.map((h) => <span>{h}</span>)}</div>
+      <div><b>Google</b><span class="muted">{t.google[0]}</span><span class="muted">{t.google[1]}</span></div>
+      <div><b>Private Email</b><code>dav.privateemail.com/dav.php/</code><span class="muted">{t.pe}</span></div>
+      <div><b>iCloud</b><code>caldav.icloud.com</code><span class="muted">{t.icloud}</span></div>
+      <div><b>Fastmail</b><code>caldav.fastmail.com</code><span class="muted" set:html={t.fastmail} /></div>
+      <div><b>{t.any[0]}</b><span class="muted">{t.any[1]}</span><span class="muted">{t.any[2]}</span></div>
+    </div>
+    <p class="muted small">{t.username}</p>
+  </section>
+
+  <section class="wrap block last">
+    <h2>{t.trouble}</h2>
+    <div class="grid3">
+      {t.facts.map(([b, s]) => <div class="fact"><b>{b}</b><span set:html={s} /></div>)}
+    </div>
+  </section>
+</Layout>
+
+<script>
+  // Show the steps for the picked app and system. #terminal in the URL preselects the terminal app.
+  const s = { app: location.hash === '#terminal' ? 'terminal' : 'desktop', os: 'mac' }
+  function show() {
+    for (const b of document.querySelectorAll<HTMLElement>('[data-app]')) b.setAttribute('aria-pressed', String(b.dataset.app === s.app))
+    for (const b of document.querySelectorAll<HTMLElement>('[data-os]')) b.setAttribute('aria-pressed', String(b.dataset.os === s.os))
+    const want = s.app === 'desktop' ? `desktop-${s.os}` : 'terminal'
+    for (const p of document.querySelectorAll<HTMLElement>('[data-panel]')) p.hidden = p.dataset.panel !== want
+    for (const e of document.querySelectorAll<HTMLElement>('[data-only]')) e.hidden = e.dataset.only !== s.os
+  }
+  document.querySelectorAll<HTMLElement>('[data-app], [data-os]').forEach((b) =>
+    b.addEventListener('click', () => {
+      if (b.dataset.app) s.app = b.dataset.app
+      if (b.dataset.os) s.os = b.dataset.os
+      show()
+    }),
+  )
+  show()
+</script>
+
+<style>
+  .pickers { padding-bottom: 40px; display: flex; flex-wrap: wrap; gap: 24px 48px; }
+  .picker { display: flex; align-items: center; gap: 16px; }
+  .picker .eyebrow { font-size: 13px; }
+  .seg { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--line-strong); border-radius: 10px; }
+  .seg button { min-height: 44px; padding: 0 clamp(12px, 1.6vw, 20px); border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: 15px var(--mono); cursor: pointer; }
+  .seg button:hover { color: var(--fg); }
+  .seg button[aria-pressed='true'] { background: var(--fg); color: var(--bg); font-weight: 600; }
+
+  .guide { display: grid; gap: 40px 24px; }
+  @media (min-width: 1000px) {
+    .guide { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+    .panels { grid-column: span 8; }
+    aside { grid-column: 10 / span 3; }
+  }
+  .panels, aside { min-width: 0; }
+  aside { display: flex; flex-direction: column; gap: 20px; }
+  .side { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 24px; display: flex; flex-direction: column; gap: 14px; font-size: 14px; line-height: 1.55; }
+  .side .eyebrow { font-size: 13px; }
+  .side > div { display: flex; justify-content: space-between; gap: 12px; }
+  .side :global(.path) { word-break: break-all; } /* inside set:html text, so no scoped attribute */
+  .steps code { color: var(--soft); }
+  /* global .steps > li sets display: flex, which would beat the hidden attribute */
+  .steps > li[hidden] { display: none; }
+
+  .keys { margin-top: 40px; display: flex; flex-direction: column; gap: 20px; }
+  .keys .table > div:not(:first-child) { padding-block: 12px; }
+  @media (max-width: 720px) { .keys .table > div { grid-template-columns: auto 1fr; } }
+  .keys kbd { margin-right: 4px; }
+  .keys > p { font-size: 14px; }
+
+  .block { padding-top: clamp(48px, 5vw, 72px); display: flex; flex-direction: column; gap: 32px; }
+  .block h2 { font-size: 32px; letter-spacing: -.035em; }
+  .head { display: flex; flex-direction: column; gap: 12px; }
+  .head p { font-size: 17px; }
+  .table code { font-size: 14px; overflow-wrap: anywhere; }
+  .small { font-size: 14px; }
+  .last { padding-bottom: clamp(48px, 6vw, 80px); }
+</style>

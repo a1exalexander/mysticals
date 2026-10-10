@@ -3,8 +3,13 @@
  * Animated illustration of the terminal app: types `mysticals`, then plays a scripted session over fake data
  * (agenda, j/k selection, invites + accept, week and month views). Layout follows apps/terminal/src/ui
  * (App.tsx header, views/Agenda.tsx cards, views/TimeGrid.tsx, views/Month.tsx, screens/Invites.tsx, StatusLine.tsx). Dates are computed from the viewer's today so it never looks stale.
- * Reduced motion: a static agenda frame. Paused while off screen.
+ * Reduced motion: a static agenda frame. Paused while off screen. The terminal app is English only, so the demo is too.
  */
+import { langOf } from '../i18n'
+const caption = {
+  en: 'Animation: the Mysticals terminal app showing an agenda of events from several accounts, answering an invite, then week and month views.',
+  uk: 'Анімація: термінальний застосунок Mysticals показує розклад подій з кількох акаунтів, відповідає на запрошення, а потім перемикається на тиждень і місяць.',
+}[langOf(Astro.url)]
 ---
 <figure class="tdemo">
   <div class="win" aria-hidden="true">
@@ -12,13 +17,13 @@
     <pre class="screen"></pre>
     <span class="key"></span>
   </div>
-  <figcaption class="sr-only">Animation: the Mysticals terminal app showing an agenda of events from several accounts, answering an invite, then week and month views.</figcaption>
+  <figcaption class="sr-only">{caption}</figcaption>
 </figure>
 
 <script>
   type Part = [string, string?]
   type Line = Part[]
-  let W = 80 // columns; 46 on narrow screens, set per figure below
+  let W = 80 // columns, set per figure below
   const H = 22 // rows: header, body, two status lines
   const BODY = H - 3
 
@@ -234,7 +239,8 @@
 
   for (const fig of document.querySelectorAll<HTMLElement>('.tdemo')) {
     const pre = fig.querySelector<HTMLElement>('.screen')!
-    W = fig.clientWidth < 560 ? 46 : 80
+    // the page may ask for a column count (--term-cols); otherwise 46 columns on narrow figures, 80 on wide ones
+    W = Number(getComputedStyle(fig).getPropertyValue('--term-cols')) || (fig.clientWidth < 560 ? 46 : 80)
     fig.style.setProperty('--cols', String(W))
     fig.querySelector('.bar span')!.textContent = `mysticals — zsh — ${W}×${H}`
     const key = fig.querySelector<HTMLElement>('.key')!

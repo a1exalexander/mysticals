@@ -3,9 +3,16 @@
  * Every desktop palette at once: a full animated DesktopDemo with a theme switcher above it, and a grid of small
  * static windows, one per theme, that switch the demo too. Palettes come from src/themes.ts.
  * The script cycles through the themes while the section is on screen, until the viewer picks one.
+ * Both pickers do the same thing: wide screens show the mini windows, narrow ones the compact chips.
  */
 import DesktopDemo from './DesktopDemo.astro'
 import { THEMES, themeVars } from '../themes'
+import { langOf } from '../i18n'
+const uk = langOf(Astro.url) === 'uk'
+// Theme names as the app shows them in Ukrainian (packages/core/src/i18n/uk.ts, theme.*)
+const UK_NAMES: Record<string, string> = { amber: 'Бурштиновий люмінофор', mono: 'Чорно-біла', toon: 'Мультяшна', cloud: 'Хмаринка', light: 'Світла' }
+const name = (th: (typeof THEMES)[number]) => (uk ? UK_NAMES[th.id] ?? th.name : th.name)
+const scheme = (th: (typeof THEMES)[number]) => (uk ? { dark: 'темна', light: 'світла' }[th.scheme] : th.scheme)
 const vars = Object.fromEntries(THEMES.map((th) => [th.id, themeVars(th)]))
 // Mini window: [day column 0-4, start row 0-7, rows, account colour]. Account colours are the user's, not the theme's.
 const [work, pers, icl, side] = ['#bd93f9', '#50fa7b', '#8be9fd', '#ffb86c']
@@ -16,10 +23,10 @@ const evs: [number, number, number, string][] = [
 ---
 <div class="themes" data-vars={JSON.stringify(vars)}>
   <div class="show">
-    <div class="chips" role="radiogroup" aria-label="Preview theme">
+    <div class="chips" role="radiogroup" aria-label={uk ? 'Приміряти тему' : 'Preview theme'}>
       {THEMES.map((th, i) => (
         <button type="button" role="radio" aria-checked={i === 0 ? 'true' : 'false'} class="chip" data-theme={th.id} data-track="theme_preview" data-props={JSON.stringify({ theme: th.id })}>
-          <i style={`background:${th.tokens.accent};box-shadow:0 0 0 2px ${th.tokens.bg}, 0 0 0 3px ${th.tokens['line-strong']}`} />{th.name}
+          <i style={`background:${th.tokens.accent};box-shadow:0 0 0 2px ${th.tokens.bg}, 0 0 0 3px ${th.tokens['line-strong']}`} />{name(th)}
         </button>
       ))}
     </div>
@@ -28,18 +35,18 @@ const evs: [number, number, number, string][] = [
   <ul class="minis" role="list">
     {THEMES.map((th, i) => (
       <li>
-        <button type="button" class="mini" data-theme={th.id} aria-pressed={i === 0 ? 'true' : 'false'} aria-label={`Preview ${th.name}`} data-track="theme_preview" data-props={JSON.stringify({ theme: th.id })}>
+        <button type="button" class="mini" data-theme={th.id} aria-pressed={i === 0 ? 'true' : 'false'} aria-label={uk ? `Приміряти: ${name(th)}` : `Preview ${th.name}`} data-track="theme_preview" data-props={JSON.stringify({ theme: th.id })}>
           <span class="mwin" data-theme={th.id} style={vars[th.id]} aria-hidden="true">
             <span class="mside"><span class="dots"><i /><i /><i /></span><b /><b /><b /></span>
             <span class="mmain">
-              <span class="mbar"><b /><em>+ new</em></span>
+              <span class="mbar"><b /><em>{uk ? '+ нова' : '+ new'}</em></span>
               <span class="mgrid">
                 <span class="mtoday" />
                 {evs.map(([c, s, n, k]) => <span class="mev" style={`--c:${c};--s:${s};--n:${n};--k:${k}`} />)}
               </span>
             </span>
           </span>
-          <span class="mname">{th.name}<small>{th.scheme}</small></span>
+          <span class="mname">{name(th)}<small>{scheme(th)}</small></span>
         </button>
       </li>
     ))}
@@ -91,10 +98,14 @@ const evs: [number, number, number, string][] = [
 </script>
 
 <style>
-  .themes { display: grid; gap: 40px 48px; align-items: start; }
-  @media (min-width: 1100px) { .themes { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); } }
-  .show { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
-  .show :global(.dwin) { box-shadow: 0 50px 140px -40px rgb(0 0 0 / .95); }
+  .themes { display: grid; gap: 32px 40px; align-items: start; }
+  @media (min-width: 1100px) {
+    .themes { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+    .chips { display: none !important; }
+  }
+  @media (max-width: 1099px) { .minis { display: none !important; } }
+  .show { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+  .show :global(.dwin) { box-shadow: var(--shadow); }
 
   /* switcher */
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -109,9 +120,9 @@ const evs: [number, number, number, string][] = [
 
   /* mini windows */
   .minis { margin: 0; padding: 0; list-style: none; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr)); }
-  @media (min-width: 1100px) { .minis { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; } }
-  .mini { width: 100%; padding: 0; display: flex; flex-direction: column; gap: 10px; border: 0; background: none; color: var(--muted); font: inherit; text-align: left; cursor: pointer; }
-  .mname { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font: 13px var(--mono); }
+  @media (min-width: 1100px) { .minis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 12px; } }
+  .mini { width: 100%; padding: 0; display: flex; flex-direction: column; gap: 8px; border: 0; background: none; color: var(--muted); font: inherit; text-align: left; cursor: pointer; }
+  .mname { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 8px; font: 12px/1.35 var(--mono); min-width: 0; }
   .mname small { font-size: 11px; color: var(--faint); }
   .mini:hover .mname, .mini[aria-pressed='true'] .mname { color: var(--fg); }
   .mwin {

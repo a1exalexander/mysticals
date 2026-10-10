@@ -1,0 +1,356 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import TermDemo from '../../components/TermDemo.astro'
+import DesktopDemo from '../../components/DesktopDemo.astro'
+import ThemeShowcase from '../../components/ThemeShowcase.astro'
+import { THEMES } from '../../themes'
+import desktop from '../../../../desktop/package.json'
+import { PREVIEW } from '../../preview'
+import { langOf, langPaths, to, ukPlural } from '../../i18n'
+export const getStaticPaths = langPaths
+const lang = langOf(Astro.url)
+const href = (p: string) => to(lang, p)
+const gh = 'https://github.com/a1exalexander/mysticals'
+const n = THEMES.length
+const t = {
+  en: {
+    title: 'Mysticals: all your calendars, none of them mixed up',
+    free: 'free &amp; open source', dev: 'in development',
+    h1: 'All your calendars.<br />None of them mixed&nbsp;up.',
+    lead: 'A calendar for people with more than one Google or CalDAV account. Use it on the desktop or right in your terminal. Each account lives on its own, with its own login, sync and cache, so nothing leaks between them.',
+    follow: 'Follow on GitHub', soon: 'Downloads open once Google’s review is done.',
+    download: 'Download', copy: 'Copy npm i -g mysticals', anyCaldav: 'any CalDAV',
+    whyEyebrow: '01 · why it exists',
+    whyH2: 'The invite that should never have been sent.',
+    story: [
+      'I have a few personal calendars and a work one on Private Email. The work one only speaks CalDAV, and on a Mac the only practical way to use CalDAV was Apple’s own Calendar. I looked for something else and found nothing I enjoyed. Thunderbird can do it, but it was never really my thing.',
+      'And Calendar was fine. Until one day the work account dropped off (something outside the Mac broke, not Apple’s fault). The app just kept going and started sending invites for work meetings to my colleagues from my personal address.',
+    ],
+    storyEnd: 'That was the last straw. So I built my own: one calendar for the desktop and one right in the terminal, where every account stays in its own box and nothing crosses over.',
+    author: 'Oleksandr Ratushnyi', role: 'creator of Mysticals',
+    themesEyebrow: '02 · themes',
+    themesH2: 'Pick a palette.<br />Every window follows.',
+    themesLead: `${n} themes in Settings, from Dracula to a green-on-black Matrix terminal. Light ones too. Tap one to try it on the demo.`,
+    isoEyebrow: '03 · isolation',
+    isoH2: 'As many accounts as you like.<br />A wall between each.',
+    isoLead: 'Add every Google and CalDAV account you have: personal, work, family, a side project. In a shared calendar app, one broken account can quietly make another one the organizer, and suddenly your coworkers get work invites from your personal address. Mysticals is built so that can’t happen.',
+    boxes: [['personal', 'me@gmail.com · Google'], ['work', 'me@company.com · CalDAV'], ['family', 'me@icloud.com · iCloud']],
+    own: ['own credentials', 'own sync loop', 'own cache', 'own RSVPs'],
+    add: 'add another', addWho: 'Google or any CalDAV server', addNote: 'Each new account gets its own box. As many as you need.',
+    rules: [
+      ['No default account', 'Every new event asks which account and calendar it belongs to.'],
+      ['No copying across accounts', 'Events are never copied, moved or re-created in another account.'],
+      ['RSVPs from the right address', 'Replies go out only from the account that got the invite.'],
+      ['You pick the organizer', 'Attendees are never added for you. The organizer is always the account you picked.'],
+    ],
+    appsEyebrow: '04 · two apps',
+    appsH2: 'One calendar. Pick your window.',
+    appsLead: 'The desktop and terminal apps are separate, each with its own accounts, settings and credential key. Run both on the same machine with different accounts if you like.',
+    desk: 'Desktop', deskLead: 'A desktop window with a mini month, your accounts and invites in a sidebar, and the week at a glance.',
+    deskList: [
+      'Agenda, day, 3 days, week and month views',
+      `${n} themes, dark and light. <a class="ul" href="#themes">See them all</a>`,
+      'English and Ukrainian, follows your system',
+      'Credentials encrypted per account with the system keychain',
+      'Update notices from GitHub Releases (self-updates on macOS)',
+    ],
+    howTo: 'How to install',
+    term: 'Terminal', termLead: 'The same calendar as a full-screen TUI. Keyboard first, mouse welcome, and it takes its colours from your terminal theme.',
+    termList: ['Agenda, day, 2 days, week and month views', 'Accept, decline or maybe invites with y / n / m', 'One background daemon syncs for every open window', 'System notifications, 16 ANSI colours, NO_COLOR respected'],
+    facts: [
+      ['Never touches Apple Calendar', 'Accounts are added inside Mysticals. It never reads the macOS Calendar database.'],
+      ['CalDAV without the dance', 'Presets for Private Email, iCloud and Fastmail. Custom for any other server.'],
+      ['Open source, MIT', 'Read the code, build it yourself, or open an issue on GitHub.'],
+    ],
+    ctaH2: 'Keep work at work.',
+    ctaLead: 'Free for macOS, Windows and Linux. Desktop, terminal, or both.',
+    ctaSoon: 'Coming soon for macOS, Windows and Linux. Desktop, terminal, or both.',
+    guide: 'Install guide',
+  },
+  uk: {
+    title: 'Mysticals: усі календарі, і жодної плутанини',
+    free: 'безкоштовний, з відкритим кодом', dev: 'у розробці',
+    h1: 'Усі ваші календарі.<br />І&nbsp;жодної плутанини.',
+    lead: 'Календар для тих, у кого кілька акаунтів Google чи CalDAV. Працює на десктопі або просто в терміналі. Кожен акаунт живе окремо: свій вхід, своя синхронізація, свій кеш. Між ними нічого не перетікає.',
+    follow: 'Стежити на GitHub', soon: 'Завантажити можна буде, щойно Google завершить перевірку.',
+    download: 'Завантажити', copy: 'Скопіювати npm i -g mysticals', anyCaldav: 'будь-який CalDAV',
+    whyEyebrow: '01 · навіщо це все',
+    whyH2: 'Запрошення, якого не мало бути.',
+    story: [
+      'У мене кілька особистих календарів і робочий на Private Email. Робочий розуміє тільки CalDAV, а на Mac із CalDAV нормально працює хіба що вбудований Календар від Apple. Я шукав щось інше, але нічого не припало до душі. Thunderbird таке вміє, та мені він так і не зайшов.',
+      'І Календар цілком годився. Аж поки одного дня робочий акаунт не відвалився (зламалося щось поза Mac, Apple тут ні до чого). А застосунок просто працював далі й почав розсилати колегам запрошення на робочі зустрічі з моєї особистої адреси.',
+    ],
+    storyEnd: 'Це стало останньою краплею. Тож я зробив власний календар, навіть два: один для десктопу, другий просто в терміналі. У них кожен акаунт живе окремо, і між акаунтами нічого не перетікає.',
+    author: 'Олександр Ратушний', role: 'автор Mysticals',
+    themesEyebrow: '02 · теми',
+    themesH2: 'Оберіть палітру,<br />і кожне вікно її підхопить.',
+    themesLead: `${n} ${ukPlural(n, 'тема', 'теми', 'тем')} у налаштуваннях: від Dracula до Matrix, зеленого термінала на чорному тлі. Є й світлі. Натисніть на будь-яку, щоб приміряти її на демо.`,
+    isoEyebrow: '03 · ізоляція',
+    isoH2: 'Скільки завгодно акаунтів.<br />І стіна між ними.',
+    isoLead: 'Додайте всі свої акаунти Google і CalDAV: особистий, робочий, сімейний, для власного проєкту. У звичайному календарі один зламаний акаунт може непомітно зробити організатором інший, і колеги раптом отримують робочі запрошення з вашої особистої адреси. Mysticals зроблено так, щоб такого не траплялося.',
+    boxes: [['особистий', 'me@gmail.com · Google'], ['робочий', 'me@company.com · CalDAV'], ['сімейний', 'me@icloud.com · iCloud']],
+    own: ['свої облікові дані', 'своя синхронізація', 'свій кеш', 'свої відповіді на запрошення'],
+    add: 'ще один', addWho: 'Google або будь-який сервер CalDAV', addNote: 'Кожен новий акаунт теж живе окремо. Додавайте скільки треба.',
+    rules: [
+      ['Жодного типового акаунта', 'Для кожної нової події Mysticals питає, до якого акаунта й календаря вона належить.'],
+      ['Жодного копіювання між акаунтами', 'Події ніколи не копіюються, не переносяться й не створюються наново в іншому акаунті.'],
+      ['Відповіді з правильної адреси', 'Відповідь на запрошення йде тільки з того акаунта, який його отримав.'],
+      ['Організатора обираєте ви', 'Учасників ніхто не додає за вас. Організатором стає саме той акаунт, який ви обрали.'],
+    ],
+    appsEyebrow: '04 · два застосунки',
+    appsH2: 'Один календар. Оберіть своє вікно.',
+    appsLead: 'Десктопний і термінальний застосунки окремі: у кожного свої акаунти, налаштування й ключ для облікових даних. Можна запустити обидва на одному компʼютері з різними акаунтами.',
+    desk: 'Десктоп', deskLead: 'Вікно з міні-календарем на місяць, акаунтами й запрошеннями на бічній панелі, а поруч увесь тиждень як на долоні.',
+    deskList: [
+      'Розклад, день, 3 дні, тиждень і місяць',
+      `${n} ${ukPlural(n, 'тема', 'теми', 'тем')}, темні й світлі. <a class="ul" href="#themes">Подивитися всі</a>`,
+      'Українська й англійська, за мовою системи',
+      'Облікові дані кожного акаунта зашифровані системним сховищем ключів',
+      'Сповіщає про нові версії з GitHub Releases (на macOS оновлюється сам)',
+    ],
+    howTo: 'Як встановити',
+    term: 'Термінал', termLead: 'Той самий календар, тільки в повноекранному TUI. Керування передусім з клавіатури, але й миша працює, а кольори він бере з теми вашого термінала. Поки що тільки англійською.',
+    termList: ['Розклад, день, 2 дні, тиждень і місяць', 'Відповідайте на запрошення клавішами y / n / m', 'Один фоновий демон синхронізує всі відкриті вікна', 'Системні сповіщення, 16 кольорів ANSI, враховує NO_COLOR'],
+    facts: [
+      ['Не чіпає Календар Apple', 'Акаунти додаються в самому Mysticals. Базу даних Календаря macOS він не читає взагалі.'],
+      ['CalDAV без танців з бубном', 'Готові налаштування для Private Email, iCloud і Fastmail. Для інших серверів оберіть «Інший» і вкажіть адресу.'],
+      ['Відкритий код, MIT', 'Читайте код, збирайте самі або пишіть issue на GitHub.'],
+    ],
+    ctaH2: 'Робота лишається на роботі.',
+    ctaLead: 'Безкоштовно для macOS, Windows і Linux. Десктоп, термінал або обидва.',
+    ctaSoon: 'Скоро для macOS, Windows і Linux. Десктоп, термінал або обидва.',
+    guide: 'Як встановити',
+  },
+}[lang]
+const colors = ['var(--personal)', 'var(--work)', 'var(--family)']
+---
+<Layout title={t.title}>
+  <section class="wrap hero">
+    <div class="intro">
+      <p class="eyebrow dot">{PREVIEW ? t.dev : `v${desktop.version}`} · macOS · Windows · Linux · <Fragment set:html={t.free} /></p>
+      <h1><Fragment set:html={t.h1} /><span class="cursor" aria-hidden="true">_</span></h1>
+      <p class="lead">{t.lead}</p>
+      {PREVIEW ? (
+        <div class="row">
+          <a class="btn big" href={gh}>{t.follow}</a>
+          <span class="muted">{t.soon}</span>
+        </div>
+      ) : (
+        <div class="row">
+          <a class="btn big" href={href('/download/')}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+            {t.download}
+          </a>
+          <button class="ghost big mono" type="button" data-copy="npm i -g mysticals" data-track="npm_copy" data-props='{"location":"hero"}' aria-label={t.copy}>
+            <span class="muted">$</span><span class="lbl">npm i -g mysticals</span>
+          </button>
+        </div>
+      )}
+      <p class="providers">Google <i>/</i> Private Email <i>/</i> iCloud <i>/</i> Fastmail <i>/</i> {t.anyCaldav}</p>
+    </div>
+    <div class="stage">
+      <div class="desk"><DesktopDemo /></div>
+      <div class="term"><TermDemo /></div>
+    </div>
+  </section>
+
+  <section id="why" class="wrap band why">
+    <div class="stack">
+      <span class="eyebrow">{t.whyEyebrow}</span>
+      <h2>{t.whyH2}</h2>
+    </div>
+    <div class="story">
+      {t.story.map((p) => <p>{p}</p>)}
+      <p class="hi">{t.storyEnd}</p>
+      <p class="sign"><i />
+        <span><a class="hi ul" href="https://www.sashkoratushnyi.com/">{t.author}</a> · {t.role}</span>
+      </p>
+    </div>
+  </section>
+
+  <section id="themes" class="wrap band">
+    <div class="split end">
+      <div class="stack">
+        <span class="eyebrow">{t.themesEyebrow}</span>
+        <h2 set:html={t.themesH2} />
+      </div>
+      <p class="lead">{t.themesLead}</p>
+    </div>
+    <ThemeShowcase />
+  </section>
+
+  <section id="isolation" class="wrap band">
+    <div class="split end">
+      <div class="stack">
+        <span class="eyebrow">{t.isoEyebrow}</span>
+        <h2 set:html={t.isoH2} />
+      </div>
+      <p class="lead">{t.isoLead}</p>
+    </div>
+    <div class="split">
+      <div class="boxes mono">
+        {t.boxes.map(([name, who], i) => (
+          <div class="box" style={`--c: ${colors[i]}`}>
+            <b><i />{name}</b>
+            <span class="muted">{who}</span>
+            <ul>{t.own.map((x) => <li>▸ {x}</li>)}</ul>
+          </div>
+        ))}
+        <div class="box add">
+          <b><i>＋</i>{t.add}</b>
+          <span class="muted">{t.addWho}</span>
+          <p class="muted">{t.addNote}</p>
+        </div>
+      </div>
+      <ol class="rules">
+        {t.rules.map(([title, d], i) => (
+          <li><span class="mono muted">{String(i + 1).padStart(2, '0')}</span><div><b>{title}</b><span>{d}</span></div></li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <section id="apps" class="wrap band">
+    <div class="split end">
+      <div class="stack">
+        <span class="eyebrow">{t.appsEyebrow}</span>
+        <h2>{t.appsH2}</h2>
+      </div>
+      <p class="lead">{t.appsLead}</p>
+    </div>
+    <div class="grid2">
+      <article class="card">
+        <div class="card-head">
+          <div>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2" /><path d="M8 21h8" /><path d="M12 17v4" /></svg>
+            <h3>{t.desk}</h3>
+          </div>
+          <span class="tag">macOS · Windows · Linux</span>
+        </div>
+        <p class="lead">{t.deskLead}</p>
+        <ul class="plus">{t.deskList.map((x) => <li><span set:html={x} /></li>)}</ul>
+        {!PREVIEW && (
+          <div class="row push">
+            <a class="btn" href={href('/download/')}>{t.download}</a>
+            <a class="ghost" href={href('/install/')}>{t.howTo}</a>
+          </div>
+        )}
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <div>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="18" rx="2" /><path d="m6 9 3 3-3 3" /><path d="M12 15h5" /></svg>
+            <h3>{t.term}</h3>
+          </div>
+          <span class="tag">npm · Node 20.3+</span>
+        </div>
+        <p class="lead">{t.termLead}</p>
+        <ul class="plus">{t.termList.map((x) => <li>{x}</li>)}</ul>
+        {!PREVIEW && (
+          <div class="row push">
+            <button class="btn mono" type="button" data-copy="npm i -g mysticals" data-track="npm_copy" data-props='{"location":"terminal_card"}' aria-label={t.copy}><span class="lbl">npm i -g mysticals</span></button>
+            <a class="ghost" href={href('/install/#terminal')}>{t.howTo}</a>
+          </div>
+        )}
+      </article>
+    </div>
+    <div class="grid3">
+      {t.facts.map(([b, s]) => <div class="fact"><b>{b}</b><span>{s}</span></div>)}
+    </div>
+  </section>
+
+  <section class="wrap cta-wrap">
+    <div class="cta card">
+      <div class="stack">
+        <h2>{t.ctaH2}</h2>
+        <p class="lead">{PREVIEW ? t.ctaSoon : t.ctaLead}</p>
+      </div>
+      <div class="row">
+        {PREVIEW ? <a class="btn big" href={gh}>{t.follow}</a> : <>
+          <a class="btn big" href={href('/download/')}>{t.download}</a>
+          <a class="ghost big" href={href('/install/')}>{t.guide}</a>
+        </>}
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .stack { display: flex; flex-direction: column; gap: 16px; }
+  .big { min-height: 48px; padding-inline: 22px; border-radius: 10px; font-size: 15.5px; }
+  .ghost.big { font-size: 15px; font-weight: 400; }
+  .mono { font-family: var(--mono); } /* global .btn/.ghost `font: inherit` otherwise wins */
+
+  /* hero: copy left, demos right. The terminal is a small window over the desktop's lower right corner. */
+  .hero { padding-block: clamp(36px, 5vw, 72px) clamp(40px, 5vw, 72px); display: grid; gap: 48px; align-items: center; overflow-x: clip; }
+  .intro { display: flex; flex-direction: column; gap: 24px; }
+  .intro h1 { font-size: clamp(34px, 3.6vw, 52px); }
+  .providers { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 14px; color: var(--muted); }
+  .providers i { font-style: normal; color: var(--faint); }
+  .stage { min-width: 0; display: flex; flex-direction: column; gap: 24px; }
+  .term :global(.win) { box-shadow: var(--shadow-near); }
+  .desk :global(.dwin) { box-shadow: var(--shadow); }
+  .term { width: min(480px, 100%); }
+  /* Both demos share one grid cell, so the terminal overlays the desktop yet still counts toward the stage height.
+     A % margin-top follows the stage width, and both demos scale with width (cqw), so the overlap stays proportional.
+     The terminal is 62% of the stage at 80 columns, which puts its text close to the desktop's size.
+     The desktop starts in front; every half --swap the window in front swaps: z-index flips mid-transition while scale and
+     brightness ease. Half a period is about one loop of each demo. */
+  @media (min-width: 760px) {
+    .stage { --swap: 48s; display: grid; }
+    .desk, .term { grid-area: 1 / 1; animation: swap var(--swap) ease-in-out infinite both; }
+    .desk { margin-right: 10%; }
+    .term { --term-cols: 80; width: 62%; justify-self: end; margin-top: 40%; animation-delay: calc(var(--swap) / -2); }
+    .term :global(.win) { margin-right: 0; }
+  }
+  @keyframes swap {
+    0%, 46% { z-index: 2; transform: none; filter: none; }
+    50%, 96% { z-index: 1; transform: scale(.97); filter: brightness(.7); }
+    100% { z-index: 2; transform: none; filter: none; }
+  }
+  @media (min-width: 1100px) {
+    .hero { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+  }
+
+  .split { display: grid; gap: 24px 64px; }
+  .band > .split + :global(*) { margin-top: 40px; } /* :global, so it also reaches ThemeShowcase's root */
+  @media (min-width: 1000px) { .split { grid-template-columns: repeat(2, minmax(0, 1fr)); } .split.end { align-items: end; } }
+
+  .boxes { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); }
+  .box { border: 1px solid var(--c); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .box b { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+  .box b i { width: 10px; height: 10px; border-radius: 2px; background: var(--c); }
+  .box > span { font-size: 12.5px; }
+  .box ul { margin: 4px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--muted); }
+  .box.add { --c: var(--line-strong); border-style: dashed; color: var(--muted); }
+  .box.add b i { width: auto; height: auto; background: none; font-style: normal; color: var(--muted); }
+  .box.add p { margin: auto 0 0; font-size: 12.5px; line-height: 1.5; }
+
+  .rules { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+  .rules li { padding-block: 16px; border-bottom: 1px solid var(--line); display: flex; gap: 20px; }
+  .rules li > span { font-size: 13px; padding-top: 3px; }
+  .rules div { display: flex; flex-direction: column; gap: 4px; }
+  .rules b { font-size: 16.5px; font-weight: 600; }
+  .rules div span { color: var(--muted); font-size: 15px; line-height: 1.5; }
+
+  .card .lead { max-width: none; font-size: 16px; }
+  .push { margin-top: auto; }
+  #apps .grid2 + .grid3 { margin-top: 8px; }
+
+  .why { display: grid; gap: 28px 24px; }
+  .why h2 { font-size: clamp(26px, 2.5vw, 36px); }
+  .story { display: flex; flex-direction: column; gap: 16px; font-size: clamp(16px, 1.25vw, 18px); line-height: 1.65; color: var(--soft); max-width: 720px; }
+  .hi { color: var(--fg); }
+  .sign { margin-top: 4px; display: flex; align-items: center; gap: 14px; font-size: 15px; color: var(--muted); }
+  .sign i { width: 40px; height: 1px; background: var(--line-strong); }
+  @media (min-width: 1000px) {
+    .why { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+    .why .stack { grid-column: span 4; }
+    .story { grid-column: 6 / span 7; }
+  }
+
+  .cta-wrap { padding-bottom: clamp(48px, 6vw, 80px); }
+  .cta { border-color: var(--line-strong); border-radius: 20px; padding: clamp(24px, 3.5vw, 48px) clamp(20px, 3.5vw, 48px); flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px 48px; }
+  .cta h2 { font-size: clamp(26px, 2.6vw, 38px); }
+  .cta .stack { gap: 12px; }
+</style>

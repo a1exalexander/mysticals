@@ -1,0 +1,84 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import { langOf, langPaths, to } from '../../i18n'
+export const getStaticPaths = langPaths
+const lang = langOf(Astro.url)
+const email = 'forcewizu@gmail.com'
+const t = {
+  en: {
+    title: 'Terms of Service · Mysticals', description: 'The terms for using the Mysticals desktop and terminal apps and this website.',
+    h1: 'Terms of Service', lead: 'Mysticals is free, open-source software. Use it, change it, share it. It comes with no warranty.',
+  },
+  uk: {
+    title: 'Умови використання · Mysticals', description: 'Умови використання десктопного й термінального застосунків Mysticals і цього сайту.',
+    h1: 'Умови використання', lead: 'Mysticals безкоштовний і має відкритий код. Користуйтеся ним, змінюйте, діліться ним. Жодних гарантій.',
+  },
+}[lang]
+const updated = lang === 'uk' ? '25 вересня 2026 року' : 'September 25, 2026'
+const privacy = to(lang, '/privacy/')
+---
+<Layout title={t.title} description={t.description}>
+  <section class="wrap page-head">
+    <span class="eyebrow">$ cat TERMS</span>
+    <h1>{t.h1}</h1>
+    <p class="lead">{t.lead}</p>
+  </section>
+
+  <article class="wrap prose">
+    {lang === 'uk' ? <>
+    <p class="muted">Чинні з {updated}. Ці умови стосуються десктопного застосунку Mysticals, термінального застосунку Mysticals (npm-пакет <code>mysticals</code>) і сайту mysticals.sashkoratushnyi.com (разом «Mysticals»), які надає Олександр Ратушний («ми»). Користуючись Mysticals, ви погоджуєтеся з ними. Це переклад для зручності; якщо він десь розходиться з <a class="ul" href="/terms/" hreflang="en" data-set-lang="en">англійською версією</a>, чинною є англійська.</p>
+
+    <h2 id="license">Ліцензія</h2>
+    <p>Програмне забезпечення поширюється за <a class="ul" href="https://github.com/a1exalexander/mysticals/blob/main/LICENSE">ліцензією MIT</a>. Вона дає право використовувати, копіювати, змінювати й поширювати його. Якщо ці умови суперечать ліцензії MIT, для самого програмного забезпечення діє ліцензія.</p>
+
+    <h2 id="accounts">Ваші акаунти</h2>
+    <ul>
+      <li>Mysticals підключається до акаунтів календарів, які належать вам або якими вам дозволено користуватися: у Google і на серверах CalDAV, як-от iCloud чи Fastmail. Користування цими сервісами й далі регулюють їхні умови, зокрема <a class="ul" href="https://policies.google.com/terms">Умови використання Google</a>.</li>
+      <li>Ви відповідаєте за облікові дані, які додаєте, і за те, що застосунок робить від вашого імені: створює, редагує, видаляє події чи відповідає на них.</li>
+      <li>Як ми поводимося з даними, описано в <a class="ul" href={privacy}>Політиці конфіденційності</a>.</li>
+    </ul>
+
+    <h2 id="use">Допустиме використання</h2>
+    <p>Не використовуйте Mysticals, щоб порушувати закон, отримувати доступ до акаунтів, якими вам не дозволено користуватися, розсилати спам чи небажані запрошення, перевантажувати сервіс провайдера календаря або заважати його роботі.</p>
+
+    <h2 id="warranty">Без гарантій</h2>
+    <p>Mysticals надається «як є» і «в тому вигляді, в якому доступний», без будь-яких гарантій, явних чи неявних, зокрема гарантій товарної придатності, придатності для певної мети й відсутності порушень прав. Ми не обіцяємо, що він працюватиме без помилок і перебоїв або й далі працюватиме з кожним провайдером календаря. Тримайте власні резервні копії всього важливого. Основна копія ваших подій зберігається у вашого провайдера календаря.</p>
+
+    <h2 id="liability">Обмеження відповідальності</h2>
+    <p>Наскільки це дозволяє закон, ми не відповідаємо за будь-які непрямі, випадкові, особливі, побічні чи штрафні збитки, а також за втрачені дані, події, зустрічі, прибуток чи репутацію, що виникли через користування Mysticals або неможливість ним користуватися. Mysticals безкоштовний, і наша загальна відповідальність за будь-якою вимогою дорівнює нулю.</p>
+
+    <h2 id="changes">Зміни та припинення</h2>
+    <p>Ми можемо будь-коли змінювати Mysticals або ці умови. Змінені умови публікуються тут з новою датою набрання чинності, і якщо ви й далі користуєтеся Mysticals, ви їх приймаєте. Ви можете будь-коли припинити користуватися Mysticals: видаліть акаунти із застосунку, а потім і сам застосунок.</p>
+
+    <h2 id="contact">Контакти</h2>
+    <p>Питання: <a class="ul" href={`mailto:${email}`}>{email}</a>.</p>
+    </> : <>
+    <p class="muted">Effective {updated}. These terms cover the Mysticals desktop app, the Mysticals terminal app (the <code>mysticals</code> npm package) and the website mysticals.sashkoratushnyi.com (together, “Mysticals”), provided by Oleksandr Ratushnyi (“we”). By using Mysticals you agree to them.</p>
+
+    <h2 id="license">License</h2>
+    <p>The software is released under the <a class="ul" href="https://github.com/a1exalexander/mysticals/blob/main/LICENSE">MIT License</a>. It grants you the right to use, copy, modify and distribute it. If these terms and the MIT License conflict, the license wins for the software itself.</p>
+
+    <h2 id="accounts">Your accounts</h2>
+    <ul>
+      <li>Mysticals connects to calendar accounts you own or are allowed to use: Google and CalDAV servers such as iCloud or Fastmail. Your use of those services stays under their terms, including the <a class="ul" href="https://policies.google.com/terms">Google Terms of Service</a>.</li>
+      <li>You are responsible for the credentials you add and for what the app does on your behalf, such as creating, editing, deleting or replying to events.</li>
+      <li>How we handle data is described in the <a class="ul" href={privacy}>Privacy Policy</a>.</li>
+    </ul>
+
+    <h2 id="use">Acceptable use</h2>
+    <p>Don’t use Mysticals to break the law, to access accounts you aren’t authorized to use, to send spam or unwanted invitations, or to overload or interfere with a calendar provider’s service.</p>
+
+    <h2 id="warranty">No warranty</h2>
+    <p>Mysticals is provided “as is” and “as available”, without warranties of any kind, express or implied, including merchantability, fitness for a particular purpose and non-infringement. We don’t promise it will be error-free, uninterrupted or that it will keep working with every calendar provider. Keep your own backups of anything important. Your calendar provider holds the authoritative copy of your events.</p>
+
+    <h2 id="liability">Limitation of liability</h2>
+    <p>To the fullest extent the law allows, we are not liable for any indirect, incidental, special, consequential or punitive damages, or for lost data, events, meetings, profits or goodwill, arising from your use of Mysticals or inability to use it. Mysticals is free, and our total liability for any claim is limited to zero.</p>
+
+    <h2 id="changes">Changes and termination</h2>
+    <p>We may change Mysticals or these terms at any time. Changed terms are posted here with a new effective date, and continuing to use Mysticals means you accept them. You can stop using Mysticals at any time by uninstalling it and removing your accounts.</p>
+
+    <h2 id="contact">Contact</h2>
+    <p>Questions: <a class="ul" href={`mailto:${email}`}>{email}</a>.</p>
+    </>}
+  </article>
+</Layout>

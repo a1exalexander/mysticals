@@ -9,10 +9,36 @@
  * ThemeShowcase swaps it at runtime.
  * The script only fills dates from the viewer's today and pauses the loop off screen.
  * Base styles are the final frame (the week), so reduced motion (animations off in global.css) shows a still.
+ * On /uk/ the UI speaks Ukrainian like the app: labels from packages/core/src/i18n/uk.ts, dates like its date-fns uk.
  */
 import { THEMES, themeVars } from '../themes'
+import { langOf } from '../i18n'
 interface Props { theme?: string }
 const th = THEMES.find((x) => x.id === Astro.props.theme) ?? THEMES[0]
+const lang = langOf(Astro.url)
+// English text → Ukrainian; anything missing stays English
+const UK: Record<string, string> = {
+  Standup: 'Стендап', 'Design review': 'Огляд дизайну', Dentist: 'Стоматолог', 'Lunch with Ana': 'Обід з Аною',
+  'Sprint planning': 'Планування спринту', Yoga: 'Йога', '1:1 with Sam': '1:1 із Семом', Hike: 'Похід', Retro: 'Ретро',
+  Gym: 'Спортзал', Focus: 'Фокус', Dinner: 'Вечеря', 'Focus time': 'Час для фокусу', Holiday: 'Свято',
+  'Room 1': 'Переговорна 1', 'Room 3': 'Переговорна 3', Kyiv: 'Київ', Studio: 'Студія', Carpathians: 'Карпати',
+  Work: 'Робота', Team: 'Команда', Product: 'Продукт', Health: 'Здоровʼя', Holidays: 'Свята', 'read-only': 'лише перегляд', Family: 'Сімʼя',
+  '＋ Add calendar': '＋ Додати календар', Agenda: 'Розклад', Day: 'День', '3 Days': '3 дні', Week: 'Тиждень', Month: 'Місяць',
+  Today: 'Сьогодні', today: 'сьогодні', '+ new': '+ нова', 'all-day': 'весь день',
+  '15m · video call': '15 хв · відеодзвінок', '● now': '● зараз', 'in 10m · Clinic': 'за 10 хв · Клініка', 'Break · 3h': 'Перерва · 3 год',
+  '1h · Kyiv': '1 год · Київ', '1h 30m · Room 3': '1 год 30 хв · Переговорна 3', '1h · Studio': '1 год · Студія', 'Break · 6h': 'Перерва · 6 год', '30m': '30 хв',
+  Join: 'Приєднатися', 'Next 7 days': 'Наступні 7 днів', 'Hide upcoming': 'Сховати наступні',
+  'now · ends in 25m': 'зараз · до кінця 25 хв', '45m': '45 хв', calendar: 'календар', where: 'де', people: 'учасники', link: 'посилання',
+  '▸ 4 people': '▸ 4 людини', 'Join call': 'Приєднатися', Details: 'Докладніше',
+  'until 10:45': 'до 10:45', 'next:': 'далі:', 'in 10m': 'за 10 хв', '1 invite': '1 запрошення', Invitations: 'Запрошення',
+  Accept: 'Прийняти', Decline: 'Відхилити', Account: 'Обліковий запис', 'Choose account…': 'Оберіть обліковий запис…',
+  Calendar: 'Календар', 'Choose calendar…': 'Оберіть календар…', Starts: 'Початок', Ends: 'Кінець', Repeat: 'Повтор',
+  'Does not repeat': 'Не повторюється', 'Choose which account this event belongs to.': 'Оберіть, до якого облікового запису належить подія.',
+  'Created in': 'Створюється в', Cancel: 'Скасувати', 'Add Event': 'Додати подію',
+  'Animation: the Mysticals desktop app opening on today\'s agenda with a live call to join, then switching to a week of events from three accounts, creating an event with an explicit account and calendar, and accepting an invite from the account that received it.':
+    'Анімація: десктопний застосунок Mysticals відкривається на сьогоднішньому розкладі з дзвінком, до якого можна приєднатися, потім перемикається на тиждень з подіями трьох акаунтів, створює подію з явно обраним акаунтом і календарем, а потім приймає запрошення з того акаунта, який його отримав.',
+}
+const tr = (s: string) => (lang === 'uk' ? UK[s] ?? s : s)
 type Ev = [off: number, start: number, hours: number, title: string, acc: 'work' | 'pers' | 'icl', meta?: string, extra?: string]
 const events: Ev[] = [
   [0, 9.5, 0.25, 'Standup', 'work'],
@@ -39,44 +65,48 @@ const accounts = [
 // Agenda rows: [kind, time, account, title, meta, flags]
 type Row = ['ev', string, 'work' | 'pers' | 'icl', string, string, string?] | ['now'] | ['gap', string]
 const today: Row[] = [
-  ['ev', '09:30', 'work', 'Standup', '15m · video call', 'past'],
-  ['ev', '10:00', 'work', 'Design review', '<span class="live">● now</span> · Room 3', 'live sel'],
+  ['ev', '09:30', 'work', tr('Standup'), tr('15m · video call'), 'past'],
+  ['ev', '10:00', 'work', tr('Design review'), `<span class="live">${tr('● now')}</span> · ${tr('Room 3')}`, 'live sel'],
   ['now'],
-  ['ev', '10:30', 'pers', 'Dentist', 'in 10m · Clinic'],
-  ['gap', 'Break · 3h'],
-  ['ev', '14:00', 'icl', 'Lunch with Ana', '1h · Kyiv'],
+  ['ev', '10:30', 'pers', tr('Dentist'), tr('in 10m · Clinic')],
+  ['gap', tr('Break · 3h')],
+  ['ev', '14:00', 'icl', tr('Lunch with Ana'), tr('1h · Kyiv')],
 ]
 const ahead: Row[][] = [
-  [['ev', '11:00', 'work', 'Sprint planning', '1h 30m · Room 3']],
-  [['ev', '08:00', 'pers', 'Yoga', '1h · Studio'], ['gap', 'Break · 6h'], ['ev', '15:00', 'work', '1:1 with Sam', '30m']],
+  [['ev', '11:00', 'work', tr('Sprint planning'), tr('1h 30m · Room 3')]],
+  [['ev', '08:00', 'pers', tr('Yoga'), tr('1h · Studio')], ['gap', tr('Break · 6h')], ['ev', '15:00', 'work', tr('1:1 with Sam'), tr('30m')]],
 ]
 const tabs = ['Agenda', 'Day', '3 Days', 'Week', 'Month']
+// The segmented control's thumb sits under Agenda, then slides to Week: widths and offsets follow the label lengths
+const L = tabs.map((x) => tr(x).length)
+const segVars = `--aw: calc(${L[0]}ch + 1.5em); --ww: calc(${L[3]}ch + 1.5em); --wx: calc(.15em + ${L[0] + L[1] + L[2]}ch + 5.4em); --wxn: calc(.15em + ${L[0]}ch + 1.8em)`
+const WEEKDAYS = lang === 'uk' ? ['П', 'В', 'С', 'Ч', 'П', 'С', 'Н'] : ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const cursor = '<svg viewBox="0 0 12 18"><path d="M1 1v14l4-4 3 6 2-1-3-6h5z" /></svg>'
 const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
 ---
-<figure class="ddemo">
+<figure class="ddemo" data-lang={lang}>
   <div class="dwin" aria-hidden="true" data-theme={th.id} style={themeVars(th)}>
     <div class="lights"><i></i><i></i><i></i></div>
     <aside class="side">
       <div class="mini">
         <div class="mhead"><b class="month-name">Month</b><span>‹</span><span>›</span></div>
         <div class="mgrid">
-          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d) => <span class="dow">{d}</span>)}
+          {WEEKDAYS.map((d) => <span class="dow">{d}</span>)}
           {Array.from({ length: 42 }, () => <span class="md"></span>)}
         </div>
       </div>
       <div class="accs">
         {accounts.map(([id, name, email, cals]) => (
           <div class={`acc ${id}`}>
-            <div class="acc-head"><span class="arrow" set:html={chevron} /><i></i><b>{name}</b>{email && <small>{email}</small>}</div>
+            <div class="acc-head"><span class="arrow" set:html={chevron} /><i></i><b>{tr(name)}</b>{email && <small>{email}</small>}</div>
             {cals.map(([c, ro]) => (
-              <div class={`cal${c === 'Holidays' ? ' hol' : ''}`}><span class="ck"></span>{c}{ro && <small>{ro}</small>}</div>
+              <div class={`cal${c === 'Holidays' ? ' hol' : ''}`}><span class="ck"></span>{tr(c)}{ro && <small>{tr(ro)}</small>}</div>
             ))}
           </div>
         ))}
       </div>
       <div class="sfoot">
-        <span>＋ Add calendar</span>
+        <span>{tr('＋ Add calendar')}</span>
         <svg class="gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
       </div>
     </aside>
@@ -85,14 +115,14 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
         <svg class="stoggle" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16M5.5 8h1M5.5 11h1" /></svg>
         <div class="ttl">
           <span class="tv tw"><b class="tmonth">Month</b><span class="tsub">2026 · W1</span></span>
-          <span class="tv ta"><b>Today</b><span class="tsub adate">Monday, 1 January</span></span>
+          <span class="tv ta"><b>{tr('Today')}</b><span class="tsub adate">Monday, 1 January</span></span>
         </div>
-        <div class="seg">
+        <div class="seg" style={segVars}>
           <span class="thumb"></span>
-          {tabs.map((t) => <span class={`t-${t[0].toLowerCase()}`}>{t}{t === 'Week' && <span class="cur c0" set:html={cursor} />}</span>)}
+          {tabs.map((t) => <span class={`t-${t[0].toLowerCase()}`}>{tr(t)}{t === 'Week' && <span class="cur c0" set:html={cursor} />}</span>)}
         </div>
-        <div class="tnav"><span>‹</span><span class="today">today</span><span>›</span></div>
-        <span class="new">+ new</span>
+        <div class="tnav"><span>‹</span><span class="today">{tr('today')}</span><span>›</span></div>
+        <span class="new">{tr('+ new')}</span>
       </div>
       <div class="views">
         <div class="wkv">
@@ -100,8 +130,8 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
             <span></span>{Array.from({ length: 7 }, () => <span class="dh"><span class="dw"></span><span class="num"></span></span>)}
           </div>
           <div class="allday">
-            <span class="adg">all-day</span>
-            <div class="adcells"><div class="ev hol ad" data-off="3"><b>Holiday</b></div></div>
+            <span class="adg">{tr('all-day')}</span>
+            <div class="adcells"><div class="ev hol ad" data-off="3"><b>{tr('Holiday')}</b></div></div>
           </div>
           <div class="grid">
             {hours.map((h, i) => <div class="hr" style={`--s:${i}`}><span>{String(h).padStart(2, '0')}:00</span></div>)}
@@ -110,13 +140,13 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
               <div class="tcol" data-off="0"></div>
               {events.map(([off, s, n, t, acc, meta, extra], i) => (
                 <div class={`ev ${acc} ${extra ?? ''} ${n < 0.75 ? 'short' : ''}`} data-off={off} style={`--s:${s - 8};--n:${n};--d:${(i % 6) * 0.15}s`}>
-                  <b>{t}</b><small>{hh(s)}{meta && n >= 0.75 && ` · ${meta}`}</small>
+                  <b>{tr(t)}</b><small>{hh(s)}{meta && n >= 0.75 && ` · ${tr(meta)}`}</small>
                 </div>
               ))}
               <div class="nowall"></div>
               <div class="now" data-off="0"></div>
               <div class="ev work nb" data-off="2" style="--s:2;--n:2">
-                <b>Focus time</b><small>10:00 · Team</small>
+                <b>{tr('Focus time')}</b><small>10:00 · {tr('Team')}</small>
                 <span class="dghost">10:00 – 12:00</span>
                 <span class="cur c1" set:html={cursor} />
               </div>
@@ -133,11 +163,11 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
                   <li class={`agrow ${r[2]} ${r[5] ?? ''}`} style={`--i:${i}`}>
                     <span class="agt">{r[1]}</span><span class="agbar"></span>
                     <span class="agm"><b>{r[3]}</b><small set:html={r[4]} /></span>
-                    {r[5]?.includes('live') && <span class="pill">Join</span>}
+                    {r[5]?.includes('live') && <span class="pill">{tr('Join')}</span>}
                   </li>
                 ))}
             </ol>
-            <div class="agahead"><span class="chev" set:html={chevron} /><em class="x1">Next 7 days</em><em class="x2">Hide upcoming</em></div>
+            <div class="agahead"><span class="chev" set:html={chevron} /><em class="x1">{tr('Next 7 days')}</em><em class="x2">{tr('Hide upcoming')}</em></div>
             <div class="agup">
               {ahead.map((day, d) => (
                 <div class="agday">
@@ -152,66 +182,70 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
             </div>
           </div>
           <section class="agf">
-            <div class="agst">now · ends in 25m</div>
-            <b class="agft">Design review</b>
-            <div class="agfw">10:00 – 10:45 <span>· 45m</span></div>
+            <div class="agst">{tr('now · ends in 25m')}</div>
+            <b class="agft">{tr('Design review')}</b>
+            <div class="agfw">10:00 – 10:45 <span>· {tr('45m')}</span></div>
             <dl>
-              <dt>calendar</dt><dd><i></i> Team</dd>
-              <dt>where</dt><dd>Room 3</dd>
-              <dt>people</dt><dd>▸ 4 people</dd>
-              <dt>link</dt><dd class="url">https://meet.example/abc-defg</dd>
+              <dt>{tr('calendar')}</dt><dd><i></i> {tr('Team')}</dd>
+              <dt>{tr('where')}</dt><dd>{tr('Room 3')}</dd>
+              <dt>{tr('people')}</dt><dd>{tr('▸ 4 people')}</dd>
+              <dt>{tr('link')}</dt><dd class="url">https://meet.example/abc-defg</dd>
             </dl>
-            <div class="agacts"><span class="join">Join call <kbd>↵</kbd></span><span class="dbtn det">Details</span></div>
+            <div class="agacts"><span class="join">{tr('Join call')} <kbd>↵</kbd></span><span class="dbtn det">{tr('Details')}</span></div>
           </section>
         </div>
       </div>
     </section>
     <footer class="status">
-      <span class="mode"><span class="sw">Week</span><span class="sa">Agenda</span></span>
+      <span class="mode"><span class="sw">{tr('Week')}</span><span class="sa">{tr('Agenda')}</span></span>
       <span class="seg-s rng"><span class="sw range">This week</span><span class="sa aday">Today</span></span>
-      <span class="seg-s sev"><i class="sdot">●</i> Design review · until 10:45</span>
-      <span class="seg-s nxt"><span class="dim">next:</span> Dentist · in 10m</span>
+      <span class="seg-s sev"><i class="sdot">●</i> {tr('Design review')} · {tr('until 10:45')}</span>
+      <span class="seg-s nxt"><span class="dim">{tr('next:')}</span> {tr('Dentist')} · {tr('in 10m')}</span>
       <span class="grow"></span>
-      <span class="invc">1 invite</span>
+      <span class="invc">{tr('1 invite')}</span>
     </footer>
 
     <div class="pop">
-      <div class="ptitle">Invitations</div>
+      <div class="ptitle">{tr('Invitations')}</div>
       <div class="pitem">
-        <b>Lunch with Ana</b>
+        <b>{tr('Lunch with Ana')}</b>
         <span class="dim pwhen">Today · 14:00 – 15:00</span>
         <span class="pacc"><i></i> iCloud · me@icloud.example</span>
-        <div class="acts"><span class="dbtn primary ok">Accept</span><span class="dbtn">Decline</span></div>
+        <div class="acts"><span class="dbtn primary ok">{tr('Accept')}</span><span class="dbtn">{tr('Decline')}</span></div>
       </div>
     </div>
     <span class="cur c2" set:html={cursor} />
 
     <div class="overlay">
       <div class="sheet">
-        <div class="shead"><i></i><b>Focus time</b></div>
+        <div class="shead"><i></i><b>{tr('Focus time')}</b></div>
         <div class="sgrid">
-          <label>Account</label><span class="f"><em class="x1">Choose account…</em><em class="x2"><i class="sw-work"></i>Work<small>me@work.example</small></em></span>
-          <label>Calendar</label><span class="f"><em class="y1">Choose calendar…</em><em class="y2"><i class="sw-work"></i>Team</em></span>
-          <label>Starts</label><span class="f2"><span class="f fd sday">Today</span><span class="f ft">10:00</span></span>
-          <label>Ends</label><span class="f2"><span class="f fd sday">Today</span><span class="f ft">12:00</span></span>
-          <label>Repeat</label><span class="f"><em class="plain">Does not repeat</em></span>
+          <label>{tr('Account')}</label><span class="f"><em class="x1">{tr('Choose account…')}</em><em class="x2"><i class="sw-work"></i>{tr('Work')}<small>me@work.example</small></em></span>
+          <label>{tr('Calendar')}</label><span class="f"><em class="y1">{tr('Choose calendar…')}</em><em class="y2"><i class="sw-work"></i>{tr('Team')}</em></span>
+          <label>{tr('Starts')}</label><span class="f2"><span class="f fd sday">{tr('Today')}</span><span class="f ft">10:00</span></span>
+          <label>{tr('Ends')}</label><span class="f2"><span class="f fd sday">{tr('Today')}</span><span class="f ft">12:00</span></span>
+          <label>{tr('Repeat')}</label><span class="f"><em class="plain">{tr('Does not repeat')}</em></span>
         </div>
-        <div class="ident"><em class="x1">Choose which account this event belongs to.</em><em class="x2">Created in <b>Work</b> · me@work.example</em></div>
-        <div class="sacts"><span class="dbtn">Cancel</span><span class="dbtn add">Add Event</span></div>
+        <div class="ident"><em class="x1">{tr('Choose which account this event belongs to.')}</em><em class="x2">{tr('Created in')} <b>{tr('Work')}</b> · me@work.example</em></div>
+        <div class="sacts"><span class="dbtn">{tr('Cancel')}</span><span class="dbtn add">{tr('Add Event')}</span></div>
       </div>
     </div>
   </div>
-  <figcaption class="sr-only">Animation: the Mysticals desktop app opening on today's agenda with a live call to join, then switching to a week of events from three accounts, creating an event with an explicit account and calendar, and accepting an invite from the account that received it.</figcaption>
+  <figcaption class="sr-only">{tr("Animation: the Mysticals desktop app opening on today's agenda with a live call to join, then switching to a week of events from three accounts, creating an event with an explicit account and calendar, and accepting an invite from the account that received it.")}</figcaption>
 </figure>
 
 <script>
-  const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  const short = (d: Date) => d.toLocaleString('en', { month: 'short' })
-  /** "Tue 6 Oct 2026", like the app's status-bar range */
-  const dayLabel = (d: Date) => `${WD[d.getDay()]} ${d.getDate()} ${short(d)} ${d.getFullYear()}`
-  /** "Tue, 6 Oct", like the agenda day heads and the invites popover */
-  const dayShort = (d: Date) => `${WD[d.getDay()]}, ${d.getDate()} ${short(d)}`
+  const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
   for (const fig of document.querySelectorAll<HTMLElement>('.ddemo')) {
+    const uk = fig.dataset.lang === 'uk'
+    const loc = uk ? 'uk' : 'en'
+    const WD = uk ? ['нд', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const short = (d: Date) => d.toLocaleString(loc, { month: 'short' })
+    const long = (d: Date) => d.toLocaleString(loc, { month: 'long' })
+    /** "Tue 6 Oct 2026" / "вт 6 жовт. 2026", like the app's status-bar range */
+    const dayLabel = (d: Date) => `${WD[d.getDay()]} ${d.getDate()} ${short(d)} ${d.getFullYear()}`
+    /** "Tue, 6 Oct" / "вт, 6 жовт.", like the agenda day heads and the invites popover */
+    const dayShort = (d: Date) => `${WD[d.getDay()]}, ${d.getDate()} ${short(d)}`
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const mon = (today.getDay() + 6) % 7
@@ -229,7 +263,7 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
       el.classList.toggle('past', off < 0 && c < mon)
     })
     const first = new Date(today.getFullYear(), today.getMonth(), 1)
-    fig.querySelector('.month-name')!.textContent = first.toLocaleString('en', { month: 'long', year: 'numeric' })
+    fig.querySelector('.month-name')!.textContent = `${long(first)} ${first.getFullYear()}`
     fig.querySelectorAll<HTMLElement>('.md').forEach((el, i) => {
       const d = new Date(first.getFullYear(), first.getMonth(), 1 - ((first.getDay() + 6) % 7) + i)
       el.textContent = String(d.getDate())
@@ -240,13 +274,13 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
     const thu = at(3 - mon)
     const jan4 = new Date(thu.getFullYear(), 0, 4)
     const week = 1 + Math.round(((+thu - +jan4) / 864e5 - 3 + ((jan4.getDay() + 6) % 7)) / 7)
-    fig.querySelector('.tmonth')!.textContent = today.toLocaleString('en', { month: 'long' })
-    fig.querySelector('.tw .tsub')!.textContent = `${today.getFullYear()} · W${week}`
+    fig.querySelector('.tmonth')!.textContent = cap(long(today))
+    fig.querySelector('.tw .tsub')!.textContent = `${today.getFullYear()} · ${uk ? 'Т' : 'W'}${week}`
     const a = at(-mon), b = at(6 - mon)
     fig.querySelector('.range')!.textContent =
       a.getMonth() === b.getMonth() ? `${a.getDate()} – ${b.getDate()} ${short(b)} ${b.getFullYear()}` : `${a.getDate()} ${short(a)} – ${b.getDate()} ${short(b)} ${b.getFullYear()}`
     // Agenda: "Today · Tuesday, 6 October", day heads for the next days, today's date in the status bar
-    fig.querySelector('.adate')!.textContent = today.toLocaleString('en', { weekday: 'long', day: 'numeric', month: 'long' })
+    fig.querySelector('.adate')!.textContent = cap(today.toLocaleString(loc, { weekday: 'long', day: 'numeric', month: 'long' }))
     fig.querySelector('.aday')!.textContent = dayLabel(today)
     fig.querySelectorAll<HTMLElement>('.agdh').forEach((el) => (el.textContent = dayShort(at(Number(el.dataset.day)))))
     fig.querySelector('.pwhen')!.textContent = `${dayShort(today)} · 14:00 – 15:00`
@@ -258,6 +292,8 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
 
 <style>
   .ddemo { margin: 0; container-type: inline-size; }
+  /* Ukrainian labels run longer: room for the Join pill */
+  .ddemo[data-lang='uk'] { --pill-room: 8.6em; }
   /* Palette tokens are set inline from src/themes.ts (mirrors the app's base.css); the page theme never leaks in */
   .dwin {
     --mono: ui-monospace, 'SF Mono', Menlo, monospace;
@@ -316,9 +352,8 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
   .ttl { flex: 1; min-width: 0; display: grid; white-space: nowrap; overflow: hidden; }
   .tv { grid-area: 1 / 1; display: flex; align-items: baseline; gap: .7em; }
   .tv b { font-size: 1.4em; font-weight: 700; letter-spacing: -.01em; }
-  .tsub { font: 500 .95em/1 var(--mono); color: var(--muted); }
+  .tsub { min-width: 0; overflow: hidden; text-overflow: ellipsis; font: 500 .95em/1 var(--mono); color: var(--muted); }
   .seg {
-    --aw: calc(6ch + 1.5em); --ww: calc(4ch + 1.5em); --wx: calc(.15em + 15ch + 5.4em);
     position: relative; display: flex; gap: .3em; padding: .15em; border-radius: .46em;
     background: color-mix(in srgb, var(--fg) 6%, transparent); font: .92em/1.85 var(--mono); color: var(--muted); white-space: nowrap;
   }
@@ -420,7 +455,7 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
   .agrows { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
   .agrow {
     position: relative; display: grid; grid-template-columns: 3.4em 3px minmax(0, 1fr); align-items: center; gap: .77em;
-    padding: .54em 4.9em .54em .6em; border-radius: .3em; animation: agin var(--T) calc(var(--i, 0) * .06s) infinite both;
+    padding: .54em var(--pill-room, 4.9em) .54em .6em; border-radius: .3em; animation: agin var(--T) calc(var(--i, 0) * .06s) infinite both;
   }
   @keyframes agin { 0% { opacity: 0; transform: translateY(3px); } 2.5%, 100% { opacity: var(--o, 1); transform: none; } }
   .agrow.work { --k: var(--work); } .agrow.pers { --k: var(--pers); } .agrow.icl { --k: var(--icl); }
@@ -551,7 +586,7 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
   .shead i { width: .77em; height: .77em; border-radius: .23em; background: var(--muted); animation: acc var(--T) infinite both; }
   @keyframes acc { 0%, 57.3% { background-color: var(--muted); } 58%, 100% { background-color: var(--work); } }
   .shead b { font-size: 1.3em; font-weight: 600; }
-  .sgrid { display: grid; grid-template-columns: 6em 1fr; gap: .6em .9em; align-items: center; }
+  .sgrid { display: grid; grid-template-columns: minmax(6em, auto) 1fr; gap: .6em .9em; align-items: center; }
   .sgrid label { text-align: right; font: .8em/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .f { position: relative; display: block; min-height: 2.15em; background: var(--bg); border: 1px solid var(--line-strong); border-radius: .3em; }
   .f em { position: absolute; inset: 0; display: flex; align-items: center; gap: .55em; padding: 0 1.8em 0 .7em; font-style: normal; white-space: nowrap; overflow: hidden; }
@@ -584,7 +619,7 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
   @container (max-width: 470px) {
     .dwin { grid-template-columns: minmax(0, 1fr); font-size: calc(100cqw / 46); }
     .side, .stoggle, .seg .t-d, .seg .t-3, .seg .t-m, .status .nxt, .agf { display: none; }
-    .seg { --wx: calc(.15em + 6ch + 1.8em); }
+    .thumb { --wx: var(--wxn); }
     .agv { grid-template-columns: minmax(0, 1fr); }
     .toolbar { padding-left: 5.5em; }
     .lights { top: 1.5em; }
