@@ -4,6 +4,8 @@ import { rovingIndex } from './roving'
 export interface SegTab<T extends string> {
   id: T
   label: string
+  /** Tooltip, for what a short label stands for. */
+  title?: string
 }
 
 interface Props<T extends string> {
@@ -21,6 +23,8 @@ interface Props<T extends string> {
   arrowKeys?: boolean
   /** Vertical: tabs stacked top to bottom (Settings sidebar); Up/Down move too. Layout itself is the caller's CSS. */
   orientation?: 'horizontal' | 'vertical'
+  /** Radio: a radiogroup picking one of a setting's few values, rather than tabs over a panel. */
+  kind?: 'tabs' | 'radio'
 }
 
 /**
@@ -37,8 +41,10 @@ export function SegTabs<T extends string>({
   tabId,
   controls,
   arrowKeys = true,
-  orientation = 'horizontal'
+  orientation = 'horizontal',
+  kind = 'tabs'
 }: Props<T>): React.JSX.Element {
+  const radio = kind === 'radio'
   const btns = useRef(new Map<T, HTMLButtonElement>())
   const thumb = useRef<HTMLSpanElement>(null)
   const [ready, setReady] = useState(false)
@@ -78,7 +84,7 @@ export function SegTabs<T extends string>({
   return (
     <div
       className={['seg', orientation === 'vertical' && 'seg-vertical', className].filter(Boolean).join(' ')}
-      role="tablist"
+      role={radio ? 'radiogroup' : 'tablist'}
       aria-label={ariaLabel}
       aria-orientation={orientation === 'vertical' ? 'vertical' : undefined}
       data-ready={ready}
@@ -90,12 +96,14 @@ export function SegTabs<T extends string>({
           key={t.id}
           ref={(el) => void (el ? btns.current.set(t.id, el) : btns.current.delete(t.id))}
           type="button"
-          role="tab"
+          role={radio ? 'radio' : 'tab'}
           id={tabId?.(t.id)}
-          aria-selected={t.id === value}
-          aria-controls={controls}
+          aria-selected={radio ? undefined : t.id === value}
+          aria-checked={radio ? t.id === value : undefined}
+          aria-controls={radio ? undefined : controls}
           tabIndex={!arrowKeys || t.id === value ? 0 : -1}
           className={t.id === value ? 'active' : undefined}
+          title={t.title}
           data-testid={testId?.(t.id)}
           onClick={() => onChange(t.id)}
         >

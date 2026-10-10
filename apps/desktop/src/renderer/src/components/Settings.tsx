@@ -155,31 +155,33 @@ function ClockPicker(): React.JSX.Element {
       <div className="acc-reminders">
         <div className="acc-reminders-row">
           <span>{t('settings.clock.time')}</span>
-          <Select
-            compact
-            data-testid="time-format-select"
-            aria-label={t('settings.clock.time')}
+          <SegTabs
+            kind="radio"
+            className="set-seg"
+            ariaLabel={t('settings.clock.time')}
             value={timeFormat}
-            options={[
-              { value: 'auto', label: t('settings.clock.auto', { name: hours(system.hour12) }) },
-              { value: '24', label: hours(false) },
-              { value: '12', label: hours(true) }
+            tabs={[
+              { id: 'auto', label: t('settings.clock.autoShort'), title: t('settings.clock.auto', { name: hours(system.hour12) }) },
+              { id: '24', label: hours(false) },
+              { id: '12', label: hours(true) }
             ]}
+            testId={(id) => `time-format-${id}`}
             onChange={(timeFormat) => pick({ timeFormat })}
           />
         </div>
         <div className="acc-reminders-row">
           <span>{t('settings.clock.week')}</span>
-          <Select
-            compact
-            data-testid="week-start-select"
-            aria-label={t('settings.clock.week')}
+          <SegTabs
+            kind="radio"
+            className="set-seg"
+            ariaLabel={t('settings.clock.week')}
             value={weekStart}
-            options={[
-              { value: 'auto', label: t('settings.clock.auto', { name: day(system.weekStartsOn) }) },
-              { value: 'mon', label: day(1) },
-              { value: 'sun', label: day(0) }
+            tabs={[
+              { id: 'auto', label: t('settings.clock.autoShort'), title: t('settings.clock.auto', { name: day(system.weekStartsOn) }) },
+              { id: 'mon', label: day(1) },
+              { id: 'sun', label: day(0) }
             ]}
+            testId={(id) => `week-start-${id}`}
             onChange={(weekStart) => pick({ weekStart })}
           />
         </div>
