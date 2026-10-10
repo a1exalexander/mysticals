@@ -102,6 +102,9 @@ importers:
       react:
         specifier: ^19.3.0
         version: 19.3.0
+      string-width:
+        specifier: ^8.1.1
+        version: 8.2.2
       tsdav:
         specifier: ^2.3.4
         version: 2.3.4

@@ -17,6 +17,7 @@
  */
 import { useMemo, type ReactNode } from 'react'
 import { Box, Text } from 'ink'
+import stringWidth from 'string-width'
 import { addDays, differenceInCalendarDays, differenceInMinutes, format, isSameDay, startOfDay } from 'date-fns'
 import { eventBounds, eventsOnDay, isPast, ymd } from '@mysticals/core/logic/layout'
 import { awaitsReply, STATUS_ICON } from '@mysticals/core/logic/details'
@@ -91,6 +92,26 @@ function relativeDay(day: Date, now: Date): string {
   return d === 0 ? 'today' : d === 1 ? 'tomorrow' : d === -1 ? 'yesterday' : d > 0 ? `in ${d} days` : `${-d} days ago`
 }
 
+const graphemes = new Intl.Segmenter()
+
+/** `text` cut to at most `w` terminal cells (CJK and emoji take two). */
+export function cut(text: string, w: number): string {
+  let out = ''
+  let used = 0
+  for (const { segment } of graphemes.segment(text)) {
+    used += stringWidth(segment)
+    if (used > w) break
+    out += segment
+  }
+  return out
+}
+
+/** `text` cut and padded to exactly `w` cells. */
+export const fitCells = (text: string, w: number): string => {
+  const shown = cut(text, w)
+  return shown + ' '.repeat(Math.max(w - stringWidth(shown), 0))
+}
+
 /** A styled run of text in a line. */
 type Part = { text: string; color?: string; bold?: boolean; strike?: boolean }
 
@@ -100,11 +121,12 @@ function fitParts(parts: Part[], w: number): Part[] {
   let left = w
   for (const p of parts) {
     if (left <= 0) break
-    if (p.text.length <= left) {
+    const w = stringWidth(p.text)
+    if (w <= left) {
       out.push(p)
-      left -= p.text.length
+      left -= w
     } else {
-      out.push({ ...p, text: p.text.slice(0, Math.max(left - 1, 0)) + '…' })
+      out.push({ ...p, text: fitCells(cut(p.text, left - 1) + '…', left) })
       left = 0
     }
   }
@@ -202,7 +224,7 @@ export function Agenda({ events, date, now, selectedKey, width, height, onSelect
       lines.push(
         <Box key={key} width={width} height={1} overflow="hidden">
           <Text color={C.now} bold wrap="truncate">
-            {`  ${format(now, 'HH:mm')} ${'─'.repeat(width)}`}
+            {`  ${format(now, 'HH:mm')} ${'─'.repeat(Math.max(width - 8, 0))}`}
           </Text>
         </Box>
       )

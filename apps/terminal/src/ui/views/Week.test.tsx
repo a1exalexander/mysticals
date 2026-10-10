@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { CalEvent } from '@mysticals/core/shared/types'
 import { renderApp, renderWith, type Rendered } from '../../test/harness'
 import { eventKey } from '../hooks'
+import { MouseProvider } from '../mouse'
 import { Week } from './Week'
 import { abutting } from './TimeGrid'
 
@@ -71,5 +72,25 @@ describe('Week view', () => {
     await t.waitFor('Holiday')
     await t.press('j', 'j')
     expect(t.lastFrame()).toContain('Holiday')
+  })
+
+  it('folds side-by-side events that would be too narrow into "+k", which opens the day', async () => {
+    const crowd = [1, 2, 3, 4].map((i) => ev(`c${i}`, `Meeting ${i}`, at(24, 10), at(24, 11)))
+    const onPickDay = vi.fn()
+    t = renderWith(
+      <MouseProvider>
+        <Week {...props} width={80} events={crowd} height={30} onPickDay={onPickDay} />
+      </MouseProvider>
+    )
+    const f = t.lastFrame()!
+    expect(cell(f, '10:00', 3)).toBe('4 events') // 9 cells: no room for two blocks
+    expect(f).not.toMatch(/│ M +M/)
+    await t.click('4 events')
+    expect(onPickDay).toHaveBeenCalledWith(new Date(2026, 8, 24))
+  })
+
+  it('keeps the date in narrow day headings', () => {
+    t = renderWith(<Week {...props} width={56} events={[]} height={30} />)
+    expect(t.lastFrame()!.split('\n')[0]).toMatch(/│ Mo 21│ Tu 22│/)
   })
 })
