@@ -108,7 +108,9 @@ describe('Accounts overlay', () => {
     ])
     t.client.emitChanged('new')
     await t.waitFor('Loading calendars…')
-    await t.press('a', KEY.tab, KEY.tab, ...'me@x.co', KEY.tab, 'p', KEY.enter)
+    await t.press('a')
+    await t.waitFor('Add CalDAV account') // keys typed before the form is listening would go to the list
+    await t.press(KEY.tab, KEY.tab, ...'me@x.co', KEY.tab, 'p', KEY.enter)
     await t.waitFor('Signing in to dav.privateemail.com…')
   })
 
