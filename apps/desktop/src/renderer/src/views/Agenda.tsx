@@ -220,6 +220,7 @@ function Row({ e, i, now, color, focused, next, nowLine, onPick }: {
   const st = statusOf(e, now)
   const url = joinable(e, now)
   const past = isPast(e, now)
+  const { start, end } = eventBounds(e)
   return (
     <li className="ag-item" style={{ '--c': color, '--i': i } as React.CSSProperties}>
       <button
@@ -234,12 +235,14 @@ function Row({ e, i, now, color, focused, next, nowLine, onPick }: {
         onDoubleClick={(ev) => open(e, ev.currentTarget)}
         {...eventMenu(e)}
       >
-        <span className="ag-time">{hm(eventBounds(e).start)}</span>
+        <span className="ag-time">{hm(start)}</span>
         <span className="ag-bar" />
         <span className="ag-main">
           <span className="ag-title">{e.title || t('common.untitled')}</span>
           <span className="ag-meta">
             {st.state === 'live' ? <span className="ag-live">{t('agenda.now')}</span> : !past && next ? startsLabel(e.start, now, currentLocale(), hour12()) : dur(e)}
+            {/* The now line's clock covers the start time mid-meeting, so the row repeats its times here. */}
+            {nowLine && ` · ${hm(start)} – ${hm(end)}`}
             {eventPlace(e, currentLocale()) && ` · ${eventPlace(e, currentLocale())}`}
           </span>
         </span>

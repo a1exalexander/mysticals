@@ -108,9 +108,9 @@
 /* Now line between the events that have started and the ones still to come (the time grid's .tg-now look). */
 .ag-rows .ag-now { position: relative; height: 0; margin: 5px 0 5px calc(8px + var(--ag-time)); border-top: 2px solid var(--pink); animation: none; }
 /* Over a running event: marks the current time in the time column, above the row's hover/selection background. The
-   line stops before the title and the clock sits over the start time, so neither strikes through the title nor reaches
-   the Join pill. Tied to .ag-row's geometry: 8px padding + the time column; the title starts 23px after that (a 10px
-   gap, the 3px bar and a 10px gap), so 20px ends just short of it. */
+   line stops before the title and the clock sits over the start time (the row repeats start – end in its meta line),
+   so neither strikes through the title nor reaches the Join pill. Tied to .ag-row's geometry: 8px padding + the time
+   column; the title starts 23px after that (a 10px gap, the 3px bar and a 10px gap), so 20px ends just short of it. */
 .ag-rows .ag-now-over { position: absolute; left: calc(8px + var(--ag-time)); width: 20px; margin: -1px 0 0; z-index: 1; pointer-events: none; }
 .ag-rows .ag-now-over .ag-now-clock { right: calc(100% + 6px); }
 .ag-now::before {
