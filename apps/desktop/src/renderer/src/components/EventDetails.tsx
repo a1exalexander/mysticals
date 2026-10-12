@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { addDays, subDays } from 'date-fns'
+import { Effect } from 'effect'
 import type { CalEvent, PartStat } from '@shared/types'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
 import { deleteEvent, name } from './EventMenu'
 import { canEdit, cleanNotes, formatWhen, isHtml, linkify, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
-import { errorText } from '@mysticals/core/logic/editor'
 import { eventBounds, eventKey } from '@mysticals/core/logic/layout'
 import { eventLinks, linkLabel, locationText } from '@mysticals/core/logic/meeting'
 import { LinkIcon } from './LinkIcon'
 import { notesFragment } from './notesHtml'
+import { ipc } from '../ipc'
 import { usePopoverFocus } from './ui/usePopover'
 import './ui/ui.css'
 import './EventDetails.css'
@@ -111,12 +112,19 @@ export function EventDetailsHost(): React.JSX.Element | null {
     const range = { start: subDays(b.start, 60).toISOString(), end: addDays(b.end, 60).toISOString() }
     const off = window.api.onChanged((changed) => {
       if (changed !== accountId) return
-      window.api.events.list(range).then((events) => {
-        if (!live) return
-        const fresh = events.find((e) => eventKey(e) === key)
-        setGone(!fresh)
-        if (fresh) setOpened((o) => (o && eventKey(o.event) === key ? { ...o, event: fresh } : o))
-      }, console.error)
+      Effect.runFork(
+        ipc.api.events.list(range).pipe(
+          Effect.match({
+            onSuccess: (events) => {
+              if (!live) return
+              const fresh = events.find((e) => eventKey(e) === key)
+              setGone(!fresh)
+              if (fresh) setOpened((o) => (o && eventKey(o.event) === key ? { ...o, event: fresh } : o))
+            },
+            onFailure: console.error
+          })
+        )
+      )
     })
     return () => {
       live = false
@@ -136,22 +144,19 @@ export function EventDetailsHost(): React.JSX.Element | null {
   const owner = ownerLine(calendar?.name ?? t('editor.calendar'), account?.label ?? event.accountId, account?.email)
 
   const still = (): boolean => current.current === key
-  const run = async (fn: () => Promise<void>): Promise<void> => {
+  const respond = (status: Reply): void => {
     setBusy(true)
     setError('')
-    try {
-      await fn()
-    } catch (e) {
-      if (still()) setError(errorText(e))
-    } finally {
-      if (still()) setBusy(false)
-    }
+    Effect.runFork(
+      ipc.api.events.respond(event, status).pipe(
+        Effect.match({
+          onSuccess: (updated) => still() && setOpened((o) => o && { ...o, event: updated }),
+          onFailure: (e) => still() && setError(e.message)
+        }),
+        Effect.ensuring(Effect.sync(() => still() && setBusy(false)))
+      )
+    )
   }
-  const respond = (status: Reply): Promise<void> =>
-    run(async () => {
-      const updated = await window.api.events.respond(event, status)
-      if (still()) setOpened((o) => o && { ...o, event: updated })
-    })
   // The same flow as the right-click menu: gone at once with Undo in a toast; a series asks which part first.
   const remove = (): void => {
     setOpened(null)

@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { addDays } from 'date-fns'
+import { Effect, Result } from 'effect'
+import { live } from '@mysticals/core/sync/live'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
 import { visibleEvents } from '@mysticals/core/logic/visible'
 import { formatWhen, ownerLine, pendingInvites } from '@mysticals/core/logic/details'
-import { errorText } from '@mysticals/core/logic/editor'
 import { eventKey } from '@mysticals/core/logic/layout'
 import { usePopoverFocus } from './ui/usePopover'
 import './ui/ui.css'
 import './Invites.css'
 import { currentLocale, t, useLocale } from '../i18n'
 import { hour12 } from '../clock'
+import { ipc } from '../ipc'
 
 // Status-bar inbox of unanswered invites (next 60 days). Each reply goes through the invite's own account.
 export function InvitesPanel(): React.JSX.Element {
@@ -27,20 +29,13 @@ export function InvitesPanel(): React.JSX.Element {
   usePopoverFocus(open, () => ref.current?.querySelector<HTMLElement>('.invites-title'))
 
   useEffect(() => {
-    let live = true
-    const load = (): void => {
+    const load = Effect.suspend(() => {
       const now = new Date()
-      window.api.events
+      return ipc.api.events
         .list({ start: now.toISOString(), end: addDays(now, 60).toISOString() })
-        .then((events) => live && setInvites(pendingInvites(events, now)))
-        .catch(console.error)
-    }
-    load()
-    const off = window.api.onChanged(load)
-    return () => {
-      live = false
-      off()
-    }
+        .pipe(Effect.map((events) => pendingInvites(events, now)))
+    })
+    return live(window.api.onChanged, load, (r) => (Result.isSuccess(r) ? setInvites(r.success) : console.error(r.failure)))
   }, [])
 
   useEffect(() => bus.on('invites:open', () => setOpen((o) => !o)), [])
@@ -66,10 +61,12 @@ export function InvitesPanel(): React.JSX.Element {
     if (sending.has(k)) return
     setError('')
     setSending((s) => new Set(s).add(k))
-    window.api.events
-      .respond(e, status)
-      .catch((err) => setError(errorText(err)))
-      .finally(() => setSending((s) => new Set([...s].filter((x) => x !== k))))
+    Effect.runFork(
+      ipc.api.events.respond(e, status).pipe(
+        Effect.catch((err) => Effect.sync(() => setError(err.message))),
+        Effect.ensuring(Effect.sync(() => setSending((s) => new Set([...s].filter((x) => x !== k)))))
+      )
+    )
   }
 
   return (

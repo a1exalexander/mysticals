@@ -1,7 +1,10 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { Account, Calendar, CalEvent, TimeRange } from '@shared/types'
 import { key } from '@mysticals/core/logic/visible'
+import { Effect, Result } from 'effect'
+import { live } from '@mysticals/core/sync/live'
 import { bus } from '../bus'
+import { ipc } from '../ipc'
 
 export interface Directory {
   accounts: Account[]
@@ -27,36 +30,28 @@ const withInflight = (calendars: Calendar[]): Calendar[] =>
 // however many components read it.
 let dir: Directory = { accounts: [], calendars: [], loaded: false }
 const subs = new Set<() => void>()
-let off: (() => void) | undefined
-let seq = 0
+let stop: (() => void) | undefined
 
 const set = (d: Directory): void => {
   dir = d
   subs.forEach((f) => f())
 }
 
-async function load(): Promise<void> {
-  const my = ++seq
-  try {
-    const [accounts, calendars] = await Promise.all([window.api.accounts.list(), window.api.calendars.list()])
-    // Drop stale responses so a slow reload can't overwrite a newer one.
-    if (off && my === seq) set({ accounts, calendars: withInflight(calendars), loaded: true })
-  } catch (e) {
-    console.error('useCalendarData: load failed', e)
-  }
-}
+const loadDirectory = Effect.all([ipc.api.accounts.list(), ipc.api.calendars.list()], { concurrency: 'unbounded' })
 
 const subscribe = (cb: () => void): (() => void) => {
   subs.add(cb)
-  if (!off) {
-    off = window.api.onChanged(() => void load())
-    void load()
-  }
+  // live() interrupts a reload a newer one overtakes, so a slow answer can't overwrite a newer one.
+  stop ??= live(window.api.onChanged, loadDirectory, (r) =>
+    Result.isSuccess(r)
+      ? set({ accounts: r.success[0], calendars: withInflight(r.success[1]), loaded: true })
+      : console.error('useCalendarData: load failed', r.failure)
+  )
   return () => {
     subs.delete(cb)
     if (subs.size) return
-    off?.()
-    off = undefined
+    stop?.()
+    stop = undefined
   }
 }
 
@@ -72,17 +67,21 @@ export function setCalendarVisible(accountId: string, calendarId: string, visibl
   const k = key(accountId, calendarId)
   inflight.set(k, visible)
   bus.emit('calendars:visible', { accountId, calendarId, visible })
-  const settle = (failed: boolean): void => {
-    if (inflight.get(k) !== visible) return // a newer toggle owns this calendar now
+  const settle = (): boolean => {
+    if (inflight.get(k) !== visible) return false // a newer toggle owns this calendar now
     inflight.delete(k)
-    if (failed) bus.emit('calendars:visible', { accountId, calendarId, visible: !visible })
+    return true
   }
-  window.api.calendars.setVisible(accountId, calendarId, visible).then(
-    () => settle(false),
-    (e) => {
-      console.error(e)
-      settle(true)
-    }
+  Effect.runFork(
+    ipc.api.calendars.setVisible(accountId, calendarId, visible).pipe(
+      Effect.tap(() => Effect.sync(settle)),
+      Effect.catch((e) =>
+        Effect.sync(() => {
+          console.error(e)
+          if (settle()) bus.emit('calendars:visible', { accountId, calendarId, visible: !visible })
+        })
+      )
+    )
   )
 }
 
@@ -98,25 +97,9 @@ export function useCalendarData(range?: TimeRange): CalendarData {
 
   useEffect(() => {
     if (!start || !end) return
-    const { api } = window
-    let seq = 0
-    let alive = true
-    const load = async (): Promise<void> => {
-      const my = ++seq
-      try {
-        const evs = await api.events.list({ start, end })
-        // Drop stale responses so a slow reload can't overwrite a newer one.
-        if (alive && my === seq) setEvents(evs)
-      } catch (e) {
-        console.error('useCalendarData: load failed', e)
-      }
-    }
-    void load()
-    const off = api.onChanged(() => void load())
-    return () => {
-      alive = false
-      off()
-    }
+    return live(window.api.onChanged, ipc.api.events.list({ start, end }), (r) =>
+      Result.isSuccess(r) ? setEvents(r.success) : console.error('useCalendarData: load failed', r.failure)
+    )
   }, [start, end])
 
   // Until calendars load, hidden ones are unknown: hold events back so they can't flash in.

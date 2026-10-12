@@ -6,8 +6,11 @@ import { InvitesPanel } from './Invites'
 import { name } from './EventMenu'
 import { useEffect, useState } from 'react'
 import { addHours } from 'date-fns'
+import { Effect, Result } from 'effect'
+import { live } from '@mysticals/core/sync/live'
 import type { CalEvent } from '@shared/types'
 import type { UpdateState } from '@shared/ipc'
+import { ipc } from '../ipc'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
 import { pickNowNext, startsLabel } from '@mysticals/core/logic/status'
@@ -22,25 +25,21 @@ function NowNext(): React.JSX.Element {
   const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
-    let live = true
-    let seq = 0
-    const load = (): void => {
-      const my = ++seq
+    // The next 24 hours, again on every change and every minute.
+    const changesOrTick = (cb: () => void): (() => void) => {
+      const off = window.api.onChanged(cb)
+      const id = window.setInterval(cb, 60_000)
+      return () => {
+        off()
+        window.clearInterval(id)
+      }
+    }
+    const load = Effect.suspend(() => {
       const at = new Date()
       setNow(at)
-      window.api.events
-        .list({ start: at.toISOString(), end: addHours(at, 24).toISOString() })
-        .then((evs) => live && my === seq && setEvents(evs))
-        .catch(console.error)
-    }
-    load()
-    const off = window.api.onChanged(load)
-    const id = window.setInterval(load, 60_000)
-    return () => {
-      live = false
-      off()
-      window.clearInterval(id)
-    }
+      return ipc.api.events.list({ start: at.toISOString(), end: addHours(at, 24).toISOString() })
+    })
+    return live(changesOrTick, load, (r) => (Result.isSuccess(r) ? setEvents(r.success) : console.error(r.failure)))
   }, [])
 
   const colorOf = (e: CalEvent): string | undefined =>
@@ -90,10 +89,10 @@ function UpdateItem(): React.JSX.Element | null {
   const [s, setS] = useState<UpdateState>({ status: 'idle' })
   useLocale()
   useEffect(() => {
-    void window.update.state().then(setS, () => {})
+    Effect.runFork(ipc.update.state().pipe(Effect.map(setS), Effect.ignore))
     return window.update.onUpdate(setS)
   }, [])
-  const install = (): void => void window.update.install()
+  const install = (): void => void Effect.runFork(ipc.update.install().pipe(Effect.ignore))
   switch (s.status) {
     case 'available':
       return (

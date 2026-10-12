@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Effect } from 'effect'
 import type { CalEvent, DeleteScope } from '@shared/types'
 import { bus, type BusEvents } from '../bus'
 import { useDirectory } from './ui/useDirectory'
@@ -9,12 +10,13 @@ import { Select } from './ui/Select'
 import { useModal } from './ui/usePopover'
 import { extraEmail } from '@mysticals/core/logic/details'
 import {
-  applyForm, emptyForm, setAllDay, errorText, formFromEvent, formToInput, isEmail, moveStart, repeatChanged, soleId, splitEmails,
+  applyForm, emptyForm, setAllDay, formFromEvent, formToInput, isEmail, moveStart, repeatChanged, soleId, splitEmails,
   withLoadedRepeat, writableAccounts, writableCalendars, type EventForm
 } from '@mysticals/core/logic/editor'
 import './ui/ui.css'
 import './EventEditor.css'
 import { currentLocale, t, useLocale } from '../i18n'
+import { ipc } from '../ipc'
 
 type Opened = { mode: 'create'; prefill: BusEvents['event:create'] } | { mode: 'edit'; event: CalEvent }
 
@@ -77,14 +79,18 @@ export function EventEditorHost(): React.JSX.Element | null {
     // A series' rule isn't cached: read it from the provider; until then the rule can't be changed.
     if (opened.mode === 'edit' && opened.event.recurringEventId) {
       const mine = session.current
-      window.api.events.recurrence(opened.event).then(
-        (rule) => {
-          if (session.current !== mine) return
-          const load = (f: EventForm | null): EventForm | null => f && withLoadedRepeat(f, rule)
-          setForm(load)
-          setInitial(load) // loading the rule isn't an edit
-        },
-        () => session.current === mine && setRepeatFailed(true)
+      Effect.runFork(
+        ipc.api.events.recurrence(opened.event).pipe(
+          Effect.match({
+            onSuccess: (rule) => {
+              if (session.current !== mine) return
+              const load = (f: EventForm | null): EventForm | null => f && withLoadedRepeat(f, rule)
+              setForm(load)
+              setInitial(load) // loading the rule isn't an edit
+            },
+            onFailure: () => session.current === mine && setRepeatFailed(true)
+          })
+        )
       )
     }
   }, [opened, form, loaded, accounts, calendars])
@@ -124,19 +130,23 @@ export function EventEditorHost(): React.JSX.Element | null {
     const mine = session.current
     setError('')
     setSaving(true)
-    try {
-      const f = { ...form, attendees: invitees }
-      if (editing) await window.api.events.update(applyForm(editing, f, currentLocale()), scope)
-      else await window.api.events.create(formToInput(f, currentLocale()))
-      if (session.current === mine) close()
-    } catch (e) {
-      if (session.current === mine) {
-        setError(errorText(e))
-        setAskScope(false)
-      }
-    } finally {
-      if (session.current === mine) setSaving(false)
-    }
+    const f = { ...form, attendees: invitees }
+    const write = editing
+      ? Effect.fromResult(applyForm(editing, f, currentLocale())).pipe(Effect.flatMap((e) => ipc.api.events.update(e, scope)))
+      : Effect.fromResult(formToInput(f, currentLocale())).pipe(Effect.flatMap(ipc.api.events.create))
+    await Effect.runPromise(
+      write.pipe(
+        Effect.match({
+          onSuccess: () => session.current === mine && close(),
+          onFailure: (e) => {
+            if (session.current !== mine) return
+            setError(e.message)
+            setAskScope(false)
+          }
+        }),
+        Effect.ensuring(Effect.sync(() => session.current === mine && setSaving(false)))
+      )
+    )
   }
 
   useEffect(() => {

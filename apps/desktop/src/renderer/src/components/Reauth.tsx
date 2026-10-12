@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { Effect } from 'effect'
 import { bus } from '../bus'
 import { useCalendarData } from '../hooks/useCalendarData'
-import { ConnectSteps, Sheet, errorText } from './AccountsShared'
+import { ConnectSteps, Sheet } from './AccountsShared'
+import { ipc } from '../ipc'
 import { t, useLocale } from '../i18n'
 
 /**
@@ -50,21 +52,24 @@ export function ReauthHost(): React.JSX.Element | null {
     setId(undefined)
   }
 
-  const reconnect = async (e?: React.FormEvent): Promise<void> => {
+  const reconnect = (e?: React.FormEvent): void => {
     e?.preventDefault()
     if (!a) return
     const s = session.current
     setBusy(true)
     setError('')
-    try {
-      await window.api.accounts.reauth(a.id, a.kind === 'caldav' ? { password } : undefined)
-      bus.emit('toast', { text: t('reauth.done', { label: a.label }) })
-      if (s === session.current) close()
-    } catch (err) {
-      if (s === session.current) setError(errorText(err))
-    } finally {
-      if (s === session.current) setBusy(false)
-    }
+    Effect.runFork(
+      ipc.api.accounts.reauth(a.id, a.kind === 'caldav' ? { password } : undefined).pipe(
+        Effect.match({
+          onSuccess: () => {
+            bus.emit('toast', { text: t('reauth.done', { label: a.label }) })
+            if (s === session.current) close()
+          },
+          onFailure: (err) => s === session.current && setError(err.message)
+        }),
+        Effect.ensuring(Effect.sync(() => s === session.current && setBusy(false)))
+      )
+    )
   }
 
   if (!a) return null

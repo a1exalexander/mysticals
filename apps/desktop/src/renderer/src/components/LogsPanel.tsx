@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Effect } from 'effect'
 import type { Account, Calendar, EventSnap, LogChange, LogEntry, LogKind } from '@shared/types'
 import { isKey, type Key } from '@mysticals/core/i18n'
 import { STATUS_ICON } from '@mysticals/core/logic/details'
-import { errorText } from './AccountsShared'
 import { Select } from './ui/Select'
 import { cap, fmt, t, useLocale } from '../i18n'
 import { hour12 } from '../clock'
 import { timePattern } from '@mysticals/core/logic/clock'
+import { ipc } from '../ipc'
 
 const GROUPS = {
   all: undefined,
@@ -52,32 +53,46 @@ export function LogsPanel({ accounts }: { accounts: Account[] }): React.JSX.Elem
   const [error, setError] = useState('')
 
   const query = useCallback(
-    (before?: string, limit = PAGE) => window.logs.list({ accountId: account || undefined, kinds: GROUPS[group], before, limit }),
+    (before?: string, limit = PAGE) => ipc.logs.list({ accountId: account || undefined, kinds: GROUPS[group], before, limit }),
     [account, group]
   )
   const reload = useCallback(
     (keep = PAGE) =>
-      query(undefined, Math.min(Math.max(keep, PAGE), 1000)).then((p) => {
-        setEntries(p.entries)
-        setSeen(p.accounts)
-        setMore(p.more)
-        setError('')
-      }, (e) => setError(errorText(e))),
+      Effect.runFork(
+        query(undefined, Math.min(Math.max(keep, PAGE), 1000)).pipe(
+          Effect.match({
+            onSuccess: (p) => {
+              setEntries(p.entries)
+              setSeen(p.accounts)
+              setMore(p.more)
+              setError('')
+            },
+            onFailure: (e) => setError(e.message)
+          })
+        )
+      ),
     [query]
   )
   useEffect(() => void reload(), [reload])
   // New entries (a sync, an edit) arrive while the tab is open: re-read as many as are shown.
   const shown = entries?.length ?? 0
   useEffect(() => window.logs.onAppended(() => void reload(shown)), [reload, shown])
-  useEffect(() => void window.api.calendars.list().then(setCalendars, () => {}), [])
+  useEffect(() => void Effect.runFork(ipc.api.calendars.list().pipe(Effect.map(setCalendars), Effect.ignore)), [])
 
   const loadMore = (): void => {
     const last = entries?.[entries.length - 1]
     if (!last) return
-    query(last.at).then((p) => {
-      setEntries((e) => [...(e ?? []), ...p.entries])
-      setMore(p.more)
-    }, (e) => setError(errorText(e)))
+    Effect.runFork(
+      query(last.at).pipe(
+        Effect.match({
+          onSuccess: (p) => {
+            setEntries((e) => [...(e ?? []), ...p.entries])
+            setMore(p.more)
+          },
+          onFailure: (e) => setError(e.message)
+        })
+      )
+    )
   }
 
   const current = new Set(accounts.map((a) => a.id))
@@ -116,7 +131,7 @@ export function LogsPanel({ accounts }: { accounts: Account[] }): React.JSX.Elem
             ))}
           </ul>
           <div className="acc-md-foot">
-            <button type="button" data-testid="logs-open" onClick={() => window.logs.openFolder().catch((e) => setError(errorText(e)))}>
+            <button type="button" data-testid="logs-open" onClick={() => Effect.runFork(ipc.logs.openFolder().pipe(Effect.catch((e) => Effect.sync(() => setError(e.message)))))}>
               {t('logs.open')}
             </button>
           </div>

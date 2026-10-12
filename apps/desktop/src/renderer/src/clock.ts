@@ -1,7 +1,10 @@
 import { useSyncExternalStore } from 'react'
+import { Effect } from 'effect'
 import type { ClockState } from '@shared/ipc'
 import { hourPattern, timePattern, weekNumber, type TimeFormat, type WeekStart } from '@mysticals/core/logic/clock'
+import type { AppError } from '@mysticals/core/errors'
 import { fmt } from './i18n'
+import { ipc } from './ipc'
 
 // 24- or 12-hour times and the first day of the week come from the main process (Settings > General, else the
 // OS region), like the language. The helpers read the current choice; components call `useClock()` so they
@@ -18,16 +21,14 @@ function apply(next: ClockState): void {
 }
 
 /** Load the clock prefs before the first render, then follow changes. */
-export async function initClock(): Promise<void> {
-  try {
-    apply(await window.clock.get())
-  } catch {
-    // no main-process handler (should not happen): stay 24-hour, Monday
-  }
-  window.clock.onChange(apply)
-}
+export const initClock: Effect.Effect<void> = ipc.clock.get().pipe(
+  Effect.map(apply),
+  Effect.ignore, // no main-process handler (should not happen): stay 24-hour, Monday
+  Effect.andThen(Effect.sync(() => void window.clock.onChange(apply)))
+)
 
-export const setClock = (patch: { timeFormat?: TimeFormat; weekStart?: WeekStart }): Promise<void> => window.clock.set(patch).then(apply)
+export const setClock = (patch: { timeFormat?: TimeFormat; weekStart?: WeekStart }): Effect.Effect<void, AppError> =>
+  ipc.clock.set(patch).pipe(Effect.map(apply))
 
 export const hour12 = (): boolean => state.hour12
 export const weekStartsOn = (): 0 | 1 => state.weekStartsOn

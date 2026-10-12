@@ -1,7 +1,10 @@
 import { useSyncExternalStore } from 'react'
+import { Effect } from 'effect'
 import type { LocaleState } from '@shared/ipc'
 import * as core from '@mysticals/core/i18n'
 import type { Key, LocaleSetting, Params } from '@mysticals/core/i18n'
+import type { AppError } from '@mysticals/core/errors'
+import { ipc } from './ipc'
 
 // The UI language comes from the main process (Settings > Language, else the OS) so menus,
 // notifications and the window agree. `t`/`fmt` read the current one; components call
@@ -17,16 +20,13 @@ function apply(next: LocaleState): void {
 }
 
 /** Load the language before the first render, then follow changes. */
-export async function initLocale(): Promise<void> {
-  try {
-    apply(await window.locale.get())
-  } catch {
-    // no main-process handler (should not happen): stay English
-  }
-  window.locale.onChange(apply)
-}
+export const initLocale: Effect.Effect<void> = ipc.locale.get().pipe(
+  Effect.map(apply),
+  Effect.ignore, // no main-process handler (should not happen): stay English
+  Effect.andThen(Effect.sync(() => void window.locale.onChange(apply)))
+)
 
-export const setLanguage = (setting: LocaleSetting): Promise<void> => window.locale.set(setting).then(apply)
+export const setLanguage = (setting: LocaleSetting): Effect.Effect<void, AppError> => ipc.locale.set(setting).pipe(Effect.map(apply))
 
 export const t = (key: Key, params?: Params): string => core.t(state.locale, key, params)
 export const fmt = (date: Date | number, pattern: string): string => core.fmt(state.locale, date, pattern)

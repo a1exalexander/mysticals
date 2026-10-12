@@ -1,13 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Effect } from 'effect'
 import type { CalEvent, DeleteScope } from '@shared/types'
 import { bus, type BusEvents } from '../bus'
 import { useDirectory } from './ui/useDirectory'
 import { onLaterScroll } from './ui/usePopover'
 import { canEdit, formatWhen } from '@mysticals/core/logic/details'
-import { errorText } from '@mysticals/core/logic/editor'
 import { copyInput, type PasteSlot } from '@mysticals/core/logic/copy'
 import { currentLocale, t, useLocale } from '../i18n'
 import { hour12 } from '../clock'
+import { ipc } from '../ipc'
 import './EventMenu.css'
 
 type Opened = ({ kind: 'event' } & BusEvents['menu:event']) | ({ kind: 'slot' } & BusEvents['menu:slot'])
@@ -78,13 +79,17 @@ export function slotMenu(at: (e: React.MouseEvent<HTMLElement>) => { slot: Paste
 
 /** Creates `e`'s copy; the toast's Undo deletes it again. */
 function createCopy(e: CalEvent, at: PasteSlot | undefined, done: 'toast.duplicated' | 'toast.pasted'): void {
-  window.api.events.create(copyInput(e, at)).then(
-    (made) =>
-      bus.emit('toast', {
-        text: t(done, { title: name(e) }),
-        action: { label: t('common.undo'), run: () => void window.api.events.delete(made, 'one').catch(() => {}) }
-      }),
-    (err) => bus.emit('toast', { text: t('toast.createFailed', { title: name(e), error: errorText(err) }), error: true })
+  Effect.runFork(
+    ipc.api.events.create(copyInput(e, at)).pipe(
+      Effect.match({
+        onSuccess: (made) =>
+          bus.emit('toast', {
+            text: t(done, { title: name(e) }),
+            action: { label: t('common.undo'), run: () => void Effect.runFork(ipc.api.events.delete(made, 'one').pipe(Effect.ignore)) }
+          }),
+        onFailure: (err) => bus.emit('toast', { text: t('toast.createFailed', { title: name(e), error: err.message }), error: true })
+      })
+    )
   )
 }
 
@@ -93,23 +98,25 @@ function createCopy(e: CalEvent, at: PasteSlot | undefined, done: 'toast.duplica
  * of the series goes; a single one goes at once. Undo brings a single one back.
  */
 export function deleteEvent(e: CalEvent): void {
+  const undo = (): void =>
+    void Effect.runFork(
+      ipc.api.events.create(copyInput(e, undefined, { guests: true })).pipe(
+        Effect.catch((err) => Effect.sync(() => bus.emit('toast', { text: t('toast.createFailed', { title: name(e), error: err.message }), error: true })))
+      )
+    )
   const run = (scope: DeleteScope): void =>
-    void window.api.events.delete(e, scope).then(
-      () =>
-        bus.emit('toast', {
-          text: t(scope === 'all' ? 'toast.deletedAll' : scope === 'following' ? 'toast.deletedFollowing' : 'toast.deleted', { title: name(e) }),
-          // A deleted occurrence of a series can't be put back into it: only a single event is recreated.
-          action: e.recurringEventId
-            ? undefined
-            : {
-                label: t('common.undo'),
-                run: () =>
-                  void window.api.events.create(copyInput(e, undefined, { guests: true })).catch((err) =>
-                    bus.emit('toast', { text: t('toast.createFailed', { title: name(e), error: errorText(err) }), error: true })
-                  )
-              }
-        }),
-      (err) => bus.emit('toast', { text: t('toast.deleteFailed', { title: name(e), error: errorText(err) }), error: true })
+    void Effect.runFork(
+      ipc.api.events.delete(e, scope).pipe(
+        Effect.match({
+          onSuccess: () =>
+            bus.emit('toast', {
+              text: t(scope === 'all' ? 'toast.deletedAll' : scope === 'following' ? 'toast.deletedFollowing' : 'toast.deleted', { title: name(e) }),
+              // A deleted occurrence of a series can't be put back into it: only a single event is recreated.
+              action: e.recurringEventId ? undefined : { label: t('common.undo'), run: undo }
+            }),
+          onFailure: (err) => bus.emit('toast', { text: t('toast.deleteFailed', { title: name(e), error: err.message }), error: true })
+        })
+      )
     )
   if (e.recurringEventId) bus.emit('scope:ask', { title: t('scope.delete'), danger: true, onPick: run, onCancel: () => {} })
   else run('one')

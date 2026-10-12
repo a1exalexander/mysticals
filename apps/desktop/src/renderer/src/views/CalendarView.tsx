@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { addDays, format, isToday, startOfDay } from 'date-fns'
+import { Effect } from 'effect'
 import type { CalEvent, DeleteScope } from '@shared/types'
 import type { MenuCommand } from '@shared/ipc'
 import { useCalendarData } from '../hooks/useCalendarData'
 import { visibleEvents } from '@mysticals/core/logic/visible'
 import { canEdit } from '@mysticals/core/logic/details'
-import { errorText } from '@mysticals/core/logic/editor'
 import { bus } from '../bus'
+import { ipc } from '../ipc'
 import { nav, useNav, type DeskView } from './nav'
 import { eventKey, rangeLabel, shiftDate, viewDays, viewRange, weekLabel, type View } from '@mysticals/core/logic/layout'
 import { TimeGrid } from './TimeGrid'
@@ -122,17 +123,21 @@ export function CalendarView(): React.JSX.Element {
       })
     setMoved((m) => new Map(m).set(k, { start, end }))
     const send = (scope?: DeleteScope): void =>
-      void window.api.events.update({ ...e, start, end }, scope).then(
-        () =>
-          bus.emit('toast', {
-            text: t(scope === 'all' ? 'toast.movedAll' : scope === 'following' ? 'toast.movedFollowing' : 'toast.moved', { title: e.title || t('common.untitled') }),
-            // Undo is just the reverse move; a series change is not.
-            action: scope === 'all' || scope === 'following' ? undefined : { label: t('common.undo'), run: () => move({ ...e, start, end }, e.start, e.end, scope) }
-          }),
-        (err) => {
-          drop()
-          bus.emit('toast', { text: t('toast.moveFailed', { title: e.title || t('common.untitled'), error: errorText(err) }), error: true })
-        }
+      void Effect.runFork(
+        ipc.api.events.update({ ...e, start, end }, scope).pipe(
+          Effect.match({
+            onSuccess: () =>
+              bus.emit('toast', {
+                text: t(scope === 'all' ? 'toast.movedAll' : scope === 'following' ? 'toast.movedFollowing' : 'toast.moved', { title: e.title || t('common.untitled') }),
+                // Undo is just the reverse move; a series change is not.
+                action: scope === 'all' || scope === 'following' ? undefined : { label: t('common.undo'), run: () => move({ ...e, start, end }, e.start, e.end, scope) }
+              }),
+            onFailure: (err) => {
+              drop()
+              bus.emit('toast', { text: t('toast.moveFailed', { title: e.title || t('common.untitled'), error: err.message }), error: true })
+            }
+          })
+        )
       )
     if (!e.recurringEventId || scope) send(scope)
     else bus.emit('scope:ask', { title: t('scope.move'), onPick: send, onCancel: drop })

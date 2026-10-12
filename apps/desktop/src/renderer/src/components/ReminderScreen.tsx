@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { Effect } from 'effect'
 import type { ReminderMeeting } from '@shared/ipc'
 import { linkKind, linkLabel } from '@mysticals/core/logic/meeting'
 import { currentLocale, t, useLocale } from '../i18n'
 import { hm, useClock } from '../clock'
 import { followTheme } from '../theme'
+import { ipc } from '../ipc'
 import './ReminderScreen.css'
 
 /** The Full-screen reminder window (`#reminder`): every due meeting with a Call link, until Join, Esc or Backspace. */
@@ -21,7 +23,7 @@ export function ReminderScreen(): React.JSX.Element {
     // Main shows the window once told the cards are committed, and answers after: the enter animation starts then.
     // Not focus or visibility: a hidden window can report both. Not requestAnimationFrame: it gets no frames.
     const show = (): void => setShown(true)
-    void window.reminderScreen.ready().then(show, show)
+    Effect.runFork(ipc.reminderScreen.ready().pipe(Effect.ignore, Effect.andThen(Effect.sync(show))))
   }, [due, shown])
   useEffect(() => {
     // A spare window waited a while: count down from when the meetings came.
@@ -29,14 +31,14 @@ export function ReminderScreen(): React.JSX.Element {
       setNow(Date.now())
       setMeetings(list)
     }
-    void window.reminderScreen.meetings().then(take, () => {})
+    Effect.runFork(ipc.reminderScreen.meetings().pipe(Effect.map(take), Effect.ignore))
     const off = window.reminderScreen.onMeetings(take)
     const timer = setInterval(() => setNow(Date.now()), 10_000)
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== 'Escape' && e.key !== 'Backspace') return
       e.preventDefault()
       // Main ignores this in the first second after the window shows: those keys were meant for another app.
-      void window.reminderScreen.close()
+      Effect.runFork(ipc.reminderScreen.close().pipe(Effect.ignore))
     }
     window.addEventListener('keydown', onKey, true)
     window.addEventListener('storage', followTheme)
@@ -49,7 +51,7 @@ export function ReminderScreen(): React.JSX.Element {
   }, [])
   return (
     <main className="rs" data-shown={shown || undefined} aria-label={t('reminder.screen')}>
-      <button type="button" className="rs-close" aria-label={t('reminder.close')} title={t('reminder.close')} onClick={() => void window.reminderScreen.close()}>
+      <button type="button" className="rs-close" aria-label={t('reminder.close')} title={t('reminder.close')} onClick={() => void Effect.runFork(ipc.reminderScreen.close().pipe(Effect.ignore))}>
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
           <path d="M6 6l12 12M18 6L6 18" />
         </svg>
@@ -85,7 +87,7 @@ function Card({ m, now, i }: { m: ReminderMeeting; now: number; i: number }): Re
       <div className="rs-time">
         {hm(start)}–{hm(new Date(m.end))}
       </div>
-      <button type="button" className="mc-btn primary rs-join" onClick={() => void window.reminderScreen.close(m.url)}>
+      <button type="button" className="mc-btn primary rs-join" onClick={() => void Effect.runFork(ipc.reminderScreen.close(m.url).pipe(Effect.ignore))}>
         {linkLabel(m.url, linkKind(m.url), currentLocale())}
       </button>
       <div className="rs-link">

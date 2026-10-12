@@ -1,4 +1,6 @@
 import { useSyncExternalStore } from 'react'
+import { Effect } from 'effect'
+import { ipc } from './ipc'
 import { t } from './i18n'
 
 /** Palettes defined in styles/base.css as :root[data-theme=…]. Preview colours: bg, accent, pink, cyan, green. */
@@ -52,7 +54,7 @@ export function applyTheme(id: ThemeId = current): void {
   document.documentElement.dataset.theme = id
   document.documentElement.dataset.scheme = t.scheme
   // Absent in unit tests and plain-browser previews.
-  void window.appTheme?.set(t.scheme, t.preview[0]).catch(() => {})
+  Effect.runFork(ipc.appTheme.set(t.scheme, t.preview[0]).pipe(Effect.ignore))
   try {
     localStorage.setItem(KEY, id)
   } catch {

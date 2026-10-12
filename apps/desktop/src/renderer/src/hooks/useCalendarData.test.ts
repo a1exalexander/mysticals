@@ -24,7 +24,8 @@ async function setup() {
   return { api, listeners, mod, change: () => listeners.forEach((f) => f('a')) }
 }
 
-const flush = (): Promise<void> => new Promise((r) => setTimeout(r))
+// Past live()'s 150 ms quiet period, so a pushed change has reloaded.
+const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 200))
 
 describe('directory store', () => {
   // Cold first import (react) can exceed the 5s test timeout on CI runners; pay it once here.
@@ -57,6 +58,7 @@ describe('directory store', () => {
     offB()
     expect(listeners.size).toBe(0)
     mod.directory.subscribe(a)
+    await flush() // live() attaches its listener on its own fiber
     expect(api.onChanged).toHaveBeenCalledTimes(2)
     expect(listeners.size).toBe(1)
   })
@@ -66,6 +68,7 @@ describe('directory store', () => {
     let answer!: (cs: Calendar[]) => void
     api.calendars.list.mockImplementationOnce(() => new Promise((r) => (answer = r)))
     mod.directory.subscribe(() => {})
+    await flush()
     change()
     await flush()
     expect(mod.directory.get().calendars).toEqual([cal(true)])

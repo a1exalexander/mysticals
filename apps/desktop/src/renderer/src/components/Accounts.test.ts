@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { errorText, suggestLabel } from './AccountsShared'
+import { errorText } from '@mysticals/core/logic/editor'
+import { suggestLabel } from './AccountsShared'
 
 describe('suggestLabel', () => {
   it('suggests Personal for consumer domains and Work otherwise', () => {

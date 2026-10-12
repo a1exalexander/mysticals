@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { Effect } from 'effect'
 import { accountName, extraEmail } from '@mysticals/core/logic/details'
 import { bus } from '../bus'
 import { setCalendarVisible, useCalendarData } from '../hooks/useCalendarData'
 import { MiniMonth } from './MiniMonth'
+import { ipc } from '../ipc'
 import { t, useLocale } from '../i18n'
 import './ui/ui.css'
 
@@ -95,7 +97,7 @@ export function Sidebar({ collapsed: hidden = false }: { collapsed?: boolean }):
               {open && failed && (
                 <div className="sb-loading sb-failed" role="alert">
                   <span className="sb-loading-text">{t('sidebar.loadFailed')}</span>
-                  <button type="button" className="sb-retry" onClick={() => void window.api.sync.now(a.id).catch(() => {})}>
+                  <button type="button" className="sb-retry" onClick={() => void Effect.runFork(ipc.api.sync.now(a.id).pipe(Effect.ignore))}>
                     {t('sidebar.retry')}
                   </button>
                 </div>

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { Effect } from 'effect'
 import { bus } from '../bus'
 import { Select } from './ui/Select'
-import { ConnectSteps, PRESETS, SWATCHES, Sheet, Swatches, errorText, hostOf, suggestLabel } from './AccountsShared'
+import { ConnectSteps, PRESETS, SWATCHES, Sheet, Swatches, hostOf, suggestLabel } from './AccountsShared'
+import { ipc } from '../ipc'
 import { t, useLocale } from '../i18n'
 
 type Step = 'choose' | 'google' | 'connecting' | 'caldav'
@@ -39,18 +41,22 @@ export function AccountsHost(): React.JSX.Element | null {
     if (s === session.current) close()
   }
 
-  const addGoogle = async (): Promise<void> => {
+  const addGoogle = (): void => {
     const s = session.current
     setError('')
     setStep('google')
-    try {
-      await window.api.accounts.addGoogle()
-      if (s === session.current) close()
-    } catch (e) {
-      if (s !== session.current) return
-      setError(errorText(e))
-      setStep('choose')
-    }
+    Effect.runFork(
+      ipc.api.accounts.addGoogle().pipe(
+        Effect.match({
+          onSuccess: closeIfCurrent(s),
+          onFailure: (e) => {
+            if (s !== session.current) return
+            setError(e.message)
+            setStep('choose')
+          }
+        })
+      )
+    )
   }
 
   return (
@@ -117,24 +123,17 @@ function CaldavForm(props: { onBack: () => void; onDone: () => void }): React.JS
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  const submit = async (e: React.FormEvent): Promise<void> => {
+  const submit = (e: React.FormEvent): void => {
     e.preventDefault()
     setBusy(true)
     setError('')
-    try {
-      await window.api.accounts.addCaldav({
-        serverUrl: serverUrl.trim(),
-        username: username.trim(),
-        password,
-        label: label.trim() || username.trim(),
-        color
-      })
-      props.onDone()
-    } catch (err) {
-      setError(errorText(err))
-    } finally {
-      setBusy(false)
-    }
+    const input = { serverUrl: serverUrl.trim(), username: username.trim(), password, label: label.trim() || username.trim(), color }
+    Effect.runFork(
+      ipc.api.accounts.addCaldav(input).pipe(
+        Effect.match({ onSuccess: () => props.onDone(), onFailure: (err) => setError(err.message) }),
+        Effect.ensuring(Effect.sync(() => setBusy(false)))
+      )
+    )
   }
 
   return (

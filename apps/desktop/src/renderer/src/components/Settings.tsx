@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react'
+import { Effect, Result } from 'effect'
+import { live } from '@mysticals/core/sync/live'
 import type { Account } from '@shared/types'
 import { bus } from '../bus'
 import { THEMES, applyTheme, themeName, useTheme } from '../theme'
-import { KindIcon, Sheet, Swatches, errorText } from './AccountsShared'
+import { KindIcon, Sheet, Swatches } from './AccountsShared'
+import { ipc } from '../ipc'
 import { SegTabs } from './ui/SegTabs'
 import { useRadioGroup } from './ui/roving'
 import { cap, currentLocale, fmt, setLanguage, t, useLocale } from '../i18n'
 import { setClock, useClock } from '../clock'
 import { LOCALE_NAME, LOCALES, type Key, type LocaleSetting } from '@mysticals/core/i18n'
+import type { AppError } from '@mysticals/core/errors'
 import { REMINDER_CHOICES } from '@mysticals/core/logic/reminders'
 import { LONG_RANGE, LONG_MODES, usesThreshold, type LongMode } from '@mysticals/core/logic/layout'
 import { setLongEvents, useLongEvents } from '../longEvents'
@@ -49,9 +53,7 @@ export function SettingsHost(): React.JSX.Element | null {
   )
   useEffect(() => {
     if (!open) return
-    const load = (): void => void window.api.accounts.list().then(setAccounts, () => {})
-    load()
-    return window.api.onChanged(load)
+    return live(window.api.onChanged, ipc.api.accounts.list(), (r) => Result.isSuccess(r) && setAccounts(r.success))
   }, [open])
 
   return (
@@ -117,7 +119,7 @@ function LanguagePicker(): React.JSX.Element {
   const [error, setError] = useState('')
   const pick = (next: LocaleSetting): void => {
     setError('')
-    setLanguage(next).catch((e) => setError(errorText(e)))
+    Effect.runFork(setLanguage(next).pipe(Effect.catch((e) => Effect.sync(() => setError(e.message)))))
   }
   const options: { id: LocaleSetting; name: string; hint?: string }[] = [
     { id: 'auto', name: t('settings.language.auto'), hint: t('settings.language.system', { name: LOCALE_NAME[system] }) },
@@ -145,7 +147,7 @@ function ClockPicker(): React.JSX.Element {
   const [error, setError] = useState('')
   const pick = (patch: Parameters<typeof setClock>[0]): void => {
     setError('')
-    setClock(patch).catch((e) => setError(errorText(e)))
+    Effect.runFork(setClock(patch).pipe(Effect.catch((e) => Effect.sync(() => setError(e.message)))))
   }
   const hours = (h12: boolean): string => t(h12 ? 'settings.clock.12' : 'settings.clock.24')
   // 2 Jan 2000 was a Sunday: the weekday named in the UI language.
@@ -316,52 +318,50 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
   const [sound, setSound] = useState<boolean>()
   const [selected, setSelected] = useState<string>()
   const [error, setError] = useState('')
-  useEffect(() => void window.reminders.get().then(setMin, () => {}), [])
-  useEffect(() => void window.reminders.muted().then(setMuted, () => {}), [])
-  useEffect(() => void window.reminders.fullscreen().then(setFullscreen, () => {}), [])
-  useEffect(() => void window.reminders.sound().then(setSound, () => {}), [])
+  useEffect(() => void Effect.runFork(ipc.reminders.get().pipe(Effect.map(setMin), Effect.ignore)), [])
+  useEffect(() => void Effect.runFork(ipc.reminders.muted().pipe(Effect.map(setMuted), Effect.ignore)), [])
+  useEffect(() => void Effect.runFork(ipc.reminders.fullscreen().pipe(Effect.map(setFullscreen), Effect.ignore)), [])
+  useEffect(() => void Effect.runFork(ipc.reminders.sound().pipe(Effect.map(setSound), Effect.ignore)), [])
   const current = accounts.find((a) => a.id === selected) ?? accounts[0]
   const syncAll = async (): Promise<void> => {
     setAll(true)
     // Never rejects; per-account failures land on account.error.
-    await window.api.sync.now().catch(() => {})
+    await Effect.runPromise(ipc.api.sync.now().pipe(Effect.ignore))
     setAll(false)
+  }
+  // Shown at once; put back, with the error, if main refuses it.
+  const persist = (write: Effect.Effect<void, AppError>, revert: () => void): void => {
+    setError('')
+    Effect.runFork(
+      write.pipe(
+        Effect.catch((e) =>
+          Effect.sync(() => {
+            revert()
+            setError(e.message)
+          })
+        )
+      )
+    )
   }
   const toggle = (id: string, on: boolean): void => {
     const prev = muted
     setMuted((m) => (on ? m?.filter((x) => x !== id) : [...(m ?? []), id]))
-    setError('')
-    window.reminders.setMuted(id, !on).catch((e) => {
-      setMuted(prev)
-      setError(errorText(e))
-    })
+    persist(ipc.reminders.setMuted(id, !on), () => setMuted(prev))
   }
   const pick = (next: number): void => {
     const prev = min
     setMin(next)
-    setError('')
-    window.reminders.set(next).catch((e) => {
-      setMin(prev)
-      setError(errorText(e))
-    })
+    persist(ipc.reminders.set(next), () => setMin(prev))
   }
   const pickFullscreen = (on: boolean): void => {
     const prev = fullscreen
     setFullscreen(on)
-    setError('')
-    window.reminders.setFullscreen(on).catch((e) => {
-      setFullscreen(prev)
-      setError(errorText(e))
-    })
+    persist(ipc.reminders.setFullscreen(on), () => setFullscreen(prev))
   }
   const pickSound = (on: boolean): void => {
     const prev = sound
     setSound(on)
-    setError('')
-    window.reminders.setSound(on).catch((e) => {
-      setSound(prev)
-      setError(errorText(e))
-    })
+    persist(ipc.reminders.setSound(on), () => setSound(prev))
   }
   return (
     <div className="acc-panel">
@@ -393,7 +393,7 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
             />
             {t('settings.reminders.fullscreen')}
           </label>
-          <TestButton testId="reminder-preview" icon={<EyeIcon />} run={() => window.reminders.preview().catch((e) => setError(errorText(e)))}>
+          <TestButton testId="reminder-preview" icon={<EyeIcon />} run={() => Effect.runPromise(ipc.reminders.preview().pipe(Effect.catch((e) => Effect.sync(() => setError(e.message)))))}>
             {t('settings.reminders.preview')}
           </TestButton>
         </div>
@@ -409,7 +409,7 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
             />
             {t('settings.reminders.sound')}
           </label>
-          <TestButton testId="reminder-sound-test" icon={<PlayIcon />} run={() => window.reminders.testSound().catch((e) => setError(errorText(e)))}>
+          <TestButton testId="reminder-sound-test" icon={<PlayIcon />} run={() => Effect.runPromise(ipc.reminders.testSound().pipe(Effect.catch((e) => Effect.sync(() => setError(e.message)))))}>
             {t('settings.reminders.testSound')}
           </TestButton>
         </div>
@@ -509,10 +509,10 @@ const stateOf = (a: Account): 'ok' | 'syncing' | 'err' => (a.syncing ? 'syncing'
 
 function PrivacyPanel(): React.JSX.Element {
   const [on, setOn] = useState<boolean>()
-  useEffect(() => void window.telemetry.enabled().then(setOn, () => {}), [])
+  useEffect(() => void Effect.runFork(ipc.telemetry.enabled().pipe(Effect.map(setOn), Effect.ignore)), [])
   const toggle = (next: boolean): void => {
     setOn(next)
-    void window.telemetry.setEnabled(next).catch(() => {})
+    Effect.runFork(ipc.telemetry.setEnabled(next).pipe(Effect.ignore))
   }
   return (
     <>
@@ -559,28 +559,24 @@ function AccountDetail({ account: a, syncingAll, notify, onNotify }: DetailProps
     if (syncingAll) setSyncError('')
   }, [syncingAll])
 
-  const run = async (fn: () => Promise<unknown>): Promise<void> => {
+  const run = (change: Effect.Effect<unknown, AppError>): void => {
     setError('')
-    try {
-      await fn()
-    } catch (e) {
-      setError(errorText(e))
-    }
+    Effect.runFork(change.pipe(Effect.catch((e) => Effect.sync(() => setError(e.message)))))
   }
   const rename = (): void => {
     const next = label.trim()
     if (!next) return setLabel(a.label)
-    if (next !== a.label) void run(() => window.api.accounts.update(a.id, { label: next }))
+    if (next !== a.label) run(ipc.api.accounts.update(a.id, { label: next }))
   }
-  const sync = async (): Promise<void> => {
+  const sync = (): void => {
     setSyncing(true)
     setSyncError('')
-    try {
-      await window.api.sync.now(a.id)
-    } catch (e) {
-      setSyncError(errorText(e))
-    }
-    setSyncing(false)
+    Effect.runFork(
+      ipc.api.sync.now(a.id).pipe(
+        Effect.catch((e) => Effect.sync(() => setSyncError(e.message))),
+        Effect.ensuring(Effect.sync(() => setSyncing(false)))
+      )
+    )
   }
   const failed = Boolean(syncError || a.error)
   const busy = syncing || syncingAll
@@ -618,7 +614,7 @@ function AccountDetail({ account: a, syncingAll, notify, onNotify }: DetailProps
         <Swatches
           value={a.color}
           name={t('settings.account.colourFor', { email: a.email })}
-          onChange={(color) => void run(() => window.api.accounts.update(a.id, { color }))}
+          onChange={(color) => run(ipc.api.accounts.update(a.id, { color }))}
         />
         <span>{t('settings.reminders.accountSwitch')}</span>
         <label className="set-check set-notify">
@@ -664,7 +660,7 @@ function AccountDetail({ account: a, syncingAll, notify, onNotify }: DetailProps
             type="button"
             className="acc-danger acc-primary-danger"
             data-testid={`account-remove-${a.id}`}
-            onClick={() => void run(() => window.api.accounts.remove(a.id))}
+            onClick={() => run(ipc.api.accounts.remove(a.id))}
           >
             {t('settings.account.removeConfirm')}
           </button>
