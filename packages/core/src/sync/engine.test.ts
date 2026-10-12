@@ -30,7 +30,12 @@ class FakeStore {
     return Effect.succeed(this.caches.get(id) ?? { calendars: [], events: [] })
   }
   writeCache(id: string, cache: AccountCache) {
-    return Effect.sync(() => void this.caches.set(id, structuredClone(cache)))
+    return Effect.sync(() => {
+      const before = this.caches.get(id)
+      this.caches.set(id, structuredClone(cache))
+      // Like the store: calendars and events only, syncedAt alone is no change.
+      return !before || JSON.stringify([before.calendars, before.events]) !== JSON.stringify([cache.calendars, cache.events])
+    })
   }
   update(id: string, patch: AccountPatch) {
     return Effect.sync(() => {

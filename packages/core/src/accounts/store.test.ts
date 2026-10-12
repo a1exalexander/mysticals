@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { Effect, type FileSystem } from 'effect'
@@ -220,5 +220,21 @@ describe('AccountStore corrupt files', () => {
     writeFileSync(file, '{}')
     await expect(open()).rejects.toThrow(/not a list of accounts/)
     expect(readFileSync(file, 'utf8')).toBe('{}')
+  })
+})
+
+describe('AccountStore cache writes', () => {
+  it('reports whether calendars or events changed and skips rewriting an unchanged cache', async () => {
+    const { work } = await addBoth()
+    const file = join(accDir(work.id), 'cache.json')
+    const cache = { calendars: [], events: [], syncedAt: '2026-09-23T12:00:00.000Z' }
+    expect(await run(store.writeCache(work.id, cache))).toBe(true)
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(cache) // same file format as JSON.stringify(cache)
+    const mtime = statSync(file).mtimeMs
+    expect(await run(store.writeCache(work.id, { ...cache, syncedAt: '2026-09-23T12:02:00.000Z' }))).toBe(false)
+    expect(statSync(file).mtimeMs).toBe(mtime)
+    expect((await run(store.readCache(work.id))).syncedAt).toBe('2026-09-23T12:02:00.000Z') // memory has the latest pass
+    const changed = { ...cache, calendars: [{ id: 'c', accountId: work.id, name: 'C', color: '#000', readOnly: false }] }
+    expect(await run(store.writeCache(work.id, changed))).toBe(true)
   })
 })

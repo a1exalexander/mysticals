@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto'
+import { createHash, randomUUID } from 'crypto'
 import { join } from 'path'
 import { Context, Effect, FileSystem, Layer, Semaphore } from 'effect'
 import type { Account, AccountKind, Calendar, CalEvent, Credentials } from '../shared/types'
@@ -35,7 +35,8 @@ export interface AccountStoreShape {
   /** Isolated provider instance for this account only (memoized per account). */
   getProvider(id: string): Effect.Effect<CalendarProvider, ProviderError>
   readCache(id: string): Effect.Effect<AccountCache, AppError>
-  writeCache(id: string, cache: AccountCache): Effect.Effect<void, AppError>
+  /** Saves the cache; whether its calendars or events differ from what was last saved (unchanged: no disk write). */
+  writeCache(id: string, cache: AccountCache): Effect.Effect<boolean, AppError>
   /** In-memory only: shows a local edit at once; the next sync writes the server's copy to disk. */
   patchCache(id: string, fn: (cache: AccountCache) => AccountCache): Effect.Effect<void, AppError>
   hiddenCalendars(id: string): Effect.Effect<string[], AppError>
@@ -85,6 +86,8 @@ export const makeAccountStore = (
     const providers = new Map<string, CalendarProvider>()
     /** Parsed cache.json per account; caches can be tens of MB, so they are read from disk once. */
     const caches = new Map<string, AccountCache>()
+    /** Digest of the calendars + events JSON last written per account: an unchanged sync pass skips its multi-MB rewrite. */
+    const written = new Map<string, string>()
     /** prefs.json per account: read on every events.list otherwise. */
     const hidden = new Map<string, string[]>()
 
@@ -217,6 +220,7 @@ export const makeAccountStore = (
             Effect.gen(function* () {
               providers.delete(id)
               caches.delete(id)
+              written.delete(id)
               hidden.delete(id)
               accounts = accounts.filter((a) => a.id !== id)
               yield* saveRegistry
@@ -264,9 +268,18 @@ export const makeAccountStore = (
           Effect.gen(function* () {
             const d = yield* accountDir(id)
             yield* require(id)
-            yield* io(fs.makeDirectory(d, { recursive: true }))
-            yield* provideFs(writeAtomic(join(d, 'cache.json'), JSON.stringify(cache)))
+            // Serialized once for both the comparison and the file; `syncedAt` alone changing is not a change.
+            const data = JSON.stringify({ calendars: cache.calendars, events: cache.events })
+            const digest = createHash('sha1').update(data).digest('base64')
+            const changed = written.get(id) !== digest
+            if (changed) {
+              yield* io(fs.makeDirectory(d, { recursive: true }))
+              const file = cache.syncedAt === undefined ? data : `${data.slice(0, -1)},"syncedAt":${JSON.stringify(cache.syncedAt)}}`
+              yield* provideFs(writeAtomic(join(d, 'cache.json'), file))
+              written.set(id, digest)
+            }
             caches.set(id, cache)
+            return changed
           })
         ),
 

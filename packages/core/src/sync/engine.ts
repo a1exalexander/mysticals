@@ -64,16 +64,9 @@ export class SyncEngine extends Context.Service<SyncEngine, SyncEngineShape>()('
 }
 
 const MIN = 60_000
-/** Accounts synced at once by the all-accounts call, and calendars listed at once per account. */
-const ACCOUNTS_AT_ONCE = 3
-const CALENDARS_AT_ONCE = 4
-
-/** Whether a pass changed anything; compares item by item so a big unchanged cache stops at the first difference. */
-const sameCache = (a: AccountCache, b: AccountCache): boolean =>
-  a.calendars.length === b.calendars.length &&
-  a.events.length === b.events.length &&
-  JSON.stringify(a.calendars) === JSON.stringify(b.calendars) &&
-  a.events.every((e, i) => JSON.stringify(e) === JSON.stringify(b.events[i]))
+/** Calendars listed at once per account: one server never gets a burst of every calendar (Google rate limits). Accounts
+ * are separate servers, so they all sync at once. */
+const CALENDARS_AT_ONCE = 8
 
 /** Passes, timers and the trigger listener run in the engine's own scope, which `stop` closes. */
 export const makeSyncEngine = (store: SyncStore, onChanged: (accountId: string) => void, opts: SyncOptions = {}): Effect.Effect<SyncEngineShape> =>
@@ -144,8 +137,8 @@ export const makeSyncEngine = (store: SyncStore, onChanged: (accountId: string) 
               return yield* Effect.fail({ message: 'The server returned no calendars; showing the last synced data' })
             }
             emptied.delete(id)
-            const changed = !prev || !sameCache(prev, next)
-            yield* store.writeCache(id, next)
+            // The store compares with what it last saved (one serialization, no rewrite when nothing changed).
+            const changed = (yield* store.writeCache(id, next)) || !prev
             failures.delete(id)
             opts.onResult?.(id, { ok: true, prev, next })
             if (hadError) yield* store.update(id, { error: undefined, authError: false })
@@ -175,7 +168,7 @@ export const makeSyncEngine = (store: SyncStore, onChanged: (accountId: string) 
             Effect.forEach(
               accounts.filter((a) => !a.authError),
               (a) => Effect.ignore(syncNow(a.id)),
-              { concurrency: ACCOUNTS_AT_ONCE, discard: true }
+              { concurrency: 'unbounded', discard: true }
             )
           )
         const existing = inflight.get(accountId)
@@ -244,6 +237,9 @@ export const makeSyncEngine = (store: SyncStore, onChanged: (accountId: string) 
     return engine
   })
 
+/** Epoch ms of an event time: date-only (all-day) values are local midnight, like parseISO; timestamps parse natively (~10x faster). */
+const instant = (iso: string): number => (iso.length === 10 ? parseISO(iso).getTime() : Date.parse(iso))
+
 /**
  * Events from every account's cache that overlap `range` (end-exclusive).
  * With `visibleOnly` (default), events in calendars hidden via `store.hiddenCalendars(id)` are skipped.
@@ -262,9 +258,8 @@ export const queryEvents = (
       if (cache._tag === 'None') continue
       const hidden = new Set(visibleOnly ? yield* store.hiddenCalendars(acc.id) : [])
       for (const e of cache.value.events) {
-        // parseISO reads date-only (all-day) values as local midnight.
         if (e.accountId !== acc.id || hidden.has(e.calendarId)) continue
-        if (parseISO(e.end).getTime() > from && parseISO(e.start).getTime() < to) out.push(e)
+        if (instant(e.end) > from && instant(e.start) < to) out.push(e)
       }
     }
     return out
