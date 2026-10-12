@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import { readFileSync, renameSync, writeFileSync } from 'fs'
+import { readFileSync, renameSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
 import type { LocaleSetting } from '@mysticals/core/i18n'
@@ -27,7 +27,12 @@ const prefsFile = (dir = app.getPath('userData')): string => join(dir, 'prefs.js
 export function writeFileAtomic(file: string, data: string): void {
   const tmp = `${file}.${randomUUID()}.tmp`
   writeFileSync(tmp, data)
-  renameSync(tmp, file)
+  try {
+    renameSync(tmp, file)
+  } catch (e) {
+    rmSync(tmp, { force: true }) // Windows: EPERM while another process holds `file`
+    throw e
+  }
 }
 
 /** Parsed prefs.json per file: read once, then kept up to date by writePrefs (the reminder tick reads it often). */
