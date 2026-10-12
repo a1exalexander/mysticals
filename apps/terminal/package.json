@@ -20,21 +20,20 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@effect/platform-node": "^4.0.3",
     "date-fns": "^4.4.0",
-    "effect": "^4.0.3",
     "ical.js": "^2.2.1",
     "ink": "^6.8.0",
     "react": "^19.3.0",
     "string-width": "^8.1.1",
-    "tsdav": "^2.3.4",
-    "zod": "^4.6.5"
+    "tsdav": "^2.3.4"
   },
   "devDependencies": {
     "@effect/language-service": "^0.87.4",
+    "@effect/platform-node": "^4.0.3",
     "@mysticals/core": "workspace:*",
     "@types/node": "^26.6.2",
     "@types/react": "^19.3.0",
+    "effect": "^4.0.3",
     "ink-testing-library": "^4.0.0",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",

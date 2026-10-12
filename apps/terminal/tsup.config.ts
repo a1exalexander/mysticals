@@ -6,13 +6,14 @@ import { defineConfig } from 'tsup'
 const file = existsSync('../../.env') ? parseEnv(readFileSync('../../.env', 'utf8')) : {}
 const env = (k: string): string => JSON.stringify(process.env[k] || file[k] || '')
 
-// Core is TS source and gets bundled; third-party deps stay external (they are `dependencies`).
+// Core is TS source and gets bundled; third-party deps stay external (they are `dependencies`), except Effect:
+// tree-shaken into the bundle, its barrel import would otherwise load every module on each start (TUI and daemon).
 export default defineConfig({
   entry: { cli: 'src/cli.ts' },
   format: 'esm',
   platform: 'node',
   target: 'node20',
-  noExternal: ['@mysticals/core'],
+  noExternal: ['@mysticals/core', /^effect(\/|$)/, /^@effect\//],
   define: {
     __GOOGLE_CLIENT_ID__: env('MYSTICALS_GOOGLE_CLIENT_ID'),
     __GOOGLE_CLIENT_SECRET__: env('MYSTICALS_GOOGLE_CLIENT_SECRET'),

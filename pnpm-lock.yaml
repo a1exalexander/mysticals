@@ -14,31 +14,22 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@effect/platform-node':
-        specifier: ^4.0.3
-        version: 4.0.3(effect@4.0.3)(redis@6.3.0)
       date-fns:
         specifier: ^4.4.0
         version: 4.4.0
-      effect:
-        specifier: ^4.0.3
-        version: 4.0.3
       ical.js:
         specifier: ^2.2.1
         version: 2.2.1
       tsdav:
         specifier: ^2.3.4
         version: 2.3.4
-      zod:
-        specifier: ^4.6.5
-        version: 4.6.5
     devDependencies:
-      '@effect/atom-react':
-        specifier: ^4.0.3
-        version: 4.0.3(effect@4.0.3)(react@19.3.0)(scheduler@0.28.0)
       '@effect/language-service':
         specifier: ^0.87.4
         version: 0.87.4
+      '@effect/platform-node':
+        specifier: ^4.0.3
+        version: 4.0.3(effect@4.0.3)(redis@6.3.0)
       '@mysticals/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -63,6 +54,9 @@ importers:
       dompurify:
         specifier: ^3.4.16
         version: 3.4.16
+      effect:
+        specifier: ^4.0.3
+        version: 4.0.3
       electron:
         specifier: ^44.4.5
         version: 44.4.5
@@ -102,18 +96,9 @@ importers:
 
   apps/terminal:
     dependencies:
-      '@effect/atom-react':
-        specifier: ^4.0.3
-        version: 4.0.3(effect@4.0.3)(react@19.3.0)(scheduler@0.28.0)
-      '@effect/platform-node':
-        specifier: ^4.0.3
-        version: 4.0.3(effect@4.0.3)(redis@6.3.0)
       date-fns:
         specifier: ^4.4.0
         version: 4.4.0
-      effect:
-        specifier: ^4.0.3
-        version: 4.0.3
       ical.js:
         specifier: ^2.2.1
         version: 2.2.1
@@ -129,13 +114,13 @@ importers:
       tsdav:
         specifier: ^2.3.4
         version: 2.3.4
-      zod:
-        specifier: ^4.6.5
-        version: 4.6.5
     devDependencies:
       '@effect/language-service':
         specifier: ^0.87.4
         version: 0.87.4
+      '@effect/platform-node':
+        specifier: ^4.0.3
+        version: 4.0.3(effect@4.0.3)(redis@6.3.0)
       '@mysticals/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -145,6 +130,9 @@ importers:
       '@types/react':
         specifier: ^19.3.0
         version: 19.3.0
+      effect:
+        specifier: ^4.0.3
+        version: 4.0.3
       ink-testing-library:
         specifier: ^4.0.0
         version: 4.0.0(@types/react@19.3.0)
@@ -472,13 +460,6 @@ packages:
 
   '@date-fns/tz@1.5.0':
     resolution: {integrity: sha512-lwYN/vDPeNRULcepoE/LO2Pgx+7/RV+S9ARfbc9lr2DtGkOD7pAiruHvbR1RX3Qyf6ja47EWJDMsNK5vK08DJg==}
-
-  '@effect/atom-react@4.0.3':
-    resolution: {integrity: sha512-niFAKlL2heOKYfjSaC6nbMBQfxBZRX4LLaSBlnNgLLvamj735aBHTGqejyddMlvAbUYGUV0tD5ov9C9hxFFLJg==}
-    peerDependencies:
-      effect: ^4.0.3
-      react: '>=19.0.0 <20.0.0'
-      scheduler: '>=0.25.0 <0.29.0'
 
   '@effect/language-service@0.87.4':
     resolution: {integrity: sha512-AfFn4K45l84LtbQSwoPWc06nrg7OzfV3uJOnIUqimSOWTCIsY1IKBXZfjSsVTq7jDuL9Jtoz8//bZp9+rkEihg==}
@@ -4283,12 +4264,6 @@ snapshots:
   '@csstools/css-tokenizer@4.0.2': {}
 
   '@date-fns/tz@1.5.0': {}
-
-  '@effect/atom-react@4.0.3(effect@4.0.3)(react@19.3.0)(scheduler@0.28.0)':
-    dependencies:
-      effect: 4.0.3
-      react: 19.3.0
-      scheduler: 0.28.0
 
   '@effect/language-service@0.87.4': {}
 
