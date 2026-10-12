@@ -3,9 +3,10 @@
  * Animated illustration of the desktop app, pure CSS on one 24s loop. It opens on the Agenda view (today's list,
  * the live call with its Join button, breaks, the next days and the focus card), then a click on Week switches to
  * the week grid: events of three accounts drop in, a drag creates an event whose editor must pick an account and
- * calendar, and a pending invite is accepted from the status-bar invites popover.
+ * calendar, a pending invite is accepted from the status-bar invites popover, and the full-screen reminder for that
+ * call frosts over the window.
  * Markup and styles mirror apps/desktop/src/renderer (styles/base.css, components/ui/ui.css, views/Agenda.css,
- * EventEditor.css, Invites.css), scaled to em. The palette comes from src/themes.ts (Dracula unless `theme` is set);
+ * EventEditor.css, Invites.css, ReminderScreen.css), scaled to em. The palette comes from src/themes.ts (Dracula unless `theme` is set);
  * ThemeShowcase swaps it at runtime. With `followPage` it tracks the page theme instead: Dracula on a dark page,
  * Light on a light one, set by CSS so it holds before the first paint and follows the footer switch.
  * The script only fills dates from the viewer's today and pauses the loop off screen.
@@ -44,8 +45,10 @@ const UK: Record<string, string> = {
   Calendar: 'Календар', 'Choose calendar…': 'Оберіть календар…', Starts: 'Початок', Ends: 'Кінець', Repeat: 'Повтор',
   'Does not repeat': 'Не повторюється', 'Choose which account this event belongs to.': 'Оберіть, до якого облікового запису належить подія.',
   'Created in': 'Створюється в', Cancel: 'Скасувати', 'Add Event': 'Додати подію',
-  'Animation: the Mysticals desktop app opening on today\'s agenda with a live call to join, then switching to a week of events from three accounts, creating an event with an explicit account and calendar, and accepting an invite from the account that received it.':
-    'Анімація: десктопний застосунок Mysticals відкривається на сьогоднішньому розкладі з дзвінком, до якого можна приєднатися, потім перемикається на тиждень з подіями трьох акаунтів, створює подію з явно обраним акаунтом і календарем, а потім приймає запрошення з того акаунта, який його отримав.',
+  'Upcoming calls': 'Найближчі дзвінки', 'in 5 min': 'через 5 хв', 'Join Google Meet': 'Приєднатися до Google Meet', Copy: 'Копіювати',
+  'Esc or Backspace to dismiss': 'Esc або Backspace, щоб закрити',
+  'Animation: the Mysticals desktop app opening on today\'s agenda with a live call to join, then switching to a week of events from three accounts, creating an event with an explicit account and calendar, accepting an invite from the account that received it, and showing the full-screen reminder for that call.':
+    'Анімація: десктопний застосунок Mysticals відкривається на сьогоднішньому розкладі з дзвінком, до якого можна приєднатися, потім перемикається на тиждень з подіями трьох акаунтів, створює подію з явно обраним акаунтом і календарем, приймає запрошення з того акаунта, який його отримав, і показує повноекранне нагадування про цей дзвінок.',
 }
 const tr = (s: string) => (lang === 'uk' ? UK[s] ?? s : s)
 type Ev = [off: number, start: number, hours: number, title: string, acc: 'work' | 'pers' | 'icl', meta?: string, extra?: string]
@@ -72,11 +75,11 @@ const accounts = [
   ['icl', 'iCloud', 'me@icloud.example', [['Family']]],
 ] as const
 // Agenda rows: [kind, time, account, title, meta, flags]
-type Row = ['ev', string, 'work' | 'pers' | 'icl', string, string, string?] | ['now'] | ['gap', string]
+type Row = ['ev', string, 'work' | 'pers' | 'icl', string, string, string?] | ['gap', string]
+// The live row carries the now line (10:20 of 10:00–10:45); its clock covers the start, so the meta repeats the times
 const today: Row[] = [
   ['ev', '09:30', 'work', tr('Standup'), tr('15m · video call'), 'past'],
-  ['ev', '10:00', 'work', tr('Design review'), `<span class="live">${tr('● now')}</span> · ${tr('Room 3')}`, 'live sel'],
-  ['now'],
+  ['ev', '10:00', 'work', tr('Design review'), `<span class="live">${tr('● now')}</span> · 10:00 – 10:45 · ${tr('Room 3')}`, 'live sel'],
   ['ev', '10:30', 'pers', tr('Dentist'), tr('in 10m · Clinic')],
   ['gap', tr('Break · 3h')],
   ['ev', '14:00', 'icl', tr('Lunch with Ana'), tr('1h · Kyiv')],
@@ -167,13 +170,13 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
         <div class="agv">
           <div class="aglist">
             <ol class="agrows">
-              {today.map((r, i) => r[0] === 'now' ? <li class="agnow"><span>10:20</span></li>
-                : r[0] === 'gap' ? <li class="aggap">{r[1]}</li>
+              {today.map((r, i) => r[0] === 'gap' ? <li class="aggap">{r[1]}</li>
                 : (
                   <li class={`agrow ${r[2]} ${r[5] ?? ''}`} style={`--i:${i}`}>
                     <span class="agt">{r[1]}</span><span class="agbar"></span>
                     <span class="agm"><b>{r[3]}</b><small set:html={r[4]} /></span>
                     {r[5]?.includes('live') && <span class="pill">{tr('Join')}</span>}
+                    {r[5]?.includes('live') && <span class="agnow" style="top:44%"><span>10:20</span></span>}
                   </li>
                 ))}
             </ol>
@@ -240,8 +243,21 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
         <div class="sacts"><span class="dbtn">{tr('Cancel')}</span><span class="dbtn add">{tr('Add Event')}</span></div>
       </div>
     </div>
+
+    <div class="rs">
+      <span class="rs-close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg></span>
+      <b class="rs-heading">{tr('Upcoming calls')}</b>
+      <div class="rs-card">
+        <div class="rs-meta"><i></i><span>iCloud</span><span class="rs-when">{tr('in 5 min')}</span></div>
+        <b class="rs-title">{tr('Lunch with Ana')}</b>
+        <span class="rs-time">14:00–15:00</span>
+        <span class="rs-join">{tr('Join Google Meet')}</span>
+        <span class="rs-link"><span class="rs-url">https://meet.google.com/abc-defg-hij</span><span class="dbtn">{tr('Copy')}</span></span>
+      </div>
+      <span class="rs-hint">{tr('Esc or Backspace to dismiss')}</span>
+    </div>
   </div>
-  <figcaption class="sr-only">{tr("Animation: the Mysticals desktop app opening on today's agenda with a live call to join, then switching to a week of events from three accounts, creating an event with an explicit account and calendar, and accepting an invite from the account that received it.")}</figcaption>
+  <figcaption class="sr-only">{tr("Animation: the Mysticals desktop app opening on today's agenda with a live call to join, then switching to a week of events from three accounts, creating an event with an explicit account and calendar, accepting an invite from the account that received it, and showing the full-screen reminder for that call.")}</figcaption>
 </figure>
 
 <script>
@@ -279,6 +295,7 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
       el.textContent = String(d.getDate())
       el.classList.toggle('other', d.getMonth() !== first.getMonth())
       el.classList.toggle('today', +d === +today)
+      el.classList.toggle('in-range', +d >= +at(-mon) && +d <= +at(6 - mon))
     })
     // Toolbar "September 2026 · W39" (ISO week) and status-bar range "21 – 27 Sep 2026"
     const thu = at(3 - mon)
@@ -338,6 +355,9 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
   .md { border-radius: .3em; }
   .md.other { color: var(--faint); }
   .md.today { background: var(--pink); color: var(--on-accent); font-weight: 700; }
+  /* .mini-day.in-range: a faint tint on the days the main view shows, so this week once the Week tab is picked */
+  .md.in-range:not(.today) { background: color-mix(in srgb, var(--accent) 8%, transparent); animation: mrange var(--T) infinite both; }
+  @keyframes mrange { 0%, 27.5% { background-color: transparent; } 29%, 100% { background-color: color-mix(in srgb, var(--accent) 8%, transparent); } }
   .accs { flex: 1; display: flex; flex-direction: column; gap: 1.1em; padding: 1em .75em; border-top: 1px solid var(--line); }
   .acc-head { display: grid; grid-template-columns: .75em .55em 1fr; column-gap: .55em; align-items: center; padding: .3em .45em; }
   .arrow { color: var(--muted); transform: rotate(90deg); }
@@ -465,8 +485,10 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
   .agrows { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
   .agrow {
     position: relative; display: grid; grid-template-columns: 3.4em 3px minmax(0, 1fr); align-items: center; gap: .77em;
-    padding: .54em var(--pill-room, 4.9em) .54em .6em; border-radius: .3em; animation: agin var(--T) calc(var(--i, 0) * .06s) infinite both;
+    padding: .54em .6em; border-radius: .3em; animation: agin var(--T) calc(var(--i, 0) * .06s) infinite both;
   }
+  /* only the row with a Join pill gives up room for it */
+  .agrow.live { padding-right: var(--pill-room, 4.9em); }
   @keyframes agin { 0% { opacity: 0; transform: translateY(3px); } 2.5%, 100% { opacity: var(--o, 1); transform: none; } }
   .agrow.work { --k: var(--work); } .agrow.pers { --k: var(--pers); } .agrow.icl { --k: var(--icl); }
   .agrow.sel { background: color-mix(in srgb, var(--k) 10%, transparent); }
@@ -479,9 +501,10 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
   .agm small { font: .88em/1.3 var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .agm :global(.live) { color: var(--green); }
   .pill { position: absolute; right: .6em; top: 50%; transform: translateY(-50%); padding: 0 .77em; border-radius: .23em; background: var(--green); color: var(--bg); font: 700 .85em/1.7em var(--mono); }
-  .agnow { position: relative; height: 0; margin: .4em 0 .4em 4em; border-top: 2px solid var(--pink); }
+  /* now line over the running row (.ag-now-over): a short tick before the title, the clock over the start time */
+  .agnow { position: absolute; left: 4em; width: 1.4em; height: 0; margin-top: -1px; border-top: 2px solid var(--pink); }
   .agnow::before { content: ''; position: absolute; left: -.3em; top: -.4em; width: .6em; height: .6em; border-radius: 50%; background: var(--pink); }
-  .agnow span { position: absolute; right: 0; top: 0; transform: translateY(-50%); padding: .08em .3em; border-radius: .23em; background: var(--pink); color: var(--on-accent); font: 700 .77em/1.2 var(--mono); }
+  .agnow span { position: absolute; right: calc(100% + .45em); top: 0; transform: translateY(-50%); padding: .08em .55em; border-radius: .23em; background: var(--pink); color: var(--on-accent); font: 700 .77em/1.2 var(--mono); }
   .aggap { margin-left: 4.8em; padding: 1px 0; font: .77em/1.2 var(--mono); color: color-mix(in srgb, var(--muted) 70%, transparent); }
   /* "Next 7 days" opens a little after the list settles */
   .agahead { position: relative; display: flex; align-items: center; gap: .55em; margin-top: .77em; padding: .6em; border-top: 1px dashed var(--line-strong); font: .88em/1 var(--mono); color: var(--muted); animation: ahead var(--T) infinite both; }
@@ -625,6 +648,32 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
   }
   @keyframes ov { 0%, 51% { opacity: 0; visibility: hidden; } 52.4%, 66.4% { opacity: 1; visibility: visible; } 68.5%, 100% { opacity: 0; visibility: hidden; } }
   @keyframes drop { 0%, 51% { transform: translateY(-.5em); } 52.4%, 100% { transform: none; } }
+
+  /* ---------- full-screen reminder (ReminderScreen.css): the theme's --bg at 40% over a blur, the card rises in ---------- */
+  .rs {
+    position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.8em;
+    background: color-mix(in srgb, var(--bg) 40%, transparent); -webkit-backdrop-filter: blur(.8em) saturate(1.3); backdrop-filter: blur(.8em) saturate(1.3);
+    opacity: 0; visibility: hidden; animation: rsv var(--T) infinite both;
+  }
+  .rs-close { position: absolute; top: 1.5em; right: 1.5em; width: 3.7em; height: 3.7em; display: grid; place-items: center; color: var(--muted); border: 1px solid var(--line-strong); border-radius: 50%; }
+  .rs-close svg { width: 1.7em; height: 1.7em; }
+  .rs-heading { font: 600 .92em/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .rs-card {
+    width: 29em; max-width: 86%; box-sizing: border-box; padding: 1.7em 1.85em; display: flex; flex-direction: column; gap: .77em;
+    background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: .6em; animation: rsr var(--T) infinite both;
+  }
+  .rs-meta { display: flex; align-items: center; gap: .6em; font: 500 .92em/1.2 var(--mono); color: var(--muted); }
+  .rs-meta i { width: .54em; height: .54em; flex: none; border-radius: .15em; background: var(--icl); }
+  .rs-when { margin-left: auto; color: var(--accent); white-space: nowrap; }
+  .rs-title { margin-top: .15em; font-size: 1.7em; line-height: 1.25; font-weight: 650; }
+  .rs-time { font: 1.08em/1 var(--mono); color: var(--muted); }
+  .rs-join { margin-top: .46em; text-align: center; border-radius: .3em; background: var(--accent); color: var(--on-accent); font: 700 1.08em/3.1em var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rs-link { display: flex; gap: .46em; }
+  .rs-url { flex: 1; min-width: 0; padding: 0 .6em; font: .92em/2.1em var(--mono); color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: .3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rs-hint { font: .92em/1 var(--mono); color: var(--faint); }
+  /* After the invite is accepted (83%) the reminder for that call opens, holds, and is dismissed before the loop ends */
+  @keyframes rsv { 0%, 85% { opacity: 0; visibility: hidden; } 86.5%, 95% { opacity: 1; visibility: visible; } 96.5%, 100% { opacity: 0; visibility: hidden; } }
+  @keyframes rsr { 0%, 85.5% { opacity: 0; transform: translateY(.9em) scale(.96); } 88%, 100% { opacity: 1; transform: none; } }
 
   @container (max-width: 470px) {
     .dwin { grid-template-columns: minmax(0, 1fr); font-size: calc(100cqw / 46); }

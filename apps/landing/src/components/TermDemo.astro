@@ -74,9 +74,13 @@ const caption = {
 
   function header(s: State): Line {
     const names: [string, State['view'][]][] = [['Agenda', ['agenda', 'invites']], ['Day', []], ['2 Days', []], ['Week', ['week']], ['Month', ['month']]]
-    const l: Line = names.map(([n, v]) => [` ${n} `, v.includes(s.view) ? 'ia b' : 'm'])
+    // the underlined first letter is the tab's key, like the app
+    const l: Line = names.flatMap(([n, v]): Line => {
+      const c = v.includes(s.view) ? 'ia b' : 'm'
+      return [[' ', c], [n[0], `${c} u`], [`${n.slice(1)} `, c]]
+    })
     const title = s.view === 'week' ? range(dayAt(-mon), dayAt(6 - mon)) : s.view === 'month' ? today.toLocaleString('en', { month: 'long', year: 'numeric' }) : range(today, dayAt(13))
-    return [...l, [' '], [' ‹ ', 'cy'], ['today', 'm'], [' › ', 'cy'], [' '], [title, 'b']]
+    return [...l, [' '], [' ‹ ', 'cy'], ['t', 'm u'], ['oday', 'm'], [' › ', 'cy'], [' '], [title, 'b']]
   }
 
   function card(e: Ev, s: State): Line[] {
@@ -220,6 +224,8 @@ const caption = {
     if (!s.accepted) info.push([' · ', 'm'], ['1 invite (i)', 'y'])
     const btn: Line = []
     for (const [k, l] of [['n', 'new'], ['r', 'sync'], ['i', 'invites'], ['s', 'accounts'], ['?', 'help'], ['q', 'quit']]) btn.push([k, 'ia b'], [` ${l}  `])
+    // how to move and open, while no panel has the keys
+    if (s.view !== 'invites') btn.push(['←→↑↓ move · enter open', 'm'])
     return [info, btn]
   }
 
@@ -321,6 +327,7 @@ const caption = {
   .screen :global(.y) { color: var(--yellow); }
   .screen :global(.r) { color: var(--red); }
   .screen :global(.dimc) { opacity: .5; }
+  .screen :global(.u) { text-decoration: underline; }
   @keyframes blink { 50% { opacity: 0; } }
   .screen :global(.cur) { animation: blink 1s steps(1) infinite; }
   /* inverse: the colour becomes the background, text takes the terminal background */
