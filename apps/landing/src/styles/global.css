@@ -45,7 +45,7 @@ code { color: var(--soft); font-size: .95em; }
 .ul:hover { color: var(--hi); }
 
 /* "Made in Ukraine" strip above the header */
-.ua-bar { display: flex; justify-content: center; padding: 8px 16px; border-bottom: 1px solid var(--line); }
+.ua-bar { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
 .ua-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border: 1px solid var(--line-strong); border-radius: 999px; font: 500 11px/1.4 var(--mono); letter-spacing: .02em; color: var(--muted); }
 .ua-flag { width: 12px; height: 8px; border-radius: 1px; }
 
@@ -70,8 +70,10 @@ body > header { border-bottom: 1px solid var(--line); }
 .prefs .seg > *:hover { color: var(--fg); }
 .prefs .seg > :is([aria-pressed='true'], [aria-current]) { background: var(--surface); color: var(--fg); box-shadow: 0 0 0 1px var(--line-strong); }
 /* Donate: small button in monobank Base's own purple */
-.foot nav a.donate { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px; border-radius: 8px; background: #7b4bf8; color: #fff; font-weight: 600; font-size: 13px; }
-.foot nav a.donate:hover { background: #8d63ff; color: #fff; }
+a.donate, .foot nav a.donate { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px; border-radius: 8px; background: #7b4bf8; color: #fff; font-weight: 600; font-size: 13px; }
+a.donate:hover, .foot nav a.donate:hover { background: #8d63ff; color: #fff; }
+.ua-bar .donate { gap: 5px; padding: 2px 9px 2px 3px; border-radius: 6px; font: 600 11px/1.4 var(--mono); }
+.ua-bar .donate img { border-radius: 3px; }
 .donate img { border-radius: 4px; box-shadow: 0 0 0 1px rgb(255 255 255 / 35%); }
 
 /* type */
