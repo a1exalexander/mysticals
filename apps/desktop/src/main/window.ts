@@ -9,6 +9,12 @@ export const webPreferences: WebPreferences = {
   nodeIntegration: false
 }
 
+/** Playwright runs (see playwright.config.ts): windows open without taking focus, so the machine stays usable. */
+export const E2E = process.env.MYSTICALS_E2E === '1'
+
+/** Shows `win` in front; under e2e without activating the app or stealing keyboard focus. */
+export const showWindow = (win: BrowserWindow): void => (E2E ? win.showInactive() : win.show())
+
 /** The theme's background (`--bg`), as last sent over themeSet: new windows start in it, so there is no flash. */
 export const themeBg = { current: '#0b0b10' }
 

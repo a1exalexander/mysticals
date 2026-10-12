@@ -26,7 +26,7 @@ import { startDesktopTelemetry } from './telemetry'
 import { mutedAccounts, startReminders, warmReminders } from './reminders'
 import { createActivityLog, registerActivityLog, type ActivityLog } from './activityLog'
 import { electronTriggers } from './sync/electronTriggers'
-import { broadcast, loadRenderer, lockDown, showBanner, themeBg, webPreferences } from './window'
+import { broadcast, E2E, loadRenderer, lockDown, showBanner, showWindow, themeBg, webPreferences } from './window'
 
 const MOCK = process.env.MYSTICALS_MOCK === '1'
 const MAC = process.platform === 'darwin'
@@ -55,8 +55,8 @@ function showMain(): void {
   const win = mainWin
   if (!win) return createWindow()
   if (win.isMinimized()) win.restore()
-  win.show()
-  win.focus()
+  showWindow(win)
+  if (!E2E) win.focus()
 }
 
 const changed = (accountId: string): void => broadcast(IPC.changed, accountId)
@@ -177,7 +177,7 @@ function createWindow(): void {
     if (!MAC) app.quit()
   })
   win.once('ready-to-show', () => {
-    win.show()
+    showWindow(win)
     warmReminders()
   })
   lockDown(win)
@@ -254,7 +254,7 @@ const startBackend = (dir: string, activity: ActivityLog, track: Track | undefin
           onCode: () => {
             broadcast(IPC.signIn, 'connecting')
             showMain()
-            if (MAC) app.focus({ steal: true })
+            if (MAC && !E2E) app.focus({ steal: true })
           }
         })
       const onAccountAdded = (info: AccountAdded): void => track?.('account_added', info)
@@ -303,6 +303,8 @@ app.whenReady().then(() => {
   if (!primary) return
   // Must match appId in electron-builder.yml, or Windows toasts show the wrong name/icon.
   if (process.platform === 'win32') app.setAppUserModelId('com.a1exalexander.mysticals')
+  // e2e: no Dock icon and never the active app, so test runs don't take over the Mac.
+  if (E2E && MAC) app.setActivationPolicy('accessory')
   nativeTheme.themeSource = 'dark'
   // Settings > Themes: light palettes get a light native frame; the window bg follows --bg (no flash on resize).
   ipcMain.handle(IPC.themeSet, (e, scheme: unknown, bg: unknown) => {
