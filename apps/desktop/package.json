@@ -34,7 +34,6 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@effect/atom-react": "^4.0.3",
     "@effect/language-service": "^0.87.4",
     "@mysticals/core": "workspace:*",
     "@playwright/test": "^1.63.0",

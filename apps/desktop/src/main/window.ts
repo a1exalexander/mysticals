@@ -1,5 +1,5 @@
 import { join } from 'path'
-import { shell, type BrowserWindow, type WebPreferences } from 'electron'
+import { BrowserWindow, Notification, shell, type NotificationConstructorOptions, type WebPreferences } from 'electron'
 
 /** Every app window runs the renderer sandboxed, with only the preload bridge. */
 export const webPreferences: WebPreferences = {
@@ -25,4 +25,31 @@ export function lockDown(win: BrowserWindow): void {
 export function loadRenderer(win: BrowserWindow, hash?: string): void {
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL + (hash ? `#${hash}` : ''))
   else void win.loadFile(join(__dirname, '../renderer/index.html'), hash ? { hash } : undefined)
+}
+
+/** Sends `channel` to every open window (main, reminder screen, hidden sound window). */
+export function broadcast(channel: string, ...args: unknown[]): void {
+  for (const w of BrowserWindow.getAllWindows()) w.webContents.send(channel, ...args)
+}
+
+// Held until closed/clicked: a GC'd Notification drops its click/action handlers.
+const banners = new Set<Notification>()
+
+/** Shows a system notification; `onClick` runs on a click or one of its action buttons. */
+export function showBanner(opts: NotificationConstructorOptions, onClick?: () => void): void {
+  const n = new Notification(opts)
+  banners.add(n)
+  const click = (): void => {
+    banners.delete(n)
+    onClick?.()
+  }
+  n.on('click', click)
+  n.on('action', click)
+  n.on('close', () => banners.delete(n))
+  // e.g. "UNErrorDomain error 1": notifications not allowed for this app in System Settings.
+  n.on('failed', (_, error) => {
+    banners.delete(n)
+    console.error('notification failed', error)
+  })
+  n.show()
 }

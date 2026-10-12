@@ -1,20 +1,24 @@
 import { join } from 'path'
-import { mkdtempSync, readFileSync, writeFileSync } from 'fs'
+import { mkdtempSync, readFileSync, renameSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeTheme, Notification, safeStorage, shell, type MenuItemConstructorOptions } from 'electron'
+import { Cause, Context, Effect, Exit, Layer, ManagedRuntime, Scope } from 'effect'
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 import { IPC } from '@shared/ipc'
 import { createMockApi } from '@mysticals/core/mock/mockApi'
 import { createApi } from '@mysticals/core/api'
-import { AccountStore, type SecretCrypto } from '@mysticals/core/accounts/store'
+import { AccountStore, SecretCrypto, type AccountStoreShape } from '@mysticals/core/accounts/store'
 import { SyncEngine, type SyncResult } from '@mysticals/core/sync/engine'
 import { remoteChanges, snap } from '@mysticals/core/logic/activity'
 import type { LogEntry } from '@shared/types'
 import { noteText, type Note } from '@mysticals/core/sync/notify'
 import { t } from '@mysticals/core/i18n'
-import type { AccountAdded } from '@mysticals/core/telemetry'
+import { fail, messageOf } from '@mysticals/core/errors'
+import type { AccountAdded, Track } from '@mysticals/core/telemetry'
 import { createCaldavProvider, verifyCaldav } from '@mysticals/core/providers/caldav'
 import { createGoogleProvider, googleSignIn, setClientConfig } from '@mysticals/core/providers/google'
-import { registerApi } from './ipc/register'
+import { registerApi, registerApiError } from './ipc/register'
+import { loadPrefs } from './prefs'
 import { currentLocale, startLocale } from './locale'
 import { hour12, startClock } from './clock'
 import { startUpdater } from './update'
@@ -22,7 +26,7 @@ import { startDesktopTelemetry } from './telemetry'
 import { mutedAccounts, startReminders, warmReminders } from './reminders'
 import { createActivityLog, registerActivityLog, type ActivityLog } from './activityLog'
 import { electronTriggers } from './sync/electronTriggers'
-import { loadRenderer, lockDown, themeBg, webPreferences } from './window'
+import { broadcast, loadRenderer, lockDown, showBanner, themeBg, webPreferences } from './window'
 
 const MOCK = process.env.MYSTICALS_MOCK === '1'
 const MAC = process.platform === 'darwin'
@@ -55,76 +59,59 @@ function showMain(): void {
   win.focus()
 }
 
-function broadcast(accountId: string): void {
-  for (const w of BrowserWindow.getAllWindows()) w.webContents.send(IPC.changed, accountId)
-}
-
-// Held until closed/clicked: a GC'd Notification drops its click handler.
-const banners = new Set<Notification>()
+const changed = (accountId: string): void => broadcast(IPC.changed, accountId)
 
 /** System banners for invites/changes; muted accounts and events in hidden calendars stay silent. Each note is logged. */
-function notify(store: AccountStore, log: ActivityLog, accountId: string, notes: Note[]): void {
-  const account = store.list().find((a) => a.id === accountId)
-  if (!account) return
-  const muted = mutedAccounts().has(accountId)
-  const supported = Notification.isSupported()
-  const hidden = new Set(store.hiddenCalendars(accountId))
-  const at = new Date().toISOString()
-  for (const n of notes) {
-    const reason = muted ? 'muted' : hidden.has(n.event.calendarId) ? 'hidden calendar' : !supported ? 'unsupported' : undefined
-    log.append({ at, accountId, email: account.email, kind: 'notify', ok: true, event: snap(n.event), detail: { note: n.kind, shown: !reason, ...(reason ? { reason } : {}) } })
-  }
-  if (!supported || muted) return
-  const shown = notes.filter((n) => !hidden.has(n.event.calendarId))
-  for (const { title, body } of noteText(shown, account.label, new Date(), currentLocale(), hour12())) {
-    const n = new Notification({ title, body })
-    banners.add(n)
-    n.on('close', () => banners.delete(n))
-    // e.g. "UNErrorDomain error 1": notifications not allowed for this app in System Settings.
-    n.on('failed', (_, error) => {
-      banners.delete(n)
-      console.error('notification failed', error)
-    })
-    n.on('click', () => {
-      banners.delete(n)
-      showMain()
-    })
-    n.show()
-  }
-}
+const notify = (store: AccountStoreShape, log: ActivityLog, accountId: string, notes: Note[]) =>
+  Effect.gen(function* () {
+    const account = (yield* store.list()).find((a) => a.id === accountId)
+    if (!account) return
+    const muted = mutedAccounts().has(accountId)
+    const supported = Notification.isSupported()
+    const hidden = new Set(yield* store.hiddenCalendars(accountId))
+    const at = new Date().toISOString()
+    for (const n of notes) {
+      const reason = muted ? 'muted' : hidden.has(n.event.calendarId) ? 'hidden calendar' : !supported ? 'unsupported' : undefined
+      log.append({ at, accountId, email: account.email, kind: 'notify', ok: true, event: snap(n.event), detail: { note: n.kind, shown: !reason, ...(reason ? { reason } : {}) } })
+    }
+    if (!supported || muted) return
+    const shown = notes.filter((n) => !hidden.has(n.event.calendarId))
+    for (const { title, body } of noteText(shown, account.label, new Date(), currentLocale(), hour12())) showBanner({ title, body }, showMain)
+  }).pipe(Effect.catch((e) => Effect.sync(() => console.error('notify failed', e))))
 
 /**
  * A finished sync in the activity log: failures always; successes when they brought changes, were the first sync or
  * ended an error (a quiet pass every 2 minutes would bury the rest). Each remote change gets its own entry.
  */
-function logSync(store: AccountStore, log: ActivityLog, accountId: string, r: SyncResult): void {
-  const account = store.get(accountId)
-  const base = { at: new Date().toISOString(), accountId, email: account?.email ?? '' }
-  if (!r.ok) return log.append({ ...base, kind: 'sync.fail', ok: false, error: r.error, detail: { auth: r.auth } })
-  const first = !r.prev?.syncedAt
-  const changes = first ? [] : remoteChanges(r.prev!, r.next)
-  if (!first && !changes.length && !account?.error) return
-  const count = (k: LogEntry['kind']): number => changes.filter((c) => c.kind === k).length
-  log.append({
-    ...base,
-    kind: 'sync',
-    ok: true,
-    detail: {
-      calendars: r.next.calendars.length,
-      events: r.next.events.length,
-      ...(first ? { first: true } : { added: count('remote.add'), changed: count('remote.change'), removed: count('remote.remove') }),
-      ...(account?.error ? { recovered: account.error } : {})
-    }
+const logSync = (store: AccountStoreShape, log: ActivityLog, accountId: string, r: SyncResult) =>
+  Effect.gen(function* () {
+    const account = yield* store.get(accountId)
+    const base = { at: new Date().toISOString(), accountId, email: account?.email ?? '' }
+    if (!r.ok) return log.append({ ...base, kind: 'sync.fail', ok: false, error: r.error, detail: { auth: r.auth } })
+    const first = !r.prev?.syncedAt
+    const changes = first ? [] : remoteChanges(r.prev!, r.next)
+    if (!first && !changes.length && !account?.error) return
+    const count = (k: LogEntry['kind']): number => changes.filter((c) => c.kind === k).length
+    log.append({
+      ...base,
+      kind: 'sync',
+      ok: true,
+      detail: {
+        calendars: r.next.calendars.length,
+        events: r.next.events.length,
+        ...(first ? { first: true } : { added: count('remote.add'), changed: count('remote.change'), removed: count('remote.remove') }),
+        ...(account?.error ? { recovered: account.error } : {})
+      }
+    })
+    for (const c of changes) log.append({ ...base, ok: true, ...c })
   })
-  for (const c of changes) log.append({ ...base, ok: true, ...c })
-}
 
 /** Tells open windows (Settings > Logs) to re-read, at most twice a second: a sync can append hundreds of entries. */
 let logTimer: ReturnType<typeof setTimeout> | undefined
 function logsAppended(): void {
   logTimer ??= setTimeout(() => {
     logTimer = undefined
-    for (const w of BrowserWindow.getAllWindows()) w.webContents.send(IPC.logsAppended)
+    broadcast(IPC.logsAppended)
   }, 500)
 }
 
@@ -138,13 +125,13 @@ const secureStorageReady = (): boolean =>
 const noSecureStorage = (): string =>
   t(currentLocale(), process.platform === 'linux' ? 'error.noSecureStorageLinux' : 'error.noSecureStorage')
 
-const safeStorageCrypto: SecretCrypto = {
-  encrypt(plain) {
-    if (!secureStorageReady()) throw new Error(noSecureStorage())
-    return safeStorage.encryptString(plain)
-  },
-  decrypt: (data) => safeStorage.decryptString(data)
-}
+const safeStorageCrypto = Layer.succeed(SecretCrypto, {
+  encrypt: (plain) =>
+    Effect.suspend(() =>
+      secureStorageReady() ? Effect.try({ try: () => safeStorage.encryptString(plain), catch: (e) => fail(messageOf(e)) }) : Effect.fail(fail(noSecureStorage()))
+    ),
+  decrypt: (data) => Effect.try({ try: () => safeStorage.decryptString(Buffer.from(data)), catch: (e) => fail(messageOf(e)) })
+})
 
 const stateFile = (): string => join(app.getPath('userData'), 'window-state.json')
 
@@ -156,6 +143,18 @@ function loadSize(): { width: number; height: number } {
     // first launch or unreadable file
   }
   return { width: 1200, height: 800 }
+}
+
+/** Sync on purpose: 'close' can be the last thing before the process exits. Temp file + rename, so never half-written. */
+function saveSize(win: BrowserWindow): void {
+  const { width, height } = win.getNormalBounds()
+  const file = stateFile()
+  try {
+    writeFileSync(`${file}.tmp`, JSON.stringify({ width, height }))
+    renameSync(`${file}.tmp`, file)
+  } catch (e) {
+    console.error('failed to save window state', e)
+  }
 }
 
 function createWindow(): void {
@@ -212,17 +211,93 @@ function createWindow(): void {
 
   // Mock runs (e2e) must not touch the real window state.
   if (!MOCK)
-    win.on('close', () => {
-      const { width, height } = win.getNormalBounds()
-      try {
-        writeFileSync(stateFile(), JSON.stringify({ width, height }))
-      } catch (e) {
-        console.error('failed to save window state', e)
-      }
-    })
+    win.on('close', () => saveSize(win))
 
   loadRenderer(win)
 }
+
+/**
+ * The real backend: accounts, sync and the api over them. False when accounts.json can't be read (the user was told,
+ * the app should quit). Any other failure leaves the api channels rejecting with the reason.
+ */
+const startBackend = (dir: string, activity: ActivityLog, track: Track | undefined) =>
+  Effect.gen(function* () {
+    setClientConfig({
+      clientId: import.meta.env.MYSTICALS_GOOGLE_CLIENT_ID,
+      clientSecret: import.meta.env.MYSTICALS_GOOGLE_CLIENT_SECRET
+    })
+    const scope = yield* Effect.scope
+    const factories = { caldav: createCaldavProvider, google: createGoogleProvider }
+    const opened = yield* Effect.exit(Layer.buildWithScope(AccountStore.layer(dir, factories).pipe(Layer.provide(Layer.merge(NodeFileSystem.layer, safeStorageCrypto))), scope))
+    if (Exit.isFailure(opened)) {
+      // Unreadable accounts.json: say so and quit rather than open a window with no backend. The file is left as is.
+      const e = Cause.squash(opened.cause)
+      const file = join(dir, 'accounts.json')
+      console.error('failed to load accounts', file, e)
+      dialog.showErrorBox(t(currentLocale(), 'error.accountsTitle'), t(currentLocale(), 'error.accountsBody', { file, error: messageOf(e) }))
+      return false
+    }
+    const store = Context.get(opened.value, AccountStore)
+    yield* Effect.gen(function* () {
+      const engine = SyncEngine.layer(changed, {
+        triggers: electronTriggers,
+        onEvents: (id, notes) => void Effect.runFork(notify(store, activity, id, notes)),
+        onSyncing: changed, // renderer re-reads accounts.list for the `syncing` flag
+        onResult: (id, r) => void Effect.runFork(logSync(store, activity, id, r))
+      })
+      const services = Context.merge(opened.value, yield* Layer.buildWithScope(engine, scope).pipe(Effect.provide(opened.value)))
+      // The user finishes sign-in in the browser: bring Mysticals back right away so they see the account connect
+      // (the sheet shows "connecting" while the code is exchanged); the success page also opens mysticals://.
+      const signIn = (): ReturnType<typeof googleSignIn> =>
+        googleSignIn((url) => shell.openExternal(url), {
+          returnUrl: app.isPackaged ? `${PROTOCOL}://signed-in` : undefined,
+          onCode: () => {
+            broadcast(IPC.signIn, 'connecting')
+            showMain()
+            if (MAC) app.focus({ steal: true })
+          }
+        })
+      const onAccountAdded = (info: AccountAdded): void => track?.('account_added', info)
+      const api = yield* createApi({ verifyCaldav, googleSignIn: signIn, onChanged: changed, onAccountAdded, onAction: activity.append }).pipe(Effect.provide(services))
+      registerApi(api, runtime.runPromise)
+      yield* startReminders(api, showMain, activity.append)
+      yield* Context.get(services, SyncEngine).start
+    }).pipe(
+      Effect.catchCause((cause) =>
+        Effect.sync(() => {
+          const e = Cause.squash(cause)
+          console.error('backend not ready', e)
+          registerApiError(`Backend not ready: ${messageOf(e)}`)
+        })
+      )
+    )
+    return true
+  })
+
+/** Everything after app ready; long-lived work (sync, timers, listeners, the log writer) lives in the app scope. */
+const start = Effect.gen(function* () {
+  const userData = app.getPath('userData')
+  yield* loadPrefs(userData)
+  yield* startLocale
+  yield* startClock
+  // Dev runs would register the bare Electron binary; electron-builder's `protocols` covers installed builds too.
+  if (app.isPackaged && !MOCK) app.setAsDefaultProtocolClient(PROTOCOL)
+  const track = yield* startDesktopTelemetry
+  const activity = yield* createActivityLog(join(userData, 'logs'), logsAppended)
+  yield* registerActivityLog(activity)
+  if (MOCK) {
+    const api = createMockApi(changed, activity.append)
+    registerApi(api, runtime.runPromise)
+    yield* startReminders(api, showMain, activity.append)
+  } else if (!(yield* startBackend(userData, activity, track))) return app.quit()
+  yield* startUpdater
+  started = true
+  createWindow()
+  app.on('activate', () => !mainWin && createWindow())
+})
+
+const runtime = ManagedRuntime.make(NodeFileSystem.layer)
+const appScope = Scope.makeUnsafe()
 
 app.whenReady().then(() => {
   if (!primary) return
@@ -238,67 +313,25 @@ app.whenReady().then(() => {
   })
   // Packaged builds get the icon from electron-builder; in dev the dock would show Electron's.
   if (!app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'build/icon.png'))
-  startLocale()
-  startClock()
-  // Dev runs would register the bare Electron binary; electron-builder's `protocols` covers installed builds too.
-  if (app.isPackaged && !MOCK) app.setAsDefaultProtocolClient(PROTOCOL)
-  const track = startDesktopTelemetry()
-  const activity = createActivityLog(join(app.getPath('userData'), 'logs'), logsAppended)
-  registerActivityLog(activity)
-  if (MOCK) {
-    const api = createMockApi(broadcast, activity.append)
-    registerApi(api)
-    startReminders(api, showMain, activity.append)
-  } else {
-    setClientConfig({
-      clientId: import.meta.env.MYSTICALS_GOOGLE_CLIENT_ID,
-      clientSecret: import.meta.env.MYSTICALS_GOOGLE_CLIENT_SECRET
+  return runtime.runPromise(start.pipe(Scope.provide(appScope)))
+}).catch((e) => console.error('startup failed', e))
+
+// Quitting first closes the app scope (sync stops, timers and listeners go, queued log lines are written), then quits
+// for real. Bounded, so a stuck finalizer never keeps the app open.
+let shutdown: 'no' | 'closing' | 'done' = 'no'
+app.on('before-quit', (e) => {
+  if (shutdown === 'done') return
+  e.preventDefault()
+  if (shutdown === 'closing') return
+  shutdown = 'closing'
+  void runtime
+    .runPromise(Scope.close(appScope, Exit.void).pipe(Effect.timeout('3 seconds'), Effect.ignore))
+    .then(() => runtime.dispose())
+    .catch((err) => console.error('shutdown failed', err))
+    .finally(() => {
+      shutdown = 'done'
+      app.quit()
     })
-    const factories = { caldav: createCaldavProvider, google: createGoogleProvider }
-    let store: AccountStore
-    try {
-      store = new AccountStore(app.getPath('userData'), factories, safeStorageCrypto)
-    } catch (e) {
-      // Unreadable accounts.json: say so and quit rather than open a window with no backend. The file is left as is.
-      const file = join(app.getPath('userData'), 'accounts.json')
-      console.error('failed to load accounts', file, e)
-      dialog.showErrorBox(
-        t(currentLocale(), 'error.accountsTitle'),
-        t(currentLocale(), 'error.accountsBody', { file, error: e instanceof Error ? e.message : String(e) })
-      )
-      return app.quit()
-    }
-    const sync = new SyncEngine(store, broadcast, {
-      triggers: electronTriggers,
-      onEvents: (id, notes) => notify(store, activity, id, notes),
-      onSyncing: broadcast, // renderer re-reads accounts.list for the `syncing` flag
-      onResult: (id, r) => logSync(store, activity, id, r)
-    })
-    try {
-      // The user finishes sign-in in the browser: bring Mysticals back right away so they see the account connect
-      // (the sheet shows "connecting" while the code is exchanged); the success page also opens mysticals://.
-      const signIn = (): ReturnType<typeof googleSignIn> =>
-        googleSignIn((url) => shell.openExternal(url), {
-          returnUrl: app.isPackaged ? `${PROTOCOL}://signed-in` : undefined,
-          onCode: () => {
-            for (const w of BrowserWindow.getAllWindows()) w.webContents.send(IPC.signIn, 'connecting')
-            showMain()
-            if (MAC) app.focus({ steal: true })
-          }
-        })
-      const onAccountAdded = (info: AccountAdded): void => track?.('account_added', info)
-      const api = createApi(store, sync, { verifyCaldav, googleSignIn: signIn, onChanged: broadcast, onAccountAdded, onAction: activity.append })
-      registerApi(api)
-      startReminders(api, showMain, activity.append)
-      sync.start()
-    } catch (e) {
-      console.error('backend not ready', e)
-    }
-  }
-  startUpdater()
-  started = true
-  createWindow()
-  app.on('activate', () => !mainWin && createWindow())
 })
 
 app.on('window-all-closed', () => !MAC && app.quit())

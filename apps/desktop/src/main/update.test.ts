@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { Effect } from 'effect'
 
 vi.mock('electron', () => ({ app: { isPackaged: false } }))
 const { newer, verifyTeam } = await import('./update')
@@ -6,7 +7,7 @@ const { newer, verifyTeam } = await import('./update')
 describe.skipIf(process.platform !== 'darwin')('verifyTeam', () => {
   // Calendar.app is Apple-signed, so a Developer ID team requirement parses but does not match.
   it('checks the inline requirement instead of reading it as a file', async () => {
-    await expect(verifyTeam('/System/Applications/Calendar.app', 'ABCDE12345')).rejects.toThrow(/failed to satisfy/)
+    await expect(Effect.runPromise(verifyTeam('/System/Applications/Calendar.app', 'ABCDE12345'))).rejects.toThrow(/failed to satisfy/)
   })
 })
 

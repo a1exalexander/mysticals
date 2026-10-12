@@ -1,8 +1,11 @@
-import { app, BrowserWindow, ipcMain, Menu } from 'electron'
+import { app, Menu } from 'electron'
+import { Effect, Schema } from 'effect'
 import { IPC, type LocaleState } from '@shared/ipc'
 import { isLocaleSetting, LOCALES, resolveLocale, type Locale, type LocaleSetting } from '@mysticals/core/i18n'
 import { readPrefs, writePrefs } from './prefs'
 import { buildMenu } from './menu'
+import { handle, AnyArgs } from './ipc/register'
+import { broadcast } from './window'
 
 /** MYSTICALS_LANG=en|uk wins over Settings and the OS (e2e pins English with it). */
 const forced = (): Locale | undefined => LOCALES.find((l) => l === process.env.MYSTICALS_LANG)
@@ -23,18 +26,23 @@ export const currentLocale = (): Locale => current
 
 const state = (): LocaleState => ({ setting: setting(), locale: current, system: system() })
 
-/** Resolves the language, sets the menu and serves Settings > Language. Call after app ready. */
-export function startLocale(): void {
+/** Resolves the language, sets the menu and serves Settings > Language. Call after app ready and `loadPrefs`. */
+export const startLocale = Effect.gen(function* () {
   current = forced() ?? resolveLocale(setting(), osLanguages())
   Menu.setApplicationMenu(buildMenu(current))
-  ipcMain.handle(IPC.localeGet, state)
-  ipcMain.handle(IPC.localeSet, (_e, next: unknown) => {
-    if (!isLocaleSetting(next)) throw new Error(`unknown language: ${String(next)}`)
-    writePrefs({ language: next })
-    current = forced() ?? resolveLocale(next, osLanguages())
-    Menu.setApplicationMenu(buildMenu(current))
-    const s = state()
-    for (const w of BrowserWindow.getAllWindows()) w.webContents.send(IPC.locale, s)
-    return s
-  })
-}
+  yield* handle(IPC.localeGet, AnyArgs, () => Effect.sync(state))
+  yield* handle(
+    IPC.localeSet,
+    Schema.Tuple([Schema.declare(isLocaleSetting)]),
+    ([next]) =>
+      Effect.gen(function* () {
+        yield* writePrefs({ language: next })
+        current = forced() ?? resolveLocale(next, osLanguages())
+        Menu.setApplicationMenu(buildMenu(current))
+        const s = state()
+        broadcast(IPC.locale, s)
+        return s
+      }),
+    ([next]) => `unknown language: ${String(next)}`
+  )
+})

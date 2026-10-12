@@ -1,7 +1,10 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app } from 'electron'
+import { Effect, Schema } from 'effect'
 import { IPC, type ClockState } from '@shared/ipc'
 import { isTimeFormat, isWeekStart, regionHour12, regionWeekStartsOn } from '@mysticals/core/logic/clock'
 import { readPrefs, writePrefs } from './prefs'
+import { handle, AnyArgs } from './ipc/register'
+import { broadcast } from './window'
 
 // Mock runs (e2e) see a 24-hour, Monday-first region so specs don't depend on the machine they run on.
 const system = (): ClockState['system'] => {
@@ -29,17 +32,31 @@ let current: ClockState | undefined
 /** 12-hour times in notifications. Valid after `startClock`. */
 export const hour12 = (): boolean => current?.hour12 ?? false
 
-/** Resolves Auto from the OS region and serves Settings > General time format and week start. Call after app ready. */
-export function startClock(): void {
-  current = state()
-  ipcMain.handle(IPC.clockGet, () => current)
-  ipcMain.handle(IPC.clockSet, (_e, patch: unknown) => {
-    const { timeFormat, weekStart } = (patch ?? {}) as Record<string, unknown>
-    if (timeFormat !== undefined && !isTimeFormat(timeFormat)) throw new Error(`unknown time format: ${String(timeFormat)}`)
-    if (weekStart !== undefined && !isWeekStart(weekStart)) throw new Error(`unknown week start: ${String(weekStart)}`)
-    writePrefs({ ...(timeFormat ? { timeFormat } : {}), ...(weekStart ? { weekStart } : {}) })
-    current = state()
-    for (const w of BrowserWindow.getAllWindows()) w.webContents.send(IPC.clock, current)
-    return current
-  })
+const Patch = Schema.NullishOr(
+  Schema.Struct({ timeFormat: Schema.optional(Schema.declare(isTimeFormat)), weekStart: Schema.optional(Schema.declare(isWeekStart)) })
+)
+
+/** The first bad field of a patch, as the UI has always been told. */
+const invalid = ([patch]: unknown[]): string => {
+  const { timeFormat, weekStart } = (patch ?? {}) as Record<string, unknown>
+  return timeFormat !== undefined && !isTimeFormat(timeFormat) ? `unknown time format: ${String(timeFormat)}` : `unknown week start: ${String(weekStart)}`
 }
+
+/** Resolves Auto from the OS region and serves Settings > General time format and week start. Call after app ready and `loadPrefs`. */
+export const startClock = Effect.gen(function* () {
+  current = state()
+  yield* handle(IPC.clockGet, AnyArgs, () => Effect.sync(() => current))
+  yield* handle(
+    IPC.clockSet,
+    Schema.Tuple([Patch]),
+    ([patch]) =>
+      Effect.gen(function* () {
+        const { timeFormat, weekStart } = patch ?? {}
+        yield* writePrefs({ ...(timeFormat ? { timeFormat } : {}), ...(weekStart ? { weekStart } : {}) })
+        current = state()
+        broadcast(IPC.clock, current)
+        return current
+      }),
+    invalid
+  )
+})

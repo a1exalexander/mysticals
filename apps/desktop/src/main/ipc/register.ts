@@ -1,11 +1,21 @@
-import { ipcMain } from 'electron'
-import type { Api } from '@shared/ipc'
+import { ipcMain, type IpcMainInvokeEvent } from 'electron'
+import { Effect, Schema, type Scope } from 'effect'
 import { IPC } from '@shared/ipc'
+import { toPromiseApi, type CoreApi, type CoreApiEffect } from '@mysticals/core/api'
 
-type Impl = Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'>
+/** Maps IPC channels to the api, each call run with `run` (rejections keep the error's message). */
+export function registerApi(api: CoreApiEffect, run: <A, E>(effect: Effect.Effect<A, E>) => Promise<A>): void {
+  registerApiPromises(toPromiseApi(api, run))
+}
 
-/** Maps IPC channels to an Api implementation. Validation belongs inside impl (unit 5). */
-export function registerApi(api: Impl): void {
+/** Every api channel rejects with `message`: the backend did not start, but a call should say why, not hang or be missing. */
+export function registerApiError(message: string): void {
+  const reject = (): Promise<never> => Promise.reject(new Error(message))
+  const all = new Proxy({}, { get: () => new Proxy({}, { get: () => reject }) }) as CoreApi
+  registerApiPromises(all)
+}
+
+function registerApiPromises(api: CoreApi): void {
   const h = (ch: string, fn: (...a: never[]) => unknown): void => {
     ipcMain.removeHandler(ch)
     ipcMain.handle(ch, (_e, ...args) => (fn as (...a: unknown[]) => unknown)(...args))
@@ -26,3 +36,37 @@ export function registerApi(api: Impl): void {
   h(IPC.eventsRecurrence, api.events.recurrence)
   h(IPC.syncNow, api.sync.now)
 }
+
+type Args = Schema.Top & { readonly DecodingServices: never }
+
+/**
+ * Serves `channel` with an Effect over the renderer's arguments, decoded with `args` (a Tuple) first; `invalid` turns a
+ * decode failure into the message the UI expects. Runs with the caller's services; the handler goes when the scope closes.
+ */
+export const handle = <S extends Args, A, E, R>(
+  channel: string,
+  args: S,
+  fn: (args: S['Type'], e: IpcMainInvokeEvent) => Effect.Effect<A, E, R>,
+  invalid?: (args: unknown[]) => string
+): Effect.Effect<void, never, R | Scope.Scope> =>
+  Effect.gen(function* () {
+    const run = Effect.runPromiseWith(yield* Effect.context<R>())
+    const decode = Schema.decodeUnknownEffect(args)
+    yield* Effect.acquireRelease(
+      Effect.sync(() => {
+        ipcMain.removeHandler(channel)
+        ipcMain.handle(channel, (e, ...raw) =>
+          run(
+            decode(raw).pipe(
+              Effect.mapError((err) => (invalid ? new Error(invalid(raw)) : err)),
+              Effect.flatMap((a) => fn(a, e))
+            )
+          )
+        )
+      }),
+      () => Effect.sync(() => ipcMain.removeHandler(channel))
+    )
+  })
+
+/** Arguments the handler checks itself, or ignores. */
+export const AnyArgs = Schema.Array(Schema.Unknown)

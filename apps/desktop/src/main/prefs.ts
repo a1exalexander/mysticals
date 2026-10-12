@@ -1,6 +1,7 @@
-import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
-import { app } from 'electron'
+import { Effect, Ref, Semaphore, type FileSystem } from 'effect'
+import { readJson, writeAtomic } from '@mysticals/core/accounts/store'
+import type { AppError } from '@mysticals/core/errors'
 import type { LocaleSetting } from '@mysticals/core/i18n'
 import type { TimeFormat, WeekStart } from '@mysticals/core/logic/clock'
 
@@ -20,18 +21,25 @@ export interface Prefs {
   reminderSound?: boolean
 }
 
-const prefsFile = (dir = app.getPath('userData')): string => join(dir, 'prefs.json')
+// Read once at startup, then served from memory: the reminders tick alone reads several keys every 20 s.
+const cache = Ref.makeUnsafe<Prefs>({})
+let file = ''
+// One write at a time, each of the latest prefs, so an older snapshot never lands after a newer one.
+const lock = Semaphore.makeUnsafe(1)
 
-export function readPrefs(dir?: string): Prefs {
-  try {
-    const v = JSON.parse(readFileSync(prefsFile(dir), 'utf8'))
-    return v && typeof v === 'object' ? v : {}
-  } catch {
-    return {}
-  }
-}
+/** Loads `<dir>/prefs.json` into memory; a missing or unreadable file means all defaults. Call before anything reads. */
+export const loadPrefs = (dir: string): Effect.Effect<void, never, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    file = join(dir, 'prefs.json')
+    const v = yield* readJson<unknown>(file, undefined).pipe(Effect.orElseSucceed(() => undefined))
+    yield* Ref.set(cache, v && typeof v === 'object' ? (v as Prefs) : {})
+  })
 
-/** Merges `patch` into the stored prefs, so one setting never wipes another. */
-export function writePrefs(patch: Prefs, dir?: string): void {
-  writeFileSync(prefsFile(dir), JSON.stringify({ ...readPrefs(dir), ...patch }))
-}
+/** The prefs in memory (defaults until `loadPrefs`). */
+export const readPrefs = (): Prefs => Ref.getUnsafe(cache)
+
+/** Merges `patch` into the prefs, so one setting never wipes another; the file is replaced atomically. */
+export const writePrefs = (patch: Prefs): Effect.Effect<void, AppError, FileSystem.FileSystem> =>
+  Ref.update(cache, (p) => ({ ...p, ...patch })).pipe(
+    Effect.andThen(Semaphore.withPermit(lock, Effect.suspend(() => writeAtomic(file, JSON.stringify(Ref.getUnsafe(cache))))))
+  )
