@@ -1,7 +1,8 @@
 import { addDays, format } from 'date-fns'
-import type { Api } from '../shared/ipc'
+import { Effect } from 'effect'
 import type { Account, CalEvent, LogEntry } from '../shared/types'
-import { withActivityLog, type ActivityStore } from '../api'
+import { withActivityLog, type ActivityStore, type CoreApiEffect } from '../api'
+import { AppError, fail } from '../errors'
 import { MockProvider } from './MockProvider'
 
 const iso = (dayOffset: number, h: number, m = 0): string => {
@@ -12,7 +13,7 @@ const iso = (dayOffset: number, h: number, m = 0): string => {
 }
 
 /** Two isolated fake accounts with seeded events. Used when MYSTICALS_MOCK=1. */
-export function createMockApi(onChanged: (accountId: string) => void, onAction?: (e: LogEntry) => void): Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'> {
+export function createMockApi(onChanged: (accountId: string) => void, onAction?: (e: LogEntry) => void): CoreApiEffect {
   const accounts: Account[] = [
     {
       id: 'work', kind: 'caldav', label: 'Work', email: 'me@work.example', color: '#8be9fd',
@@ -75,92 +76,92 @@ export function createMockApi(onChanged: (accountId: string) => void, onAction?:
   for (const title of ['Conference', 'Team offsite', 'Release freeze', 'Birthday'])
     seed(personal, 'p-main', { title, start: day(3), end: day(4), allDay: true })
 
-  const prov = (id: string): MockProvider => {
+  const prov = (id: string): Effect.Effect<MockProvider, AppError> => {
     const p = providers.get(id)
-    if (!p) throw new Error(`unknown account ${id}`)
-    return p
+    return p ? Effect.succeed(p) : Effect.fail(fail(`unknown account ${id}`))
   }
-  const own = (accountId: string, calendarId: string): MockProvider => {
-    const p = prov(accountId)
-    if (!p.calendars.some((c) => c.id === calendarId)) throw new Error('calendar does not belong to account')
-    return p
+  const own = (accountId: string, calendarId: string): Effect.Effect<MockProvider, AppError> =>
+    Effect.flatMap(prov(accountId), (p) => (p.calendars.some((c) => c.id === calendarId) ? Effect.succeed(p) : Effect.fail(fail('calendar does not belong to account'))))
+  const account = (id: string): Effect.Effect<Account, AppError> => {
+    const a = accounts.find((x) => x.id === id)
+    return a ? Effect.succeed(a) : Effect.fail(fail('unknown account'))
   }
+  const changed = (id: string) => Effect.sync(() => onChanged(id))
 
-  const api: Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'> = {
+  const api: CoreApiEffect = {
     accounts: {
-      list: async () => structuredClone(accounts),
-      addGoogle: async () => { throw new Error('Not available in mock mode') },
-      addCaldav: async () => { throw new Error('Not available in mock mode') },
-      update: async (id, patch) => {
-        const a = accounts.find((x) => x.id === id)
-        if (!a) throw new Error('unknown account')
-        Object.assign(a, patch)
-        onChanged(id)
-        return structuredClone(a)
-      },
-      reauth: async (id) => {
-        const a = accounts.find((x) => x.id === id)
-        if (!a) throw new Error('unknown account')
-        delete a.error
-        delete a.authError
-        onChanged(id)
-        return structuredClone(a)
-      },
-      remove: async (id) => {
-        const i = accounts.findIndex((a) => a.id === id)
-        if (i >= 0) accounts.splice(i, 1)
-        providers.delete(id)
-        onChanged(id)
-      }
+      list: () => Effect.sync(() => structuredClone(accounts)),
+      addGoogle: () => Effect.fail(fail('Not available in mock mode')),
+      addCaldav: () => Effect.fail(fail('Not available in mock mode')),
+      update: (id, patch) =>
+        account(id).pipe(
+          Effect.map((a) => Object.assign(a, patch)),
+          Effect.tap(() => changed(id)),
+          Effect.map((a) => structuredClone(a))
+        ),
+      reauth: (id) =>
+        account(id).pipe(
+          Effect.map((a) => {
+            delete a.error
+            delete a.authError
+            return a
+          }),
+          Effect.tap(() => changed(id)),
+          Effect.map((a) => structuredClone(a))
+        ),
+      remove: (id) =>
+        Effect.sync(() => {
+          const i = accounts.findIndex((a) => a.id === id)
+          if (i >= 0) accounts.splice(i, 1)
+          providers.delete(id)
+        }).pipe(Effect.andThen(changed(id)))
     },
     calendars: {
-      list: async () =>
-        (await Promise.all([...providers.values()].map((p) => p.listCalendars()))).flat()
-          .map((c) => ({ ...c, visible: !hidden.has(`${c.accountId}/${c.id}`) })),
-      setVisible: async (accountId, calendarId, visible) => {
-        const k = `${accountId}/${calendarId}`
-        if (visible) hidden.delete(k)
-        else hidden.add(k)
-        onChanged(accountId)
-      }
+      list: () =>
+        Effect.forEach([...providers.values()], (p) => p.listCalendars()).pipe(
+          Effect.map((lists) => lists.flat().map((c) => ({ ...c, visible: !hidden.has(`${c.accountId}/${c.id}`) })))
+        ),
+      setVisible: (accountId, calendarId, visible) =>
+        Effect.sync(() => {
+          const k = `${accountId}/${calendarId}`
+          if (visible) hidden.delete(k)
+          else hidden.add(k)
+        }).pipe(Effect.andThen(changed(accountId)))
     },
     events: {
-      list: async (range) => {
-        const out: CalEvent[] = []
-        for (const p of providers.values())
-          for (const c of p.calendars) out.push(...(await p.listEvents(c.id, range)))
-        return out
-      },
-      create: async (input) => {
-        const ev = await own(input.accountId, input.calendarId).createEvent(input.calendarId, input)
-        onChanged(input.accountId)
-        return ev
-      },
-      update: async (ev, scope) => {
-        const r = await own(ev.accountId, ev.calendarId).updateEvent(ev, scope)
-        onChanged(ev.accountId)
-        return r
-      },
-      delete: async (ev, scope) => {
-        await own(ev.accountId, ev.calendarId).deleteEvent(ev, scope)
-        onChanged(ev.accountId)
-      },
-      recurrence: async (ev) => own(ev.accountId, ev.calendarId).getRecurrence(ev),
-      respond: async (ev, status) => {
-        const r = await own(ev.accountId, ev.calendarId).respond(ev, status)
-        onChanged(ev.accountId)
-        return r
-      }
+      list: (range) =>
+        Effect.forEach(
+          [...providers.values()].flatMap((p) => p.calendars.map((c) => p.listEvents(c.id, range))),
+          (list) => list,
+          { concurrency: 'unbounded' }
+        ).pipe(Effect.map((lists) => lists.flat())),
+      create: (input) =>
+        own(input.accountId, input.calendarId).pipe(
+          Effect.flatMap((p) => p.createEvent(input.calendarId, input)),
+          Effect.tap(() => changed(input.accountId))
+        ),
+      update: (ev, scope) =>
+        own(ev.accountId, ev.calendarId).pipe(
+          Effect.flatMap((p) => p.updateEvent(ev, scope)),
+          Effect.tap(() => changed(ev.accountId))
+        ),
+      delete: (ev, scope) =>
+        own(ev.accountId, ev.calendarId).pipe(
+          Effect.flatMap((p) => p.deleteEvent(ev, scope)),
+          Effect.andThen(changed(ev.accountId))
+        ),
+      recurrence: (ev) => own(ev.accountId, ev.calendarId).pipe(Effect.flatMap((p) => p.getRecurrence(ev))),
+      respond: (ev, status) =>
+        own(ev.accountId, ev.calendarId).pipe(
+          Effect.flatMap((p) => p.respond(ev, status)),
+          Effect.tap(() => changed(ev.accountId))
+        )
     },
-    sync: { now: async () => {} }
+    sync: { now: () => Effect.void }
   }
   const store: ActivityStore = {
-    get: (id) => accounts.find((a) => a.id === id),
-    readCache: (id) => {
-      const p = providers.get(id)
-      if (!p) throw new Error('unknown account')
-      return { calendars: p.calendars, events: p.events }
-    }
+    get: (id) => Effect.sync(() => accounts.find((a) => a.id === id)),
+    readCache: (id) => Effect.map(prov(id), (p) => ({ calendars: p.calendars, events: p.events }))
   }
   return onAction ? withActivityLog(api, store, onAction) : api
 }

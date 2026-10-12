@@ -1,7 +1,8 @@
 import { createServer, type Server } from 'http'
 import type { AddressInfo } from 'net'
-import { afterAll, afterEach, beforeAll, expect, it } from 'vitest'
-import { http, timedFetch } from './http'
+import { Effect } from 'effect'
+import { afterAll, beforeAll, expect, it } from 'vitest'
+import { HttpTimeout, request } from './http'
 
 // Accepts connections and never answers.
 let server: Server
@@ -15,16 +16,14 @@ afterAll(() => {
   server.closeAllConnections()
   server.close()
 })
-afterEach(() => void (http.timeoutMs = 30_000))
 
 it('gives up on a hung request', async () => {
-  http.timeoutMs = 50
-  await expect(timedFetch(url)).rejects.toThrow(/timed out/)
+  await expect(Effect.runPromise(request(url).pipe(Effect.provideService(HttpTimeout, 50)))).rejects.toThrow(/timed out/)
 })
 
 it("still honours the caller's own signal", async () => {
   const ctrl = new AbortController()
-  const p = timedFetch(url, { signal: ctrl.signal })
+  const p = Effect.runPromise(request(url, { signal: ctrl.signal }))
   ctrl.abort()
   await expect(p).rejects.toThrow(/abort/i)
 })

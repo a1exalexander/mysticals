@@ -1,9 +1,13 @@
+import { Result } from 'effect'
 import { describe, expect, it } from 'vitest'
+import type { AppError } from '../errors'
 import {
   describe as text, fromRRule, normalize, parseDays, parseEnds, parseEvery, presetOf, presets, sameRecurrence, toRRule
 } from './recurrence'
 
 const WED = '2026-09-30T09:00' // a Wednesday, local
+/** The message a refused input fails with (undefined when it is accepted). */
+const refusal = <A>(r: Result.Result<A, AppError>): string | undefined => (Result.isFailure(r) ? r.failure.message : undefined)
 
 describe('toRRule / fromRRule', () => {
   it('round-trips the editable subset', () => {
@@ -79,14 +83,14 @@ describe('describe', () => {
 
 describe('terminal text fields', () => {
   it('parses every / days / ends', () => {
-    expect(parseEvery('2 weeks')).toEqual({ freq: 'weekly', interval: 2 })
-    expect(parseEvery('day')).toEqual({ freq: 'daily', interval: undefined })
-    expect(() => parseEvery('often')).toThrow(/Repeat every/)
-    expect(parseDays('th, Mon')).toEqual(['MO', 'TH'])
-    expect(() => parseDays('xx')).toThrow(/Repeat on/)
-    expect(parseEnds('never')).toEqual({})
-    expect(parseEnds('2026-12-31')).toEqual({ until: '2026-12-31' })
-    expect(parseEnds('10 times')).toEqual({ count: 10 })
-    expect(() => parseEnds('2026-02-31')).toThrow(/Ends/)
+    expect(Result.getOrThrow(parseEvery('2 weeks'))).toEqual({ freq: 'weekly', interval: 2 })
+    expect(Result.getOrThrow(parseEvery('day'))).toEqual({ freq: 'daily', interval: undefined })
+    expect(refusal(parseEvery('often'))).toMatch(/Repeat every/)
+    expect(Result.getOrThrow(parseDays('th, Mon'))).toEqual(['MO', 'TH'])
+    expect(refusal(parseDays('xx'))).toMatch(/Repeat on/)
+    expect(Result.getOrThrow(parseEnds('never'))).toEqual({})
+    expect(Result.getOrThrow(parseEnds('2026-12-31'))).toEqual({ until: '2026-12-31' })
+    expect(Result.getOrThrow(parseEnds('10 times'))).toEqual({ count: 10 })
+    expect(refusal(parseEnds('2026-02-31'))).toMatch(/Ends/)
   })
 })

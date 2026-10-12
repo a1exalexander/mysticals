@@ -1,10 +1,16 @@
 import { createHash } from 'crypto'
 import { get } from 'http'
+import { Effect, Result } from 'effect'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildAuthUrl, createPkce, emailFromIdToken, getClientConfig, parseTokenResponse, runOAuthFlow, setClientConfig } from './oauth'
-import { AuthError } from '../http'
+import { AppError, AuthError } from '../../errors'
 
 const jwt = (payload: object): string => `h.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.s`
+/** The error a token response is refused with, if any. */
+const refusal = (json: unknown) => {
+  const r = parseTokenResponse(json)
+  return Result.isFailure(r) ? r.failure : undefined
+}
 
 beforeEach(() => {
   setClientConfig({ clientId: 'cid', clientSecret: 'secret' })
@@ -40,16 +46,16 @@ describe('oauth pure parts', () => {
 
   it('parses token response and id_token email', () => {
     const r = parseTokenResponse({ access_token: 'a', expires_in: 100, refresh_token: 'r', id_token: jwt({ email: 'me@gmail.com' }) }, 1000)
-    expect(r).toEqual({ accessToken: 'a', expiresAt: 101000, refreshToken: 'r', email: 'me@gmail.com' })
+    expect(Result.getOrThrow(r)).toEqual({ accessToken: 'a', expiresAt: 101000, refreshToken: 'r', email: 'me@gmail.com' })
     expect(emailFromIdToken('garbage')).toBeUndefined()
-    expect(() => parseTokenResponse({ error: 'invalid_grant' })).toThrow(AuthError)
-    expect(() => parseTokenResponse({ error: 'invalid_grant' })).toThrow(/invalid_grant/)
-    expect(() => parseTokenResponse({ error: 'server_error' })).not.toThrow(AuthError)
+    expect(refusal({ error: 'invalid_grant' })).toBeInstanceOf(AuthError)
+    expect(refusal({ error: 'invalid_grant' })?.message).toMatch(/invalid_grant/)
+    expect(refusal({ error: 'server_error' })).toBeInstanceOf(AppError)
   })
 
   it('throws a clear error when client id is missing', () => {
     setClientConfig({ clientSecret: 'secret' })
-    expect(() => getClientConfig()).toThrow('not configured')
+    expect(() => Effect.runSync(getClientConfig)).toThrow('not configured')
   })
 })
 
@@ -68,10 +74,12 @@ describe('runOAuthFlow', () => {
     const fetchMock = vi.fn(async () => Response.json({ access_token: 'at', expires_in: 3600, refresh_token: 'rt', id_token: jwt({ email: 'me@gmail.com' }) }))
     vi.stubGlobal('fetch', fetchMock)
     let page: Promise<{ body: string }> | undefined
-    const result = await runOAuthFlow(async (authUrl) => {
-      const p = new URL(authUrl).searchParams
-      page = hit(`${p.get('redirect_uri')}/?code=abc&state=${p.get('state')}`)
-    })
+    const result = await Effect.runPromise(
+      runOAuthFlow(async (authUrl) => {
+        const p = new URL(authUrl).searchParams
+        page = hit(`${p.get('redirect_uri')}/?code=abc&state=${p.get('state')}`)
+      })
+    )
     expect((await page!).body).toContain('You can close this tab')
     expect(result.email).toBe('me@gmail.com')
     expect(result.credentials).toMatchObject({ kind: 'google', refreshToken: 'rt', accessToken: 'at' })
@@ -90,12 +98,14 @@ describe('runOAuthFlow', () => {
       return Response.json({ access_token: 'at', expires_in: 3600, refresh_token: 'rt', id_token: jwt({ email: 'me@gmail.com' }) })
     }))
     let page: Promise<{ body: string }> | undefined
-    await runOAuthFlow(
-      async (authUrl) => {
-        const p = new URL(authUrl).searchParams
-        page = hit(`${p.get('redirect_uri')}/?code=abc&state=${p.get('state')}`)
-      },
-      { onCode: () => order.push('code'), returnUrl: 'mysticals://signed-in' }
+    await Effect.runPromise(
+      runOAuthFlow(
+        async (authUrl) => {
+          const p = new URL(authUrl).searchParams
+          page = hit(`${p.get('redirect_uri')}/?code=abc&state=${p.get('state')}`)
+        },
+        { onCode: () => order.push('code'), returnUrl: 'mysticals://signed-in' }
+      )
     )
     expect(order).toEqual(['code', 'token'])
     expect((await page!).body).toContain('href="mysticals://signed-in"')
@@ -105,9 +115,11 @@ describe('runOAuthFlow', () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
     await expect(
-      runOAuthFlow(async (authUrl) => {
-        await hit(`${new URL(authUrl).searchParams.get('redirect_uri')}/?code=abc&state=evil`)
-      })
+      Effect.runPromise(
+        runOAuthFlow(async (authUrl) => {
+          await hit(`${new URL(authUrl).searchParams.get('redirect_uri')}/?code=abc&state=evil`)
+        })
+      )
     ).rejects.toThrow(/state mismatch/)
     expect(fetchMock).not.toHaveBeenCalled()
   })

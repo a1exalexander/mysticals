@@ -1,8 +1,10 @@
+import { Effect } from 'effect'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Credentials } from '../../shared/types'
 import { conferenceUrlOf, createGoogleProviderImpl, mapEvent, shiftAnchor, truncateRecurrence, type GEvent } from './provider'
 import { setClientConfig } from './oauth'
-import { http } from '../http'
+import { HttpError } from '../../errors'
+import { HttpTimeout } from '../http'
 
 type Call = { method: string; url: URL; body?: any }
 let calls: Call[]
@@ -28,12 +30,15 @@ afterEach(() => {
 
 const saved: Credentials[] = []
 const provider = (creds: Partial<Extract<Credentials, { kind: 'google' }>> = {}) =>
-  createGoogleProviderImpl({
-    accountId: 'acc1',
-    email: 'me@gmail.com',
-    credentials: { kind: 'google', refreshToken: 'rt', accessToken: 'at', expiresAt: Date.now() + 3600_000, ...creds },
-    saveCredentials: async (c) => void saved.push(c)
-  })
+  Effect.runSync(
+    createGoogleProviderImpl({
+      accountId: 'acc1',
+      email: 'me@gmail.com',
+      credentials: { kind: 'google', refreshToken: 'rt', accessToken: 'at', expiresAt: Date.now() + 3600_000, ...creds },
+      saveCredentials: (c) => Effect.sync(() => void saved.push(c))
+    })
+  )
+const run = <A, E>(e: Effect.Effect<A, E>): Promise<A> => Effect.runPromise(e)
 
 const invite: GEvent = {
   id: 'ev1',
@@ -98,7 +103,7 @@ describe('provider', () => {
           { id: 'hol', summary: 'Holidays', backgroundColor: '#0f0', accessRole: 'reader' }
         ]
       })
-    const cals = await provider().listCalendars()
+    const cals = await run(provider().listCalendars())
     expect(cals).toEqual([
       { id: 'primary', accountId: 'acc1', name: 'Me', color: '#f00', readOnly: false },
       { id: 'hol', accountId: 'acc1', name: 'Holidays', color: '#0f0', readOnly: true }
@@ -110,7 +115,7 @@ describe('provider', () => {
       c.url.searchParams.get('pageToken')
         ? Response.json({ items: [own] })
         : Response.json({ items: [invite, { ...own, id: 'x', status: 'cancelled' }], nextPageToken: 'p2' })
-    const evs = await provider().listEvents('primary', { start: '2026-09-01T00:00:00Z', end: '2026-10-01T00:00:00Z' })
+    const evs = await run(provider().listEvents('primary', { start: '2026-09-01T00:00:00Z', end: '2026-10-01T00:00:00Z' }))
     expect(evs.map((e) => e.id)).toEqual(['ev1', 'ev2'])
     const q = calls[0].url.searchParams
     expect(q.get('singleEvents')).toBe('true')
@@ -122,11 +127,11 @@ describe('provider', () => {
     respond = (c) => Response.json({ ...own, attendees: c.body.attendees })
     const p = provider()
     const base = { accountId: 'acc1', calendarId: 'primary', title: 'T', start: '2026-09-23', end: '2026-09-24', allDay: true }
-    await p.createEvent('primary', base)
+    await run(p.createEvent('primary', base))
     expect(calls[0].url.searchParams.get('sendUpdates')).toBe('none')
     expect(calls[0].body.attendees).toEqual([])
     expect(calls[0].body.start).toEqual({ date: '2026-09-23', dateTime: null, timeZone: null })
-    await p.createEvent('primary', { ...base, attendees: ['a@x.com'] })
+    await run(p.createEvent('primary', { ...base, attendees: ['a@x.com'] }))
     expect(calls[1].url.searchParams.get('sendUpdates')).toBe('all')
     expect(calls[1].body.attendees).toEqual([{ email: 'a@x.com' }])
   })
@@ -134,11 +139,11 @@ describe('provider', () => {
   it('update: sendUpdates=all only when organizer; non-organizer does not touch attendees', async () => {
     respond = () => Response.json(invite)
     const p = provider()
-    await p.updateEvent(mapEvent(invite, 'acc1', 'primary'))
+    await run(p.updateEvent(mapEvent(invite, 'acc1', 'primary')))
     expect(calls[0].method).toBe('PATCH')
     expect(calls[0].url.searchParams.get('sendUpdates')).toBe('none')
     expect(calls[0].body.attendees).toBeUndefined()
-    await p.updateEvent({ ...mapEvent(own, 'acc1', 'primary'), title: 'Renamed' })
+    await run(p.updateEvent({ ...mapEvent(own, 'acc1', 'primary'), title: 'Renamed' }))
     expect(calls[1].url.searchParams.get('sendUpdates')).toBe('all')
     expect(calls[1].body.summary).toBe('Renamed')
   })
@@ -148,23 +153,23 @@ describe('provider', () => {
     const g: GEvent = { ...invite, organizer: { email: 'me@gmail.com', self: true } }
     const e = mapEvent(g, 'acc1', 'primary')
     e.attendees = [{ ...e.attendees[2], status: 'needsAction' }, { email: 'new@x.com', status: 'needsAction' }]
-    await provider().updateEvent(e)
+    await run(provider().updateEvent(e))
     expect(calls[0].body.attendees).toEqual([invite.attendees![2], { email: 'new@x.com' }])
   })
 
   it('delete: non-organizer uses sendUpdates=none', async () => {
     respond = () => new Response(null, { status: 204 })
     const p = provider()
-    await p.deleteEvent(mapEvent(invite, 'acc1', 'primary'))
+    await run(p.deleteEvent(mapEvent(invite, 'acc1', 'primary')))
     expect(calls[0].method).toBe('DELETE')
     expect(calls[0].url.searchParams.get('sendUpdates')).toBe('none')
-    await p.deleteEvent(mapEvent(own, 'acc1', 'primary'))
+    await run(p.deleteEvent(mapEvent(own, 'acc1', 'primary')))
     expect(calls[1].url.searchParams.get('sendUpdates')).toBe('all')
   })
 
   it('delete all: deletes the series master', async () => {
     respond = () => new Response(null, { status: 204 })
-    await provider().deleteEvent(mapEvent(invite, 'acc1', 'primary'), 'all')
+    await run(provider().deleteEvent(mapEvent(invite, 'acc1', 'primary'), 'all'))
     expect(calls[0].method).toBe('DELETE')
     expect(calls[0].url.pathname).toBe('/calendar/v3/calendars/primary/events/series1')
   })
@@ -173,7 +178,7 @@ describe('provider', () => {
     const master: GEvent = { id: 'series1', start: { dateTime: '2026-09-01T10:00:00Z' }, end: { dateTime: '2026-09-01T11:00:00Z' }, recurrence: ['RRULE:FREQ=DAILY;COUNT=90'] }
     respond = () => Response.json(master)
     const inst = mapEvent({ ...invite, originalStartTime: { dateTime: '2026-09-23T10:00:00Z' } }, 'acc1', 'primary')
-    await provider().deleteEvent(inst, 'following')
+    await run(provider().deleteEvent(inst, 'following'))
     expect(calls.map((c) => c.method)).toEqual(['GET', 'PATCH'])
     expect(calls[1].url.pathname).toBe('/calendar/v3/calendars/primary/events/series1')
     expect(calls[1].body).toEqual({ recurrence: ['RRULE:FREQ=DAILY;UNTIL=20260923T095959Z'] })
@@ -182,7 +187,7 @@ describe('provider', () => {
   it('delete following from the first instance deletes the series', async () => {
     const master: GEvent = { id: 'series1', start: { dateTime: '2026-09-23T10:00:00Z' }, end: { dateTime: '2026-09-23T11:00:00Z' }, recurrence: ['RRULE:FREQ=DAILY'] }
     respond = (c) => (c.method === 'GET' ? Response.json(master) : new Response(null, { status: 204 }))
-    await provider().deleteEvent(mapEvent({ ...invite, originalStartTime: { dateTime: '2026-09-23T10:00:00Z' } }, 'acc1', 'primary'), 'following')
+    await run(provider().deleteEvent(mapEvent({ ...invite, originalStartTime: { dateTime: '2026-09-23T10:00:00Z' } }, 'acc1', 'primary'), 'following'))
     expect(calls.map((c) => c.method)).toEqual(['GET', 'DELETE'])
     expect(calls[1].url.pathname).toBe('/calendar/v3/calendars/primary/events/series1')
   })
@@ -200,7 +205,7 @@ describe('provider', () => {
 
     it('all: patches the master with the fields and the same time offset', async () => {
       respond = (c) => Response.json(c.method === 'GET' ? master : { ...master, summary: c.body.summary })
-      const out = await provider().updateEvent({ ...inst, title: 'Sync', start: '2026-09-23T08:00:00.000Z', end: '2026-09-23T09:00:00.000Z' }, 'all')
+      const out = await run(provider().updateEvent({ ...inst, title: 'Sync', start: '2026-09-23T08:00:00.000Z', end: '2026-09-23T09:00:00.000Z' }, 'all'))
       expect(calls.map((c) => [c.method, c.url.pathname])).toEqual([
         ['GET', '/calendar/v3/calendars/primary/events/series1'],
         ['PATCH', '/calendar/v3/calendars/primary/events/series1']
@@ -223,7 +228,7 @@ describe('provider', () => {
         if (c.method === 'POST') return Response.json({ ...c.body, id: 'series2' })
         return Response.json(master)
       }
-      const out = await provider().updateEvent({ ...inst, title: 'Sync' }, 'following')
+      const out = await run(provider().updateEvent({ ...inst, title: 'Sync' }, 'following'))
       expect(calls.map((c) => c.method)).toEqual(['GET', 'GET', 'PATCH', 'POST'])
       expect(calls[1].url.searchParams.get('timeMax')).toBe('2026-09-23T07:00:00.000Z')
       expect(calls[1].url.searchParams.get('showDeleted')).toBe('true')
@@ -240,7 +245,7 @@ describe('provider', () => {
 
     it('following from the first instance edits the whole series', async () => {
       respond = () => Response.json({ ...master, start: invite.start, end: invite.end })
-      await provider().updateEvent({ ...inst, title: 'Sync' }, 'following')
+      await run(provider().updateEvent({ ...inst, title: 'Sync' }, 'following'))
       expect(calls.map((c) => c.method)).toEqual(['GET', 'PATCH'])
       expect(calls[1].url.pathname).toBe('/calendar/v3/calendars/primary/events/series1')
     })
@@ -258,45 +263,45 @@ describe('provider', () => {
 
     it('reads the series rule; a single event has none', async () => {
       respond = () => Response.json(master)
-      expect(await provider().getRecurrence(inst)).toEqual({ freq: 'daily', count: 30 })
-      expect(await provider().getRecurrence(mapEvent(own, 'acc1', 'primary'))).toBeNull()
+      expect(await run(provider().getRecurrence(inst))).toEqual({ freq: 'daily', count: 30 })
+      expect(await run(provider().getRecurrence(mapEvent(own, 'acc1', 'primary')))).toBeNull()
       expect(calls).toHaveLength(1)
     })
 
     it('creates a repeating event with a time zone', async () => {
       respond = (c) => Response.json({ ...c.body, id: 'n1' })
-      await provider().createEvent('primary', { accountId: 'acc1', calendarId: 'primary', title: 'Gym', start: '2026-09-23T16:00:00.000Z', end: '2026-09-23T17:00:00.000Z', allDay: false, recurrence: { freq: 'weekly', count: 4 } })
+      await run(provider().createEvent('primary', { accountId: 'acc1', calendarId: 'primary', title: 'Gym', start: '2026-09-23T16:00:00.000Z', end: '2026-09-23T17:00:00.000Z', allDay: false, recurrence: { freq: 'weekly', count: 4 } }))
       expect(calls[0].body).toMatchObject({ recurrence: ['RRULE:FREQ=WEEKLY;COUNT=4'], start: { dateTime: '2026-09-23T16:00:00.000Z', timeZone: expect.any(String) } })
     })
 
     it('makes a single event repeat', async () => {
       respond = () => Response.json(own)
-      await provider().updateEvent({ ...mapEvent(own, 'acc1', 'primary'), recurrence: { freq: 'yearly' } })
+      await run(provider().updateEvent({ ...mapEvent(own, 'acc1', 'primary'), recurrence: { freq: 'yearly' } }))
       expect(calls[0].method).toBe('PATCH')
       expect(calls[0].body).toMatchObject({ recurrence: ['RRULE:FREQ=YEARLY'], start: { date: '2026-09-23', dateTime: null } })
     })
 
     it('all: a new rule replaces the RRULE and keeps EXDATEs', async () => {
       respond = () => Response.json(master)
-      await provider().updateEvent({ ...inst, recurrence: { freq: 'weekly', interval: 2 } }, 'all')
+      await run(provider().updateEvent({ ...inst, recurrence: { freq: 'weekly', interval: 2 } }, 'all'))
       expect(calls[1].body.recurrence).toEqual(['RRULE:FREQ=WEEKLY;INTERVAL=2', 'EXDATE;TZID=Europe/Kyiv:20260905T100000'])
       expect(calls[1].body.start).toMatchObject({ dateTime: '2026-09-01T07:00:00.000Z', timeZone: 'Europe/Kyiv' })
     })
 
     it('all: stop repeating leaves just this event, at its own time', async () => {
       respond = () => Response.json(master)
-      await provider().updateEvent({ ...inst, recurrence: null }, 'all')
+      await run(provider().updateEvent({ ...inst, recurrence: null }, 'all'))
       expect(calls[1].body).toMatchObject({ recurrence: [], start: { dateTime: inst.start, timeZone: 'Europe/Kyiv' } })
     })
 
     it('following: the new series takes the new rule, or none', async () => {
       respond = (c) => (c.method === 'POST' ? Response.json({ ...c.body, id: 'series2' }) : Response.json(master))
-      const weekly = await provider().updateEvent({ ...inst, recurrence: { freq: 'weekly' } }, 'following')
+      const weekly = await run(provider().updateEvent({ ...inst, recurrence: { freq: 'weekly' } }, 'following'))
       expect(calls.map((c) => c.method)).toEqual(['GET', 'PATCH', 'POST'])
       expect(calls[2].body.recurrence).toEqual(['RRULE:FREQ=WEEKLY'])
       expect(weekly.recurringEventId).toBe('series2')
       calls.length = 0
-      const single = await provider().updateEvent({ ...inst, recurrence: null }, 'following')
+      const single = await run(provider().updateEvent({ ...inst, recurrence: null }, 'following'))
       expect(calls[2].body.recurrence).toBeUndefined()
       expect(single.recurringEventId).toBeUndefined()
     })
@@ -311,7 +316,7 @@ describe('provider', () => {
 
   it('respond: changes only the self attendee and notifies organizer', async () => {
     respond = (c) => Response.json({ ...invite, attendees: c.body.attendees })
-    const e = await provider().respond(mapEvent(invite, 'acc1', 'primary'), 'accepted')
+    const e = await run(provider().respond(mapEvent(invite, 'acc1', 'primary'), 'accepted'))
     const c = calls[0]
     expect(c.method).toBe('PATCH')
     expect(c.url.pathname).toBe('/calendar/v3/calendars/primary/events/ev1')
@@ -323,7 +328,7 @@ describe('provider', () => {
 
   it('respond: throws without a self attendee', async () => {
     respond = () => Response.json({})
-    await expect(provider().respond(mapEvent(own, 'acc1', 'primary'), 'accepted')).rejects.toThrow()
+    await expect(run(provider().respond(mapEvent(own, 'acc1', 'primary'), 'accepted'))).rejects.toThrow()
     expect(calls).toHaveLength(0)
   })
 
@@ -335,7 +340,7 @@ describe('provider', () => {
         ? new Response('{}', { status: 401 })
         : Response.json({ items: [] })
     }
-    await provider().listCalendars()
+    await run(provider().listCalendars())
     expect(calls.map((c) => c.url.host)).toEqual(['www.googleapis.com', 'oauth2.googleapis.com', 'www.googleapis.com'])
     const refreshBody = new URLSearchParams(calls[1].body)
     expect(refreshBody.get('grant_type')).toBe('refresh_token')
@@ -345,7 +350,7 @@ describe('provider', () => {
 
   it('refreshes an expired access token before calling the API', async () => {
     respond = (c) => (c.url.host === 'oauth2.googleapis.com' ? Response.json({ access_token: 'new', expires_in: 3600 }) : Response.json({ items: [] }))
-    await provider({ expiresAt: Date.now() - 1 }).listCalendars()
+    await run(provider({ expiresAt: Date.now() - 1 }).listCalendars())
     expect(calls.map((c) => c.url.host)).toEqual(['oauth2.googleapis.com', 'www.googleapis.com'])
   })
 })
@@ -363,12 +368,26 @@ describe('truncateRecurrence', () => {
 })
 
 describe('provider timeouts', () => {
-  afterEach(() => void (http.timeoutMs = 30_000))
-
   it('fails a call instead of hanging when Google never answers', async () => {
-    http.timeoutMs = 20
     // Settles only by abort, like a stalled socket.
     vi.stubGlobal('fetch', (_url: string, init: RequestInit) => new Promise((_, reject) => init.signal!.addEventListener('abort', () => reject(init.signal!.reason))))
-    await expect(provider().listCalendars()).rejects.toThrow('Request to www.googleapis.com timed out')
+    await expect(run(provider().listCalendars().pipe(Effect.provideService(HttpTimeout, 20)))).rejects.toThrow('Request to www.googleapis.com timed out')
+  })
+})
+
+describe('provider retries', () => {
+  it('retries a GET after a 5xx and succeeds', async () => {
+    respond = () => (calls.length === 1 ? Response.json({ error: { message: 'busy' } }, { status: 503 }) : Response.json({ items: [] }))
+    expect(await run(provider().listCalendars())).toEqual([])
+    expect(calls.map((c) => c.method)).toEqual(['GET', 'GET'])
+  })
+
+  it('never retries a failed POST, which may have reached the server', async () => {
+    respond = () => Response.json({ error: { message: 'oops' } }, { status: 500 })
+    const input = { accountId: 'acc1', calendarId: 'primary', title: 'T', start: '2026-09-23', end: '2026-09-24', allDay: true }
+    const err = await run(provider().createEvent('primary', input)).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(HttpError)
+    expect(err).toMatchObject({ status: 500, message: 'Google API 500: oops' })
+    expect(calls).toHaveLength(1)
   })
 })

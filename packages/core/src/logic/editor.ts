@@ -1,7 +1,9 @@
 import { addDays, addHours, format, parseISO, startOfHour } from 'date-fns'
+import { Result } from 'effect'
 import type { Account, Attendee, Calendar, CalEvent, NewEventInput, Recurrence } from '../shared/types'
 import { t, type Locale } from '../i18n'
 import { sameRecurrence } from './recurrence'
+import { fail, type AppError } from '../errors'
 
 /** Form state. start/end are always 'YYYY-MM-DDTHH:mm' (local); all-day uses the date part, end inclusive. */
 export interface EventForm {
@@ -114,60 +116,67 @@ export function moveStart(f: EventForm, start: string): EventForm {
 
 type Times = Pick<NewEventInput, 'start' | 'end' | 'allDay'>
 
-function times(f: EventForm, locale: Locale): Times {
+const refuse = (message: string): Result.Result<never, AppError> => Result.fail(fail(message))
+
+function times(f: EventForm, locale: Locale): Result.Result<Times, AppError> {
   if (f.allDay) {
     const start = f.start.slice(0, 10)
     const endIncl = f.end.slice(0, 10)
-    if (endIncl < start) throw new Error(t(locale, 'form.endBeforeStartDate'))
-    return { allDay: true, start, end: format(addDays(parseISO(endIncl), 1), 'yyyy-MM-dd') }
+    if (endIncl < start) return refuse(t(locale, 'form.endBeforeStartDate'))
+    return Result.succeed({ allDay: true, start, end: format(addDays(parseISO(endIncl), 1), 'yyyy-MM-dd') })
   }
   const start = fromLocalInput(f.start)
   const end = fromLocalInput(f.end)
-  if (end <= start) throw new Error(t(locale, 'form.endAfterStart'))
-  return { allDay: false, start, end }
+  if (end <= start) return refuse(t(locale, 'form.endAfterStart'))
+  return Result.succeed({ allDay: false, start, end })
 }
 
-function checkEmails(list: string[], locale: Locale): string[] {
+function checkEmails(list: string[], locale: Locale): Result.Result<string[], AppError> {
   const bad = list.filter((e) => !isEmail(e))
-  if (bad.length) throw new Error(t(locale, 'form.invalidEmail', { list: bad.join(', ') }))
-  return [...new Set(list.map((e) => e.toLowerCase()))]
+  if (bad.length) return refuse(t(locale, 'form.invalidEmail', { list: bad.join(', ') }))
+  return Result.succeed([...new Set(list.map((e) => e.toLowerCase()))])
 }
 
-/** Throws a user-facing Error when the form is not valid. */
-export function formToInput(f: EventForm, locale: Locale = 'en'): NewEventInput {
-  if (!f.accountId) throw new Error(t(locale, 'form.chooseAccount'))
-  if (!f.calendarId) throw new Error(t(locale, 'form.chooseCalendar'))
-  const attendees = checkEmails(f.attendees, locale)
-  return {
-    accountId: f.accountId,
-    calendarId: f.calendarId,
-    title: f.title.trim() || t(locale, 'common.newEvent'),
-    ...times(f, locale),
-    location: f.location.trim() || undefined,
-    description: f.description.trim() || undefined,
-    ...(attendees.length ? { attendees } : {}),
-    ...(f.repeat ? { recurrence: f.repeat } : {})
-  }
+/** The new event, or why the form is not valid (a user-facing message). */
+export function formToInput(f: EventForm, locale: Locale = 'en'): Result.Result<NewEventInput, AppError> {
+  if (!f.accountId) return refuse(t(locale, 'form.chooseAccount'))
+  if (!f.calendarId) return refuse(t(locale, 'form.chooseCalendar'))
+  const { accountId, calendarId } = f
+  return Result.gen(function* () {
+    const attendees = yield* checkEmails(f.attendees, locale)
+    return {
+      accountId,
+      calendarId,
+      title: f.title.trim() || t(locale, 'common.newEvent'),
+      ...(yield* times(f, locale)),
+      location: f.location.trim() || undefined,
+      description: f.description.trim() || undefined,
+      ...(attendees.length ? { attendees } : {}),
+      ...(f.repeat ? { recurrence: f.repeat } : {})
+    }
+  })
 }
 
-/** Apply edits to an existing event. Account and calendar never change. */
-export function applyForm(e: CalEvent, f: EventForm, locale: Locale = 'en'): CalEvent {
-  const emails = checkEmails(f.attendees, locale)
-  const keep = e.attendees.filter((a) => a.self || a.organizer)
-  const byEmail = new Map(e.attendees.map((a) => [a.email.toLowerCase(), a]))
-  const invited: Attendee[] = emails
-    .filter((m) => !keep.some((a) => a.email.toLowerCase() === m))
-    .map((m) => byEmail.get(m) ?? { email: m, status: 'needsAction' })
-  return {
-    ...e,
-    title: f.title.trim() || t(locale, 'common.newEvent'),
-    ...times(f, locale),
-    location: f.location.trim() || undefined,
-    description: f.description.trim() || undefined,
-    attendees: [...keep, ...invited],
-    // Only a changed rule is sent; absent keeps the series' rule.
-    ...(repeatChanged(f) ? { recurrence: f.repeat } : {})
-  }
+/** Apply edits to an existing event, or why the form is not valid. Account and calendar never change. */
+export function applyForm(e: CalEvent, f: EventForm, locale: Locale = 'en'): Result.Result<CalEvent, AppError> {
+  return Result.gen(function* () {
+    const emails = yield* checkEmails(f.attendees, locale)
+    const keep = e.attendees.filter((a) => a.self || a.organizer)
+    const byEmail = new Map(e.attendees.map((a) => [a.email.toLowerCase(), a]))
+    const invited: Attendee[] = emails
+      .filter((m) => !keep.some((a) => a.email.toLowerCase() === m))
+      .map((m) => byEmail.get(m) ?? { email: m, status: 'needsAction' })
+    return {
+      ...e,
+      title: f.title.trim() || t(locale, 'common.newEvent'),
+      ...(yield* times(f, locale)),
+      location: f.location.trim() || undefined,
+      description: f.description.trim() || undefined,
+      attendees: [...keep, ...invited],
+      // Only a changed rule is sent; absent keeps the series' rule.
+      ...(repeatChanged(f) ? { recurrence: f.repeat } : {})
+    }
+  })
 }
 
 /** Strip Electron's "Error invoking remote method 'x': Error: " prefix. */

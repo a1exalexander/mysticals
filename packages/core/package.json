@@ -17,8 +17,7 @@
     "date-fns": "^4.4.0",
     "effect": "^4.0.3",
     "ical.js": "^2.2.1",
-    "tsdav": "^2.3.4",
-    "zod": "^4.6.5"
+    "tsdav": "^2.3.4"
   },
   "devDependencies": {
     "@effect/language-service": "^0.87.4",

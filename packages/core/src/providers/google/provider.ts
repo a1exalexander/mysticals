@@ -1,7 +1,9 @@
 import type { Attendee, Calendar, CalEvent, DeleteScope, PartStat, Recurrence } from '../../shared/types'
+import { Effect, Semaphore } from 'effect'
 import type { CalendarProvider, ProviderContext } from '../types'
 import { fromRRule, toRRule } from '../../logic/recurrence'
-import { AuthError, timedFetch } from '../http'
+import { AuthError, HttpError, fail, type ProviderError } from '../../errors'
+import { request, retryTransient } from '../http'
 import { getClientConfig, postToken, type GoogleCredentials } from './oauth'
 
 const API = 'https://www.googleapis.com/calendar/v3'
@@ -123,241 +125,250 @@ const localZone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone
 const rruleLines = (r: Recurrence, allDay: boolean): string[] => [`RRULE:${toRRule(r, allDay)}`]
 const nulled = (t: GTime): Record<string, string | null> => ({ date: null, dateTime: null, timeZone: null, ...t })
 
-export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider {
-  if (ctx.credentials.kind !== 'google') throw new Error('Google provider needs Google credentials')
-  let creds: GoogleCredentials = ctx.credentials
-  let refreshing: Promise<string> | undefined
+export const createGoogleProviderImpl = (ctx: ProviderContext): Effect.Effect<CalendarProvider, ProviderError> =>
+  Effect.gen(function* () {
+    if (ctx.credentials.kind !== 'google') return yield* fail('Google provider needs Google credentials')
+    let creds: GoogleCredentials = ctx.credentials
+    // One refresh at a time: callers queued behind it reuse its token instead of refreshing again.
+    const lock = yield* Semaphore.make(1)
+    const fresh = (): boolean => !!creds.accessToken && (creds.expiresAt ?? 0) > Date.now() + 60_000
 
-  const refresh = (): Promise<string> =>
-    (refreshing ??= (async () => {
-      const { clientId, clientSecret } = getClientConfig()
-      const tok = await postToken({ grant_type: 'refresh_token', refresh_token: creds.refreshToken, client_id: clientId, client_secret: clientSecret })
-      creds = { kind: 'google', refreshToken: tok.refreshToken ?? creds.refreshToken, accessToken: tok.accessToken, expiresAt: tok.expiresAt }
-      await ctx.saveCredentials(creds)
-      return tok.accessToken
-    })().finally(() => (refreshing = undefined)))
+    /** A new access token, unless one replaced `stale` (the token the caller saw rejected) meanwhile. */
+    const refresh = (stale: string | undefined): Effect.Effect<string, ProviderError> =>
+      Semaphore.withPermit(
+        lock,
+        Effect.gen(function* () {
+          if (creds.accessToken !== stale && fresh()) return creds.accessToken!
+          const { clientId, clientSecret } = yield* getClientConfig
+          const tok = yield* postToken({ grant_type: 'refresh_token', refresh_token: creds.refreshToken, client_id: clientId, client_secret: clientSecret })
+          creds = { kind: 'google', refreshToken: tok.refreshToken ?? creds.refreshToken, accessToken: tok.accessToken, expiresAt: tok.expiresAt }
+          yield* ctx.saveCredentials(creds)
+          return tok.accessToken
+        })
+      )
 
-  const token = async (): Promise<string> =>
-    creds.accessToken && (creds.expiresAt ?? 0) > Date.now() + 60_000 ? creds.accessToken : refresh()
+    const token = Effect.suspend(() => (fresh() ? Effect.succeed(creds.accessToken!) : refresh(creds.accessToken)))
 
-  async function api<T>(method: string, path: string, query: Record<string, string> = {}, body?: unknown): Promise<T> {
-    const qs = new URLSearchParams(query).toString()
-    const url = `${API}${path}${qs ? `?${qs}` : ''}`
-    const send = async (accessToken: string): Promise<Response> =>
-      timedFetch(url, {
-        method,
-        headers: { Authorization: `Bearer ${accessToken}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
-        body: body ? JSON.stringify(body) : undefined
-      })
-    let res = await send(await token())
-    if (res.status === 401) res = await send(await refresh())
-    if (res.status === 401) throw new AuthError('Google rejected the sign-in; sign in again')
-    if (res.status === 204 || (method === 'DELETE' && res.status === 410)) return undefined as T
-    if (!res.ok) {
-      const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-      throw new Error(`Google API ${res.status}: ${err.error?.message ?? res.statusText}`)
-    }
-    return (await res.json()) as T
-  }
-
-  const eventPath = (calendarId: string, eventId?: string): string =>
-    `/calendars/${encodeURIComponent(calendarId)}/events${eventId ? `/${encodeURIComponent(eventId)}` : ''}`
-  const rawOf = (e: CalEvent): GEvent | undefined => e.raw as GEvent | undefined
-  /** No organizer at all means an event on our own calendar that we own. */
-  const isOrganizer = (e: CalEvent): boolean => {
-    const org = rawOf(e)?.organizer
-    if (org?.self !== undefined) return org.self
-    return !e.organizer || e.organizer.email.toLowerCase() === ctx.email.toLowerCase()
-  }
-  const map = (g: GEvent, calendarId: string): CalEvent => mapEvent(g, ctx.accountId, calendarId)
-
-  /** The editable fields of `event` as a Google body. */
-  const fields = (event: CalEvent, prevAttendees: GAttendee[] | undefined, organizer: boolean): Record<string, unknown> => {
-    const body: Record<string, unknown> = { summary: event.title, location: event.location ?? null, description: event.description ?? null }
-    // Only the organizer controls the guest list. Existing guests keep Google's fields (incl. their
-    // responseStatus, so a stale local copy can't reset replies); new guests are just an email.
-    if (organizer) {
-      const prev = new Map((prevAttendees ?? []).map((a) => [a.email.toLowerCase(), a]))
-      body.attendees = event.attendees.map((a) => prev.get(a.email.toLowerCase()) ?? { email: a.email, displayName: a.name })
-    }
-    return body
-  }
-
-  /**
-   * The series' RRULEs for a new series starting at `slot`: COUNT becomes what is left after the
-   * instances before `slot` (cancelled ones count too). EXDATE/RDATE lines stay with the old series.
-   */
-  async function remainingRecurrence(calendarId: string, series: string, recurrence: string[], slot: GTime): Promise<string[]> {
-    const rules = recurrence.filter((l) => l.startsWith('RRULE:'))
-    if (!rules.some((l) => /;COUNT=|:COUNT=/i.test(l))) return rules
-    const cut = Date.parse(slot.dateTime ?? slot.date!)
-    let passed = 0
-    let pageToken: string | undefined
-    do {
-      const page = await api<{ items?: GEvent[]; nextPageToken?: string }>('GET', `${eventPath(calendarId, series)}/instances`, {
-        showDeleted: 'true',
-        timeMax: new Date(cut).toISOString(),
-        maxResults: '2500',
-        ...(pageToken ? { pageToken } : {})
-      })
-      for (const g of page.items ?? []) {
-        const t = g.originalStartTime ?? g.start
-        if (Date.parse(t.dateTime ?? t.date!) < cut) passed++
-      }
-      pageToken = page.nextPageToken
-    } while (pageToken)
-    return rules.map((l) => l.replace(/COUNT=(\d+)/i, (_, n: string) => `COUNT=${Math.max(1, Number(n) - passed)}`))
-  }
-
-  return {
-    async listCalendars(): Promise<Calendar[]> {
-      const out: Calendar[] = []
-      let pageToken: string | undefined
-      do {
-        const page = await api<{ items?: Array<{ id: string; summary?: string; summaryOverride?: string; backgroundColor?: string; accessRole?: string }>; nextPageToken?: string }>(
-          'GET',
-          '/users/me/calendarList',
-          pageToken ? { pageToken } : {}
+    type Reply = { status: number; statusText: string; json: unknown }
+    function api<T>(method: string, path: string, query: Record<string, string> = {}, body?: unknown): Effect.Effect<T, ProviderError> {
+      const qs = new URLSearchParams(query).toString()
+      const url = `${API}${path}${qs ? `?${qs}` : ''}`
+      const send = (accessToken: string): Effect.Effect<Reply, ProviderError> =>
+        request(
+          url,
+          {
+            method,
+            headers: { Authorization: `Bearer ${accessToken}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+            body: body ? JSON.stringify(body) : undefined
+          },
+          async (res) => ({ status: res.status, statusText: res.statusText, json: res.status === 204 ? undefined : await res.json().catch(() => undefined) })
         )
-        for (const c of page.items ?? [])
-          out.push({
-            id: c.id,
-            accountId: ctx.accountId,
-            name: c.summaryOverride ?? c.summary ?? c.id,
-            color: c.backgroundColor ?? '#4285f4',
-            readOnly: c.accessRole !== 'owner' && c.accessRole !== 'writer'
-          })
-        pageToken = page.nextPageToken
-      } while (pageToken)
-      return out
-    },
+      return Effect.gen(function* () {
+        const sent = yield* token
+        let res = yield* send(sent)
+        if (res.status === 401) res = yield* send(yield* refresh(sent))
+        if (res.status === 401) return yield* new AuthError({ message: 'Google rejected the sign-in; sign in again' })
+        if (res.status === 204 || (method === 'DELETE' && res.status === 410)) return undefined as T
+        if (res.status < 200 || res.status >= 300) {
+          const err = (res.json ?? {}) as { error?: { message?: string } }
+          return yield* new HttpError({ status: res.status, message: `Google API ${res.status}: ${err.error?.message ?? res.statusText}` })
+        }
+        return res.json as T
+      }).pipe(retryTransient(method))
+    }
 
-    async listEvents(calendarId, range) {
-      const out: CalEvent[] = []
-      let pageToken: string | undefined
-      do {
-        const page = await api<{ items?: GEvent[]; nextPageToken?: string }>('GET', eventPath(calendarId), {
+    const eventPath = (calendarId: string, eventId?: string): string =>
+      `/calendars/${encodeURIComponent(calendarId)}/events${eventId ? `/${encodeURIComponent(eventId)}` : ''}`
+    const rawOf = (e: CalEvent): GEvent | undefined => e.raw as GEvent | undefined
+    /** No organizer at all means an event on our own calendar that we own. */
+    const isOrganizer = (e: CalEvent): boolean => {
+      const org = rawOf(e)?.organizer
+      if (org?.self !== undefined) return org.self
+      return !e.organizer || e.organizer.email.toLowerCase() === ctx.email.toLowerCase()
+    }
+    const map = (g: GEvent, calendarId: string): CalEvent => mapEvent(g, ctx.accountId, calendarId)
+
+    /** The editable fields of `event` as a Google body. */
+    const fields = (event: CalEvent, prevAttendees: GAttendee[] | undefined, organizer: boolean): Record<string, unknown> => {
+      const body: Record<string, unknown> = { summary: event.title, location: event.location ?? null, description: event.description ?? null }
+      // Only the organizer controls the guest list. Existing guests keep Google's fields (incl. their
+      // responseStatus, so a stale local copy can't reset replies); new guests are just an email.
+      if (organizer) {
+        const prev = new Map((prevAttendees ?? []).map((a) => [a.email.toLowerCase(), a]))
+        body.attendees = event.attendees.map((a) => prev.get(a.email.toLowerCase()) ?? { email: a.email, displayName: a.name })
+      }
+      return body
+    }
+
+    /** Every page of a list endpoint, following nextPageToken. */
+    const pages = <T>(path: string, query: Record<string, string>): Effect.Effect<T[], ProviderError> =>
+      Effect.gen(function* () {
+        const out: T[] = []
+        let pageToken: string | undefined
+        do {
+          const page = yield* api<{ items?: T[]; nextPageToken?: string }>('GET', path, { ...query, ...(pageToken ? { pageToken } : {}) })
+          out.push(...(page.items ?? []))
+          pageToken = page.nextPageToken
+        } while (pageToken)
+        return out
+      })
+
+    /**
+     * The series' RRULEs for a new series starting at `slot`: COUNT becomes what is left after the
+     * instances before `slot` (cancelled ones count too). EXDATE/RDATE lines stay with the old series.
+     */
+    const remainingRecurrence = (calendarId: string, series: string, recurrence: string[], slot: GTime): Effect.Effect<string[], ProviderError> =>
+      Effect.gen(function* () {
+        const rules = recurrence.filter((l) => l.startsWith('RRULE:'))
+        if (!rules.some((l) => /;COUNT=|:COUNT=/i.test(l))) return rules
+        const cut = Date.parse(slot.dateTime ?? slot.date!)
+        const instances = yield* pages<GEvent>(`${eventPath(calendarId, series)}/instances`, {
+          showDeleted: 'true',
+          timeMax: new Date(cut).toISOString(),
+          maxResults: '2500'
+        })
+        const passed = instances.filter((g) => {
+          const t = g.originalStartTime ?? g.start
+          return Date.parse(t.dateTime ?? t.date!) < cut
+        }).length
+        return rules.map((l) => l.replace(/COUNT=(\d+)/i, (_, n: string) => `COUNT=${Math.max(1, Number(n) - passed)}`))
+      })
+
+    const provider: CalendarProvider = {
+      listCalendars: () =>
+        pages<{ id: string; summary?: string; summaryOverride?: string; backgroundColor?: string; accessRole?: string }>('/users/me/calendarList', {}).pipe(
+          Effect.map((items) =>
+            items.map((c) => ({
+              id: c.id,
+              accountId: ctx.accountId,
+              name: c.summaryOverride ?? c.summary ?? c.id,
+              color: c.backgroundColor ?? '#4285f4',
+              readOnly: c.accessRole !== 'owner' && c.accessRole !== 'writer'
+            }))
+          )
+        ),
+
+      listEvents: (calendarId, range) =>
+        pages<GEvent>(eventPath(calendarId), {
           singleEvents: 'true',
           timeMin: new Date(range.start).toISOString(),
           timeMax: new Date(range.end).toISOString(),
-          maxResults: '2500',
-          ...(pageToken ? { pageToken } : {})
+          maxResults: '2500'
+        }).pipe(Effect.map((items) => items.filter((g) => g.status !== 'cancelled').map((g) => map(g, calendarId)))),
+
+      createEvent: (calendarId, input) => {
+        const attendees = (input.attendees ?? []).map((email) => ({ email }))
+        const rule = input.recurrence
+        return api<GEvent>(
+          'POST',
+          eventPath(calendarId),
+          { sendUpdates: attendees.length ? 'all' : 'none' },
+          {
+            summary: input.title,
+            start: rule ? zoned(input.start, input.allDay, localZone()) : toGTime(input.start, input.allDay),
+            end: rule ? zoned(input.end, input.allDay, localZone()) : toGTime(input.end, input.allDay),
+            location: input.location,
+            description: input.description,
+            attendees,
+            ...(rule ? { recurrence: rruleLines(rule, input.allDay) } : {})
+          }
+        ).pipe(Effect.map((g) => map(g, calendarId)))
+      },
+
+      updateEvent: (event, scope: DeleteScope = 'one') =>
+        Effect.gen(function* () {
+          const organizer = isOrganizer(event)
+          const q = { sendUpdates: organizer ? 'all' : 'none' }
+          const series = event.recurringEventId
+          const before = rawOf(event)?.start
+          if (!series || scope === 'one' || !before) {
+            // A single event may start repeating here (the API refuses a rule change for one instance of a series).
+            const rule = !series ? event.recurrence : undefined
+            const time = (iso: string): Record<string, string | null> => (rule ? nulled(zoned(iso, event.allDay, localZone())) : toGTime(iso, event.allDay))
+            const body = {
+              ...fields(event, rawOf(event)?.attendees, organizer),
+              start: time(event.start),
+              end: time(event.end),
+              ...(rule ? { recurrence: rruleLines(rule, event.allDay) } : {})
+            }
+            return map(yield* api<GEvent>('PATCH', eventPath(event.calendarId, event.id), q, body), event.calendarId)
+          }
+          const master = yield* api<GEvent>('GET', eventPath(event.calendarId, series))
+          // Recurring events need an explicit zone; keep the series' own.
+          const timeZone = master.start.timeZone ?? localZone()
+          const rule = event.recurrence
+          const slot = rawOf(event)?.originalStartTime ?? before
+          const first = master.start.dateTime ?? master.start.date!
+          const at = slot.dateTime ?? slot.date!
+          // "This and following" from the first instance is the whole series.
+          if (scope === 'all' || Date.parse(at) <= Date.parse(first)) {
+            // Stop repeating: the series becomes just the edited event.
+            const start = rule === null ? zoned(event.start, event.allDay, timeZone) : shiftAnchor(master.start, before, event.start, event.allDay, timeZone)
+            const body = {
+              ...fields(event, master.attendees, organizer),
+              start: nulled(start),
+              end: nulled(endFrom(start, event, timeZone)),
+              // A new RRULE replaces the old ones; EXDATE/RDATE lines stay.
+              ...(rule === undefined ? {} : { recurrence: rule ? [...rruleLines(rule, event.allDay), ...(master.recurrence ?? []).filter((l) => !l.startsWith('RRULE:'))] : [] })
+            }
+            yield* api<GEvent>('PATCH', eventPath(event.calendarId, series), q, body)
+            return event // its instance id may change with the time; the sync that follows brings the real ones
+          }
+          // Split: end the old series right before this instance, start a new one from it with the edit.
+          const recurrence =
+            rule === undefined ? yield* remainingRecurrence(event.calendarId, series, master.recurrence ?? [], slot) : rule ? rruleLines(rule, event.allDay) : undefined
+          yield* api('PATCH', eventPath(event.calendarId, series), q, { recurrence: truncateRecurrence(master.recurrence ?? [], slot) })
+          const start = shiftAnchor(slot, before, event.start, event.allDay, timeZone)
+          const created = yield* api<GEvent>('POST', eventPath(event.calendarId), q, {
+            ...fields(event, master.attendees, organizer),
+            start,
+            end: endFrom(start, event, timeZone),
+            ...(recurrence ? { recurrence } : {})
+          })
+          return { ...map(created, event.calendarId), start: event.start, end: event.end, recurringEventId: recurrence ? created.id : undefined }
+        }),
+
+      deleteEvent: (event, scope: DeleteScope = 'one') =>
+        Effect.gen(function* () {
+          const q = { sendUpdates: isOrganizer(event) ? 'all' : 'none' }
+          const series = event.recurringEventId
+          if (!series || scope === 'one') return yield* api<void>('DELETE', eventPath(event.calendarId, event.id), q)
+          const cutoff = rawOf(event)?.originalStartTime
+          if (scope === 'following' && cutoff) {
+            const master = yield* api<GEvent>('GET', eventPath(event.calendarId, series))
+            const first = master.start.dateTime ?? master.start.date!
+            const at = cutoff.dateTime ?? cutoff.date!
+            // Cutting at the first instance leaves nothing: fall through to deleting the series.
+            if (Date.parse(at) > Date.parse(first)) {
+              const recurrence = truncateRecurrence(master.recurrence ?? [], cutoff)
+              return yield* api<void>('PATCH', eventPath(event.calendarId, series), q, { recurrence })
+            }
+          }
+          yield* api<void>('DELETE', eventPath(event.calendarId, series), q)
+        }),
+
+      getRecurrence: (event) =>
+        Effect.gen(function* () {
+          if (!event.recurringEventId) return null
+          const master = yield* api<GEvent>('GET', eventPath(event.calendarId, event.recurringEventId))
+          const line = master.recurrence?.find((l) => l.startsWith('RRULE:'))
+          return line ? fromRRule(line, master.start.dateTime ?? master.start.date) : null
+        }),
+
+      respond: (event, status) =>
+        Effect.gen(function* () {
+          const attendees: GAttendee[] =
+            rawOf(event)?.attendees ??
+            event.attendees.map((a) => ({ email: a.email, displayName: a.name, responseStatus: a.status, self: a.self, organizer: a.organizer }))
+          if (!attendees.some((a) => a.self)) return yield* fail('This account is not an attendee of the event')
+          const g = yield* api<GEvent>(
+            'PATCH',
+            eventPath(event.calendarId, event.id),
+            { sendUpdates: 'all' },
+            { attendees: attendees.map((a) => (a.self ? { ...a, responseStatus: status } : a)) }
+          )
+          return map(g, event.calendarId)
         })
-        for (const g of page.items ?? []) if (g.status !== 'cancelled') out.push(map(g, calendarId))
-        pageToken = page.nextPageToken
-      } while (pageToken)
-      return out
-    },
-
-    async createEvent(calendarId, input) {
-      const attendees = (input.attendees ?? []).map((email) => ({ email }))
-      const rule = input.recurrence
-      const g = await api<GEvent>(
-        'POST',
-        eventPath(calendarId),
-        { sendUpdates: attendees.length ? 'all' : 'none' },
-        {
-          summary: input.title,
-          start: rule ? zoned(input.start, input.allDay, localZone()) : toGTime(input.start, input.allDay),
-          end: rule ? zoned(input.end, input.allDay, localZone()) : toGTime(input.end, input.allDay),
-          location: input.location,
-          description: input.description,
-          attendees,
-          ...(rule ? { recurrence: rruleLines(rule, input.allDay) } : {})
-        }
-      )
-      return map(g, calendarId)
-    },
-
-    async updateEvent(event, scope: DeleteScope = 'one') {
-      const organizer = isOrganizer(event)
-      const q = { sendUpdates: organizer ? 'all' : 'none' }
-      const series = event.recurringEventId
-      const before = rawOf(event)?.start
-      if (!series || scope === 'one' || !before) {
-        // A single event may start repeating here (the API refuses a rule change for one instance of a series).
-        const rule = !series ? event.recurrence : undefined
-        const time = (iso: string): Record<string, string | null> => (rule ? nulled(zoned(iso, event.allDay, localZone())) : toGTime(iso, event.allDay))
-        const body = {
-          ...fields(event, rawOf(event)?.attendees, organizer),
-          start: time(event.start),
-          end: time(event.end),
-          ...(rule ? { recurrence: rruleLines(rule, event.allDay) } : {})
-        }
-        return map(await api<GEvent>('PATCH', eventPath(event.calendarId, event.id), q, body), event.calendarId)
-      }
-      const master = await api<GEvent>('GET', eventPath(event.calendarId, series))
-      // Recurring events need an explicit zone; keep the series' own.
-      const timeZone = master.start.timeZone ?? localZone()
-      const rule = event.recurrence
-      const slot = rawOf(event)?.originalStartTime ?? before
-      const first = master.start.dateTime ?? master.start.date!
-      const at = slot.dateTime ?? slot.date!
-      // "This and following" from the first instance is the whole series.
-      if (scope === 'all' || Date.parse(at) <= Date.parse(first)) {
-        // Stop repeating: the series becomes just the edited event.
-        const start = rule === null ? zoned(event.start, event.allDay, timeZone) : shiftAnchor(master.start, before, event.start, event.allDay, timeZone)
-        const body = {
-          ...fields(event, master.attendees, organizer),
-          start: nulled(start),
-          end: nulled(endFrom(start, event, timeZone)),
-          // A new RRULE replaces the old ones; EXDATE/RDATE lines stay.
-          ...(rule === undefined ? {} : { recurrence: rule ? [...rruleLines(rule, event.allDay), ...(master.recurrence ?? []).filter((l) => !l.startsWith('RRULE:'))] : [] })
-        }
-        await api<GEvent>('PATCH', eventPath(event.calendarId, series), q, body)
-        return event // its instance id may change with the time; the sync that follows brings the real ones
-      }
-      // Split: end the old series right before this instance, start a new one from it with the edit.
-      const recurrence =
-        rule === undefined ? await remainingRecurrence(event.calendarId, series, master.recurrence ?? [], slot) : rule ? rruleLines(rule, event.allDay) : undefined
-      await api('PATCH', eventPath(event.calendarId, series), q, { recurrence: truncateRecurrence(master.recurrence ?? [], slot) })
-      const start = shiftAnchor(slot, before, event.start, event.allDay, timeZone)
-      const created = await api<GEvent>('POST', eventPath(event.calendarId), q, {
-        ...fields(event, master.attendees, organizer),
-        start,
-        end: endFrom(start, event, timeZone),
-        ...(recurrence ? { recurrence } : {})
-      })
-      return { ...map(created, event.calendarId), start: event.start, end: event.end, recurringEventId: recurrence ? created.id : undefined }
-    },
-
-    async deleteEvent(event, scope: DeleteScope = 'one') {
-      const q = { sendUpdates: isOrganizer(event) ? 'all' : 'none' }
-      const series = event.recurringEventId
-      if (!series || scope === 'one') return void (await api('DELETE', eventPath(event.calendarId, event.id), q))
-      const cutoff = rawOf(event)?.originalStartTime
-      if (scope === 'following' && cutoff) {
-        const master = await api<GEvent>('GET', eventPath(event.calendarId, series))
-        const first = master.start.dateTime ?? master.start.date!
-        const at = cutoff.dateTime ?? cutoff.date!
-        // Cutting at the first instance leaves nothing: fall through to deleting the series.
-        if (Date.parse(at) > Date.parse(first)) {
-          const recurrence = truncateRecurrence(master.recurrence ?? [], cutoff)
-          return void (await api('PATCH', eventPath(event.calendarId, series), q, { recurrence }))
-        }
-      }
-      await api('DELETE', eventPath(event.calendarId, series), q)
-    },
-
-    async getRecurrence(event) {
-      if (!event.recurringEventId) return null
-      const master = await api<GEvent>('GET', eventPath(event.calendarId, event.recurringEventId))
-      const line = master.recurrence?.find((l) => l.startsWith('RRULE:'))
-      return line ? fromRRule(line, master.start.dateTime ?? master.start.date) : null
-    },
-
-    async respond(event, status) {
-      const attendees: GAttendee[] =
-        rawOf(event)?.attendees ??
-        event.attendees.map((a) => ({ email: a.email, displayName: a.name, responseStatus: a.status, self: a.self, organizer: a.organizer }))
-      if (!attendees.some((a) => a.self)) throw new Error('This account is not an attendee of the event')
-      const g = await api<GEvent>(
-        'PATCH',
-        eventPath(event.calendarId, event.id),
-        { sendUpdates: 'all' },
-        { attendees: attendees.map((a) => (a.self ? { ...a, responseStatus: status } : a)) }
-      )
-      return map(g, event.calendarId)
     }
-  }
-}
+    return provider
+  })

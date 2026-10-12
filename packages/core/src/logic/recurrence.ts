@@ -1,7 +1,9 @@
 // Repeat rules: RRULE <-> Recurrence, presets and text for the editors. Pure; no provider code here.
 import { format, isValid, parseISO } from 'date-fns'
+import { Result } from 'effect'
 import { fmt, t, type Locale } from '../i18n'
 import type { Recurrence, Weekday } from '../shared/types'
+import { fail, type AppError } from '../errors'
 
 export const WEEKDAYS: Weekday[] = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']
 const JS_DAY: Weekday[] = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA']
@@ -159,33 +161,33 @@ export function describe(r: Recurrence | null, start: string, locale: Locale = '
 
 export const everyText = (r: Recurrence): string => `${r.interval ?? 1} ${UNIT[r.freq]}${(r.interval ?? 1) > 1 ? 's' : ''}`
 
-/** "2 weeks" / "day" / "3 months" -> interval + freq. Throws a user-facing Error. */
-export function parseEvery(text: string): Pick<Recurrence, 'freq' | 'interval'> {
+/** "2 weeks" / "day" / "3 months" -> interval + freq, or a user-facing error. */
+export function parseEvery(text: string): Result.Result<Pick<Recurrence, 'freq' | 'interval'>, AppError> {
   const m = /^\s*(\d+)?\s*(day|week|month|year)s?\s*$/i.exec(text)
   const n = Number(m?.[1] ?? 1)
-  if (!m || n < 1 || n > 999) throw new Error('Repeat every: use e.g. "2 weeks" (day, week, month or year)')
+  if (!m || n < 1 || n > 999) return Result.fail(fail('Repeat every: use e.g. "2 weeks" (day, week, month or year)'))
   const freq = FREQS.find((f) => UNIT[f] === m[2].toLowerCase())!
-  return { freq, interval: n > 1 ? n : undefined }
+  return Result.succeed({ freq, interval: n > 1 ? n : undefined })
 }
 
 export const daysText = (days: Weekday[]): string => days.map((d) => d.toLowerCase()).join(' ')
 
-/** "mo th" / "Mon, Thu" -> weekdays. Throws a user-facing Error. */
-export function parseDays(text: string): Weekday[] {
+/** "mo th" / "Mon, Thu" -> weekdays, or a user-facing error. */
+export function parseDays(text: string): Result.Result<Weekday[], AppError> {
   const words = text.split(/[\s,;]+/).filter(Boolean).map((w) => w.slice(0, 2).toUpperCase())
   const bad = words.filter((w) => !WEEKDAYS.includes(w as Weekday))
-  if (!words.length || bad.length) throw new Error('Repeat on: use days like "mo th"')
-  return WEEKDAYS.filter((d) => words.includes(d))
+  if (!words.length || bad.length) return Result.fail(fail('Repeat on: use days like "mo th"'))
+  return Result.succeed(WEEKDAYS.filter((d) => words.includes(d)))
 }
 
 export const endsText = (r: Recurrence): string => (r.until ? r.until : r.count ? `${r.count} times` : 'never')
 
-/** "never" / "2026-12-31" / "10 times" -> the end. Throws a user-facing Error. */
-export function parseEnds(text: string): Pick<Recurrence, 'until' | 'count'> {
+/** "never" / "2026-12-31" / "10 times" -> the end, or a user-facing error. */
+export function parseEnds(text: string): Result.Result<Pick<Recurrence, 'until' | 'count'>, AppError> {
   const t = text.trim().toLowerCase()
-  if (!t || t === 'never') return {}
-  if (/^\d{4}-\d{2}-\d{2}$/.test(t) && isValid(parseISO(t)) && format(parseISO(t), 'yyyy-MM-dd') === t) return { until: t }
+  if (!t || t === 'never') return Result.succeed({})
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t) && isValid(parseISO(t)) && format(parseISO(t), 'yyyy-MM-dd') === t) return Result.succeed({ until: t })
   const m = /^(\d+)(\s*times?)?$/.exec(t)
-  if (m && +m[1] >= 1 && +m[1] <= 999) return { count: +m[1] }
-  throw new Error('Ends: use "never", a date (YYYY-MM-DD) or "10 times"')
+  if (m && +m[1] >= 1 && +m[1] <= 999) return Result.succeed({ count: +m[1] })
+  return Result.fail(fail('Ends: use "never", a date (YYYY-MM-DD) or "10 times"'))
 }

@@ -1,52 +1,60 @@
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { Effect, type FileSystem } from 'effect'
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Credentials } from '../shared/types'
 import type { ProviderContext, ProviderFactory } from '../providers/types'
 import { MockProvider } from '../mock/MockProvider'
-import { AccountStore, type SecretCrypto } from './store'
+import { fail } from '../errors'
+import { makeAccountStore, SecretCrypto, type AccountStoreShape } from './store'
 
 // Reversible fake "encryption" so tests can assert plaintext never hits disk.
-const fakeCrypto: SecretCrypto = {
-  encrypt: (s) => Buffer.from(Buffer.from(s).toString('base64').split('').reverse().join('')),
-  decrypt: (b) => Buffer.from(b.toString().split('').reverse().join(''), 'base64').toString()
+const fakeCrypto: SecretCrypto['Service'] = {
+  encrypt: (s) => Effect.succeed(Buffer.from(Buffer.from(s).toString('base64').split('').reverse().join(''))),
+  decrypt: (b) => Effect.succeed(Buffer.from(Buffer.from(b).toString().split('').reverse().join(''), 'base64').toString())
 }
+
+const run = <A, E>(e: Effect.Effect<A, E, FileSystem.FileSystem | SecretCrypto>, crypto = fakeCrypto): Promise<A> =>
+  Effect.runPromise(e.pipe(Effect.provide(NodeFileSystem.layer), Effect.provideService(SecretCrypto, crypto)))
 
 const workCreds: Credentials = { kind: 'caldav', serverUrl: 'https://mail.work.example', username: 'me@work.example', password: 'WORK-SECRET' }
 const personalCreds: Credentials = { kind: 'google', refreshToken: 'PERSONAL-REFRESH-SECRET' }
 
 let dir: string
 let contexts: ProviderContext[]
-let store: AccountStore
+let store: AccountStoreShape
 
 function factory(): ProviderFactory {
   return (ctx) => {
     contexts.push(ctx)
-    return new MockProvider(ctx.accountId, ctx.email, [])
+    return Effect.succeed(new MockProvider(ctx.accountId, ctx.email, []))
   }
 }
 
+const open = (crypto = fakeCrypto): Promise<AccountStoreShape> => run(makeAccountStore(dir, { caldav: factory(), google: factory() }), crypto)
+
 async function addBoth() {
-  const work = await store.add({ kind: 'caldav', label: 'Work', email: 'me@work.example', color: '#f00' }, workCreds)
-  const personal = await store.add({ kind: 'google', label: 'Personal', email: 'me@gmail.com', color: '#0f0' }, personalCreds)
+  const work = await run(store.add({ kind: 'caldav', label: 'Work', email: 'me@work.example', color: '#f00' }, workCreds))
+  const personal = await run(store.add({ kind: 'google', label: 'Personal', email: 'me@gmail.com', color: '#0f0' }, personalCreds))
   return { work, personal }
 }
 
 const accDir = (id: string) => join(dir, 'accounts', id)
 
-beforeEach(() => {
+beforeEach(async () => {
   dir = mkdtempSync(join(tmpdir(), 'mysticals-store-'))
   contexts = []
-  store = new AccountStore(dir, { caldav: factory(), google: factory() }, fakeCrypto)
+  store = await open()
 })
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
 describe('AccountStore isolation', () => {
   it('gives each provider only its own id, email and credentials', async () => {
     const { work, personal } = await addBoth()
-    store.getProvider(work.id)
-    store.getProvider(personal.id)
+    await run(store.getProvider(work.id))
+    await run(store.getProvider(personal.id))
     expect(contexts).toHaveLength(2)
     expect(Object.keys(contexts[0]).sort()).toEqual(['accountId', 'credentials', 'email', 'saveCredentials'])
     expect(contexts[0]).toMatchObject({ accountId: work.id, email: 'me@work.example', credentials: workCreds })
@@ -55,38 +63,38 @@ describe('AccountStore isolation', () => {
 
   it('memoizes one provider per account', async () => {
     const { work } = await addBoth()
-    expect(store.getProvider(work.id)).toBe(store.getProvider(work.id))
+    expect(await run(store.getProvider(work.id))).toBe(await run(store.getProvider(work.id)))
     expect(contexts).toHaveLength(1)
   })
 
   it("saveCredentials from A only touches A's creds", async () => {
     const { work, personal } = await addBoth()
-    store.getProvider(personal.id)
-    store.getProvider(work.id)
+    await run(store.getProvider(personal.id))
+    await run(store.getProvider(work.id))
     const bBefore = readFileSync(join(accDir(work.id), 'creds.bin'))
     const refreshed: Credentials = { ...personalCreds, accessToken: 'NEW-TOKEN' }
-    await contexts[0].saveCredentials(refreshed)
+    await run(contexts[0].saveCredentials(refreshed))
     expect(readFileSync(join(accDir(work.id), 'creds.bin'))).toEqual(bBefore)
 
-    const fresh = new AccountStore(dir, { caldav: factory(), google: factory() }, fakeCrypto)
+    const fresh = await open()
     contexts = []
-    fresh.getProvider(personal.id)
-    fresh.getProvider(work.id)
+    await run(fresh.getProvider(personal.id))
+    await run(fresh.getProvider(work.id))
     expect(contexts[0].credentials).toEqual(refreshed)
     expect(contexts[1].credentials).toEqual(workCreds)
   })
 
   it("remove wipes only A's dir and drops its provider", async () => {
     const { work, personal } = await addBoth()
-    store.getProvider(work.id)
-    await store.writeCache(work.id, { calendars: [], events: [] })
-    await store.remove(work.id)
+    await run(store.getProvider(work.id))
+    await run(store.writeCache(work.id, { calendars: [], events: [] }))
+    await run(store.remove(work.id))
     expect(existsSync(accDir(work.id))).toBe(false)
     expect(existsSync(join(accDir(personal.id), 'creds.bin'))).toBe(true)
-    expect(store.list().map((a) => a.id)).toEqual([personal.id])
-    expect(() => store.getProvider(work.id)).toThrow()
+    expect((await run(store.list())).map((a) => a.id)).toEqual([personal.id])
+    await expect(run(store.getProvider(work.id))).rejects.toThrow()
     // A stale provider refreshing tokens must not resurrect the wiped dir.
-    await contexts[0].saveCredentials(workCreds)
+    await run(contexts[0].saveCredentials(workCreds))
     expect(existsSync(accDir(work.id))).toBe(false)
   })
 
@@ -103,48 +111,48 @@ describe('AccountStore isolation', () => {
         expect(content).not.toContain('PERSONAL-REFRESH-SECRET')
       }
     }
-    expect(JSON.stringify(store.list())).not.toContain('SECRET')
+    expect(JSON.stringify(await run(store.list()))).not.toContain('SECRET')
   })
 
   it('keeps caches and hidden calendars separate per account', async () => {
     const { work, personal } = await addBoth()
-    expect(store.readCache(work.id)).toEqual({ calendars: [], events: [] })
+    expect(await run(store.readCache(work.id))).toEqual({ calendars: [], events: [] })
     const cal = { id: 'c1', accountId: work.id, name: 'Work', color: '#f00', readOnly: false }
-    await store.writeCache(work.id, { calendars: [cal], events: [], syncedAt: 'now' })
-    expect(store.readCache(work.id).calendars).toEqual([cal])
-    expect(store.readCache(personal.id)).toEqual({ calendars: [], events: [] })
+    await run(store.writeCache(work.id, { calendars: [cal], events: [], syncedAt: 'now' }))
+    expect((await run(store.readCache(work.id))).calendars).toEqual([cal])
+    expect(await run(store.readCache(personal.id))).toEqual({ calendars: [], events: [] })
 
-    await store.setCalendarVisible(work.id, 'c1', false)
-    expect(store.hiddenCalendars(work.id)).toEqual(['c1'])
-    expect(store.hiddenCalendars(personal.id)).toEqual([])
-    await store.setCalendarVisible(work.id, 'c1', true)
-    expect(store.hiddenCalendars(work.id)).toEqual([])
+    await run(store.setCalendarVisible(work.id, 'c1', false))
+    expect(await run(store.hiddenCalendars(work.id))).toEqual(['c1'])
+    expect(await run(store.hiddenCalendars(personal.id))).toEqual([])
+    await run(store.setCalendarVisible(work.id, 'c1', true))
+    expect(await run(store.hiddenCalendars(work.id))).toEqual([])
   })
 
   it('serves the cache from memory after a write', async () => {
     const { work } = await addBoth()
-    await store.writeCache(work.id, { calendars: [], events: [], syncedAt: 'now' })
+    await run(store.writeCache(work.id, { calendars: [], events: [], syncedAt: 'now' }))
     rmSync(join(dir, 'accounts', work.id, 'cache.json'))
-    expect(store.readCache(work.id).syncedAt).toBe('now')
+    expect((await run(store.readCache(work.id))).syncedAt).toBe('now')
   })
 
   it('patchCache changes the cache in memory only', async () => {
     const { work } = await addBoth()
-    await store.writeCache(work.id, { calendars: [], events: [], syncedAt: 'now' })
-    store.patchCache(work.id, (c) => ({ ...c, syncedAt: 'patched' }))
-    expect(store.readCache(work.id).syncedAt).toBe('patched')
-    const fresh = new AccountStore(dir, { caldav: factory(), google: factory() }, fakeCrypto)
-    expect(fresh.readCache(work.id).syncedAt).toBe('now')
-    expect(() => store.patchCache('ghost', (c) => c)).toThrow()
+    await run(store.writeCache(work.id, { calendars: [], events: [], syncedAt: 'now' }))
+    await run(store.patchCache(work.id, (c) => ({ ...c, syncedAt: 'patched' })))
+    expect((await run(store.readCache(work.id))).syncedAt).toBe('patched')
+    const fresh = await open()
+    expect((await run(fresh.readCache(work.id))).syncedAt).toBe('now')
+    await expect(run(store.patchCache('ghost', (c) => c))).rejects.toThrow()
   })
 
   it('rejects path-traversal ids before touching the filesystem', async () => {
     const { personal } = await addBoth()
     writeFileSync(join(dir, 'victim.txt'), 'x')
     for (const bad of ['../', '..', '../accounts', `../accounts/${personal.id}`, 'a/b', '', '/etc']) {
-      await expect(store.remove(bad)).rejects.toThrow(/Invalid account id/)
-      expect(() => store.readCache(bad)).toThrow(/Invalid account id/)
-      expect(() => store.hiddenCalendars(bad)).toThrow(/Invalid account id/)
+      await expect(run(store.remove(bad))).rejects.toThrow(/Invalid account id/)
+      await expect(run(store.readCache(bad))).rejects.toThrow(/Invalid account id/)
+      await expect(run(store.hiddenCalendars(bad))).rejects.toThrow(/Invalid account id/)
     }
     expect(existsSync(join(dir, 'victim.txt'))).toBe(true)
     expect(existsSync(accDir(personal.id))).toBe(true)
@@ -152,35 +160,32 @@ describe('AccountStore isolation', () => {
 
   it('update with new credentials drops the memoized provider', async () => {
     const { work } = await addBoth()
-    const p1 = store.getProvider(work.id)
+    const p1 = await run(store.getProvider(work.id))
     const creds: Credentials = { ...workCreds, password: 'NEW' }
-    await store.update(work.id, { label: 'Job', credentials: creds })
-    const p2 = store.getProvider(work.id)
+    await run(store.update(work.id, { label: 'Job', credentials: creds }))
+    const p2 = await run(store.getProvider(work.id))
     expect(p2).not.toBe(p1)
     expect(contexts[1].credentials).toEqual(creds)
-    expect(store.get(work.id)?.label).toBe('Job')
-    expect(store.getProvider(work.id)).toBe(p2)
+    expect((await run(store.get(work.id)))?.label).toBe('Job')
+    expect(await run(store.getProvider(work.id))).toBe(p2)
   })
 
   it('refuses to store credentials when encryption is unavailable', async () => {
-    const encrypt = vi.fn(() => {
-      throw new Error('Secure storage is unavailable')
-    })
-    const s = new AccountStore(dir, { caldav: factory(), google: factory() }, { encrypt, decrypt: fakeCrypto.decrypt })
-    await expect(s.add({ kind: 'caldav', label: 'W', email: 'w@x', color: '#000' }, workCreds)).rejects.toThrow()
-    expect(s.list()).toEqual([])
+    const s = await open({ encrypt: () => Effect.fail(fail('Secure storage is unavailable')), decrypt: fakeCrypto.decrypt })
+    await expect(run(s.add({ kind: 'caldav', label: 'W', email: 'w@x', color: '#000' }, workCreds))).rejects.toThrow()
+    expect(await run(s.list())).toEqual([])
     expect(existsSync(join(dir, 'accounts.json'))).toBe(false)
   })
 
   it('serializes concurrent writes so remove always wins over in-flight writes', async () => {
     const { work, personal } = await addBoth()
-    store.getProvider(work.id)
+    await run(store.getProvider(work.id))
     const pending = [
-      contexts[0].saveCredentials(workCreds),
-      store.writeCache(work.id, { calendars: [], events: [] }).catch(() => {}),
-      store.update(personal.id, { error: 'x' }),
-      store.remove(work.id),
-      store.writeCache(work.id, { calendars: [], events: [] }).catch(() => {})
+      run(contexts[0].saveCredentials(workCreds)),
+      run(store.writeCache(work.id, { calendars: [], events: [] })).catch(() => {}),
+      run(store.update(personal.id, { error: 'x' })),
+      run(store.remove(work.id)),
+      run(store.writeCache(work.id, { calendars: [], events: [] })).catch(() => {})
     ]
     await Promise.all(pending)
     expect(existsSync(accDir(work.id))).toBe(false)
@@ -190,28 +195,30 @@ describe('AccountStore isolation', () => {
 
   it('persists the registry across restarts', async () => {
     await addBoth()
-    const fresh = new AccountStore(dir, { caldav: factory(), google: factory() }, fakeCrypto)
-    expect(fresh.list()).toEqual(store.list())
+    const fresh = await open()
+    expect(await run(fresh.list())).toEqual(await run(store.list()))
   })
 })
 
 describe('AccountStore corrupt files', () => {
   it('falls back to no hidden calendars on a corrupt prefs.json', async () => {
     const { work } = await addBoth()
-    await store.setCalendarVisible(work.id, 'c1', false)
+    await run(store.setCalendarVisible(work.id, 'c1', false))
     writeFileSync(join(accDir(work.id), 'prefs.json'), '{"hidden": [')
-    expect(store.hiddenCalendars(work.id)).toEqual([])
-    await store.setCalendarVisible(work.id, 'c2', false)
-    expect(store.hiddenCalendars(work.id)).toEqual(['c2'])
+    // A fresh store: prefs are read from disk once per account.
+    const fresh = await open()
+    expect(await run(fresh.hiddenCalendars(work.id))).toEqual([])
+    await run(fresh.setCalendarVisible(work.id, 'c2', false))
+    expect(await run(fresh.hiddenCalendars(work.id))).toEqual(['c2'])
   })
 
   it('refuses to start on a corrupt accounts.json and leaves it intact', async () => {
     await addBoth()
     const file = join(dir, 'accounts.json')
     writeFileSync(file, '[{"id":')
-    expect(() => new AccountStore(dir, { caldav: factory(), google: factory() }, fakeCrypto)).toThrow(`Could not read ${file}`)
+    await expect(open()).rejects.toThrow(`Could not read ${file}`)
     writeFileSync(file, '{}')
-    expect(() => new AccountStore(dir, { caldav: factory(), google: factory() }, fakeCrypto)).toThrow(/not a list of accounts/)
+    await expect(open()).rejects.toThrow(/not a list of accounts/)
     expect(readFileSync(file, 'utf8')).toBe('{}')
   })
 })

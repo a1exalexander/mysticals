@@ -1,9 +1,17 @@
 import { describe, expect, it, vi } from 'vitest'
+import { Effect } from 'effect'
 import type { Account, CalEvent } from './shared/types'
-import type { AccountStore } from './accounts/store'
-import type { SyncEngine } from './sync/engine'
+import { AccountStore } from './accounts/store'
+import { SyncEngine } from './sync/engine'
 import { MockProvider } from './mock/MockProvider'
-import { createApi, deletedBy } from './api'
+import { createApi, deletedBy, toPromiseApi, type ApiDeps } from './api'
+
+/** The api over fake services, as the promises the renderer sees. */
+const makeApi = (store: AccountStore['Service'], sync: SyncEngine['Service'], deps: ApiDeps) =>
+  toPromiseApi(
+    Effect.runSync(createApi(deps).pipe(Effect.provideService(AccountStore, store), Effect.provideService(SyncEngine, sync))),
+    Effect.runPromise
+  )
 
 function setup() {
   const accounts: Account[] = [
@@ -25,26 +33,28 @@ function setup() {
   providers.work.events.push(invite)
   const hidden: Record<string, string[]> = { work: [], personal: [] }
   const store = {
-    list: () => accounts,
-    get: (id: string) => accounts.find((a) => a.id === id),
-    getProvider: (id: string) => providers[id],
-    readCache: (id: string) => ({ calendars: providers[id].calendars, events: providers[id].events }),
-    hiddenCalendars: (id: string) => hidden[id],
-    add: vi.fn(async (meta: Omit<Account, 'id'>) => ({ ...meta, id: 'new' })),
+    list: () => Effect.succeed(accounts),
+    get: (id: string) => Effect.succeed(accounts.find((a) => a.id === id)),
+    getProvider: (id: string) => Effect.succeed(providers[id]),
+    readCache: (id: string) => Effect.sync(() => ({ calendars: providers[id].calendars, events: providers[id].events })),
+    hiddenCalendars: (id: string) => Effect.sync(() => hidden[id]),
+    add: vi.fn((meta: Omit<Account, 'id'>) => Effect.succeed({ ...meta, id: 'new' })),
     // local edits land on the provider's list, which readCache returns
-    patchCache: vi.fn((id: string, fn: (c: { calendars: unknown[]; events: CalEvent[] }) => { events: CalEvent[] }) => {
-      providers[id].events = fn({ calendars: providers[id].calendars, events: providers[id].events }).events
-    })
-  } as unknown as AccountStore
-  const sync = { syncNow: vi.fn(async () => {}), edited: vi.fn() } as unknown as SyncEngine
-  const deps = { verifyCaldav: vi.fn(async () => ({ email: 'me@pe.example' })), googleSignIn: vi.fn() }
+    patchCache: vi.fn((id: string, fn: (c: { calendars: unknown[]; events: CalEvent[] }) => { events: CalEvent[] }) =>
+      Effect.sync(() => {
+        providers[id].events = fn({ calendars: providers[id].calendars, events: providers[id].events }).events
+      })
+    )
+  } as unknown as AccountStore['Service']
+  const sync = { syncNow: vi.fn(() => Effect.void), edited: vi.fn() } as unknown as SyncEngine['Service']
+  const deps = { verifyCaldav: vi.fn(() => Effect.succeed({ email: 'me@pe.example' })), googleSignIn: vi.fn() }
   for (const p of Object.values(providers)) {
     vi.spyOn(p, 'createEvent')
     vi.spyOn(p, 'respond')
     vi.spyOn(p, 'updateEvent')
   }
   const onAction = vi.fn()
-  return { api: createApi(store, sync, { ...deps, onAction }), providers, store, sync, deps, invite, hidden, onAction }
+  return { api: makeApi(store, sync, { ...deps, onAction }), providers, store, sync, deps, invite, hidden, onAction }
 }
 
 const newEvent = { title: 'X', start: '2026-09-24T10:00:00Z', end: '2026-09-24T11:00:00Z', allDay: false }
@@ -132,7 +142,7 @@ describe('createApi isolation', () => {
     const { api, providers, invite, sync } = setup()
     const run = { ...invite, id: 'run-1', recurringEventId: 'runs' }
     providers.work.events.push(run, { ...run, id: 'run-2', start: '2026-09-24T10:00:00Z', end: '2026-09-24T10:15:00Z' })
-    vi.spyOn(providers.work, 'updateEvent').mockImplementation(async (e) => e)
+    vi.spyOn(providers.work, 'updateEvent').mockImplementation((e) => Effect.succeed(e))
     await api.events.update({ ...run, title: 'All' }, 'all')
     expect(providers.work.events.map((e) => `${e.id}:${e.title}`)).toEqual(['inv-1:Daily', 'run-1:All'])
     expect(sync.syncNow).toHaveBeenCalledWith('work', { quiet: true, fresh: true })
@@ -140,7 +150,7 @@ describe('createApi isolation', () => {
 
   it('update/delete reject events of a readOnly calendar', async () => {
     const { api, providers } = setup()
-    const holiday = await providers.personal.createEvent('p-holidays', { ...newEvent, accountId: 'personal', calendarId: 'p-holidays' })
+    const holiday = await Effect.runPromise(providers.personal.createEvent('p-holidays', { ...newEvent, accountId: 'personal', calendarId: 'p-holidays' }))
     await expect(api.events.update({ ...holiday, title: 'Y' })).rejects.toThrow(/read-only/)
     await expect(api.events.delete(holiday)).rejects.toThrow(/read-only/)
   })
@@ -196,18 +206,18 @@ describe('createApi local edits', () => {
     const account: Account = { id: 'a', kind: 'google', label: 'A', email: 'a@x.example', color: '#0a84ff' }
     let events = [copy('c1'), copy('c2')]
     const provider = {
-      updateEvent: vi.fn(async (e: CalEvent) => e),
-      deleteEvent: vi.fn(async () => {}),
-      respond: vi.fn(async (e: CalEvent, myStatus: CalEvent['myStatus']) => ({ ...e, myStatus }))
+      updateEvent: vi.fn((e: CalEvent) => Effect.succeed(e)),
+      deleteEvent: vi.fn(() => Effect.void),
+      respond: vi.fn((e: CalEvent, myStatus: CalEvent['myStatus']) => Effect.succeed({ ...e, myStatus }))
     }
     const store = {
-      list: () => [account],
-      get: () => account,
-      getProvider: () => provider,
-      readCache: () => ({ calendars: [{ id: 'c1', readOnly: false }, { id: 'c2', readOnly: false }], events }),
-      patchCache: (_: string, fn: (c: { events: CalEvent[] }) => { events: CalEvent[] }) => void (events = fn({ events }).events)
-    } as unknown as AccountStore
-    const api = createApi(store, { syncNow: vi.fn(async () => {}), edited: vi.fn() } as unknown as SyncEngine, { verifyCaldav: vi.fn(), googleSignIn: vi.fn() })
+      list: () => Effect.succeed([account]),
+      get: () => Effect.succeed(account),
+      getProvider: () => Effect.succeed(provider),
+      readCache: () => Effect.sync(() => ({ calendars: [{ id: 'c1', readOnly: false }, { id: 'c2', readOnly: false }], events })),
+      patchCache: (_: string, fn: (c: { events: CalEvent[] }) => { events: CalEvent[] }) => Effect.sync(() => void (events = fn({ events }).events))
+    } as unknown as AccountStore['Service']
+    const api = makeApi(store, { syncNow: vi.fn(() => Effect.void), edited: vi.fn() } as unknown as SyncEngine['Service'], { verifyCaldav: vi.fn(), googleSignIn: vi.fn() })
     const shown = (): string[] => events.map((e) => `${e.calendarId}:${e.title}:${e.myStatus ?? ''}`)
 
     await api.events.update({ ...copy('c2'), title: 'moved' })
@@ -255,7 +265,7 @@ describe('createApi validation', () => {
     const { store, sync, deps } = setup()
     const onAccountAdded = vi.fn()
     const google = { email: 'me@gmail.example', credentials: { kind: 'google' as const, refreshToken: 'r' } }
-    const api = createApi(store, sync, { ...deps, googleSignIn: vi.fn(async () => google), onAccountAdded } as never)
+    const api = makeApi(store, sync, { ...deps, googleSignIn: vi.fn(() => Effect.succeed(google)), onAccountAdded } as never)
     const caldav = { label: 'Home', username: 'me@icloud.example', password: 'p' }
     await api.accounts.addCaldav({ ...caldav, serverUrl: 'https://caldav.icloud.com/' })
     await api.accounts.addCaldav({ ...caldav, serverUrl: 'https://dav.secret-host.example/me' })
@@ -292,7 +302,7 @@ describe('createApi activity log', () => {
 
   it('keeps the email of a removed account', async () => {
     const { api, onAction, store } = setup()
-    ;(store as unknown as { remove: () => Promise<void> }).remove = vi.fn(async () => {})
+    ;(store as unknown as { remove: () => Effect.Effect<void> }).remove = vi.fn(() => Effect.void)
     await api.accounts.remove('personal')
     expect(onAction.mock.calls[0][0]).toMatchObject({ kind: 'account.remove', email: 'me@gmail.example', ok: true, detail: { label: 'Personal' } })
   })

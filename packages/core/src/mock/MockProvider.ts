@@ -1,7 +1,9 @@
 import { randomUUID } from 'crypto'
+import { Effect } from 'effect'
 import { addDays, differenceInCalendarDays, differenceInCalendarMonths, format, parseISO, startOfWeek } from 'date-fns'
 import type { Calendar, CalEvent, DeleteScope, NewEventInput, PartStat, Recurrence, TimeRange } from '../shared/types'
 import type { CalendarProvider } from '../providers/types'
+import { AppError, fail } from '../errors'
 import { weekdayOf } from '../logic/recurrence'
 
 const MAX_INSTANCES = 60
@@ -49,19 +51,23 @@ export class MockProvider implements CalendarProvider {
     this.calendars = calendars.map((c) => ({ ...c, accountId }))
   }
 
-  async listCalendars(): Promise<Calendar[]> {
-    return structuredClone(this.calendars)
+  listCalendars(): Effect.Effect<Calendar[]> {
+    return Effect.sync(() => structuredClone(this.calendars))
   }
 
-  async listEvents(calendarId: string, range: TimeRange): Promise<CalEvent[]> {
+  listEvents(calendarId: string, range: TimeRange): Effect.Effect<CalEvent[]> {
     // Compare instants, not strings: parseISO reads date-only (all-day) values as local midnight, like queryEvents.
     const t = (iso: string): number => parseISO(iso).getTime()
-    return structuredClone(
-      this.events.filter((e) => e.calendarId === calendarId && t(e.end) > t(range.start) && t(e.start) < t(range.end))
+    return Effect.sync(() =>
+      structuredClone(this.events.filter((e) => e.calendarId === calendarId && t(e.end) > t(range.start) && t(e.start) < t(range.end)))
     )
   }
 
-  async createEvent(calendarId: string, input: NewEventInput): Promise<CalEvent> {
+  createEvent(calendarId: string, input: NewEventInput): Effect.Effect<CalEvent> {
+    return Effect.sync(() => this.create(calendarId, input))
+  }
+
+  private create(calendarId: string, input: NewEventInput): CalEvent {
     const ev: CalEvent = {
       id: randomUUID(),
       accountId: this.accountId,
@@ -88,13 +94,18 @@ export class MockProvider implements CalendarProvider {
     return structuredClone(evs[0])
   }
 
-  async getRecurrence(event: CalEvent): Promise<Recurrence | null> {
-    return (event.recurringEventId && this.rules.get(event.recurringEventId)) || null
+  getRecurrence(event: CalEvent): Effect.Effect<Recurrence | null> {
+    return Effect.sync(() => (event.recurringEventId && this.rules.get(event.recurringEventId)) || null)
   }
 
-  async updateEvent(event: CalEvent, scope: DeleteScope = 'one'): Promise<CalEvent> {
-    const i = this.events.findIndex((e) => e.id === event.id)
-    if (i < 0) throw new Error('not found')
+  updateEvent(event: CalEvent, scope: DeleteScope = 'one'): Effect.Effect<CalEvent, AppError> {
+    return Effect.suspend(() => {
+      const i = this.events.findIndex((e) => e.id === event.id)
+      return i < 0 ? Effect.fail(fail('not found')) : Effect.sync(() => this.update(i, event, scope))
+    })
+  }
+
+  private update(i: number, event: CalEvent, scope: DeleteScope): CalEvent {
     const old = this.events[i]
     const series = old.recurringEventId
     if (event.recurrence !== undefined && (!series || scope !== 'one')) {
@@ -125,20 +136,22 @@ export class MockProvider implements CalendarProvider {
     return structuredClone(this.events[i])
   }
 
-  async deleteEvent(event: CalEvent, scope: DeleteScope = 'one'): Promise<void> {
+  deleteEvent(event: CalEvent, scope: DeleteScope = 'one'): Effect.Effect<void> {
     const series = event.recurringEventId
     const hit = (e: CalEvent): boolean =>
       !series || scope === 'one'
         ? e.id === event.id
         : e.recurringEventId === series && (scope === 'all' || e.start >= event.start)
-    this.events = this.events.filter((e) => !hit(e))
+    return Effect.sync(() => void (this.events = this.events.filter((e) => !hit(e))))
   }
 
-  async respond(event: CalEvent, status: Exclude<PartStat, 'needsAction'>): Promise<CalEvent> {
-    const ev = this.events.find((e) => e.id === event.id)
-    if (!ev) throw new Error('not found')
-    ev.myStatus = status
-    ev.attendees = ev.attendees.map((a) => (a.self ? { ...a, status } : a))
-    return structuredClone(ev)
+  respond(event: CalEvent, status: Exclude<PartStat, 'needsAction'>): Effect.Effect<CalEvent, AppError> {
+    return Effect.suspend(() => {
+      const ev = this.events.find((e) => e.id === event.id)
+      if (!ev) return Effect.fail(fail('not found'))
+      ev.myStatus = status
+      ev.attendees = ev.attendees.map((a) => (a.self ? { ...a, status } : a))
+      return Effect.succeed(structuredClone(ev))
+    })
   }
 }

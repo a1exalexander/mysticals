@@ -1,8 +1,10 @@
 import { createHash, randomBytes } from 'crypto'
-import { createServer } from 'http'
+import { createServer, type Server } from 'http'
 import type { AddressInfo } from 'net'
+import { Effect, Result } from 'effect'
 import type { Credentials } from '../../shared/types'
-import { AuthError, timedFetch } from '../http'
+import { AppError, AuthError, fail, messageOf, type ProviderError } from '../../errors'
+import { request } from '../http'
 
 export type GoogleCredentials = Extract<Credentials, { kind: 'google' }>
 
@@ -24,11 +26,12 @@ export function setClientConfig(cfg: Partial<ClientConfig>): void {
   clientConfig = cfg
 }
 
-export function getClientConfig(): ClientConfig {
+export const getClientConfig: Effect.Effect<ClientConfig, AppError> = Effect.suspend(() => {
   const { clientId, clientSecret } = clientConfig
-  if (!clientId || !clientSecret) throw new Error('Google sign-in is not configured in this build: add a CalDAV account, or build from source with MYSTICALS_GOOGLE_CLIENT_ID/SECRET set')
-  return { clientId, clientSecret }
-}
+  if (!clientId || !clientSecret)
+    return Effect.fail(fail('Google sign-in is not configured in this build: add a CalDAV account, or build from source with MYSTICALS_GOOGLE_CLIENT_ID/SECRET set'))
+  return Effect.succeed({ clientId, clientSecret })
+})
 
 export function createPkce(): { verifier: string; challenge: string } {
   const verifier = randomBytes(32).toString('base64url')
@@ -68,33 +71,33 @@ export interface TokenResult {
   email?: string
 }
 
-export function parseTokenResponse(json: unknown, now = Date.now()): TokenResult {
+export function parseTokenResponse(json: unknown, now = Date.now()): Result.Result<TokenResult, AuthError | AppError> {
   const j = (json ?? {}) as Record<string, unknown>
   if (typeof j.error === 'string') {
-    const msg = `Google token error: ${j.error}${j.error_description ? ` (${j.error_description})` : ''}`
+    const message = `Google token error: ${j.error}${j.error_description ? ` (${j.error_description})` : ''}`
     // invalid_grant: the refresh token was revoked or expired.
-    throw j.error === 'invalid_grant' ? new AuthError(msg) : new Error(msg)
+    return Result.fail(j.error === 'invalid_grant' ? new AuthError({ message }) : fail(message))
   }
-  if (typeof j.access_token !== 'string') throw new Error('Google token response has no access_token')
+  if (typeof j.access_token !== 'string') return Result.fail(fail('Google token response has no access_token'))
   const expiresIn = typeof j.expires_in === 'number' ? j.expires_in : 3600
-  return {
+  return Result.succeed({
     accessToken: j.access_token,
     expiresAt: now + expiresIn * 1000,
     refreshToken: typeof j.refresh_token === 'string' ? j.refresh_token : undefined,
     email: typeof j.id_token === 'string' ? emailFromIdToken(j.id_token) : undefined
-  }
+  })
 }
 
-export async function postToken(params: Record<string, string>): Promise<TokenResult> {
-  const res = await timedFetch(TOKEN_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(params).toString()
-  })
-  const json = await res.json().catch(() => ({ error: `http_${res.status}` }))
-  if (!res.ok && !json.error) json.error = `http_${res.status}`
-  return parseTokenResponse(json)
-}
+export const postToken = (params: Record<string, string>): Effect.Effect<TokenResult, ProviderError> =>
+  request(
+    TOKEN_URL,
+    { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(params).toString() },
+    async (res) => {
+      const json = await res.json().catch(() => ({ error: `http_${res.status}` }))
+      if (!res.ok && !json.error) json.error = `http_${res.status}`
+      return json
+    }
+  ).pipe(Effect.flatMap((json) => Effect.fromResult(parseTokenResponse(json))))
 
 const DONE_HTML = (msg: string, returnUrl?: string): string =>
   `<!doctype html><meta charset="utf-8"><title>Mysticals</title><body style="font:15px -apple-system,sans-serif;text-align:center;padding-top:80px"><h2>${msg}</h2>` +
@@ -112,76 +115,69 @@ export interface OAuthOptions {
 /**
  * OAuth for installed apps: system browser + loopback redirect + PKCE.
  * `openUrl` opens the system browser; injected so core stays platform-free.
+ * Interrupting it (or the 5 minute timeout) closes the loopback server.
  */
-export async function runOAuthFlow(
+export const runOAuthFlow = (
   openUrl: (url: string) => Promise<void>,
   opts: OAuthOptions = {}
-): Promise<{ email: string; credentials: GoogleCredentials }> {
-  const cfg = getClientConfig()
-  const { verifier, challenge } = createPkce()
-  const state = randomBytes(16).toString('base64url')
-  const server = createServer()
-
-  try {
-    await new Promise<void>((resolve, reject) => {
-      server.once('error', reject)
-      server.listen(0, '127.0.0.1', resolve)
-    })
-    const redirectUri = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
-
-    const code = await new Promise<string>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('Google sign-in timed out')), TIMEOUT_MS)
-      const finish = (err: Error | null, value?: string): void => {
-        clearTimeout(timer)
-        if (err) reject(err)
-        else resolve(value!)
-      }
-      server.on('request', (req, res) => {
-        const params = new URL(req.url ?? '/', redirectUri).searchParams
-        // Settle only after the page is flushed, so closing the server can't cut it off.
-        const reply = (status: number, msg: string, then: () => void): void => {
-          res.writeHead(status, { 'Content-Type': 'text/html; charset=utf-8', Connection: 'close' })
-          res.end(DONE_HTML(msg, status === 200 ? opts.returnUrl : undefined), then)
-        }
-        if (!params.has('code') && !params.has('error')) {
-          res.writeHead(404, { Connection: 'close' }).end()
-          return
-        }
-        if (params.get('state') !== state) {
-          reply(400, 'Sign-in failed', () => finish(new Error('Google sign-in failed: state mismatch')))
-        } else if (params.has('error')) {
-          reply(400, 'Sign-in cancelled', () => finish(new Error(`Google sign-in failed: ${params.get('error')}`)))
-        } else {
-          const code = params.get('code')!
-          reply(200, 'Signed in', () => finish(null, code))
-        }
-      })
-      openUrl(buildAuthUrl({ clientId: cfg.clientId, redirectUri, state, codeChallenge: challenge })).catch((e) =>
-        finish(e instanceof Error ? e : new Error(String(e)))
+): Effect.Effect<{ email: string; credentials: GoogleCredentials }, ProviderError> =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const cfg = yield* getClientConfig
+      const { verifier, challenge } = createPkce()
+      const state = randomBytes(16).toString('base64url')
+      const server = yield* Effect.acquireRelease(
+        Effect.callback<Server, AppError>((resume) => {
+          const s = createServer()
+          s.once('error', (e) => resume(Effect.fail(fail(e.message))))
+          s.listen(0, '127.0.0.1', () => resume(Effect.succeed(s)))
+        }),
+        (s) =>
+          Effect.sync(() => {
+            s.closeAllConnections()
+            s.close()
+          })
       )
-    })
+      const redirectUri = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
 
-    opts.onCode?.()
-    const tok = await postToken({
-      grant_type: 'authorization_code',
-      code,
-      code_verifier: verifier,
-      redirect_uri: redirectUri,
-      client_id: cfg.clientId,
-      client_secret: cfg.clientSecret
-    })
-    if (!tok.refreshToken) throw new Error('Google did not return a refresh token')
-    const email = tok.email ?? (await fetchUserEmail(tok.accessToken))
-    return { email, credentials: { kind: 'google', refreshToken: tok.refreshToken, accessToken: tok.accessToken, expiresAt: tok.expiresAt } }
-  } finally {
-    server.closeAllConnections()
-    server.close()
-  }
-}
+      const code = yield* Effect.callback<string, AppError>((resume) => {
+        server.on('request', (req, res) => {
+          const params = new URL(req.url ?? '/', redirectUri).searchParams
+          // Settle only after the page is flushed, so closing the server can't cut it off.
+          const reply = (status: number, msg: string, then: Effect.Effect<string, AppError>): void => {
+            res.writeHead(status, { 'Content-Type': 'text/html; charset=utf-8', Connection: 'close' })
+            res.end(DONE_HTML(msg, status === 200 ? opts.returnUrl : undefined), () => resume(then))
+          }
+          if (!params.has('code') && !params.has('error')) {
+            res.writeHead(404, { Connection: 'close' }).end()
+            return
+          }
+          if (params.get('state') !== state) reply(400, 'Sign-in failed', Effect.fail(fail('Google sign-in failed: state mismatch')))
+          else if (params.has('error')) reply(400, 'Sign-in cancelled', Effect.fail(fail(`Google sign-in failed: ${params.get('error')}`)))
+          else reply(200, 'Signed in', Effect.succeed(params.get('code')!))
+        })
+        openUrl(buildAuthUrl({ clientId: cfg.clientId, redirectUri, state, codeChallenge: challenge })).catch((e) => resume(Effect.fail(fail(messageOf(e)))))
+      }).pipe(Effect.timeoutOrElse({ duration: TIMEOUT_MS, orElse: () => Effect.fail(fail('Google sign-in timed out')) }))
 
-async function fetchUserEmail(accessToken: string): Promise<string> {
-  const res = await timedFetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: `Bearer ${accessToken}` } })
-  const json = (await res.json().catch(() => ({}))) as { email?: unknown }
-  if (!res.ok || typeof json.email !== 'string') throw new Error('Could not read Google account email')
-  return json.email
-}
+      opts.onCode?.()
+      const tok = yield* postToken({
+        grant_type: 'authorization_code',
+        code,
+        code_verifier: verifier,
+        redirect_uri: redirectUri,
+        client_id: cfg.clientId,
+        client_secret: cfg.clientSecret
+      })
+      if (!tok.refreshToken) return yield* fail('Google did not return a refresh token')
+      const email = tok.email ?? (yield* fetchUserEmail(tok.accessToken))
+      return { email, credentials: { kind: 'google' as const, refreshToken: tok.refreshToken, accessToken: tok.accessToken, expiresAt: tok.expiresAt } }
+    })
+  )
+
+const fetchUserEmail = (accessToken: string): Effect.Effect<string, ProviderError> =>
+  request('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: `Bearer ${accessToken}` } }, async (res) => ({
+    ok: res.ok,
+    json: (await res.json().catch(() => ({}))) as { email?: unknown }
+  })).pipe(
+    Effect.flatMap(({ ok, json }) => (ok && typeof json.email === 'string' ? Effect.succeed(json.email) : Effect.fail(fail('Could not read Google account email'))))
+  )

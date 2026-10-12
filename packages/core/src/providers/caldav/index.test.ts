@@ -1,8 +1,9 @@
 import { createServer } from 'http'
 import type { AddressInfo } from 'net'
 import { fetchCalendars } from 'tsdav'
+import { Effect } from 'effect'
 import { describe, expect, it } from 'vitest'
-import { AuthError } from '../http'
+import { AuthError } from '../../errors'
 import { davFetch, toCalendar } from './index'
 
 describe('toCalendar', () => {
@@ -32,7 +33,7 @@ describe('davFetch', () => {
     const account = { serverUrl: homeUrl, rootUrl: homeUrl, homeUrl, accountType: 'caldav' as const }
     try {
       expect(await fetchCalendars({ account, fetch })).toEqual([])
-      await expect(fetchCalendars({ account, fetch: davFetch })).rejects.toBeInstanceOf(AuthError)
+      await expect(fetchCalendars({ account, fetch: await Effect.runPromise(davFetch) })).rejects.toBeInstanceOf(AuthError)
     } finally {
       server.close()
     }

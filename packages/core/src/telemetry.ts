@@ -4,8 +4,8 @@
  * UUID kept in the app's data dir. Fire-and-forget: every failure is swallowed and nothing ever waits on it.
  */
 import { randomUUID } from 'crypto'
-import { mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
+import { Effect, FileSystem } from 'effect'
 
 const HOST = 'https://eu.i.posthog.com'
 
@@ -45,59 +45,56 @@ const PRESETS: Record<string, string> = {
 export const caldavPreset = (serverUrl: string): string => PRESETS[new URL(serverUrl).hostname] ?? 'custom'
 
 /** Reads the install id, creating it on first run (`fresh`). */
-function installId(dir: string): { id: string; fresh: boolean } {
-  const file = join(dir, 'telemetry-id')
-  try {
-    const id = readFileSync(file, 'utf8').trim()
-    if (id) return { id, fresh: false }
-  } catch {
-    // first run
-  }
-  const id = randomUUID()
-  mkdirSync(dir, { recursive: true, mode: 0o700 }) // the terminal's home is private (see its daemon)
-  writeFileSync(file, id)
-  return { id, fresh: true }
-}
+const installId = (dir: string) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const file = join(dir, 'telemetry-id')
+    const existing = (yield* Effect.orElseSucceed(fs.readFileString(file), () => '')).trim()
+    if (existing) return { id: existing, fresh: false }
+    const id = randomUUID()
+    yield* fs.makeDirectory(dir, { recursive: true, mode: 0o700 }) // the terminal's home is private (see its daemon)
+    yield* fs.writeFileString(file, id)
+    return { id, fresh: true }
+  })
 
 /**
  * Undefined when telemetry is off; otherwise `track` plus whether this run created the install id,
- * in which case `app_installed` was just sent. Never throws.
+ * in which case `app_installed` was just sent. Never fails.
  */
-export function startTelemetry(o: TelemetryOptions): { track: Track; installed: boolean } | undefined {
-  const env = o.env ?? process.env
-  if (!o.key || telemetryOff(env)) return undefined
-  let install: { id: string; fresh: boolean }
-  try {
-    install = installId(o.dir)
-  } catch {
-    return undefined // unwritable data dir: no stable id, so no stats
-  }
-  // Dev-only override for local capture servers (tests, e2e).
-  const host = env.MYSTICALS_TELEMETRY_HOST || HOST
-  const doFetch = o.fetch ?? fetch
-  const track: Track = (event, props) => {
-    if (o.allowed && !o.allowed()) return
-    const properties = {
-      app: o.app,
-      version: o.version,
-      os: process.platform,
-      arch: process.arch,
-      ...(props && { provider: props.provider, ...(props.preset && { preset: props.preset }) }),
-      $process_person_profiles: false,
-      $geoip_disable: true
+export const startTelemetry = (o: TelemetryOptions): Effect.Effect<{ track: Track; installed: boolean } | undefined, never, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const env = o.env ?? process.env
+    if (!o.key || telemetryOff(env)) return undefined
+    const install = yield* Effect.option(installId(o.dir))
+    if (install._tag === 'None') return undefined // unwritable data dir: no stable id, so no stats
+    const { id, fresh } = install.value
+    // Dev-only override for local capture servers (tests, e2e).
+    const host = env.MYSTICALS_TELEMETRY_HOST || HOST
+    const doFetch = o.fetch ?? fetch
+    const track: Track = (event, props) => {
+      if (o.allowed && !o.allowed()) return
+      const properties = {
+        app: o.app,
+        version: o.version,
+        os: process.platform,
+        arch: process.arch,
+        ...(props && { provider: props.provider, ...(props.preset && { preset: props.preset }) }),
+        $process_person_profiles: false,
+        $geoip_disable: true
+      }
+      // Fire-and-forget; never interrupted early: the install id already exists, so a cancelled app_installed would
+      // never be resent.
+      Effect.runFork(
+        Effect.tryPromise((signal) =>
+          doFetch(`${host}/i/v0/e/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ api_key: o.key, event, distinct_id: id, properties }),
+            signal
+          })
+        ).pipe(Effect.timeout('5 seconds'), Effect.ignore)
+      )
     }
-    try {
-      doFetch(`${host}/i/v0/e/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ api_key: o.key, event, distinct_id: install.id, properties }),
-        // Never aborted early: the install id already exists, so a cancelled app_installed would never be resent.
-        signal: AbortSignal.timeout(5000)
-      }).catch(() => {})
-    } catch {
-      // a throwing fetch stub; never matters
-    }
-  }
-  if (install.fresh) track('app_installed')
-  return { track, installed: install.fresh }
-}
+    if (fresh) track('app_installed')
+    return { track, installed: fresh }
+  })
