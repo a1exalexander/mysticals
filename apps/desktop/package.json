@@ -26,12 +26,16 @@
     "dist": "electron-builder"
   },
   "dependencies": {
+    "@effect/platform-node": "^4.0.3",
     "date-fns": "^4.4.0",
+    "effect": "^4.0.3",
     "ical.js": "^2.2.1",
     "tsdav": "^2.3.4",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@effect/atom-react": "^4.0.3",
+    "@effect/language-service": "^0.87.4",
     "@mysticals/core": "workspace:*",
     "@playwright/test": "^1.63.0",
     "@types/jsdom": "^30.0.0",

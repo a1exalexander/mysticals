@@ -15,11 +15,14 @@
   },
   "dependencies": {
     "date-fns": "^4.4.0",
+    "effect": "^4.0.3",
     "ical.js": "^2.2.1",
     "tsdav": "^2.3.4",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@effect/language-service": "^0.87.4",
+    "@effect/platform-node": "^4.0.3",
     "@types/node": "^26.6.2",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7"

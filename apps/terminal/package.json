@@ -20,7 +20,10 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
+    "@effect/atom-react": "^4.0.3",
+    "@effect/platform-node": "^4.0.3",
     "date-fns": "^4.4.0",
+    "effect": "^4.0.3",
     "ical.js": "^2.2.1",
     "ink": "^6.8.0",
     "react": "^19.3.0",
@@ -29,6 +32,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@effect/language-service": "^0.87.4",
     "@mysticals/core": "workspace:*",
     "@types/node": "^26.6.2",
     "@types/react": "^19.3.0",
