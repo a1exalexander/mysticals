@@ -138,9 +138,9 @@ export async function runDaemon(): Promise<void> {
     // ponytail: goes to every TUI, so two concurrent sign-ins may see each other's URL; target the caller if that bites.
     const signInBrowser = (url: string): Promise<void> => (push({ event: 'authUrl', url }), openUrl(url).catch(() => {}))
     const factories = { caldav: createCaldavProvider, google: createGoogleProvider }
-    const crypto = createCrypto(undefined, home)
-    keyReady = crypto.preload()
-    const store = new AccountStore(home, factories, crypto)
+    const secrets = createCrypto(undefined, home)
+    keyReady = secrets.preload()
+    const store = new AccountStore(home, factories, secrets)
     sync = new SyncEngine(store, (id) => broadcast(id), {
       triggers: wakeTriggers(),
       onEvents: (id, notes) => notify(store, id, notes),
