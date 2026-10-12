@@ -372,3 +372,27 @@ describe('provider timeouts', () => {
     await expect(provider().listCalendars()).rejects.toThrow('Request to www.googleapis.com timed out')
   })
 })
+
+describe('provider retries', () => {
+  beforeEach(() => void (http.backoffMs = 1))
+  afterEach(() => void (http.backoffMs = 500))
+
+  it('retries a GET that failed with a 5xx or 429, then succeeds', async () => {
+    let n = 0
+    respond = () => (++n === 1 ? new Response('busy', { status: 503 }) : n === 2 ? new Response('slow down', { status: 429 }) : Response.json({ items: [] }))
+    expect(await provider().listCalendars()).toEqual([])
+    expect(calls.filter((c) => c.method === 'GET')).toHaveLength(3)
+  })
+
+  it('never retries a write that got a 5xx (it may have reached the server)', async () => {
+    respond = () => Response.json({ error: { message: 'oops' } }, { status: 500 })
+    await expect(provider().createEvent('primary', { accountId: 'acc1', calendarId: 'primary', title: 'x', start: '2026-09-23T10:00:00Z', end: '2026-09-23T11:00:00Z', allDay: false })).rejects.toThrow('Google API 500: oops')
+    expect(calls.filter((c) => c.method === 'POST')).toHaveLength(1)
+  })
+
+  it('gives up after http.retries', async () => {
+    respond = () => new Response('down', { status: 503 })
+    await expect(provider().listCalendars()).rejects.toThrow('Google API 503')
+    expect(calls).toHaveLength(1 + http.retries)
+  })
+})
