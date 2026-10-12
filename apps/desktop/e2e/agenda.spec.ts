@@ -183,6 +183,8 @@ test('agenda: the now line crosses a running event instead of sitting below it',
   expect(line.x + line.width).toBeLessThanOrEqual(title.x)
   expect(clock.x + clock.width).toBeLessThanOrEqual(title.x)
   expect(clock.x + clock.width).toBeLessThanOrEqual(pill.x)
+  // The clock covers the start time, so the row repeats the times in its meta line.
+  await expect(row.locator('.ag-meta')).toContainText('11:30 – 12:00')
   await expect(page.getByTestId('agenda-announce')).toHaveText('Started: Quarterly roadmap sync with design')
   await page.screenshot({ path: 'e2e/screens/agenda-now-running.png' })
   await app.close()
