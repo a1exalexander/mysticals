@@ -68,6 +68,28 @@ const fakeRun = (reply: (cmd: string, args: string[], input?: string) => Partial
   return { run, calls }
 }
 
+describe('crypto.preload', () => {
+  it('loads the existing key without the sync path, and never creates one', async () => {
+    const key = Buffer.alloc(32, 7)
+    const get = vi.fn((): Buffer | undefined => key)
+    const c = createCrypto({ get, set: vi.fn(), load: async () => key })
+    await c.preload()
+    expect(createCrypto({ get: () => key, set: vi.fn() }).decrypt(c.encrypt('x'))).toBe('x')
+    expect(get).not.toHaveBeenCalled() // the blocking get never ran
+
+    const set = vi.fn()
+    const empty = createCrypto({ get: () => undefined, set, load: async () => undefined })
+    await empty.preload()
+    expect(set).not.toHaveBeenCalled()
+  })
+
+  it('swallows a failed load; the sync path reports it', async () => {
+    const c = createCrypto({ get: () => { throw new Error('Keychain read failed: locked') }, set: vi.fn(), load: async () => { throw new Error('locked') } })
+    await expect(c.preload()).resolves.toBeUndefined()
+    expect(() => c.encrypt('x')).toThrow('Keychain read failed: locked')
+  })
+})
+
 describe('key stores', () => {
   const key = Buffer.alloc(32, 7)
 
