@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { Effect } from 'effect'
+import { fail } from '@mysticals/core/errors'
 import { KEY, renderApp, renderWith, type Rendered } from '../../test/harness'
 import { Invites } from './Invites'
 
@@ -27,7 +29,7 @@ describe('Invites', () => {
     const onClose = vi.fn()
     t = renderWith(<Invites onClose={onClose} />)
     await t.waitFor('Sprint planning')
-    t.client.events.respond.mockRejectedValueOnce(new Error('boom'))
+    t.client.events.respond.mockReturnValueOnce(Effect.fail(fail('boom')))
     await t.press('n')
     await t.waitFor('boom')
     await t.press('q')
@@ -36,7 +38,7 @@ describe('Invites', () => {
 
   it('shows an empty state', async () => {
     t = renderWith(<Invites onClose={vi.fn()} />)
-    t.client.events.list.mockResolvedValue([])
+    t.client.events.list.mockReturnValue(Effect.succeed([]))
     t.client.emitChanged('work')
     await t.waitFor('No pending invites')
   })

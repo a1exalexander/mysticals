@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { Effect } from 'effect'
+import { fail } from '@mysticals/core/errors'
 import { KEY, createTestClient, renderApp, renderWith, type Rendered } from '../../test/harness'
 import { EventEditor } from './EventEditor'
 
@@ -68,7 +70,7 @@ describe('EventEditor', () => {
   it('edits an existing event with fixed account and sends update', async () => {
     const onClose = vi.fn()
     const client = createTestClient()
-    const [event] = (await client.events.list({ start: new Date(0).toISOString(), end: new Date(2100, 0).toISOString() }))
+    const [event] = (await Effect.runPromise(client.events.list({ start: new Date(0).toISOString(), end: new Date(2100, 0).toISOString() })))
       .filter((e) => e.accountId === 'personal' && e.calendarId === 'p-main' && !e.recurringEventId)
     t = renderWith(<EventEditor event={event} onClose={onClose} />, client)
     await t.waitFor('Edit event')
@@ -85,7 +87,7 @@ describe('EventEditor', () => {
   it('asks the scope when saving a recurring event', async () => {
     const onClose = vi.fn()
     const client = createTestClient()
-    const [run] = (await client.events.list({ start: new Date(0).toISOString(), end: new Date(2100, 0).toISOString() })).filter((e) => e.recurringEventId)
+    const [run] = (await Effect.runPromise(client.events.list({ start: new Date(0).toISOString(), end: new Date(2100, 0).toISOString() }))).filter((e) => e.recurringEventId)
     t = renderWith(<EventEditor event={run} onClose={onClose} />, client)
     await t.waitFor('Edit event')
     await t.press('!', '\u0013')
@@ -130,7 +132,7 @@ describe('EventEditor', () => {
   it('changing the rule of a series offers only this-and-following or all events', async () => {
     const onClose = vi.fn()
     const client = createTestClient()
-    const [run] = (await client.events.list({ start: new Date(0).toISOString(), end: new Date(2100, 0).toISOString() })).filter((e) => e.recurringEventId)
+    const [run] = (await Effect.runPromise(client.events.list({ start: new Date(0).toISOString(), end: new Date(2100, 0).toISOString() }))).filter((e) => e.recurringEventId)
     t = renderWith(<EventEditor event={run} onClose={onClose} />, client)
     await t.waitFor('Every day') // the loaded rule: daily, 7 times
     expect(t.lastFrame()).toContain('7 times')
@@ -160,7 +162,7 @@ describe('EventEditor', () => {
   it('shows server errors and stays open', async () => {
     const onClose = vi.fn()
     t = renderWith(<EventEditor initialStart={new Date(2026, 8, 23, 9)} onClose={onClose} />)
-    t.client.events.create.mockRejectedValueOnce(new Error('boom'))
+    t.client.events.create.mockReturnValueOnce(Effect.fail(fail('boom')))
     await t.waitFor('New event')
     await t.press(KEY.tab, KEY.right, '\u0013')
     await t.waitFor('boom')

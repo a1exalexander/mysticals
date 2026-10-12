@@ -1,5 +1,6 @@
 import { execFile } from 'child_process'
-import type { AccountStore } from '@mysticals/core/accounts/store'
+import { Effect } from 'effect'
+import type { AccountStoreShape } from '@mysticals/core/accounts/store'
 import { noteText, type Note } from '@mysticals/core/sync/notify'
 import { isMock } from '../paths'
 
@@ -37,16 +38,31 @@ export function bannerCommand(
   return undefined
 }
 
-/** OS banners for invites/changes found by sync; events in hidden calendars stay silent. */
-export function notify(store: AccountStore, accountId: string, notes: Note[], run: Run = execFile, platform = process.platform): void {
-  if (isMock()) return
-  const account = store.get(accountId)
-  if (!account) return
-  const hidden = new Set(store.hiddenCalendars(accountId))
-  const shown = notes.filter((n) => !hidden.has(n.event.calendarId))
-  for (const { title, body } of noteText(shown, account.label)) {
-    const cmd = bannerCommand(title, body, platform)
-    if (!cmd) return
-    run(cmd.file, cmd.args, { env: cmd.env, windowsHide: true }, (e) => e && console.error('notification failed', e.message))
-  }
-}
+/** OS banners for invites/changes found by sync, two at a time; events in hidden calendars stay silent. */
+export const notify = (
+  store: Pick<AccountStoreShape, 'get' | 'hiddenCalendars'>,
+  accountId: string,
+  notes: Note[],
+  run: Run = execFile,
+  platform = process.platform
+): Effect.Effect<void> =>
+  Effect.gen(function* () {
+    if (isMock()) return
+    const account = yield* store.get(accountId)
+    if (!account) return
+    const hidden = new Set(yield* Effect.orElseSucceed(store.hiddenCalendars(accountId), () => []))
+    const shown = notes.filter((n) => !hidden.has(n.event.calendarId))
+    const commands = noteText(shown, account.label).map(({ title, body }) => bannerCommand(title, body, platform))
+    if (commands.some((c) => !c)) return
+    yield* Effect.forEach(
+      commands as NonNullable<(typeof commands)[number]>[],
+      (cmd) =>
+        Effect.callback<void>((resume) => {
+          run(cmd.file, cmd.args, { env: cmd.env, windowsHide: true }, (e) => {
+            if (e) console.error('notification failed', e.message)
+            resume(Effect.void)
+          })
+        }),
+      { concurrency: 2, discard: true }
+    )
+  })

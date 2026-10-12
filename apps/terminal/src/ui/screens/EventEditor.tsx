@@ -14,6 +14,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Box, Text } from 'ink'
 import { format, isValid, parse } from 'date-fns'
+import { Effect, Result } from 'effect'
+import type { ApiError } from '@mysticals/core/api'
+import type { AppError } from '@mysticals/core/errors'
 import {
   applyForm, emptyForm, errorText, formFromEvent, formToInput, moveStart, repeatChanged, setAllDay, soleId, splitEmails,
   withLoadedRepeat, writableAccounts, writableCalendars, type EventForm
@@ -113,14 +116,16 @@ const fieldsFor = (s: Pick<State, 'form' | 'custom'>, editing: boolean): Field[]
   ]
 }
 
-/** The form's rule with the repeat text fields applied. Throws a user-facing Error. */
-function readRepeat(s: State): Recurrence | null {
+/** The form's rule with the repeat text fields applied, or a user-facing error. */
+function readRepeat(s: State): Result.Result<Recurrence | null, AppError> {
   const r = s.form.repeat
-  if (!r || r.rule) return r
+  if (!r || r.rule) return Result.succeed(r)
   const { until: _u, count: _c, ...base } = r
-  const rule: Recurrence = isCustom(s) ? { ...parseEvery(s.texts.repeatEvery) } : base
-  if (isCustom(s) && rule.freq === 'weekly') rule.byDay = parseDays(s.texts.repeatDays)
-  return { ...rule, ...parseEnds(s.texts.repeatEnds) }
+  return Result.gen(function* () {
+    const rule: Recurrence = isCustom(s) ? { ...(yield* parseEvery(s.texts.repeatEvery)) } : base
+    if (isCustom(s) && rule.freq === 'weekly') rule.byDay = yield* parseDays(s.texts.repeatDays)
+    return { ...rule, ...(yield* parseEnds(s.texts.repeatEnds)) }
+  })
 }
 
 export function EventEditor({ event, initialStart, onClose, height = Infinity }: EventEditorProps) {
@@ -172,7 +177,7 @@ export function EventEditor({ event, initialStart, onClose, height = Infinity }:
     setState(latest.current)
     // A series' rule isn't cached: read it; until then the rule can't be changed.
     if (event?.recurringEventId) {
-      api.events.recurrence(event).then(
+      Effect.runPromise(api.events.recurrence(event)).then(
         (rule) => {
           if (!alive.current || !latest.current) return
           const f = withLoadedRepeat(latest.current.form, rule)
@@ -190,12 +195,9 @@ export function EventEditor({ event, initialStart, onClose, height = Infinity }:
   const save = async (scope?: DeleteScope): Promise<void> => {
     if (!latest.current || busy.current) return
     const { form, texts } = latest.current
-    let repeat: Recurrence | null
-    try {
-      repeat = readRepeat(latest.current)
-    } catch (e) {
-      return setError(errorText(e))
-    }
+    const read = readRepeat(latest.current)
+    if (Result.isFailure(read)) return setError(errorText(read.failure))
+    const repeat = read.success
     setError('')
     const start = toLocal(texts.startDate, form.allDay ? form.start.slice(11) : texts.startTime)
     const end = toLocal(texts.endDate, form.allDay ? form.end.slice(11) : texts.endTime)
@@ -206,20 +208,23 @@ export function EventEditor({ event, initialStart, onClose, height = Infinity }:
       title: texts.title, location: texts.location, description: texts.description,
       attendees: splitEmails(texts.attendees), start, end, repeat
     }
-    let request: Promise<unknown>
-    try {
-      // Both throw a user-facing Error on invalid input, before any request is sent.
-      const edited = event && applyForm(event, f)
-      if (edited && event.recurringEventId && !scope) return setAskScope(repeatChanged(f) ? 'rule' : 'any')
-      request = edited ? api.events.update(edited, scope) : api.events.create(formToInput(f))
-    } catch (e) {
-      return setError(errorText(e))
+    // Both fail with a user-facing error on invalid input, before any request is sent.
+    let request: Effect.Effect<unknown, ApiError>
+    if (event) {
+      const edited = applyForm(event, f)
+      if (Result.isFailure(edited)) return setError(errorText(edited.failure))
+      if (event.recurringEventId && !scope) return setAskScope(repeatChanged(f) ? 'rule' : 'any')
+      request = api.events.update(edited.success, scope)
+    } else {
+      const input = formToInput(f)
+      if (Result.isFailure(input)) return setError(errorText(input.failure))
+      request = api.events.create(input.success)
     }
     setAskScope(false)
     busy.current = true
     setSaving(true)
     try {
-      await request
+      await Effect.runPromise(request)
       if (alive.current) onClose()
     } catch (e) {
       busy.current = false
@@ -252,12 +257,7 @@ export function EventEditor({ event, initialStart, onClose, height = Infinity }:
       const at = ids.indexOf(isCustom(st) ? 'custom' : presetOf(form.repeat, form.start))
       const next = ids[(at + dir + ids.length) % ids.length]
       // Keep what was typed into the rule's fields (its end, the custom parts) where it still applies.
-      let prev = form.repeat
-      try {
-        prev = readRepeat(st)
-      } catch {
-        // half-typed: fall back to the last valid rule
-      }
+      const prev = Result.getOrElse(readRepeat(st), () => form.repeat) // half-typed: fall back to the last valid rule
       const preset = presets(form.start).find((p) => p.id === next)?.recurrence
       const repeat = next === 'custom' ? (prev && !prev.rule ? prev : withEnd({ freq: 'weekly' }, prev)) : preset ? withEnd(preset, prev) : null
       update({ form: { ...form, repeat }, custom: next === 'custom', texts: { ...texts, ...repeatTexts(repeat, form.start) } })

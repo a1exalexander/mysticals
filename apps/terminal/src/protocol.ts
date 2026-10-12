@@ -1,5 +1,6 @@
 import { StringDecoder } from 'string_decoder'
-import type { Api } from '@mysticals/core/shared/ipc'
+import type { Effect } from 'effect'
+import type { ApiError, CoreApiEffect } from '@mysticals/core/api'
 
 /**
  * Daemon <-> TUI wire format: newline-delimited JSON over a unix socket.
@@ -13,8 +14,8 @@ export interface Request {
 export type Response = { id: number; result?: unknown; error?: string }
 export type Push = { event: 'changed'; accountId: string } | { event: 'authUrl'; url: string }
 
-/** The backend slice of Api served by the daemon (onChanged is a Push, onMenu is desktop-only). */
-export type ApiImpl = Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'>
+/** The backend slice of Api served by the daemon, as effects (onChanged is a Push, onMenu is desktop-only). */
+export type ApiImpl = CoreApiEffect
 
 type Paths<T> = { [G in keyof T]: `${G & string}.${keyof T[G] & string}` }[keyof T]
 export type Method = Paths<ApiImpl>
@@ -69,8 +70,8 @@ export function lineReader(onMessage: (msg: unknown) => void, onBad: (line: stri
 }
 
 /** Calls `method` on an ApiImpl. Only whitelisted names get here, so no prototype lookups. */
-export function dispatch(api: ApiImpl, method: Method, params: unknown[]): Promise<unknown> {
+export function dispatch(api: ApiImpl, method: Method, params: unknown[]): Effect.Effect<unknown, ApiError> {
   const [group, fn] = method.split('.') as [keyof ApiImpl, string]
-  const target = api[group] as unknown as Record<string, (...a: unknown[]) => Promise<unknown>>
+  const target = api[group] as unknown as Record<string, (...a: unknown[]) => Effect.Effect<unknown, ApiError>>
   return target[fn](...params)
 }

@@ -1,6 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { useStdout } from 'ink'
 import { addDays, addWeeks, startOfDay } from 'date-fns'
+import { Effect, Result } from 'effect'
+import type { ApiError } from '@mysticals/core/api'
+import { live } from '@mysticals/core/sync/live'
 import { shiftDate, viewRange } from '@mysticals/core/logic/layout'
 import { visibleEvents } from '@mysticals/core/logic/visible'
 import type { Account, Calendar, CalEvent, TimeRange } from '@mysticals/core/shared/types'
@@ -16,28 +19,20 @@ export function useApi(): ClientApi {
 
 export { eventKey } from '@mysticals/core/logic/layout'
 
-/** Runs `load` now and whenever any account changes; drops stale responses. */
-function useLive<T>(load: (api: ClientApi) => Promise<T>, deps: unknown[]): { data?: T; error?: string; reload(): void } {
+/** Runs `load` now and after every burst of change pushes; a reload overtaken by a newer one is interrupted. */
+function useLive<T>(load: (api: ClientApi) => Effect.Effect<T, ApiError>, deps: unknown[]): { data?: T; error?: string; reload(): void } {
   const api = useApi()
   const [state, setState] = useState<{ data?: T; error?: string }>({})
   const [bump, setBump] = useState(0)
-  useEffect(() => {
-    let seq = 0
-    let alive = true
-    const run = (): void => {
-      const my = ++seq
-      load(api).then(
-        (data) => alive && my === seq && setState({ data }),
-        (e: unknown) => alive && my === seq && setState((s) => ({ ...s, error: e instanceof Error ? e.message : String(e) }))
-      )
-    }
-    run()
-    const off = api.onChanged(run)
-    return () => {
-      alive = false
-      off()
-    }
-  }, [api, bump, ...deps])
+  useEffect(
+    () =>
+      live(
+        (cb) => api.onChanged(cb),
+        Effect.suspend(() => load(api)), // re-calls the api per reload, so an eager implementation (or a test spy) sees each one
+        (r) => (Result.isSuccess(r) ? setState({ data: r.success }) : setState((s) => ({ ...s, error: r.failure.message })))
+      ),
+    [api, bump, ...deps]
+  )
   return { ...state, reload: useCallback(() => setBump((b) => b + 1), []) }
 }
 
@@ -51,7 +46,7 @@ export interface Directory {
 
 /** Accounts + calendars (hidden ones included, see `visible`); reloads on every change push. */
 export function useDirectory(): Directory {
-  const { data, error, reload } = useLive((api) => Promise.all([api.accounts.list(), api.calendars.list()]), [])
+  const { data, error, reload } = useLive((api) => Effect.all([api.accounts.list(), api.calendars.list()], { concurrency: 2 }), [])
   return { accounts: data?.[0] ?? [], calendars: data?.[1] ?? [], loaded: !!data, error, reload }
 }
 
@@ -61,10 +56,10 @@ export function useDirectory(): Directory {
  */
 export function useEvents(range: TimeRange): { events: CalEvent[]; loaded: boolean; loadedFor?: string; error?: string; reload(): void } {
   const { data, error, reload } = useLive(
-    async (api) => {
-      const [events, calendars] = await Promise.all([api.events.list(range), api.calendars.list()])
-      return { events: visibleEvents(events, calendars), for: `${range.start}/${range.end}` }
-    },
+    (api) =>
+      Effect.all([api.events.list(range), api.calendars.list()], { concurrency: 2 }).pipe(
+        Effect.map(([events, calendars]) => ({ events: visibleEvents(events, calendars), for: `${range.start}/${range.end}` }))
+      ),
     [range.start, range.end]
   )
   return { events: data?.events ?? [], loaded: !!data, loadedFor: data?.for, error, reload }

@@ -20,7 +20,6 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@effect/atom-react": "^4.0.3",
     "@effect/platform-node": "^4.0.3",
     "date-fns": "^4.4.0",
     "effect": "^4.0.3",

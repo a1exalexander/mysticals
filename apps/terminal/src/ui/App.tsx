@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Box, Text, useApp, useStdin } from 'ink'
 import { addDays, differenceInMinutes, format, isSameMonth, max, set, startOfDay } from 'date-fns'
+import { Effect } from 'effect'
 import { eventBounds, eventsOnDay, rangeLabel, viewDays } from '@mysticals/core/logic/layout'
 import { errorText } from '@mysticals/core/logic/editor'
 import type { CalEvent } from '@mysticals/core/shared/types'
@@ -349,7 +350,7 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
   // the status line shows a spinner while accounts sync
   const syncNow = (): void => {
     setMessage(undefined)
-    api.sync.now().then(
+    Effect.runPromise(api.sync.now()).then(
       () => setMessage({ text: 'Synced', fade: true }),
       (e: unknown) => setMessage({ text: `Sync failed: ${errorText(e)}` })
     )

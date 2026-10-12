@@ -6,6 +6,8 @@
  */
 import { useState } from 'react'
 import { Box, Text } from 'ink'
+import { Effect } from 'effect'
+import type { ApiError } from '@mysticals/core/api'
 import { canEdit, cleanNotes, formatWhen, htmlToText, isHtml, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
 import { eventLinks, eventMeetingUrl, linkLabel, locationText, type LinkKind } from '@mysticals/core/logic/meeting'
@@ -54,10 +56,10 @@ export function EventDetails({ event: initial, onClose, onEdit, height = Infinit
   const [foot, footHeight] = useHeight()
   const scroll = useScrollArea(height - 2 - footHeight) // 2: border
 
-  const run = (label: string, fn: () => Promise<void>): void => {
+  const run = (label: string, fn: () => Effect.Effect<void, ApiError>): void => {
     setBusy(label)
     setError('')
-    fn().then(
+    Effect.runPromise(fn()).then(
       () => setBusy(undefined),
       (e: unknown) => {
         setBusy(undefined)
@@ -66,12 +68,8 @@ export function EventDetails({ event: initial, onClose, onEdit, height = Infinit
     )
   }
   const respond = (status: Reply): void =>
-    run('Replying…', async () => setEvent(await api.events.respond(event, status)))
-  const remove = (scope: DeleteScope): void =>
-    run('Deleting…', async () => {
-      await api.events.delete(event, scope)
-      onClose()
-    })
+    run('Replying…', () => Effect.map(api.events.respond(event, status), setEvent))
+  const remove = (scope: DeleteScope): void => run('Deleting…', () => Effect.map(api.events.delete(event, scope), onClose))
 
   useKeys((input, key) => {
     if (key.escape && confirm) return setConfirm(false)

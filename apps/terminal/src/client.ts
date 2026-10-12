@@ -3,26 +3,35 @@ import { mkdirSync, openSync } from 'fs'
 import { createConnection, type Socket } from 'net'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
-import type { Api } from '@mysticals/core/shared/ipc'
+import { Deferred, Effect, Schedule } from 'effect'
+import type { ApiError, CoreApiEffect } from '@mysticals/core/api'
+import { AppError, fail, messageOf } from '@mysticals/core/errors'
 import { homeDir, socketPath } from './paths'
 import { encode, lineReader, METHODS, type Method, type Response } from './protocol'
 
-/** What the TUI talks to: the daemon's Api plus change pushes. */
-export type ClientApi = Omit<Api, 'onMenu' | 'onSignIn'> & {
+/** What the TUI talks to: the daemon's Api (as effects) plus change pushes. */
+export type ClientApi = CoreApiEffect & {
+  /** Fires when cached data of an account changed ('' after a reconnect: reload everything). Returns unsubscribe. */
+  onChanged(cb: (accountId: string) => void): () => void
   /** Google sign-in URL, pushed while the daemon waits for the browser (so it can be opened by hand). */
   onAuthUrl(cb: (url: string) => void): () => void
   /** Disconnects; the daemon exits a few seconds after its last client leaves. */
   close(): void
 }
 
-const connectOnce = (path: string): Promise<Socket> =>
-  new Promise((resolve, reject) => {
+/** How long a call may wait for its answer; sign-in and sync wait on the user or on remote servers instead. */
+const CALL_TIMEOUT = '1 minute'
+const UNBOUNDED = new Set<Method>(['accounts.addGoogle', 'accounts.addCaldav', 'accounts.reauth', 'sync.now'])
+
+const connectOnce = (path: string): Effect.Effect<Socket, AppError> =>
+  Effect.callback((resume) => {
     const s = createConnection(path)
+    const failed = (e: Error): void => resume(Effect.fail(fail(e.message)))
     s.once('connect', () => {
-      s.off('error', reject)
-      resolve(s)
+      s.off('error', failed)
+      resume(Effect.succeed(s))
     })
-    s.once('error', reject)
+    s.once('error', failed)
   })
 
 /** Starts `node dist/cli.js --daemon` detached, logging to <home>/daemon.log. */
@@ -36,32 +45,28 @@ export function spawnDaemon(): void {
 }
 
 /** Connects to the daemon on `path`, starting one via `start` if none answers. */
-export async function dial(path = socketPath(), start = spawnDaemon): Promise<Socket> {
-  try {
-    return await connectOnce(path)
-  } catch {
-    start()
-  }
-  const deadline = Date.now() + 10_000
-  for (;;) {
-    try {
-      return await connectOnce(path)
-    } catch (e) {
-      if (Date.now() > deadline) throw new Error(`Could not start the mysticals daemon (see ${join(homeDir(), 'daemon.log')})`, { cause: e })
-      await new Promise((r) => setTimeout(r, 100))
-    }
-  }
-}
+export const dial = (path = socketPath(), start = spawnDaemon): Effect.Effect<Socket, AppError> =>
+  connectOnce(path).pipe(
+    Effect.catch(() =>
+      Effect.sync(start).pipe(
+        Effect.andThen(connectOnce(path).pipe(Effect.retry({ schedule: Schedule.spaced('100 millis') }))),
+        Effect.timeoutOrElse({
+          duration: '10 seconds',
+          orElse: () => Effect.fail(fail(`Could not start the mysticals daemon (see ${join(homeDir(), 'daemon.log')})`))
+        })
+      )
+    )
+  )
 
 /**
  * Api over the daemon socket from `open`. When the socket drops (daemon crashed or shut down under us), in-flight
- * calls reject, onChanged listeners fire with '' so screens reload, and the next call dials again.
+ * calls fail, onChanged listeners fire with '' so screens reload, and the next call dials again.
  */
-export function clientFor(open: () => Promise<Socket>): ClientApi {
+export function clientFor(open: Effect.Effect<Socket, AppError>): ClientApi {
   let seq = 0
-  let current: Promise<Socket> | undefined
+  let current: Deferred.Deferred<Socket, AppError> | undefined
   let closed = false
-  const pending = new Map<number, { resolve(v: unknown): void; reject(e: Error): void }>()
+  const pending = new Map<number, (r: Effect.Effect<unknown, AppError>) => void>()
   const listeners = new Set<(accountId: string) => void>()
   const emit = (accountId: string): void => listeners.forEach((l) => l(accountId))
   const authListeners = new Set<(url: string) => void>()
@@ -73,40 +78,52 @@ export function clientFor(open: () => Promise<Socket>): ClientApi {
         const m = msg as Response & { event?: string; accountId?: unknown; url?: unknown }
         if (m.event === 'changed' && typeof m.accountId === 'string') return emit(m.accountId)
         if (m.event === 'authUrl' && typeof m.url === 'string') return authListeners.forEach((l) => l(m.url as string))
-        const p = pending.get(m.id)
-        if (!p) return
+        const settle = pending.get(m.id)
+        if (!settle) return
         pending.delete(m.id)
-        if (m.error !== undefined) p.reject(new Error(m.error))
-        else p.resolve(m.result)
+        settle(m.error !== undefined ? Effect.fail(fail(m.error)) : Effect.succeed(m.result))
       })
     )
     sock.on('error', () => {}) // surfaced through 'close'
     sock.on('close', () => {
       current = undefined
-      for (const p of pending.values()) p.reject(new Error('Lost connection to the mysticals daemon'))
+      for (const settle of pending.values()) settle(Effect.fail(fail('Lost connection to the mysticals daemon')))
       pending.clear()
       if (!closed) emit('')
     })
     return sock
   }
 
-  const socket = (): Promise<Socket> => {
-    if (closed) return Promise.reject(new Error('Client closed'))
-    current ??= open().then(attach, (e: unknown) => {
-      current = undefined
-      throw e
-    })
-    return current
-  }
+  /** The live socket; concurrent callers share one dial. */
+  const socket: Effect.Effect<Socket, AppError> = Effect.suspend(() => {
+    if (closed) return Effect.fail(fail('Client closed'))
+    if (!current) {
+      const dialing = (current = Deferred.makeUnsafe<Socket, AppError>())
+      Effect.runFork(
+        open.pipe(
+          Effect.map(attach),
+          Effect.tapError(() => Effect.sync(() => void (current === dialing && (current = undefined)))),
+          Effect.exit,
+          Effect.flatMap((exit) => Deferred.done(dialing, exit))
+        )
+      )
+    }
+    return Deferred.await(current)
+  })
 
-  const call = async (method: Method, params: unknown[]): Promise<unknown> => {
-    const sock = await socket()
-    return new Promise((resolve, reject) => {
-      if (sock.destroyed) return reject(new Error('Lost connection to the mysticals daemon'))
-      const id = ++seq
-      pending.set(id, { resolve, reject })
-      sock.write(encode({ id, method, params }))
-    })
+  const call = (method: Method, params: unknown[]): Effect.Effect<unknown, ApiError> => {
+    const sent = Effect.flatMap(socket, (sock) =>
+      Effect.callback<unknown, AppError>((resume) => {
+        if (sock.destroyed) return resume(Effect.fail(fail('Lost connection to the mysticals daemon')))
+        const id = ++seq
+        pending.set(id, resume)
+        sock.write(encode({ id, method, params }))
+        return Effect.sync(() => void pending.delete(id)) // timed out or interrupted: a late answer is dropped
+      })
+    )
+    return UNBOUNDED.has(method)
+      ? sent
+      : sent.pipe(Effect.timeoutOrElse({ duration: CALL_TIMEOUT, orElse: () => Effect.fail(fail('The mysticals daemon did not answer in time')) }))
   }
 
   const api: Record<string, Record<string, unknown>> = {}
@@ -115,7 +132,7 @@ export function clientFor(open: () => Promise<Socket>): ClientApi {
     api[group] ??= {}
     api[group][fn] = (...params: unknown[]) => call(m, params)
   }
-  return Object.assign(api as unknown as Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'>, {
+  return Object.assign(api as unknown as CoreApiEffect, {
     onChanged(cb: (accountId: string) => void) {
       listeners.add(cb)
       return () => void listeners.delete(cb)
@@ -126,14 +143,16 @@ export function clientFor(open: () => Promise<Socket>): ClientApi {
     },
     close() {
       closed = true
-      void current?.then((s) => s.end())
+      const sock = current
+      if (sock) Effect.runFork(Effect.flatMap(Deferred.await(sock), (s) => Effect.sync(() => s.end())).pipe(Effect.ignore))
     }
   })
 }
 
 /** Connects to the shared daemon (starting one if none is running); reconnects the same way after a drop. */
-export async function connect(path = socketPath(), start = spawnDaemon): Promise<ClientApi> {
-  const client = clientFor(() => dial(path, start))
-  await client.accounts.list() // fail fast at startup if the daemon can't be reached
-  return client
-}
+export const connect = (path = socketPath(), start = spawnDaemon): Effect.Effect<ClientApi, ApiError> =>
+  Effect.gen(function* () {
+    const client = clientFor(dial(path, start))
+    yield* client.accounts.list() // fail fast at startup if the daemon can't be reached
+    return client
+  })

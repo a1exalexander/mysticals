@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { Effect } from 'effect'
 import type { Account, CalEvent } from '@mysticals/core/shared/types'
 import { createTestClient, renderWith, type Rendered } from '../test/harness'
 import { StatusLine } from './StatusLine'
@@ -16,13 +17,15 @@ const nav = { view: 'agenda' as const, date: now }
 describe('StatusLine', () => {
   it('shows now/next, invite count, failed accounts and the message', async () => {
     const client = createTestClient()
-    client.events.list.mockResolvedValue([
-      ev('a', 'Standup', -5, 10),
-      ev('b', 'Review', 25, 60),
-      { ...ev('c', 'Offsite', 60 * 30, 60 * 31), myStatus: 'needsAction' }
-    ])
+    client.events.list.mockReturnValue(
+      Effect.succeed([
+        ev('a', 'Standup', -5, 10),
+        ev('b', 'Review', 25, 60),
+        { ...ev('c', 'Offsite', 60 * 30, 60 * 31), myStatus: 'needsAction' }
+      ])
+    )
     const accounts: Account[] = [{ id: 'work', kind: 'caldav', label: 'Work', email: 'w@x', color: '#fff', error: 'offline' }]
-    client.accounts.list.mockResolvedValue(accounts)
+    client.accounts.list.mockReturnValue(Effect.succeed(accounts))
     t = renderWith(<StatusLine nav={nav} events={[]} now={now} message="Synced" width={200} />, client)
     const f = await t.waitFor('sync failed')
     expect(f).toContain('now Standup')
@@ -35,9 +38,9 @@ describe('StatusLine', () => {
 
   it('says disconnected for accounts whose credentials were revoked', async () => {
     const client = createTestClient()
-    client.accounts.list.mockResolvedValue([
-      { id: 'work', kind: 'caldav', label: 'Work', email: 'w@x', color: '#fff', error: 'revoked', authError: true }
-    ])
+    client.accounts.list.mockReturnValue(
+      Effect.succeed([{ id: 'work', kind: 'caldav', label: 'Work', email: 'w@x', color: '#fff', error: 'revoked', authError: true }])
+    )
     t = renderWith(<StatusLine nav={nav} events={[]} now={now} width={200} />, client)
     const f = await t.waitFor('disconnected')
     expect(f).toContain('⚠ Work disconnected (s)')

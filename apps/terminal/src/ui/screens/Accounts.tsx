@@ -10,6 +10,8 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Box, Text, useStdout } from 'ink'
+import { Effect } from 'effect'
+import type { ApiError } from '@mysticals/core/api'
 import { errorText } from '@mysticals/core/logic/editor'
 import type { Account, Calendar } from '@mysticals/core/shared/types'
 import { useApi, useDirectory } from '../hooks'
@@ -70,21 +72,21 @@ export function Accounts({ onClose, height = Infinity }: AccountsProps) {
   const say = (text: string, error = false): void => {
     if (alive.current) setMessage({ text, error })
   }
-  const run = (pending: string, done: string, fn: () => Promise<unknown>): void => {
+  const run = (pending: string, done: string, fn: () => Effect.Effect<unknown, ApiError>): void => {
     say(pending)
-    fn().then(
+    Effect.runPromise(fn()).then(
       () => say(done),
       (e: unknown) => say(errorText(e), true)
     )
   }
 
   // Google sign-in (add, or reconnect a revoked account): waits on the browser, showing the auth URL meanwhile.
-  const googleSignIn = (fn: () => Promise<Account>, done: (a: Account) => string): void => {
+  const googleSignIn = (fn: () => Effect.Effect<Account, ApiError>, done: (a: Account) => string): void => {
     const s = ++googleSession.current
     setMode({ kind: 'google' })
     setMessage(undefined)
     setAuthUrl(undefined)
-    fn().then(
+    Effect.runPromise(fn()).then(
       (a) => s === googleSession.current && (setMode({ kind: 'list' }), say(done(a))),
       (e: unknown) => s === googleSession.current && (setMode({ kind: 'list' }), say(errorText(e), true))
     )

@@ -2,7 +2,12 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { checkUpdate, isNewer } from './update'
+import { Effect } from 'effect'
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
+import { checkUpdate as checkUpdateEffect, isNewer } from './update'
+
+const checkUpdate = (current: string): Promise<string | undefined> =>
+  Effect.runPromise(checkUpdateEffect(current).pipe(Effect.provide(NodeFileSystem.layer)))
 
 describe('isNewer', () => {
   it('compares x.y.z numerically', () => {
@@ -31,29 +36,35 @@ describe('checkUpdate', () => {
   })
 
   it('fetches when there is no cache, then writes it', async () => {
-    expect(await checkUpdate(undefined, '0.1.0')).toBe('9.9.9')
+    expect(await checkUpdate('0.1.0')).toBe('9.9.9')
     expect(fetchMock).toHaveBeenCalledOnce()
     expect(JSON.parse(readFileSync(cache(), 'utf8')).latest).toBe('9.9.9')
   })
 
   it('uses a fresh cache without fetching', async () => {
     writeFileSync(cache(), JSON.stringify({ checkedAt: Date.now() - 3600_000, latest: '0.3.0' }))
-    expect(await checkUpdate(undefined, '0.1.0')).toBe('0.3.0')
-    expect(await checkUpdate(undefined, '0.3.0')).toBeUndefined()
+    expect(await checkUpdate('0.1.0')).toBe('0.3.0')
+    expect(await checkUpdate('0.3.0')).toBeUndefined()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('refetches a stale cache', async () => {
     writeFileSync(cache(), JSON.stringify({ checkedAt: Date.now() - 25 * 3600_000, latest: '0.3.0' }))
-    expect(await checkUpdate(undefined, '0.1.0')).toBe('9.9.9')
+    expect(await checkUpdate('0.1.0')).toBe('9.9.9')
+    expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
+  it('treats a corrupt cache as missing', async () => {
+    writeFileSync(cache(), '{not json')
+    expect(await checkUpdate('0.1.0')).toBe('9.9.9')
     expect(fetchMock).toHaveBeenCalledOnce()
   })
 
   it('swallows network errors and skips mock mode', async () => {
     fetchMock.mockRejectedValueOnce(new Error('offline'))
-    expect(await checkUpdate(undefined, '0.1.0')).toBeUndefined()
+    expect(await checkUpdate('0.1.0')).toBeUndefined()
     vi.stubEnv('MYSTICALS_MOCK', '1')
-    expect(await checkUpdate(undefined, '0.1.0')).toBeUndefined()
+    expect(await checkUpdate('0.1.0')).toBeUndefined()
     expect(fetchMock).toHaveBeenCalledOnce()
   })
 })

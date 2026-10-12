@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { Effect } from 'effect'
+import { fail } from '@mysticals/core/errors'
 import type { CalEvent } from '@mysticals/core/shared/types'
 import { createTestClient, KEY, renderWith, type Rendered } from '../../test/harness'
 import { execFile } from 'child_process'
@@ -13,7 +15,7 @@ afterEach(() => t?.unmount())
 
 async function open(title: string) {
   const client = createTestClient()
-  const all = await client.events.list({ start: '2000-01-01T00:00:00Z', end: '2100-01-01T00:00:00Z' })
+  const all = await Effect.runPromise(client.events.list({ start: '2000-01-01T00:00:00Z', end: '2100-01-01T00:00:00Z' }))
   const event = all.find((e: CalEvent) => e.title === title)!
   const onClose = vi.fn()
   const onEdit = vi.fn()
@@ -61,7 +63,7 @@ describe('EventDetails', () => {
 
   it('shows reply errors and ignores RSVP keys on non-invites', async () => {
     const { client } = await open('Sprint planning')
-    client.events.respond.mockRejectedValueOnce(new Error('offline'))
+    client.events.respond.mockReturnValueOnce(Effect.fail(fail('offline')))
     await t.press('m')
     await t.waitFor('offline')
     t.unmount()

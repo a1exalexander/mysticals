@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { Effect } from 'effect'
 import type { CalEvent, TimeRange } from '@mysticals/core/shared/types'
 import { createTestClient, KEY, renderApp, type Rendered } from '../test/harness'
 
@@ -29,7 +30,7 @@ describe('App shell', () => {
       ({ id: title, title, accountId: 'work', calendarId: 'work-main', start: at(d, h), end: at(d, h + 1), allDay: false, attendees: [] })
     const all = [ev('Alpha', 23, 9), ev('Bravo', 23, 14), ev('Charlie', 24, 13), ev('Delta', 24, 8), ev('Echo', 28, 10), ev('Foxtrot', 30, 10)]
     const client = createTestClient()
-    client.events.list.mockImplementation(async (r: TimeRange) => all.filter((e) => e.start < r.end && e.end > r.start))
+    client.events.list.mockImplementation((r: TimeRange) => Effect.succeed(all.filter((e) => e.start < r.end && e.end > r.start)))
     t = renderApp({ client, nav: { view: 'week', date: new Date(2026, 8, 23) } })
     await t.waitFor('Alpha')
     const opened = async (): Promise<string> => {
@@ -63,6 +64,7 @@ describe('App shell', () => {
     await t.waitFor('Tue 22 Sep 2026')
     await t.press('a') // keeps the day view's selection (Tue 22 Morning run)
     await t.waitFor('│ Morning run')
+    await t.waitFor((f) => /Wed 23 Sep +today ─+ \d+ events/.test(f)) // the agenda's own range has loaded
     await t.press(KEY.right) // agenda: next event, not next day
     await t.waitFor('│ Daily standup')
   })
@@ -115,9 +117,9 @@ describe('App shell', () => {
 
   it('welcomes a first run with no accounts and points at the accounts panel', async () => {
     const client = createTestClient()
-    client.accounts.list.mockResolvedValue([])
-    client.calendars.list.mockResolvedValue([])
-    client.events.list.mockResolvedValue([])
+    client.accounts.list.mockReturnValue(Effect.succeed([]))
+    client.calendars.list.mockReturnValue(Effect.succeed([]))
+    client.events.list.mockReturnValue(Effect.succeed([]))
     t = renderApp({ client })
     await t.waitFor('Welcome to mysticals')
     expect(t.lastFrame()).toContain('add a Google, iCloud, Fastmail or other CalDAV account')

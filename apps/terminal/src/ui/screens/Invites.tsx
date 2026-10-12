@@ -7,6 +7,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Box, Text } from 'ink'
 import { addDays, startOfDay } from 'date-fns'
+import { Effect } from 'effect'
 import { formatWhen, ownerLine, pendingInvites } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
 import type { CalEvent, PartStat } from '@mysticals/core/shared/types'
@@ -55,7 +56,7 @@ export function Invites({ onClose, height = Infinity }: InvitesProps) {
     busy.current.add(k)
     setError('')
     setRows((r) => ({ ...r, [k]: 'sending…' }))
-    api.events.respond(e, status).then(
+    Effect.runPromise(api.events.respond(e, status)).then(
       () => setRows((r) => ({ ...r, [k]: 'sent' })),
       (err: unknown) => {
         busy.current.delete(k)

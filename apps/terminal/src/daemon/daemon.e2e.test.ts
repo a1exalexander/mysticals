@@ -7,6 +7,7 @@ import { existsSync, mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join, resolve } from 'path'
 import { afterAll, beforeAll, expect, it, vi } from 'vitest'
+import { Effect } from 'effect'
 import { connect } from '../client'
 import { socketPath } from '../paths'
 
@@ -66,13 +67,13 @@ it('two TUIs share one daemon, see each other’s changes, and the daemon stops 
   const noSpawn = (): void => {
     throw new Error('daemon should already be running')
   }
-  const c1 = await connect(socketPath(home), noSpawn)
-  const c2 = await connect(socketPath(home), noSpawn)
+  const c1 = await Effect.runPromise(connect(socketPath(home), noSpawn))
+  const c2 = await Effect.runPromise(connect(socketPath(home), noSpawn))
   const seen = vi.fn()
   c2.onChanged(seen)
-  await c1.accounts.update('work', { label: 'Job' })
+  await Effect.runPromise(c1.accounts.update('work', { label: 'Job' }))
   await vi.waitFor(() => expect(seen).toHaveBeenCalledWith('work'))
-  expect((await c2.accounts.list()).find((x) => x.id === 'work')?.label).toBe('Job')
+  expect((await Effect.runPromise(c2.accounts.list())).find((x) => x.id === 'work')?.label).toBe('Job')
   c1.close()
   c2.close()
 

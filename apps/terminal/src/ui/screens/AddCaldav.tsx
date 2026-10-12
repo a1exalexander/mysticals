@@ -1,6 +1,7 @@
 /** Add-CalDAV form inside the Accounts overlay. Mirrors desktop components/Accounts.tsx CaldavForm. Fields and buttons are clickable. */
 import { useRef, useState, type ReactNode } from 'react'
 import { Box, Text } from 'ink'
+import { Effect } from 'effect'
 import { errorText } from '@mysticals/core/logic/editor'
 import { useApi } from '../hooks'
 import { editLine, LineView } from '../lineEdit'
@@ -93,7 +94,7 @@ export function AddCaldav({ onBack, onDone }: { onBack(): void; onDone(): void }
     if (!input.serverUrl || !input.username || !input.password)
       return patch({ error: 'Server URL, email and app password are required' })
     patch({ busy: true, error: '' })
-    api.accounts.addCaldav(input).then(onDone, (e: unknown) => patch({ error: errorText(e), busy: false }))
+    Effect.runPromise(api.accounts.addCaldav(input)).then(onDone, (e: unknown) => patch({ error: errorText(e), busy: false }))
   }
 
   const clickField = (f: Field): void => {

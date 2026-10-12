@@ -2,8 +2,9 @@
  * Once-a-day npm check for a newer `mysticals`, shown as a hint in the status line.
  * Cached in `<home>/update-check.json`; any failure (offline, slow registry, bad JSON) just means "no hint".
  */
-import { mkdir, readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
+import { Clock, Effect, FileSystem } from 'effect'
+import { HttpTimeout, request } from '@mysticals/core/providers/http'
 import { version } from '../package.json'
 import { homeDir, isMock } from './paths'
 
@@ -17,35 +18,32 @@ export function isNewer(a: string, b: string): boolean {
   return false
 }
 
-async function cached(file: string): Promise<{ latest?: string } | undefined> {
-  try {
-    const c = JSON.parse(await readFile(file, 'utf8')) as { checkedAt?: unknown; latest?: string }
-    return typeof c.checkedAt === 'number' && Date.now() - c.checkedAt < DAY_MS ? c : undefined
-  } catch {
-    return undefined
-  }
-}
+const cached = (file: string, now: number) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const text = yield* fs.readFileString(file)
+    // Effect.try: a throw inside gen is a defect, which orElseSucceed would not catch.
+    const c = (yield* Effect.try(() => JSON.parse(text))) as { checkedAt?: unknown; latest?: string }
+    return typeof c.checkedAt === 'number' && now - c.checkedAt < DAY_MS ? c : undefined
+  }).pipe(Effect.orElseSucceed(() => undefined))
 
-/** The latest published version when it's newer than `current`, else undefined. Never throws; `signal` aborts the fetch. */
-export async function checkUpdate(signal?: AbortSignal, current = version): Promise<string | undefined> {
-  const registry = process.env.MYSTICALS_UPDATE_REGISTRY
-  if (isMock() && !registry) return undefined
-  const file = join(homeDir(), 'update-check.json')
-  try {
-    let latest = (await cached(file))?.latest
+/** The latest published version when it's newer than `current`, else undefined. Never fails; interrupting it aborts the fetch. */
+export const checkUpdate = (current = version): Effect.Effect<string | undefined, never, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const registry = process.env.MYSTICALS_UPDATE_REGISTRY
+    if (isMock() && !registry) return undefined
+    const fs = yield* FileSystem.FileSystem
+    const file = join(homeDir(), 'update-check.json')
+    const now = yield* Clock.currentTimeMillis
+    let latest = (yield* cached(file, now))?.latest
     if (latest === undefined) {
-      const res = await fetch(`${registry || 'https://registry.npmjs.org'}/mysticals/latest`, {
-        signal: AbortSignal.any([AbortSignal.timeout(3000), ...(signal ? [signal] : [])])
-      })
-      if (!res.ok) return undefined
-      const v = ((await res.json()) as { version?: unknown }).version
+      const v = yield* request(`${registry || 'https://registry.npmjs.org'}/mysticals/latest`, {}, async (res) =>
+        res.ok ? ((await res.json()) as { version?: unknown }).version : undefined
+      ).pipe(Effect.provideService(HttpTimeout, 3000))
       if (typeof v !== 'string') return undefined
       latest = v
-      await mkdir(homeDir(), { recursive: true })
-      await writeFile(file, JSON.stringify({ checkedAt: Date.now(), latest }))
+      yield* fs.makeDirectory(homeDir(), { recursive: true })
+      yield* fs.writeFileString(file, JSON.stringify({ checkedAt: now, latest }))
     }
     return isNewer(latest, current) ? latest : undefined
-  } catch {
-    return undefined
-  }
-}
+  }).pipe(Effect.orElseSucceed(() => undefined))

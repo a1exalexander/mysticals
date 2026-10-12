@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { Effect } from 'effect'
 import { KEY, createTestClient, renderApp, renderWith, type Rendered } from '../../test/harness'
 import { Accounts } from './Accounts'
 
@@ -66,7 +67,7 @@ describe('Accounts overlay', () => {
 
   it('adds a CalDAV account via preset, masking the password', async () => {
     t = renderWith(<Accounts onClose={() => {}} />)
-    t.client.accounts.addCaldav.mockResolvedValue({ id: 'n', kind: 'caldav', label: 'Work', email: 'a@b.co', color: '#bd93f9' })
+    t.client.accounts.addCaldav.mockReturnValue(Effect.succeed({ id: 'n', kind: 'caldav', label: 'Work', email: 'a@b.co', color: '#bd93f9' }))
     await t.waitFor('Holidays')
     await t.press('a')
     await t.waitFor('Private Email')
@@ -100,12 +101,11 @@ describe('Accounts overlay', () => {
 
   it('shows progress while a CalDAV account connects and while its calendars first load', async () => {
     t = renderWith(<Accounts onClose={() => {}} />)
-    t.client.accounts.addCaldav.mockReturnValue(new Promise(() => {}))
+    t.client.accounts.addCaldav.mockReturnValue(Effect.never)
     const list = t.client.accounts.list.getMockImplementation()!
-    t.client.accounts.list.mockImplementation(async () => [
-      ...(await list()),
-      { id: 'new', kind: 'caldav', label: 'New', email: 'me@x.co', color: '#ff79c6', syncing: true, synced: false }
-    ])
+    t.client.accounts.list.mockImplementation(() =>
+      Effect.map(list(), (l) => [...l, { id: 'new', kind: 'caldav', label: 'New', email: 'me@x.co', color: '#ff79c6', syncing: true, synced: false }])
+    )
     t.client.emitChanged('new')
     await t.waitFor('Loading calendars…')
     await t.press('a')
@@ -124,7 +124,7 @@ describe('Accounts overlay', () => {
 
   it('shows the Google sign-in URL while waiting, for when no browser opens', async () => {
     t = renderWith(<Accounts onClose={() => {}} />)
-    t.client.accounts.addGoogle.mockReturnValue(new Promise(() => {}))
+    t.client.accounts.addGoogle.mockReturnValue(Effect.never)
     await t.waitFor('Holidays')
     await t.press('g')
     await t.waitFor('Opening browser')
@@ -140,8 +140,8 @@ describe('Accounts overlay', () => {
   it('reconnects a revoked CalDAV account with a new masked password', async () => {
     t = renderWith(<Accounts onClose={() => {}} />)
     const list = t.client.accounts.list.getMockImplementation()!
-    t.client.accounts.list.mockImplementation(async () =>
-      (await list()).map((a) => (a.id === 'work' ? { ...a, error: 'password revoked', authError: true } : a))
+    t.client.accounts.list.mockImplementation(() =>
+      Effect.map(list(), (l) => l.map((a) => (a.id === 'work' ? { ...a, error: 'password revoked', authError: true } : a)))
     )
     t.client.emitChanged('work')
     await t.waitFor('Disconnected: password revoked')
@@ -157,8 +157,8 @@ describe('Accounts overlay', () => {
   it('reconnects a revoked Google account through sign-in', async () => {
     t = renderWith(<Accounts onClose={() => {}} />)
     const list = t.client.accounts.list.getMockImplementation()!
-    t.client.accounts.list.mockImplementation(async () =>
-      (await list()).map((a) => (a.id === 'personal' ? { ...a, error: 'sign-in expired', authError: true } : a))
+    t.client.accounts.list.mockImplementation(() =>
+      Effect.map(list(), (l) => l.map((a) => (a.id === 'personal' ? { ...a, error: 'sign-in expired', authError: true } : a)))
     )
     t.client.emitChanged('personal')
     await t.waitFor('Disconnected')
@@ -169,7 +169,7 @@ describe('Accounts overlay', () => {
   it('scrolls a long list with the cursor and keeps the heading and buttons on screen', async () => {
     const client = createTestClient()
     const many = Array.from({ length: 20 }, (_, i) => ({ id: `c${i}`, accountId: 'work', name: `Team ${i + 1}`, color: '#50fa7b', readOnly: false }))
-    client.calendars.list.mockResolvedValue(many)
+    client.calendars.list.mockReturnValue(Effect.succeed(many))
     t = renderWith(<Accounts onClose={() => {}} height={16} />, client)
     let f = await t.waitFor((x) => x.includes('Team 3') && x.includes('↑↓ more') && x.split('\n').length <= 16)
     expect(f).toContain('Accounts & calendars')
