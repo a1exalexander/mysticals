@@ -28,8 +28,7 @@ function readJson<T>(file: string, fallback: T): T {
   }
 }
 
-/** Writes to a temp file then renames, so a crash never leaves a half-written file. */
-export async function writeAtomic(file: string, data: string | Buffer): Promise<void> {
+async function writeAtomic(file: string, data: string | Buffer): Promise<void> {
   const tmp = `${file}.${randomUUID()}.tmp`
   await writeFile(tmp, data, { mode: 0o600 })
   await rename(tmp, file)
@@ -212,6 +211,8 @@ export class AccountStore {
   patchCache(id: string, fn: (cache: AccountCache) => AccountCache): void {
     this.require(id)
     this.caches.set(id, fn(this.readCache(id)))
+    // Memory now differs from disk: the next write is a change even if the server still lists the pre-edit state.
+    this.written.delete(id)
   }
   hiddenCalendars(id: string): string[] {
     const cached = this.hidden.get(id)

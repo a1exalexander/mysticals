@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, w
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Credentials } from '../shared/types'
+import type { CalEvent, Credentials } from '../shared/types'
 import type { ProviderContext, ProviderFactory } from '../providers/types'
 import { MockProvider } from '../mock/MockProvider'
 import { AccountStore, type SecretCrypto } from './store'
@@ -231,6 +231,15 @@ describe('AccountStore cache writes', () => {
     expect(store.readCache(work.id).syncedAt).toBe('2026-09-23T12:02:00.000Z') // memory has the latest pass
     const changed = { ...cache, calendars: [{ id: 'c', accountId: work.id, name: 'C', color: '#000', readOnly: false }] }
     expect(await store.writeCache(work.id, changed)).toBe(true)
+  })
+
+  it('after a local edit, a pass matching the last write still counts as a change (memory reverts, UI must hear)', async () => {
+    const { work } = await addBoth()
+    const cache = { calendars: [], events: [], syncedAt: '2026-09-23T12:00:00.000Z' }
+    await store.writeCache(work.id, cache)
+    store.patchCache(work.id, (c) => ({ ...c, events: [{ id: 'local' } as CalEvent] }))
+    expect(await store.writeCache(work.id, cache)).toBe(true)
+    expect(store.readCache(work.id).events).toEqual([])
   })
 
   it("one account's writes don't wait for another's", async () => {
