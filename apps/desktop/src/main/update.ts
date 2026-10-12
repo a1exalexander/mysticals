@@ -157,12 +157,13 @@ async function install(): Promise<void> {
   }
 }
 
-/** Registers update IPC and starts background checks (on launch, then every 6h). */
-export function startUpdater(): void {
+/** Registers update IPC and starts background checks (on launch, then every 6h); returns a stop for quit. */
+export function startUpdater(): () => void {
   ipcMain.handle(IPC.updateState, () => state)
   ipcMain.handle(IPC.updateCheck, check)
   ipcMain.handle(IPC.updateInstall, install)
-  if (!ENABLED) return
+  if (!ENABLED) return () => {}
   void check()
-  setInterval(() => void check(), EVERY)
+  const timer = setInterval(() => void check(), EVERY)
+  return () => clearInterval(timer)
 }

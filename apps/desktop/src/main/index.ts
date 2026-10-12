@@ -1,5 +1,5 @@
 import { join } from 'path'
-import { mkdtempSync, readFileSync, writeFileSync } from 'fs'
+import { mkdtempSync, readFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeTheme, Notification, safeStorage, shell, type MenuItemConstructorOptions } from 'electron'
 import { IPC } from '@shared/ipc'
@@ -20,6 +20,7 @@ import { hour12, startClock } from './clock'
 import { startUpdater } from './update'
 import { startDesktopTelemetry } from './telemetry'
 import { mutedAccounts, startReminders, warmReminders } from './reminders'
+import { writeFileAtomic } from './prefs'
 import { createActivityLog, registerActivityLog, type ActivityLog } from './activityLog'
 import { electronTriggers } from './sync/electronTriggers'
 import { loadRenderer, lockDown, themeBg, webPreferences } from './window'
@@ -215,7 +216,7 @@ function createWindow(): void {
     win.on('close', () => {
       const { width, height } = win.getNormalBounds()
       try {
-        writeFileSync(stateFile(), JSON.stringify({ width, height }))
+        writeFileAtomic(stateFile(), JSON.stringify({ width, height }))
       } catch (e) {
         console.error('failed to save window state', e)
       }
@@ -223,6 +224,9 @@ function createWindow(): void {
 
   loadRenderer(win)
 }
+
+/** Teardown run on quit (see before-quit). */
+const stops: (() => void)[] = []
 
 app.whenReady().then(() => {
   if (!primary) return
@@ -248,7 +252,7 @@ app.whenReady().then(() => {
   if (MOCK) {
     const api = createMockApi(broadcast, activity.append)
     registerApi(api)
-    startReminders(api, showMain, activity.append)
+    stops.push(startReminders(api, showMain, activity.append))
   } else {
     setClientConfig({
       clientId: import.meta.env.MYSTICALS_GOOGLE_CLIENT_ID,
@@ -289,16 +293,19 @@ app.whenReady().then(() => {
       const onAccountAdded = (info: AccountAdded): void => track?.('account_added', info)
       const api = createApi(store, sync, { verifyCaldav, googleSignIn: signIn, onChanged: broadcast, onAccountAdded, onAction: activity.append })
       registerApi(api)
-      startReminders(api, showMain, activity.append)
+      stops.push(startReminders(api, showMain, activity.append))
       sync.start()
+      stops.push(() => sync.stop())
     } catch (e) {
       console.error('backend not ready', e)
     }
   }
-  startUpdater()
+  stops.push(startUpdater())
   started = true
   createWindow()
   app.on('activate', () => !mainWin && createWindow())
 })
 
 app.on('window-all-closed', () => !MAC && app.quit())
+// Quitting stops sync (its timers and wake triggers), reminder ticks and update checks before the process goes.
+app.on('before-quit', () => stops.splice(0).forEach((stop) => stop()))
