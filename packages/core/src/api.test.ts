@@ -232,7 +232,7 @@ describe('createApi local edits', () => {
 })
 
 describe('createApi validation', () => {
-  it('zod rejects bad input', async () => {
+  it('schema rejects bad input', async () => {
     const { api, deps } = setup()
     await expect(api.events.list({ start: 'yesterday', end: 'today' })).rejects.toThrow()
     await expect(api.events.create({ ...newEvent, accountId: 'work', calendarId: 'work-main', start: 'nope' })).rejects.toThrow()
