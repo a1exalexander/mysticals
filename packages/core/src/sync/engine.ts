@@ -173,9 +173,8 @@ export class SyncEngine {
         throw new Error('The server returned no calendars; showing the last synced data')
       }
       this.emptied.delete(id)
-      const changed =
-        !prev || JSON.stringify([prev.calendars, prev.events]) !== JSON.stringify([next.calendars, next.events])
-      await this.store.writeCache(id, next)
+      // The store compares with what it last saved (one serialization, no rewrite when nothing changed).
+      const changed = (await this.store.writeCache(id, next)) || !prev
       this.failures.delete(id)
       this.opts.onResult?.(id, { ok: true, prev, next })
       if (hadError) await this.store.update(id, { error: undefined, authError: false })
@@ -196,6 +195,9 @@ export class SyncEngine {
     }
   }
 }
+
+/** Epoch ms of an event time: date-only (all-day) values are local midnight, like parseISO; timestamps parse natively (~10x faster). */
+const instant = (iso: string): number => (iso.length === 10 ? parseISO(iso).getTime() : Date.parse(iso))
 
 /**
  * Events from every account's cache that overlap `range` (end-exclusive).
@@ -218,9 +220,8 @@ export function queryEvents(
     }
     const hidden = new Set(visibleOnly ? store.hiddenCalendars(acc.id) : [])
     for (const e of cache.events) {
-      // parseISO reads date-only (all-day) values as local midnight.
       if (e.accountId !== acc.id || hidden.has(e.calendarId)) continue
-      if (parseISO(e.end).getTime() > from && parseISO(e.start).getTime() < to) out.push(e)
+      if (instant(e.end) > from && instant(e.start) < to) out.push(e)
     }
   }
   return out
