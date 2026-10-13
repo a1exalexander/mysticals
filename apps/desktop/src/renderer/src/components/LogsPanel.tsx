@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Account, Calendar, EventSnap, LogChange, LogEntry, LogKind } from '@shared/types'
 import { isKey, type Key } from '@mysticals/core/i18n'
 import { STATUS_ICON } from '@mysticals/core/logic/details'
+import { eventColor } from '@mysticals/core/logic/colors'
 import { errorText } from './AccountsShared'
 import { Select } from './ui/Select'
 import { cap, fmt, t, useLocale } from '../i18n'
@@ -10,7 +11,7 @@ import { timePattern } from '@mysticals/core/logic/clock'
 
 const GROUPS = {
   all: undefined,
-  actions: ['account.add', 'account.update', 'account.reauth', 'account.remove', 'calendar.visible', 'event.create', 'event.update', 'event.delete', 'event.respond'],
+  actions: ['account.add', 'account.update', 'account.reauth', 'account.remove', 'calendar.visible', 'event.create', 'event.update', 'event.delete', 'event.respond', 'event.color'],
   sync: ['sync', 'sync.fail'],
   remote: ['remote.add', 'remote.change', 'remote.remove'],
   notify: ['notify', 'reminder']
@@ -28,13 +29,14 @@ const FIELD: Record<string, Key> = {
   conferenceUrl: 'logs.call',
   myStatus: 'logs.myStatus',
   description: 'logs.description',
-  recurrence: 'logs.series'
+  recurrence: 'logs.series',
+  colorId: 'eventColor.label'
 }
 
 const time = (iso: string, allDay = false): string => fmt(new Date(allDay ? `${iso}T00:00:00` : iso), allDay ? 'd MMM yyyy' : `d MMM yyyy, ${timePattern(hour12())}`)
 const entryKey = (e: LogEntry, i: number): string => `${e.at}|${e.kind}|${i}`
 // A scope or answer read from the log file; an old or malformed one shows as it is.
-const known = (group: 'scope' | 'partstat', v: string): string => {
+const known = (group: 'scope' | 'partstat' | 'eventColor', v: string): string => {
   const key = `${group}.${v}`
   return isKey(key) ? t(key) : v
 }
@@ -307,5 +309,6 @@ function value(c: LogChange, v: string | undefined, allDay = false): string {
   if (v === undefined) return '—'
   if ((c.field === 'start' || c.field === 'end') && !Number.isNaN(Date.parse(v))) return time(v, allDay)
   if (c.field === 'myStatus' || c.field.startsWith('attendee:')) return known('partstat', v)
+  if (c.field === 'colorId') return known('eventColor', eventColor(v)?.key ?? v)
   return v
 }

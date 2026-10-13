@@ -3,6 +3,8 @@ import type { CalEvent, DeleteScope } from '@shared/types'
 import { bus, type BusEvents } from '../bus'
 import { useDirectory } from './ui/useDirectory'
 import { onLaterScroll } from './ui/usePopover'
+import { EventColors } from './EventColors'
+import { eventColorOf } from '@mysticals/core/logic/colors'
 import { canEdit, formatWhen } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
 import { copyInput, type PasteSlot } from '@mysticals/core/logic/copy'
@@ -115,6 +117,29 @@ export function deleteEvent(e: CalEvent): void {
   else run('one')
 }
 
+/**
+ * Recolours an event from the menu: a recurring event first asks for this one or the whole series. Undo puts back a
+ * single one's colour (like a move, a series change has none).
+ */
+function recolor(e: CalEvent, colorId: string | null): void {
+  if ((e.colorId ?? null) === colorId) return
+  const run = (scope: DeleteScope): void =>
+    void window.api.events.setColor(e, colorId, scope === 'all' ? 'all' : 'one').then(
+      (updated) => {
+        bus.emit('toast', {
+          text: t(scope === 'all' ? 'toast.coloredAll' : 'toast.colored', { title: name(e) }),
+          action:
+            scope === 'all'
+              ? undefined
+              : { label: t('common.undo'), run: () => void window.api.events.setColor(updated, e.colorId ?? null, 'one').catch(() => {}) }
+        })
+      },
+      (err) => bus.emit('toast', { text: t('toast.colorFailed', { title: name(e), error: errorText(err) }), error: true })
+    )
+  if (e.recurringEventId) bus.emit('scope:ask', { title: t('scope.color'), scopes: ['one', 'all'], onPick: run, onCancel: () => {} })
+  else run('one')
+}
+
 interface Item {
   id: string
   label: string
@@ -197,7 +222,9 @@ export function EventMenuHost(): React.JSX.Element | null {
 
   if (!menu) return null
 
-  const items: (Item | 'sep')[] = []
+  // 'colors': the event's colour swatches, one row of the menu.
+  const items: (Item | 'sep' | 'colors')[] = []
+  let calendarColor = ''
   if (menu.kind === 'event') {
     const e = menu.event
     const account = accounts.find((a) => a.id === e.accountId)
@@ -218,9 +245,12 @@ export function EventMenuHost(): React.JSX.Element | null {
           bus.emit('toast', { text: t('toast.copied', { title: name(e) }) })
         }
       },
-      'sep',
-      { id: 'delete', label: t('common.delete'), icon: <DeleteIcon />, danger: true, disabled: !editable, run: () => deleteEvent(e) }
+      'sep'
     )
+    // Not canEdit: an invitee may recolour its own copy too.
+    if (writable) items.push('colors', 'sep')
+    items.push({ id: 'delete', label: t('common.delete'), icon: <DeleteIcon />, danger: true, disabled: !editable, run: () => deleteEvent(e) })
+    calendarColor = eventColorOf({}, calendar, account)
   } else {
     const { slot, end } = menu
     const source = copied
@@ -238,8 +268,10 @@ export function EventMenuHost(): React.JSX.Element | null {
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>): void => {
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') return
     e.preventDefault()
-    const btns = [...(ref.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])]
-    const i = btns.indexOf(document.activeElement as HTMLButtonElement)
+    // The colour row is one stop (its checked swatch); ←/→ move inside it.
+    const btns = [...(ref.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled):not([role=menuitemradio]), [aria-checked=true]') ?? [])]
+    const active = document.activeElement
+    const i = btns.indexOf((active?.closest('.ev-colors')?.querySelector('[aria-checked=true]') ?? active) as HTMLButtonElement)
     const n = btns.length
     const next = e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : e.key === 'ArrowDown' ? (i + 1) % n : (i - 1 + n) % n
     btns[next]?.focus()
@@ -260,6 +292,19 @@ export function EventMenuHost(): React.JSX.Element | null {
       {items.map((it, i) =>
         it === 'sep' ? (
           <div key={`sep-${i}`} className="ev-menu-sep" role="separator" />
+        ) : it === 'colors' ? (
+          menu.kind === 'event' && (
+            <EventColors
+              key="colors"
+              menu
+              value={menu.event.colorId}
+              calendarColor={calendarColor}
+              onPick={(colorId) => {
+                setMenu(null)
+                recolor(menu.event, colorId)
+              }}
+            />
+          )
         ) : (
           <button
             key={it.id}

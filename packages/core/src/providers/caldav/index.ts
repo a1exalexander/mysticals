@@ -13,6 +13,7 @@ import {
 import type { Calendar, CaldavAccountInput, CalEvent, TimeRange } from '../../shared/types'
 import type { CalendarProvider, ProviderFactory } from '../types'
 import {
+  applyColor,
   applyDeleteFollowing,
   applyDeleteInstance,
   applyRespond,
@@ -203,6 +204,11 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
     async respond(event, status) {
       // The server performs RFC 6638 scheduling (iTIP REPLY to the organizer) on this PUT.
       await put(event, applyRespond(event.raw as CaldavRaw, ctx.email, status), 'Respond')
+      return reload(event.calendarId, (event.raw as CaldavRaw).href, event.id, event)
+    },
+
+    async setColor(event, colorId, scope) {
+      await put(event, applyColor(event.raw as CaldavRaw, colorId, scope), 'Set colour')
       return reload(event.calendarId, (event.raw as CaldavRaw).href, event.id, event)
     }
   }

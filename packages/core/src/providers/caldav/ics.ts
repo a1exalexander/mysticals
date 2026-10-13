@@ -1,7 +1,8 @@
 // Pure ICS parse/map/serialize logic for the CalDAV provider. No network here.
 import ICAL from 'ical.js'
-import type { Attendee, CalEvent, NewEventInput, PartStat, Recurrence, TimeRange } from '../../shared/types'
+import type { Attendee, CalEvent, ColorScope, NewEventInput, PartStat, Recurrence, TimeRange } from '../../shared/types'
 import { fromRRule, toRRule } from '../../logic/recurrence'
+import { colorIdFromCss, eventColor } from '../../logic/colors'
 
 /** Provider payload stored in CalEvent.raw. */
 export interface CaldavRaw {
@@ -119,6 +120,7 @@ export function parseEvents(ics: string, href: string, etag: string | undefined,
     const rid = recurrenceId?.toString()
     const raw: CaldavRaw = { href, ics, ...(rid ? { recurrenceId: rid } : {}) }
     const conference = conferenceOf(item.component)
+    const colorId = colorIdFromCss(item.component.getFirstPropertyValue('color'))
     return {
       id: rid ? `${href}#${rid}` : href,
       accountId: ctx.accountId,
@@ -130,6 +132,7 @@ export function parseEvents(ics: string, href: string, etag: string | undefined,
       location: item.location || undefined,
       description: item.description || undefined,
       ...(conference ? { conferenceUrl: conference } : {}),
+      ...(colorId ? { colorId } : {}),
       ...mapPeople(item.component, ctx.email),
       etag,
       raw,
@@ -183,6 +186,7 @@ export function buildIcs(uid: string, input: NewEventInput, email: string): stri
   setText(v, 'summary', input.title)
   setText(v, 'location', input.location)
   setText(v, 'description', input.description)
+  setText(v, 'color', eventColor(input.colorId)?.css)
   setAttendees(v, input.attendees ?? [], email)
   if (input.recurrence) setRule(v, input.recurrence, input.allDay)
   root.addSubcomponent(v)
@@ -316,12 +320,22 @@ function writeEdit(v: ICAL.Component, event: CalEvent, email: string, start: ICA
   setText(v, 'summary', event.title)
   setText(v, 'location', event.location)
   setText(v, 'description', event.description)
+  setText(v, 'color', eventColor(event.colorId)?.css)
   setAttendees(
     v,
     event.attendees.map((a) => a.email),
     email
   )
   bump(v)
+}
+
+/** Set ONLY the COLOR (RFC 7986) of the instance or the series; not a scheduling change, so no SEQUENCE bump. */
+export function applyColor(raw: CaldavRaw, colorId: string | null, scope: ColorScope): string {
+  const root = parse(raw.ics)
+  const v = scope === 'all' ? masterOf(root) : targetVevent(root, raw)
+  setText(v, 'color', eventColor(colorId ?? undefined)?.css)
+  touch(v)
+  return root.toString()
 }
 
 function bump(v: ICAL.Component): void {

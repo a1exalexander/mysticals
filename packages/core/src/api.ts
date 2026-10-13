@@ -6,6 +6,7 @@ import { queryEvents, type SyncEngine } from './sync/engine'
 import { caldavPreset, type AccountAdded } from './telemetry'
 import { conferenceUrlOf, type GEvent } from './providers/google/provider'
 import { fieldChanges, snap } from './logic/activity'
+import { EVENT_COLOR_IDS } from './logic/colors'
 
 export interface ApiDeps {
   verifyCaldav(input: CaldavAccountInput): Promise<{ email: string }>
@@ -56,7 +57,8 @@ const NewEvent = z
     location: text(1000).optional(),
     description: text(20000).optional(),
     attendees: z.array(z.email()).max(500).optional(),
-    recurrence: Recurrence.optional()
+    recurrence: Recurrence.optional(),
+    colorId: z.enum(EVENT_COLOR_IDS).optional()
   })
   .refine(ordered, 'end before start')
 
@@ -80,7 +82,8 @@ const EventEdit = EventRef.extend({
   description: text(20000).optional(),
   attendees: z.array(Attendee).max(500),
   // Absent keeps the series' rule; null stops repeating.
-  recurrence: Recurrence.nullish()
+  recurrence: Recurrence.nullish(),
+  colorId: z.enum(EVENT_COLOR_IDS).optional()
 }).refine(ordered, 'end before start')
 
 const LOOPBACK = new Set(['127.0.0.1', 'localhost'])
@@ -101,6 +104,8 @@ const AccountPatch = z.object({ label: text(200).min(1).optional(), color: color
 const RsvpStatus = z.enum(['accepted', 'declined', 'tentative'])
 // null too: the terminal daemon's JSON line protocol turns an omitted argument into null.
 const Scope = z.enum(['one', 'following', 'all']).nullish().transform((s) => s ?? 'one')
+const ColorScope = z.enum(['one', 'all']).nullish().transform((s) => s ?? 'one')
+const ColorId = z.enum(EVENT_COLOR_IDS).nullable()
 
 export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps): CoreApi {
   const account = (accountId: unknown) => {
@@ -237,12 +242,12 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
         const edit = EventEdit.parse(raw)
         const cached = writable(cachedEvent(edit))
         const how = cached.recurringEventId ? Scope.parse(scope) : 'one'
-        const { title, start, end, allDay, location, description, attendees, recurrence } = edit
+        const { title, start, end, allDay, location, description, attendees, recurrence, colorId } = edit
         if (recurrence !== undefined && cached.recurringEventId && how === 'one')
           throw new Error('The repeat rule belongs to the series: choose “This and following” or “All events”')
         const ev = await store
           .getProvider(cached.accountId)
-          .updateEvent({ ...cached, title, start, end, allDay, location, description, attendees, ...(recurrence !== undefined ? { recurrence } : {}) }, how)
+          .updateEvent({ ...cached, title, start, end, allDay, location, description, attendees, colorId, ...(recurrence !== undefined ? { recurrence } : {}) }, how)
         if (how === 'one') upsert(ev, cached.accountId, cached.calendarId)
         else {
           // The series' other instances moved or split; drop the stale ones until the sync below refills them.
@@ -267,6 +272,22 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
         const cached = cachedEvent(EventRef.parse(raw))
         const ev = await store.getProvider(cached.accountId).respond(cached, RsvpStatus.parse(status))
         upsert(ev, cached.accountId, cached.calendarId)
+        syncOne(cached.accountId)
+        return ev
+      },
+      // Not canEdit: an invitee may recolour its own copy too, as long as the calendar takes writes.
+      setColor: async (raw, colorId, scope) => {
+        const cached = writable(cachedEvent(EventRef.parse(raw)))
+        const how = cached.recurringEventId ? ColorScope.parse(scope) : 'one'
+        const ev = await store.getProvider(cached.accountId).setColor(cached, ColorId.parse(colorId), how)
+        if (how === 'one') upsert(ev, cached.accountId, cached.calendarId)
+        else {
+          const series = cached.recurringEventId
+          const colour = { colorId: ev.colorId }
+          applyLocal(cached.accountId, (events) =>
+            events.map((e) => (e.recurringEventId === series && e.calendarId === cached.calendarId ? { ...e, ...colour } : e))
+          )
+        }
         syncOne(cached.accountId)
         return ev
       }
@@ -379,6 +400,16 @@ export function withActivityLog(api: CoreApi, store: ActivityStore, onAction: (e
           { event: old && snap(old), status: status as PartStat },
           () => api.events.respond(raw, status),
           (ev) => ({ event: snap(ev) })
+        )
+      },
+      setColor: (raw, colorId, scope) => {
+        const old = cached(raw)
+        return run(
+          'event.color',
+          field(raw, 'accountId'),
+          { event: old && snap(old), scope: old?.recurringEventId ? (scope ?? 'one') : undefined },
+          () => api.events.setColor(raw, colorId, scope),
+          (ev) => ({ event: snap(ev), changes: old ? fieldChanges(old, ev) : undefined })
         )
       }
     }

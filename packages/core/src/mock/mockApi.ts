@@ -150,6 +150,11 @@ export function createMockApi(onChanged: (accountId: string) => void, onAction?:
         const r = await own(ev.accountId, ev.calendarId).respond(ev, status)
         onChanged(ev.accountId)
         return r
+      },
+      setColor: async (ev, colorId, scope) => {
+        const r = await own(ev.accountId, ev.calendarId).setColor(ev, colorId, scope ?? 'one')
+        onChanged(ev.accountId)
+        return r
       }
     },
     sync: { now: async () => {} }

@@ -5,6 +5,7 @@ import type { MenuCommand } from '@shared/ipc'
 import { useCalendarData } from '../hooks/useCalendarData'
 import { visibleEvents } from '@mysticals/core/logic/visible'
 import { canEdit } from '@mysticals/core/logic/details'
+import { eventColorOf } from '@mysticals/core/logic/colors'
 import { errorText } from '@mysticals/core/logic/editor'
 import { bus } from '../bus'
 import { nav, useNav, type DeskView } from './nav'
@@ -145,7 +146,7 @@ export function CalendarView(): React.JSX.Element {
   const colorOf = useMemo<ColorOf>(() => {
     const cal = new Map(calendars.map((c) => [`${c.accountId}/${c.id}`, c.color]))
     const acc = new Map(accounts.map((a) => [a.id, a.color]))
-    return (e) => cal.get(`${e.accountId}/${e.calendarId}`) ?? acc.get(e.accountId) ?? '#6272a4'
+    return (e) => eventColorOf(e, { color: cal.get(`${e.accountId}/${e.calendarId}`) }, { color: acc.get(e.accountId) })
   }, [accounts, calendars])
 
   useEffect(() => {

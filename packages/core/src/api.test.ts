@@ -145,6 +145,18 @@ describe('createApi isolation', () => {
     await expect(api.events.delete(holiday)).rejects.toThrow(/read-only/)
   })
 
+  it('setColor: an invitee may recolour its copy; read-only calendars and unknown colours are refused; logged', async () => {
+    const { api, providers, invite, onAction } = setup()
+    expect((await api.events.setColor(invite, '7')).colorId).toBe('7')
+    expect(providers.work.events.find((e) => e.id === 'inv-1')?.colorId).toBe('7')
+    expect(onAction).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'event.color', ok: true, changes: [{ field: 'colorId', to: '7' }] }))
+    await expect(api.events.setColor(invite, '12')).rejects.toThrow()
+    await expect(api.events.setColor(invite, '#ff0000')).rejects.toThrow()
+    const holiday = await providers.personal.createEvent('p-holidays', { ...newEvent, accountId: 'personal', calendarId: 'p-holidays' })
+    await expect(api.events.setColor(holiday, '1')).rejects.toThrow(/read-only/)
+    expect((await api.events.setColor(invite, null)).colorId).toBeUndefined()
+  })
+
   it('events.list filters by range and keeps hidden calendars (renderer filters them)', async () => {
     const { api, hidden } = setup()
     const range = { start: '2026-09-23T00:00:00Z', end: '2026-09-24T00:00:00Z' }

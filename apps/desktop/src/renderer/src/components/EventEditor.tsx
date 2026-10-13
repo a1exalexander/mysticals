@@ -8,6 +8,8 @@ import { RepeatField } from './ui/RepeatField'
 import { Select } from './ui/Select'
 import { useModal } from './ui/usePopover'
 import { extraEmail } from '@mysticals/core/logic/details'
+import { eventColor } from '@mysticals/core/logic/colors'
+import { EventColors } from './EventColors'
 import {
   applyForm, emptyForm, setAllDay, errorText, formFromEvent, formToInput, isEmail, moveStart, repeatChanged, soleId, splitEmails,
   withLoadedRepeat, writableAccounts, writableCalendars, type EventForm
@@ -173,7 +175,7 @@ export function EventEditorHost(): React.JSX.Element | null {
     setDraft('')
   }
   const calendar = calendars.find((c) => c.accountId === form.accountId && c.id === form.calendarId)
-  const cal = account?.color ?? 'var(--muted)'
+  const cal = eventColor(form.colorId)?.hex ?? account?.color ?? 'var(--muted)'
 
   return (
     <dialog
@@ -240,6 +242,13 @@ export function EventEditorHost(): React.JSX.Element | null {
               onChange={(calendarId) => set({ calendarId })}
             />
           )}
+
+          <label>{t('eventColor.label')}</label>
+          <EventColors
+            value={form.colorId}
+            calendarColor={calendar?.color ?? account?.color ?? 'var(--muted)'}
+            onPick={(colorId) => set({ colorId: colorId ?? undefined })}
+          />
 
           <label htmlFor="ed-allday">{t('editor.allDay')}</label>
           <label className="editor-switch">

@@ -1,0 +1,14 @@
+/* Event colour swatches (EventColors.tsx): in the right-click menu, the details popover and the editor. */
+.ev-colors { display: grid; grid-template-columns: repeat(6, 18px); gap: 6px 8px; padding: 4px 8px; }
+.ev-swatch {
+  width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%;
+  background: var(--sw); cursor: pointer;
+}
+/* The calendar's own colour: a ring, so it reads as "no colour of its own". */
+.ev-swatch.calendar { background: none; box-shadow: inset 0 0 0 2.5px var(--sw); }
+.ev-swatch:hover { filter: brightness(1.15); }
+.ev-swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ev-swatch[aria-checked='true'], .ev-swatch[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--surface-2), 0 0 0 3.5px var(--fg); }
+.ev-swatch.calendar[aria-checked='true'], .ev-swatch.calendar[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 2.5px var(--sw), 0 0 0 2px var(--surface-2), 0 0 0 3.5px var(--fg);
+}

@@ -92,6 +92,33 @@ describe('EventDetails', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('recolours with c, ←/→ and enter; an invite too; a series asks this one or all', async () => {
+    const { event, client } = await open('Sprint planning')
+    await t.press('c')
+    await t.waitFor('calendar colour')
+    await t.press(KEY.right, KEY.right, KEY.left)
+    await t.waitFor('lavender')
+    await t.press(KEY.enter)
+    expect(client.events.setColor).toHaveBeenCalledWith(event, '1', 'one')
+    await t.waitFor('c colour')
+    t.unmount()
+    const run = await open('Morning run')
+    await t.press('c', KEY.left, KEY.enter)
+    await t.waitFor('Recolour recurring event')
+    await t.press('3')
+    expect(run.client.events.setColor).toHaveBeenCalledWith(run.event, '11', 'all')
+  })
+
+  it('hides colour on read-only calendars; esc leaves the picker first', async () => {
+    await open('Holiday')
+    expect(t.lastFrame()).not.toContain('c colour')
+    t.unmount()
+    const { onClose } = await open('Dinner with friends')
+    await t.press('c', KEY.esc)
+    expect(onClose).not.toHaveBeenCalled()
+    expect(t.lastFrame()).toContain('c colour')
+  })
+
   it('hides edit/delete on read-only calendars and closes on esc', async () => {
     const { onClose, onEdit, client } = await open('Holiday')
     expect(t.lastFrame()).not.toContain('x delete')

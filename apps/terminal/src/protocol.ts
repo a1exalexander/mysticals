@@ -34,6 +34,7 @@ const methodSet: Record<Method, true> = {
   'events.update': true,
   'events.delete': true,
   'events.respond': true,
+  'events.setColor': true,
   'events.recurrence': true,
   'sync.now': true
 }

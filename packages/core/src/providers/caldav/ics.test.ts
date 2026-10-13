@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  applyDeleteFollowing, applyDeleteInstance, applyRespond, applySplitFollowing, applyUpdate, applyUpdateSeries, buildIcs, mapPartStat, parseEvents,
+  applyColor, applyDeleteFollowing, applyDeleteInstance, applyRespond, applySplitFollowing, applyUpdate, applyUpdateSeries, buildIcs, mapPartStat, parseEvents,
   recurrenceOf, type CaldavRaw
 } from './ics'
 
@@ -435,5 +435,27 @@ describe('repeat rules', () => {
     const single = applySplitFollowing({ ...evs[1], recurrence: null }, ctx.email, 'n2')!
     expect(single.next).not.toMatch(/RRULE|RECURRENCE-ID|EXDATE/)
     expect(starts(single.next, 'n')).toEqual(['2026-01-06T09:00'])
+  })
+})
+
+describe('applyColor', () => {
+  const parse = (ics: string) => parseEvents(ics, HREF, undefined, ctx, JAN)
+  const raw = (ics: string, recurrenceId?: string): CaldavRaw => ({ href: HREF, ics, ...(recurrenceId ? { recurrenceId } : {}) })
+
+  it('round-trips the palette name as COLOR, clears it with null, and ignores unknown names', () => {
+    const red = applyColor(raw(ALLDAY), '11', 'one')
+    expect(red).toContain('COLOR:red')
+    expect(red).not.toMatch(/SEQUENCE/)
+    expect(parse(red)[0].colorId).toBe('11')
+    expect(parse(applyColor(raw(red), null, 'one'))[0].colorId).toBeUndefined()
+    expect(parse(ALLDAY.replace('SUMMARY:Trip', 'COLOR:PapayaWhip'))[0].colorId).toBeUndefined()
+  })
+
+  it('"one" recolours just the instance (an override); "all" the series', () => {
+    const one = parse(applyColor(raw(DAILY, '2026-01-06T09:00:00Z'), '5', 'one'))
+    expect(one.map((e) => e.colorId)).toEqual([undefined, '5', undefined, undefined])
+    const all = parse(applyColor(raw(DAILY, '2026-01-06T09:00:00Z'), '5', 'all'))
+    // The moved instance is an override with its own (no) colour.
+    expect(all.map((e) => e.colorId)).toEqual(['5', '5', undefined, '5'])
   })
 })

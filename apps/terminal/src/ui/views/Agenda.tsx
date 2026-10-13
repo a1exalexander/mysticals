@@ -28,16 +28,17 @@ import { AGENDA_DAYS, eventKey, useDirectory, type ViewProps } from '../hooks'
 import { Clickable } from '../mouse'
 import { useScroll, WHEEL_STEP } from '../scroll'
 import { ansiOf, C } from '../theme'
+import { eventColorOf } from '@mysticals/core/logic/colors'
 import { duration } from '../screens/EventDetails'
 
-/** Event color (its calendar's, else its account's, as ANSI: same fallback chain as the desktop app), account and calendar names. */
+/** Event color (its own, else its calendar's, else its account's, as ANSI: same fallback chain as the desktop app), account and calendar names. */
 export function useOwnerOf(): { colorOf(e: CalEvent): string; accountOf(e: CalEvent): string; calendarOf(e: CalEvent): string } {
   const { accounts, calendars } = useDirectory()
   return useMemo(() => {
     const cal = new Map(calendars.map((c) => [`${c.accountId}/${c.id}`, c]))
     const acc = new Map(accounts.map((a) => [a.id, a]))
     return {
-      colorOf: (e) => ansiOf(cal.get(`${e.accountId}/${e.calendarId}`)?.color ?? acc.get(e.accountId)?.color ?? ''),
+      colorOf: (e) => ansiOf(eventColorOf(e, cal.get(`${e.accountId}/${e.calendarId}`), acc.get(e.accountId))),
       accountOf: (e) => acc.get(e.accountId)?.label ?? e.accountId,
       calendarOf: (e) => cal.get(`${e.accountId}/${e.calendarId}`)?.name ?? ''
     }

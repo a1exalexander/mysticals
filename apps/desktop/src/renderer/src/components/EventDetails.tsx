@@ -4,6 +4,7 @@ import type { CalEvent, PartStat } from '@shared/types'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
 import { deleteEvent, name } from './EventMenu'
+import { eventColorOf } from '@mysticals/core/logic/colors'
 import { canEdit, cleanNotes, formatWhen, isHtml, linkify, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
 import { eventBounds, eventKey } from '@mysticals/core/logic/layout'
@@ -131,6 +132,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
   const account = accounts.find((a) => a.id === event.accountId)
   const calendar = calendars.find((c) => c.accountId === event.accountId && c.id === event.calendarId)
   const editable = canEdit(event, account, calendar)
+  // Any copy on a writable calendar takes a colour, an invite's too.
   const links = eventLinks(event)
   const where = locationText(event.location)
   const owner = ownerLine(calendar?.name ?? t('editor.calendar'), account?.label ?? event.accountId, account?.email)
@@ -166,7 +168,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
         data-testid="details"
         role="dialog"
         aria-label={name(event)}
-        style={{ '--cal': calendar?.color ?? account?.color, left: pos?.left ?? -9999, top: pos?.top ?? 0 } as React.CSSProperties}
+        style={{ '--cal': eventColorOf(event, calendar, account), left: pos?.left ?? -9999, top: pos?.top ?? 0 } as React.CSSProperties}
       >
         {gone && (
           <div className="details-gone" role="alert" data-testid="details-gone">
