@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, screen, shell, type BrowserWindowConstructorOptions, type Rectangle } from 'electron'
 import { IPC, type ReminderMeeting } from '@shared/ipc'
-import { loadRenderer, lockDown, themeBg, webPreferences } from './window'
+import { E2E, loadRenderer, lockDown, showWindow, themeBg, webPreferences } from './window'
 
 /** Native blur behind the screen. Linux has none, so it keeps a solid window. */
 const BACKDROP: Partial<Record<NodeJS.Platform, BrowserWindowConstructorOptions>> = {
@@ -51,10 +51,12 @@ export function startReminderScreen(closed: () => void): void {
 /** Shows the screen and gives it focus, once. */
 function reveal(w: BrowserWindow): void {
   if (w !== win || w.isVisible()) return
-  w.show()
+  showWindow(w)
   // macOS: focus() alone leaves another app frontmost, and Esc/Backspace go there.
-  if (process.platform === 'darwin') app.focus({ steal: true })
-  w.focus()
+  if (!E2E) {
+    if (process.platform === 'darwin') app.focus({ steal: true })
+    w.focus()
+  }
   shownAt = Date.now()
 }
 

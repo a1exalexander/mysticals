@@ -127,6 +127,8 @@ export async function runDaemon(): Promise<void> {
   let broadcast = (_accountId: string): void => {}
   let push = (_msg: Push): void => {}
   let sync: SyncEngine | undefined
+  // Syncs wait for the master key to load off the event loop (a Keychain prompt must not freeze every TUI).
+  let keyReady = Promise.resolve()
   let api: ApiImpl
   if (isMock()) {
     api = createMockApi((id) => broadcast(id))
@@ -136,7 +138,9 @@ export async function runDaemon(): Promise<void> {
     // ponytail: goes to every TUI, so two concurrent sign-ins may see each other's URL; target the caller if that bites.
     const signInBrowser = (url: string): Promise<void> => (push({ event: 'authUrl', url }), openUrl(url).catch(() => {}))
     const factories = { caldav: createCaldavProvider, google: createGoogleProvider }
-    const store = new AccountStore(home, factories, createCrypto(undefined, home))
+    const secrets = createCrypto(undefined, home)
+    keyReady = secrets.preload()
+    const store = new AccountStore(home, factories, secrets)
     sync = new SyncEngine(store, (id) => broadcast(id), {
       triggers: wakeTriggers(),
       onEvents: (id, notes) => notify(store, id, notes),
@@ -160,7 +164,7 @@ export async function runDaemon(): Promise<void> {
     process.exit(0)
   }
   try {
-    daemon = await serve(api, socketPath(home), { onIdle: () => void shutdown(), onConnect: () => void sync?.syncNow() })
+    daemon = await serve(api, socketPath(home), { onIdle: () => void shutdown(), onConnect: () => void keyReady.then(() => sync?.syncNow()) })
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === 'EADDRINUSE') process.exit(0) // another daemon won the race
     throw e
@@ -169,5 +173,6 @@ export async function runDaemon(): Promise<void> {
   push = daemon.push
   process.on('SIGTERM', () => void shutdown())
   process.on('SIGINT', () => void shutdown())
+  await keyReady
   sync?.start()
 }

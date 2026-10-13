@@ -26,8 +26,11 @@ class FakeStore {
   readCache(id: string): AccountCache {
     return this.caches.get(id) ?? { calendars: [], events: [] }
   }
-  async writeCache(id: string, cache: AccountCache): Promise<void> {
+  async writeCache(id: string, cache: AccountCache): Promise<boolean> {
+    const before = this.caches.get(id)
     this.caches.set(id, structuredClone(cache))
+    // Like the store: calendars and events only, syncedAt alone is no change.
+    return !before || JSON.stringify([before.calendars, before.events]) !== JSON.stringify([cache.calendars, cache.events])
   }
   async update(id: string, patch: { error?: string }): Promise<Account> {
     const a = this.accounts.find((x) => x.id === id)!

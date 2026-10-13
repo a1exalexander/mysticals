@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from 'fs'
+import { randomUUID } from 'crypto'
+import { readFileSync, renameSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
 import type { LocaleSetting } from '@mysticals/core/i18n'
@@ -22,16 +23,39 @@ export interface Prefs {
 
 const prefsFile = (dir = app.getPath('userData')): string => join(dir, 'prefs.json')
 
-export function readPrefs(dir?: string): Prefs {
+/** Writes to a temp file then renames, so a crash mid-write never leaves a truncated file (lost settings). */
+export function writeFileAtomic(file: string, data: string): void {
+  const tmp = `${file}.${randomUUID()}.tmp`
+  writeFileSync(tmp, data)
   try {
-    const v = JSON.parse(readFileSync(prefsFile(dir), 'utf8'))
-    return v && typeof v === 'object' ? v : {}
-  } catch {
-    return {}
+    renameSync(tmp, file)
+  } catch (e) {
+    rmSync(tmp, { force: true }) // Windows: EPERM while another process holds `file`
+    throw e
   }
+}
+
+/** Parsed prefs.json per file: read once, then kept up to date by writePrefs (the reminder tick reads it often). */
+const cache = new Map<string, Prefs>()
+
+export function readPrefs(dir?: string): Prefs {
+  const file = prefsFile(dir)
+  let prefs = cache.get(file)
+  if (!prefs) {
+    try {
+      const v = JSON.parse(readFileSync(file, 'utf8'))
+      prefs = v && typeof v === 'object' ? v : {}
+    } catch {
+      prefs = {}
+    }
+    cache.set(file, prefs!)
+  }
+  return { ...prefs }
 }
 
 /** Merges `patch` into the stored prefs, so one setting never wipes another. */
 export function writePrefs(patch: Prefs, dir?: string): void {
-  writeFileSync(prefsFile(dir), JSON.stringify({ ...readPrefs(dir), ...patch }))
+  const next = { ...readPrefs(dir), ...patch }
+  writeFileAtomic(prefsFile(dir), JSON.stringify(next))
+  cache.set(prefsFile(dir), next)
 }

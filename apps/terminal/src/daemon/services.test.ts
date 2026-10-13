@@ -4,7 +4,7 @@ import { join } from 'path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AccountStore } from '@mysticals/core/accounts/store'
 import type { Note } from '@mysticals/core/sync/notify'
-import { createCrypto, dpapi, platformKeys, secretTool, type KeyStore, type Run } from './crypto'
+import { createCrypto, dpapi, keychain, platformKeys, secretTool, spawnAsync, type KeyStore, type Run, type RunAsync } from './crypto'
 import { googleConfig, openCommand } from './google'
 import { bannerCommand, notify } from './notify'
 import { wakeTriggers } from './triggers'
@@ -67,6 +67,30 @@ const fakeRun = (reply: (cmd: string, args: string[], input?: string) => Partial
   }
   return { run, calls }
 }
+/** The same fake, as the async runner `load` uses. */
+const asyncOf = (run: Run): RunAsync => async (cmd, args, opts) => run(cmd, args, opts)
+
+describe('crypto.preload', () => {
+  it('loads the existing key without the sync path, and never creates one', async () => {
+    const key = Buffer.alloc(32, 7)
+    const get = vi.fn((): Buffer | undefined => key)
+    const c = createCrypto({ get, set: vi.fn(), load: async () => key })
+    await c.preload()
+    expect(createCrypto({ get: () => key, set: vi.fn() }).decrypt(c.encrypt('x'))).toBe('x')
+    expect(get).not.toHaveBeenCalled() // the blocking get never ran
+
+    const set = vi.fn()
+    const empty = createCrypto({ get: () => undefined, set, load: async () => undefined })
+    await empty.preload()
+    expect(set).not.toHaveBeenCalled()
+  })
+
+  it('swallows a failed load; the sync path reports it', async () => {
+    const c = createCrypto({ get: () => { throw new Error('Keychain read failed: locked') }, set: vi.fn(), load: async () => { throw new Error('locked') } })
+    await expect(c.preload()).resolves.toBeUndefined()
+    expect(() => c.encrypt('x')).toThrow('Keychain read failed: locked')
+  })
+})
 
 describe('key stores', () => {
   const key = Buffer.alloc(32, 7)
@@ -104,6 +128,38 @@ describe('key stores', () => {
     expect(readFileSync(file, 'utf8')).not.toBe(key.toString('base64'))
     expect(s.get()?.equals(key)).toBe(true)
     expect(calls.map((c) => c.args.at(-1))).toEqual([expect.stringContaining('::Protect('), expect.stringContaining('::Unprotect(')])
+  })
+
+  it('load (async) reads like get: missing is undefined, outages throw, keys decode', async () => {
+    const b64 = `${key.toString('base64')}\n`
+    const none = fakeRun(() => ({ status: 1 }))
+    expect(await secretTool('svc', none.run, asyncOf(none.run)).load!()).toBeUndefined()
+    const down = fakeRun(() => ({ status: 1, stderr: 'Cannot autolaunch D-Bus' }))
+    await expect(secretTool('svc', down.run, asyncOf(down.run)).load!()).rejects.toThrow('Secret Service unavailable')
+    const found = fakeRun(() => ({ stdout: b64 }))
+    expect((await secretTool('svc', found.run, asyncOf(found.run)).load!())?.equals(key)).toBe(true)
+
+    const missing = fakeRun(() => ({ status: 44 }))
+    expect(await keychain('svc', asyncOf(missing.run)).load!()).toBeUndefined()
+    const locked = fakeRun(() => ({ status: 51, stderr: 'User interaction is not allowed.' }))
+    await expect(keychain('svc', asyncOf(locked.run)).load!()).rejects.toThrow('Keychain read failed: User interaction is not allowed.')
+    expect((await keychain('svc', asyncOf(found.run)).load!())?.equals(key)).toBe(true)
+
+    const file = join(mkdtempSync(join(tmpdir(), 'mysticals-dpapi-')), 'master.key')
+    const seal = fakeRun((_, __, input = '') => ({ stdout: [...input].reverse().join('') }))
+    const d = dpapi(file, seal.run, asyncOf(seal.run))
+    expect(await d.load!()).toBeUndefined()
+    d.set(key)
+    expect((await d.load!())?.equals(key)).toBe(true)
+  })
+
+  it('spawnAsync collects stdout/stderr, feeds stdin and reports the exit code', async () => {
+    const opts = { encoding: 'utf8', timeout: 10_000, windowsHide: true } as const
+    const echo = 'process.stdin.pipe(process.stdout); process.stderr.write("e"); process.exitCode = 3'
+    expect(await spawnAsync(process.execPath, ['-e', echo], { ...opts, input: 'hi' })).toEqual({ status: 3, stdout: 'hi', stderr: 'e' })
+    const missing = await spawnAsync('mysticals-no-such-binary', [], opts)
+    expect(missing.status).toBeNull()
+    expect(missing.error?.message).toContain('ENOENT')
   })
 
   it('has a store on macOS, Linux and Windows only', () => {

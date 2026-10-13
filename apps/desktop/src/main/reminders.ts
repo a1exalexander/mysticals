@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'fs'
+import { readFileSync } from 'fs'
 import { join } from 'path'
 import { app, ipcMain, Notification, powerMonitor, shell } from 'electron'
 import { IPC, type Api, type ReminderMeeting } from '@shared/ipc'
@@ -11,7 +11,7 @@ import { eventColorOf } from '@mysticals/core/logic/colors'
 import { t } from '@mysticals/core/i18n'
 import { currentLocale } from './locale'
 import { hour12 } from './clock'
-import { readPrefs, writePrefs } from './prefs'
+import { readPrefs, writeFileAtomic, writePrefs } from './prefs'
 import { keepSpareScreen, showReminderScreen, startReminderScreen } from './reminderWindow'
 import { playSound, reminderSound, warmSound } from './sound'
 
@@ -62,7 +62,8 @@ const banners = new Set<Notification>()
  * so synced changes and moved events need no re-arming. Muted accounts, hidden calendars, declined and all-day events stay
  * silent.
  */
-export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts'>, showMain: () => void, log?: (e: LogEntry) => void): void {
+/** Starts the reminder ticks; returns a stop for quit. */
+export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts'>, showMain: () => void, log?: (e: LogEntry) => void): () => void {
   ipcMain.handle(IPC.remindersGet, reminderMin)
   ipcMain.handle(IPC.remindersSet, (_e, min: unknown) => {
     if (!isReminderMin(min)) throw new Error(`Invalid reminder: ${String(min)}`)
@@ -104,7 +105,7 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts
   const sent = loadReminded(readJson(sentFile), Date.now())
   const saveSent = (): void => {
     try {
-      writeFileSync(sentFile, JSON.stringify(Object.fromEntries(sent)))
+      writeFileAtomic(sentFile, JSON.stringify(Object.fromEntries(sent)))
     } catch (e) {
       console.error('saving reminded keys failed', e)
     }
@@ -174,8 +175,13 @@ export function startReminders(api: Pick<Api, 'events' | 'calendars' | 'accounts
     n.show()
   }
 
-  setInterval(() => void tick(), TICK_MS)
+  const timer = setInterval(() => void tick(), TICK_MS)
   // Timers stall while asleep: catch up right after wake (the grace window keeps just-started events).
-  powerMonitor.on('resume', () => void tick())
+  const onResume = (): void => void tick()
+  powerMonitor.on('resume', onResume)
   void tick()
+  return () => {
+    clearInterval(timer)
+    powerMonitor.off('resume', onResume)
+  }
 }

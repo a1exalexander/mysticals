@@ -1,8 +1,8 @@
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Credentials } from '../shared/types'
+import type { CalEvent, Credentials } from '../shared/types'
 import type { ProviderContext, ProviderFactory } from '../providers/types'
 import { MockProvider } from '../mock/MockProvider'
 import { AccountStore, type SecretCrypto } from './store'
@@ -200,6 +200,8 @@ describe('AccountStore corrupt files', () => {
     const { work } = await addBoth()
     await store.setCalendarVisible(work.id, 'c1', false)
     writeFileSync(join(accDir(work.id), 'prefs.json'), '{"hidden": [')
+    // Prefs are cached once read: a store opened after the corruption reads it.
+    store = new AccountStore(dir, { caldav: factory(), google: factory() }, fakeCrypto)
     expect(store.hiddenCalendars(work.id)).toEqual([])
     await store.setCalendarVisible(work.id, 'c2', false)
     expect(store.hiddenCalendars(work.id)).toEqual(['c2'])
@@ -213,5 +215,46 @@ describe('AccountStore corrupt files', () => {
     writeFileSync(file, '{}')
     expect(() => new AccountStore(dir, { caldav: factory(), google: factory() }, fakeCrypto)).toThrow(/not a list of accounts/)
     expect(readFileSync(file, 'utf8')).toBe('{}')
+  })
+})
+
+describe('AccountStore cache writes', () => {
+  it('reports whether calendars or events changed and skips rewriting an unchanged cache', async () => {
+    const { work } = await addBoth()
+    const file = join(accDir(work.id), 'cache.json')
+    const cache = { calendars: [], events: [], syncedAt: '2026-09-23T12:00:00.000Z' }
+    expect(await store.writeCache(work.id, cache)).toBe(true)
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(cache) // same file format as JSON.stringify(cache)
+    const mtime = statSync(file).mtimeMs
+    expect(await store.writeCache(work.id, { ...cache, syncedAt: '2026-09-23T12:02:00.000Z' })).toBe(false)
+    expect(statSync(file).mtimeMs).toBe(mtime)
+    expect(store.readCache(work.id).syncedAt).toBe('2026-09-23T12:02:00.000Z') // memory has the latest pass
+    const changed = { ...cache, calendars: [{ id: 'c', accountId: work.id, name: 'C', color: '#000', readOnly: false }] }
+    expect(await store.writeCache(work.id, changed)).toBe(true)
+  })
+
+  it('after a local edit, a pass matching the last write still counts as a change (memory reverts, UI must hear)', async () => {
+    const { work } = await addBoth()
+    const cache = { calendars: [], events: [], syncedAt: '2026-09-23T12:00:00.000Z' }
+    await store.writeCache(work.id, cache)
+    store.patchCache(work.id, (c) => ({ ...c, events: [{ id: 'local' } as CalEvent] }))
+    expect(await store.writeCache(work.id, cache)).toBe(true)
+    expect(store.readCache(work.id).events).toEqual([])
+  })
+
+  it("one account's writes don't wait for another's", async () => {
+    const { work, personal } = await addBoth()
+    let release!: () => void
+    const gate = new Promise<void>((r) => (release = r))
+    // Hold work's queue, like a big cache write in progress.
+    const held = (store as unknown as { serial(id: string, fn: () => Promise<void>): Promise<void> }).serial(work.id, () => gate)
+    let workDone = false
+    const workUpdate = store.update(work.id, { label: 'Job' }).then(() => (workDone = true))
+    await store.update(personal.id, { label: 'Home' }) // would hang behind work's queue if it were shared
+    expect(store.get(personal.id)?.label).toBe('Home')
+    expect(workDone).toBe(false)
+    release()
+    await Promise.all([held, workUpdate])
+    expect(store.get(work.id)?.label).toBe('Job')
   })
 })
