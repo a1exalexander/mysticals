@@ -64,8 +64,10 @@ describe('event colours', () => {
       const [L, C, h] = toLch(hex(c))
       const ink = fromLch(Math.min(n('ev-lmax'), Math.max(n('ev-lmin'), L)), Math.min(C, n('ev-cmax')), h)
       // Solid-fill themes take the fill straight from the colour (see .ev --tint); the rest mix the ink into the canvas.
+      const deg = ((h * 180) / Math.PI + 360) % 360
+      const lmin = n('ev-tint-lmin') + (n('ev-tint-ylift') || 0) * Math.min(1, Math.max(0, (24 - Math.abs(deg - 92)) / 12))
       const tint = v['ev-tint-l']
-        ? fromLch(Math.min(n('ev-tint-l'), Math.max(n('ev-tint-lmin'), L)), Math.min(C, n('ev-tint-cmax')), h)
+        ? fromLch(Math.min(n('ev-tint-l'), Math.max(lmin, L)), Math.min(C, n('ev-tint-cmax')), h)
         : mix(ink, bg, n('ev-mix') / 100)
       const text = fromLch(n('ev-text-l'), Math.min(C, n('ev-text-cmax'), n('ev-cmax')), h)
       const bar = contrast(ink, bg), title = contrast(text, tint)

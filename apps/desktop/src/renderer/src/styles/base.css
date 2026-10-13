@@ -243,7 +243,7 @@
   --ev-text-l: 0.31;
   --ev-text-cmax: 0.22;
 }
-:root[data-theme='bubble'] { --shadow: 150 100 190; --shadow-k: 0.3; --ev-clash: 1; --ev-clash-h: 345; }
+:root[data-theme='bubble'] { --shadow: 150 100 190; --shadow-k: 0.3; --ev-clash: 1; --ev-clash-h: 345; --ev-tint-ylift: 0.12; }
 :root[data-theme='toon'] { --shadow: 43 33 64; --shadow-k: 0.5; --ev-clash: 1; --ev-clash-h: 96; }
 :root[data-theme='cloud'] { --shadow: 40 130 145; --shadow-k: 0.28; --ev-clash: 1; --ev-clash-h: 197; }
 /* Solid event fills (see .ev): lightness band and chroma cap of the fill. Candy themes: bright candy fills whose
@@ -540,10 +540,12 @@ body[data-dragging='col-resize'] .app { transition: none; }
 }
 /* Solid-fill themes: the fill comes straight from the event's colour. Mixing the ink into a tinted canvas greys it.
    Pending invites and drag previews sit on that fill too, so their dark titles stay legible on dark canvases; the month
-   grid's preview keeps its own background (later, same specificity) since its text is --fg. */
+   grid's preview keeps its own background (later, same specificity) since its text is --fg. --ev-tint-ylift raises the
+   floor for yellows (full within 12° of h 92, none by 24°): on pink Bubblegum a mid-lightness yellow reads as mustard. */
 :root:is([data-theme='bubble'], [data-theme='toon'], [data-theme='cloud'], [data-theme='dracula'], [data-theme='tokyo'],
   [data-theme='catppuccin'], [data-theme='vscode']) .ev {
-  --tint: oklch(from var(--c) clamp(var(--ev-tint-lmin), l, var(--ev-tint-l)) min(c, var(--ev-tint-cmax)) h);
+  --tint: oklch(from var(--c) clamp(calc(var(--ev-tint-lmin) + var(--ev-tint-ylift, 0) * clamp(0, (24 - abs(h - 92)) / 12, 1)),
+    l, var(--ev-tint-l)) min(c, var(--ev-tint-cmax)) h);
 }
 :root:is([data-theme='bubble'], [data-theme='toon'], [data-theme='cloud'], [data-theme='dracula'], [data-theme='tokyo'],
   [data-theme='catppuccin'], [data-theme='vscode']) :is(.ev.is-pending, .ev-preview) { background-color: var(--tint); }
