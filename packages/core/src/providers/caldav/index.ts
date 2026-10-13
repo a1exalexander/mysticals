@@ -120,6 +120,10 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
     return conn
   }
 
+  // Read by listEvents: the engine calls listCalendars right before it every pass.
+  let ctags = new Map<string, string | undefined>()
+  const memo = new Map<string, { ctag: string; fetchedAt: number; events: CalEvent[] }>()
+
   const mapCtx = (calendarId: string) => ({ accountId: ctx.accountId, calendarId, email: ctx.email })
 
   /**
@@ -147,16 +151,26 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
   const provider: CalendarProvider = {
     async listCalendars() {
       const c = await getConn()
-      return (await listVeventCalendars(c)).map((cal) => toCalendar(cal, ctx.accountId))
+      const cals = await listVeventCalendars(c)
+      ctags = new Map(cals.map((cal) => [cal.url, cal.ctag]))
+      return cals.map((cal) => toCalendar(cal, ctx.accountId))
     },
 
     async listEvents(calendarId, range) {
+      const ctag = ctags.get(calendarId)
+      const hit = memo.get(calendarId)
+      // ponytail: an unchanged ctag reuses events fetched for an older range; window edges slide at most a day, the daily refetch keeps it moving. RFC 6578 sync-collection if that's not enough.
+      if (ctag && hit?.ctag === ctag && Date.now() - hit.fetchedAt < DAY) return hit.events
       const { headers } = await getConn()
       const objs = await fetchCalendarObjects({ calendar: { url: calendarId }, timeRange: range, headers, urlFilter: () => true, fetch: davFetch })
-      return objs.flatMap((o) => (o.data ? parseEvents(o.data, o.url, o.etag, mapCtx(calendarId), range) : []))
+      const events = objs.flatMap((o) => (o.data ? parseEvents(o.data, o.url, o.etag, mapCtx(calendarId), range) : []))
+      if (ctag) memo.set(calendarId, { ctag, fetchedAt: Date.now(), events })
+      else memo.delete(calendarId)
+      return events
     },
 
     async createEvent(calendarId, input) {
+      memo.delete(calendarId)
       const { headers } = await getConn()
       const uid = randomUUID()
       const filename = `${uid}.ics`
@@ -167,6 +181,7 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
     },
 
     async updateEvent(event, scope = 'one') {
+      memo.delete(event.calendarId)
       const raw = event.raw as CaldavRaw
       if (!raw.recurrenceId || scope === 'one') {
         await put(event, applyUpdate(event, ctx.email), 'Update event')
@@ -190,6 +205,7 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
     },
 
     async deleteEvent(event, scope = 'one') {
+      memo.delete(event.calendarId)
       const raw = event.raw as CaldavRaw
       const rest = !raw.recurrenceId || scope === 'all' ? null : scope === 'following' ? applyDeleteFollowing(raw) : applyDeleteInstance(raw)
       if (rest) return put(event, rest, 'Delete event')
@@ -202,12 +218,14 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
     },
 
     async respond(event, status) {
+      memo.delete(event.calendarId)
       // The server performs RFC 6638 scheduling (iTIP REPLY to the organizer) on this PUT.
       await put(event, applyRespond(event.raw as CaldavRaw, ctx.email, status), 'Respond')
       return reload(event.calendarId, (event.raw as CaldavRaw).href, event.id, event)
     },
 
     async setColor(event, colorId, scope) {
+      memo.delete(event.calendarId)
       await put(event, applyColor(event.raw as CaldavRaw, colorId, scope), 'Set colour')
       return reload(event.calendarId, (event.raw as CaldavRaw).href, event.id, event)
     }
