@@ -127,24 +127,24 @@
   --red: #d9594c;
   --yellow: #d2d98a;
 }
-/* Bubblegum: Chupa Chups wrapper, hot pink and candy blue on a Cloud-blue sidebar, ink outlines, lemon hovers. */
+/* Bubblegum: pastel marshmallow pinks swirled with Cloud's sky blues (pink canvas, blue chrome), deep bubblegum today. */
 :root[data-theme='bubble'] {
-  --bg: #fff9fc;
-  --surface: #dcf5ff;
+  --bg: #fff5fa;
+  --surface: #eaf6ff;
   --surface-2: #ffffff;
-  --hover: #fff0b0;
-  --line: #f2d8e4;
-  --line-strong: #2a1640;
-  --fg: #2a1640;
-  --muted: #6a4a7e;
-  --faint: #d3b8d8;
-  --accent: #c8006a;
-  --pink: #0062c4;
-  --green: #0a7a52;
-  --cyan: #0d6e9e;
-  --orange: #a83f00;
-  --red: #c8102e;
-  --yellow: #ffbf00;
+  --hover: #ffe3f1;
+  --line: #f3d9ea;
+  --line-strong: #cfd8f2;
+  --fg: #3d2f4d;
+  --muted: #736292;
+  --faint: #d6cdef;
+  --accent: #c92d7b;
+  --pink: #d0246c;
+  --green: #2a7f5f;
+  --cyan: #3d9fe0;
+  --orange: #b35134;
+  --red: #e04468;
+  --yellow: #e6ae3a;
 }
 /* Cartoon: cream paper, bold ink outlines, candy colours. */
 :root[data-theme='toon'] {
@@ -243,9 +243,9 @@
   --ev-text-l: 0.31;
   --ev-text-cmax: 0.22;
 }
-:root[data-theme='bubble'] { --shadow: 42 22 64; --shadow-k: 0.45; --ev-clash: 1; --ev-clash-h: 345; }
-:root[data-theme='toon'] { --shadow: 43 33 64; --shadow-k: 0.5; --ev-clash: 1; --ev-clash-h: 96; }
-:root[data-theme='cloud'] { --shadow: 40 130 145; --shadow-k: 0.28; --ev-clash: 1; --ev-clash-h: 197; }
+:root[data-theme='bubble'] { --shadow: 150 100 190; --shadow-k: 0.3; --ev-clash: 1; --ev-clash-h: 345; --ev-tint-l: 0.9; --ev-tint-cmax: 0.1; }
+:root[data-theme='toon'] { --shadow: 43 33 64; --shadow-k: 0.5; --ev-clash: 1; --ev-clash-h: 96; --ev-tint-l: 0.9; --ev-tint-cmax: 0.1; }
+:root[data-theme='cloud'] { --shadow: 40 130 145; --shadow-k: 0.28; --ev-clash: 1; --ev-clash-h: 197; --ev-tint-l: 0.9; --ev-tint-cmax: 0.1; }
 :root[data-theme='light'] { --shadow: 0 0 0; --shadow-k: 0.12; --ev-cmax: 0.09; }
 /* Monochrome themes: event colours keep their hue but only as a hint. */
 :root:is([data-theme='amber'], [data-theme='matrix']) { --ev-cmax: 0.11; }
@@ -515,6 +515,10 @@ body[data-dragging='col-resize'] .app { transition: none; }
   background: var(--tint);
   border-radius: 0; overflow: hidden; font-size: 11px; line-height: 14px;
 }
+/* Candy themes: a pastel fill straight from the event's hue. Mixing a dark ink into a tinted canvas greys it. */
+:root:is([data-theme='bubble'], [data-theme='toon'], [data-theme='cloud']) .ev {
+  --tint: oklch(from var(--c) var(--ev-tint-l) min(c, var(--ev-tint-cmax)) h);
+}
 .ev { animation: fade-in 140ms ease-out; }
 .ev-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ev.is-pending {
@@ -681,6 +685,8 @@ body[data-dragging='col-resize'] .app { transition: none; }
   background: var(--surface); border-top: 1px solid var(--line);
   font: 11px/23px var(--mono); color: var(--muted); white-space: nowrap;
 }
+/* Bubblegum: a pink bubble along the bottom, not Cloud's blue chrome. Text darkened to stay legible on the pink. */
+:root[data-theme='bubble'] .statusbar { --surface: #ffd6eb; --line: #f6b8d6; --hover: #ffc4e1; --muted: #61517b; }
 .sbar-mode {
   flex: none; padding: 0 10px; background: var(--accent); color: var(--on-accent);
   font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;

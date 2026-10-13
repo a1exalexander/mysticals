@@ -63,7 +63,8 @@ describe('event colours', () => {
     const bad = COLOURS.flatMap((c) => {
       const [L, C, h] = toLch(hex(c))
       const ink = fromLch(Math.min(n('ev-lmax'), Math.max(n('ev-lmin'), L)), Math.min(C, n('ev-cmax')), h)
-      const tint = mix(ink, bg, n('ev-mix') / 100)
+      // Candy themes fill straight from the hue (see .ev --tint); the rest mix the ink into the canvas.
+      const tint = v['ev-tint-l'] ? fromLch(n('ev-tint-l'), Math.min(C, n('ev-tint-cmax')), h) : mix(ink, bg, n('ev-mix') / 100)
       const text = fromLch(n('ev-text-l'), Math.min(C, n('ev-text-cmax'), n('ev-cmax')), h)
       const bar = contrast(ink, bg), title = contrast(text, tint)
       return bar >= 3 && title >= 4.5 ? [] : [`${c} bar ${bar.toFixed(2)} title ${title.toFixed(2)}`]

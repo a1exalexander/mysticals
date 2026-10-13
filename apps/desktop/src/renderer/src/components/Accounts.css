@@ -13,6 +13,8 @@
   -webkit-app-region: no-drag;
   animation: acc-drop 0.16s ease-out;
 }
+/* Candy themes: --surface is the coloured chrome (blue, yellow, cyan); panels inside settings get a neutral wash. */
+:root:is([data-theme='bubble'], [data-theme='toon'], [data-theme='cloud']) .acc-sheet { --surface: color-mix(in srgb, var(--fg) 3%, var(--surface-2)); }
 .acc-sheet::backdrop { background: color-mix(in srgb, var(--bg) 60%, transparent); }
 @keyframes acc-drop { from { transform: translateY(-8px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .acc-sheet { animation: none; } }

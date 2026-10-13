@@ -1,4 +1,4 @@
-.details { border-radius: 0; line-height: 1.45; }
+.details { line-height: 1.45; }
 .details-head { display: flex; align-items: center; gap: 8px; }
 .details-head h2 { margin: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
 /* Focus lands here on open (for screen readers and Tab), not a control: no ring. */
@@ -72,11 +72,13 @@
 .details-rsvp [data-status='accepted'] { --accent: var(--green); }
 .details-rsvp [data-status='tentative'] { --accent: var(--orange); }
 .details-rsvp [data-status='declined'] { --accent: var(--red); }
+/* Hover previews the reply's own colour, not the theme's --hover (yellow on Cartoon reads as Maybe). */
+.details-rsvp .mc-seg button[data-status]:not(.on):hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent); }
 
-/* Deleted elsewhere while open: a notice on top, the rest dimmed and inert. Square like the popover around it. */
+/* Deleted elsewhere while open: a notice on top, the rest dimmed and inert. */
 .details-gone {
   display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: 8px;
-  margin: -2px 0 12px; padding: 8px 10px; border-radius: 0;
+  margin: -2px 0 12px; padding: 8px 10px; border-radius: var(--r-sm);
   background: color-mix(in srgb, var(--red) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
   animation: mc-pop 160ms ease-out;
