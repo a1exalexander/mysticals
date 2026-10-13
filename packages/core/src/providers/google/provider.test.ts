@@ -118,6 +118,86 @@ describe('provider', () => {
     expect(q.get('timeMin')).toBe('2026-09-01T00:00:00.000Z')
   })
 
+  describe('incremental sync', () => {
+    const range = { start: '2026-09-01T00:00:00Z', end: '2026-10-01T00:00:00Z' }
+    const at = (id: string, day: string, extra: Partial<GEvent> = {}): GEvent => ({
+      id,
+      summary: id,
+      start: { dateTime: `2026-${day}T10:00:00Z` },
+      end: { dateTime: `2026-${day}T11:00:00Z` },
+      ...extra
+    })
+    const full = [at('a', '09-10'), at('b', '09-11'), at('s_1', '09-12', { recurringEventId: 's' }), at('s_2', '09-13', { recurringEventId: 's' })]
+    let changes: GEvent[]
+    beforeEach(() => {
+      changes = []
+      respond = (c) => Response.json(c.url.searchParams.get('syncToken') ? { items: changes, nextSyncToken: 's2' } : { items: full, nextSyncToken: 's1' })
+    })
+    const titles = (evs: { title: string }[]) => evs.map((e) => e.title).sort()
+
+    it('keeps the token of a full list and pulls only changes with it next time', async () => {
+      const p = provider()
+      expect(titles(await p.listEvents('primary', range))).toEqual(['a', 'b', 's_1', 's_2'])
+      changes = [at('b', '09-15', { summary: 'B moved' }), at('c', '09-20')]
+      expect(titles(await p.listEvents('primary', range))).toEqual(['B moved', 'a', 'c', 's_1', 's_2'])
+      const q = calls[1].url.searchParams
+      expect(q.get('syncToken')).toBe('s1')
+      expect(q.get('singleEvents')).toBe('true')
+      expect(q.get('timeMin')).toBeNull()
+      expect(q.get('timeMax')).toBeNull()
+      await p.listEvents('primary', range)
+      expect(calls[2].url.searchParams.get('syncToken')).toBe('s2')
+    })
+
+    it('removes cancelled events (a cancelled series with its instances) and drops changes outside the range', async () => {
+      const p = provider()
+      await p.listEvents('primary', range)
+      changes = [{ id: 'a', status: 'cancelled' } as GEvent, { id: 's', status: 'cancelled' } as GEvent, at('b', '12-01'), at('far', '12-02')]
+      expect(await p.listEvents('primary', range)).toEqual([])
+    })
+
+    it('lists everything again after a 410 Gone, without retrying it', async () => {
+      const p = provider()
+      await p.listEvents('primary', range)
+      respond = (c) =>
+        c.url.searchParams.get('syncToken')
+          ? Response.json({ error: { message: 'Sync token is no longer valid' } }, { status: 410 })
+          : Response.json({ items: [at('z', '09-20')], nextSyncToken: 's3' })
+      expect(titles(await p.listEvents('primary', range))).toEqual(['z'])
+      expect(calls.map((c) => c.url.searchParams.get('syncToken'))).toEqual([null, 's1', null])
+      await p.listEvents('primary', range)
+      expect(calls[3].url.searchParams.get('syncToken')).toBe('s3')
+    })
+
+    it('fails on other errors and keeps the token', async () => {
+      const p = provider()
+      await p.listEvents('primary', range)
+      respond = () => Response.json({ error: { message: 'nope' } }, { status: 404 })
+      await expect(p.listEvents('primary', range)).rejects.toMatchObject({ message: 'Google API 404: nope', status: 404 })
+      respond = () => Response.json({ items: [], nextSyncToken: 's2' })
+      await p.listEvents('primary', range)
+      expect(calls[2].url.searchParams.get('syncToken')).toBe('s1')
+    })
+
+    it('lists everything again once a day, so the window slides', async () => {
+      const p = provider({ expiresAt: Date.now() + 30 * 86_400_000 })
+      await p.listEvents('primary', range)
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 25 * 3600_000)
+      await p.listEvents('primary', range)
+      vi.restoreAllMocks()
+      expect(calls[1].url.searchParams.get('syncToken')).toBeNull()
+      expect(calls[1].url.searchParams.get('timeMin')).toBe('2026-09-01T00:00:00.000Z')
+    })
+
+    it('lists everything every time when Google sends no sync token', async () => {
+      respond = () => Response.json({ items: full })
+      const p = provider()
+      await p.listEvents('primary', range)
+      expect(await p.listEvents('primary', range)).toHaveLength(4)
+      expect(calls.map((c) => c.url.searchParams.get('syncToken'))).toEqual([null, null])
+    })
+  })
+
   it('create: sendUpdates=none without attendees, all with attendees; no auto attendees', async () => {
     respond = (c) => Response.json({ ...own, attendees: c.body.attendees })
     const p = provider()
