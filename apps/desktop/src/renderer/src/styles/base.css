@@ -243,9 +243,32 @@
   --ev-text-l: 0.31;
   --ev-text-cmax: 0.22;
 }
-:root[data-theme='bubble'] { --shadow: 150 100 190; --shadow-k: 0.3; --ev-clash: 1; --ev-clash-h: 345; --ev-tint-l: 0.9; --ev-tint-cmax: 0.1; }
-:root[data-theme='toon'] { --shadow: 43 33 64; --shadow-k: 0.5; --ev-clash: 1; --ev-clash-h: 96; --ev-tint-l: 0.9; --ev-tint-cmax: 0.1; }
-:root[data-theme='cloud'] { --shadow: 40 130 145; --shadow-k: 0.28; --ev-clash: 1; --ev-clash-h: 197; --ev-tint-l: 0.9; --ev-tint-cmax: 0.1; }
+:root[data-theme='bubble'] { --shadow: 150 100 190; --shadow-k: 0.3; --ev-clash: 1; --ev-clash-h: 345; }
+:root[data-theme='toon'] { --shadow: 43 33 64; --shadow-k: 0.5; --ev-clash: 1; --ev-clash-h: 96; }
+:root[data-theme='cloud'] { --shadow: 40 130 145; --shadow-k: 0.28; --ev-clash: 1; --ev-clash-h: 197; }
+/* Solid event fills (see .ev): lightness band and chroma cap of the fill. Candy themes: bright candy fills whose
+   lightness follows the event's colour (yellow stays near-white bright, blue drops), deeper bars, near-black titles. */
+:root:is([data-theme='bubble'], [data-theme='toon'], [data-theme='cloud']) {
+  --ev-tint-lmin: 0.8;
+  --ev-tint-l: 0.95;
+  --ev-tint-cmax: 0.22;
+  --ev-lmin: 0.48;
+  --ev-lmax: 0.63;
+  --ev-cmax: 0.32;
+  --ev-text-l: 0.26;
+  --ev-text-cmax: 0.2;
+}
+/* Colourful dark themes: the same solid fills, lighter, with near-black titles. Ink mixed into black reads as mud. */
+:root:is([data-theme='dracula'], [data-theme='tokyo'], [data-theme='catppuccin'], [data-theme='vscode']) {
+  --ev-tint-lmin: 0.7;
+  --ev-tint-l: 0.9;
+  --ev-tint-cmax: 0.22;
+  --ev-lmin: 0.6;
+  --ev-lmax: 0.8;
+  --ev-cmax: 0.3;
+  --ev-text-l: 0.22;
+  --ev-text-cmax: 0.1;
+}
 :root[data-theme='light'] { --shadow: 0 0 0; --shadow-k: 0.12; --ev-cmax: 0.09; }
 /* Monochrome themes: event colours keep their hue but only as a hint. */
 :root:is([data-theme='amber'], [data-theme='matrix']) { --ev-cmax: 0.11; }
@@ -515,10 +538,15 @@ body[data-dragging='col-resize'] .app { transition: none; }
   background: var(--tint);
   border-radius: 0; overflow: hidden; font-size: 11px; line-height: 14px;
 }
-/* Candy themes: a pastel fill straight from the event's hue. Mixing a dark ink into a tinted canvas greys it. */
-:root:is([data-theme='bubble'], [data-theme='toon'], [data-theme='cloud']) .ev {
-  --tint: oklch(from var(--c) var(--ev-tint-l) min(c, var(--ev-tint-cmax)) h);
+/* Solid-fill themes: the fill comes straight from the event's colour. Mixing the ink into a tinted canvas greys it.
+   Pending invites and drag previews sit on that fill too, so their dark titles stay legible on dark canvases; the month
+   grid's preview keeps its own background (later, same specificity) since its text is --fg. */
+:root:is([data-theme='bubble'], [data-theme='toon'], [data-theme='cloud'], [data-theme='dracula'], [data-theme='tokyo'],
+  [data-theme='catppuccin'], [data-theme='vscode']) .ev {
+  --tint: oklch(from var(--c) clamp(var(--ev-tint-lmin), l, var(--ev-tint-l)) min(c, var(--ev-tint-cmax)) h);
 }
+:root:is([data-theme='bubble'], [data-theme='toon'], [data-theme='cloud'], [data-theme='dracula'], [data-theme='tokyo'],
+  [data-theme='catppuccin'], [data-theme='vscode']) :is(.ev.is-pending, .ev-preview) { background-color: var(--tint); }
 .ev { animation: fade-in 140ms ease-out; }
 .ev-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ev.is-pending {
