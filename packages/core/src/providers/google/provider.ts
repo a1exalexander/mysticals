@@ -11,6 +11,13 @@ const rateLimited = async (res: Response): Promise<boolean> =>
   res.status === 429 ||
   (res.status === 403 && /"reason":\s*"(rateLimitExceeded|userRateLimitExceeded)"/.test(await res.clone().text().catch(() => '')))
 
+/** Google answered with an error status. */
+class GoogleApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message)
+  }
+}
+
 type GAttendee = { email: string; displayName?: string; responseStatus?: string; self?: boolean; organizer?: boolean; [k: string]: unknown }
 type GTime = { date?: string; dateTime?: string; timeZone?: string }
 export interface GEvent {
@@ -166,7 +173,7 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
     if (res.status === 204 || (method === 'DELETE' && res.status === 410)) return undefined as T
     if (!res.ok) {
       const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-      throw Object.assign(new Error(`Google API ${res.status}: ${err.error?.message ?? res.statusText}`), { status: res.status })
+      throw new GoogleApiError(`Google API ${res.status}: ${err.error?.message ?? res.statusText}`, res.status)
     }
     return (await res.json()) as T
   }
@@ -270,7 +277,7 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
       if (memo && Date.now() - memo.fullAt < DAY) {
         // 410 Gone: the token expired, list everything again.
         const changes = await listAll(calendarId, { syncToken: memo.token }).catch((e: unknown) => {
-          if ((e as { status?: number }).status === 410) return undefined
+          if (e instanceof GoogleApiError && e.status === 410) return undefined
           throw e
         })
         if (changes) {
@@ -287,7 +294,8 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
             if (Date.parse(e.end) > from && Date.parse(e.start) < to) memo.events.set(g.id, e)
           }
           memo.token = changes.syncToken ?? memo.token
-          // ponytail: events that slid out of the window stay until the next daily full list.
+          // ponytail: between daily full lists, events crossing the window's edges and anything the change feed misses
+          // (e.g. old instances of a moved series, if Google sends no cancellations) stay stale for up to 24 h.
           return [...memo.events.values()]
         }
       }
