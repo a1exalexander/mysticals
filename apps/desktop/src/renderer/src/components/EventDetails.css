@@ -47,6 +47,8 @@
 .details-rsvp .mc-seg button { flex: 1; min-width: 0; }
 .details-replyas { margin-top: 6px; font: 11px/1.4 var(--mono); }
 .details-error { margin-top: 10px; color: var(--red); }
+.details-colors { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-strong); }
+.details-colors .ev-colors { grid-template-columns: repeat(12, 18px); justify-content: space-between; gap: 5px; padding: 0 2px; }
 
 /* Meet / video / map / other links from the conference and the location, as buttons. */
 .details-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }

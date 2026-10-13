@@ -1,4 +1,4 @@
-import type { Calendar, CalEvent, DeleteScope, Credentials, NewEventInput, PartStat, Recurrence, TimeRange } from '../shared/types'
+import type { Calendar, CalEvent, ColorScope, DeleteScope, Credentials, NewEventInput, PartStat, Recurrence, TimeRange } from '../shared/types'
 
 /**
  * One instance per account. Knows ONLY its own account id, identity and credentials.
@@ -11,6 +11,8 @@ export interface CalendarProvider {
   updateEvent(event: CalEvent, scope?: DeleteScope): Promise<CalEvent>
   deleteEvent(event: CalEvent, scope?: DeleteScope): Promise<void>
   respond(event: CalEvent, status: Exclude<PartStat, 'needsAction'>): Promise<CalEvent>
+  /** Only the event's colour (null: the calendar's), for this instance or its whole series; tells no guests. */
+  setColor(event: CalEvent, colorId: string | null, scope: ColorScope): Promise<CalEvent>
   /** The rule of the event's series, null for a single event. */
   getRecurrence(event: CalEvent): Promise<Recurrence | null>
 }

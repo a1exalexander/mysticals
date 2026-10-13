@@ -152,6 +152,21 @@ describe('provider', () => {
     expect(calls[0].body.attendees).toEqual([invite.attendees![2], { email: 'new@x.com' }])
   })
 
+  it('setColor: patches only colorId, tells no guests; "all" recolours the series master; null clears', async () => {
+    respond = (c) => Response.json({ ...invite, ...c.body })
+    const p = provider()
+    const ev = mapEvent(invite, 'acc1', 'primary')
+    expect(await p.setColor(ev, '11', 'one')).toMatchObject({ id: 'ev1', colorId: '11' })
+    expect(calls[0].method).toBe('PATCH')
+    expect(calls[0].url.pathname).toBe('/calendar/v3/calendars/primary/events/ev1')
+    expect(calls[0].url.searchParams.get('sendUpdates')).toBe('none')
+    expect(calls[0].body).toEqual({ colorId: '11' })
+    expect(await p.setColor(ev, null, 'all')).toMatchObject({ id: 'ev1', colorId: undefined })
+    expect(calls[1].url.pathname).toBe('/calendar/v3/calendars/primary/events/series1')
+    expect(calls[1].body).toEqual({ colorId: null })
+    expect(mapEvent({ ...own, colorId: '4' }, 'acc1', 'primary').colorId).toBe('4')
+  })
+
   it('delete: non-organizer uses sendUpdates=none', async () => {
     respond = () => new Response(null, { status: 204 })
     const p = provider()

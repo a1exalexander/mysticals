@@ -54,6 +54,7 @@ export function ScopePromptHost(): React.JSX.Element | null {
         <RecurringScope
           title={ask.title}
           danger={ask.danger}
+          scopes={ask.scopes}
           onPick={(scope) => {
             setAsk(null)
             ask.onPick(scope)

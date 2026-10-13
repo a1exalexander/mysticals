@@ -4,6 +4,7 @@ import type {
   Account,
   Calendar,
   CalEvent,
+  ColorScope,
   CaldavAccountInput,
   DeleteScope,
   LogPage,
@@ -37,6 +38,8 @@ export interface Api {
     update(event: CalEvent, scope?: DeleteScope): Promise<CalEvent>
     delete(event: CalEvent, scope?: DeleteScope): Promise<void>
     respond(event: CalEvent, status: Exclude<PartStat, 'needsAction'>): Promise<CalEvent>
+    /** Only the event's colour (an EVENT_COLORS id; null: the calendar's). Allowed on any writable calendar, invites too; tells no guests. */
+    setColor(event: CalEvent, colorId: string | null, scope?: ColorScope): Promise<CalEvent>
     /** How the event's series repeats (null for a single event). Reads the provider, not the cache. */
     recurrence(event: CalEvent): Promise<Recurrence | null>
   }
@@ -179,6 +182,7 @@ export const IPC = {
   eventsUpdate: 'events:update',
   eventsDelete: 'events:delete',
   eventsRespond: 'events:respond',
+  eventsSetColor: 'events:setColor',
   eventsRecurrence: 'events:recurrence',
   syncNow: 'sync:now',
   changed: 'changed',

@@ -11,6 +11,7 @@ import type { UpdateState } from '@shared/ipc'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
 import { pickNowNext, startsLabel } from '@mysticals/core/logic/status'
+import { eventColorOf } from '@mysticals/core/logic/colors'
 import { cap, currentLocale, fmt, t, useLocale } from '../i18n'
 import { hm, hour12, weekStartsOn } from '../clock'
 
@@ -43,9 +44,12 @@ function NowNext(): React.JSX.Element {
     }
   }, [])
 
-  const colorOf = (e: CalEvent): string | undefined =>
-    calendars.find((c) => c.accountId === e.accountId && c.id === e.calendarId)?.color ??
-    accounts.find((a) => a.id === e.accountId)?.color
+  const colorOf = (e: CalEvent): string =>
+    eventColorOf(
+      e,
+      calendars.find((c) => c.accountId === e.accountId && c.id === e.calendarId),
+      accounts.find((a) => a.id === e.accountId)
+    )
   const { current, next } = pickNowNext(loaded ? visibleEvents(events, calendars) : [], now)
   const item = (e: CalEvent, label: React.ReactNode): React.JSX.Element => (
     <button

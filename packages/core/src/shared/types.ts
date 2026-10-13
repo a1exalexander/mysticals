@@ -63,6 +63,8 @@ export interface CalEvent {
   recurringEventId?: string
   /** Edits only: the series' new repeat rule (null stops repeating). Absent keeps the rule. Read it with events.recurrence. */
   recurrence?: Recurrence | null
+  /** The event's own colour (an EVENT_COLORS id, Google's colorId); absent draws it in its calendar's colour. */
+  colorId?: string
 }
 
 export type Weekday = 'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU'
@@ -83,6 +85,8 @@ export interface Recurrence {
 
 /** Which part of a recurring series a delete removes or an edit changes. Ignored for single events. */
 export type DeleteScope = 'one' | 'following' | 'all'
+/** A colour change is for one instance or the whole series. */
+export type ColorScope = Exclude<DeleteScope, 'following'>
 
 export interface NewEventInput {
   accountId: string
@@ -96,6 +100,8 @@ export interface NewEventInput {
   /** Emails to invite. Never filled automatically. */
   attendees?: string[]
   recurrence?: Recurrence
+  /** An EVENT_COLORS id; absent uses the calendar's colour. */
+  colorId?: string
 }
 
 export interface TimeRange {
@@ -127,6 +133,7 @@ export type LogKind =
   | 'event.update'
   | 'event.delete'
   | 'event.respond'
+  | 'event.color'
   | 'sync'
   | 'sync.fail'
   | 'remote.add'
@@ -151,6 +158,7 @@ export interface EventSnap {
   myStatus?: PartStat
   recurringEventId?: string
   recurrence?: Recurrence | null
+  colorId?: string
 }
 
 /** One field of an event before and after (absent side: undefined). Attendees are `attendee:<email>` with the RSVP status. */

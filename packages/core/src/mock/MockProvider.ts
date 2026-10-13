@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import { addDays, differenceInCalendarDays, differenceInCalendarMonths, format, parseISO, startOfWeek } from 'date-fns'
-import type { Calendar, CalEvent, DeleteScope, NewEventInput, PartStat, Recurrence, TimeRange } from '../shared/types'
+import type { Calendar, CalEvent, ColorScope, DeleteScope, NewEventInput, PartStat, Recurrence, TimeRange } from '../shared/types'
 import type { CalendarProvider } from '../providers/types'
 import { weekdayOf } from '../logic/recurrence'
 
@@ -73,7 +73,8 @@ export class MockProvider implements CalendarProvider {
       location: input.location,
       description: input.description,
       organizer: { email: this.email },
-      attendees: (input.attendees ?? []).map((email) => ({ email, status: 'needsAction' as const }))
+      attendees: (input.attendees ?? []).map((email) => ({ email, status: 'needsAction' as const })),
+      ...(input.colorId ? { colorId: input.colorId } : {})
     }
     if (input.recurrence) return this.startSeries(ev, input.recurrence, ev.id)
     this.events.push(ev)
@@ -114,11 +115,11 @@ export class MockProvider implements CalendarProvider {
       const shift = Date.parse(event.start) - Date.parse(old.start)
       const length = Date.parse(event.end) - Date.parse(event.start)
       const at = (ms: number): string => new Date(ms).toISOString()
-      const { title, location, description, attendees } = event
+      const { title, location, description, attendees, colorId } = event
       this.events = this.events.map((e) => {
         if (e.id === event.id || e.recurringEventId !== series || (scope === 'following' && e.start < old.start)) return e
         const moved = old.allDay || event.allDay ? {} : { start: at(Date.parse(e.start) + shift), end: at(Date.parse(e.start) + shift + length) }
-        return { ...e, title, location, description, attendees, ...moved }
+        return { ...e, title, location, description, attendees, colorId, ...moved }
       })
     }
     this.events[i] = { ...event, accountId: this.accountId }
@@ -132,6 +133,14 @@ export class MockProvider implements CalendarProvider {
         ? e.id === event.id
         : e.recurringEventId === series && (scope === 'all' || e.start >= event.start)
     this.events = this.events.filter((e) => !hit(e))
+  }
+
+  async setColor(event: CalEvent, colorId: string | null, scope: ColorScope): Promise<CalEvent> {
+    const series = event.recurringEventId
+    const hit = (e: CalEvent): boolean => e.id === event.id || (scope === 'all' && !!series && e.recurringEventId === series)
+    if (!this.events.some(hit)) throw new Error('not found')
+    this.events = this.events.map((e) => (hit(e) ? { ...e, colorId: colorId ?? undefined } : e))
+    return structuredClone(this.events.find((e) => e.id === event.id)!)
   }
 
   async respond(event: CalEvent, status: Exclude<PartStat, 'needsAction'>): Promise<CalEvent> {

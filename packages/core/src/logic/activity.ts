@@ -21,12 +21,13 @@ export function snap(e: CalEvent): EventSnap {
     attendees: e.attendees.map(({ email, name, status, self, organizer }) => ({ email, name, status, self, organizer })),
     myStatus: e.myStatus,
     recurringEventId: e.recurringEventId,
+    colorId: e.colorId,
     ...(e.recurrence !== undefined ? { recurrence: e.recurrence } : {})
   }
 }
 
 type Comparable = Pick<CalEvent, 'title' | 'start' | 'end' | 'allDay' | 'attendees'> & Partial<CalEvent>
-const FIELDS = ['title', 'start', 'end', 'allDay', 'calendarId', 'location', 'conferenceUrl', 'description', 'myStatus'] as const
+const FIELDS = ['title', 'start', 'end', 'allDay', 'calendarId', 'location', 'conferenceUrl', 'description', 'myStatus', 'colorId'] as const
 const str = (v: unknown): string | undefined => (v === undefined || v === null || v === '' ? undefined : typeof v === 'string' ? cut(v) : JSON.stringify(v))
 const low = (s: string): string => s.trim().toLowerCase()
 

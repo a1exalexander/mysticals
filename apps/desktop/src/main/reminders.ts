@@ -7,6 +7,7 @@ import { snap } from '@mysticals/core/logic/activity'
 import { DEFAULT_REMINDER_MIN, dueReminders, isReminderMin, loadReminded, pruneReminded, REMINDED_KEEP_MS, reminderKey, reminderText, screenMeetings, splitReminders } from '@mysticals/core/logic/reminders'
 import { visibleEvents } from '@mysticals/core/logic/visible'
 import { eventMeetingUrl } from '@mysticals/core/logic/meeting'
+import { eventColorOf } from '@mysticals/core/logic/colors'
 import { t } from '@mysticals/core/i18n'
 import { currentLocale } from './locale'
 import { hour12 } from './clock'
@@ -47,7 +48,7 @@ export function warmReminders(): void {
 
 const meeting = (e: CalEvent, url: string, calendars: Calendar[], accounts: Account[]): ReminderMeeting => {
   const account = accounts.find((a) => a.id === e.accountId)
-  const color = calendars.find((c) => c.accountId === e.accountId && c.id === e.calendarId)?.color ?? account?.color ?? ''
+  const color = eventColorOf(e, calendars.find((c) => c.accountId === e.accountId && c.id === e.calendarId), account)
   return { key: reminderKey(e), title: e.title, start: e.start, end: e.end, color, account: account?.label ?? '', url }
 }
 

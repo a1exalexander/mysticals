@@ -18,6 +18,8 @@ export interface EventForm {
   repeat: Recurrence | null
   /** The rule when the editor opened; undefined while a series' rule is still loading (or failed to load). */
   repeatWas: Recurrence | null | undefined
+  /** The event's own colour (an EVENT_COLORS id); absent: the calendar's. */
+  colorId?: string
 }
 
 const LOCAL = "yyyy-MM-dd'T'HH:mm"
@@ -89,6 +91,7 @@ export function formFromEvent(e: CalEvent): EventForm {
     description: e.description ?? '',
     attendees: e.attendees.filter((a) => !a.self && !a.organizer).map((a) => a.email),
     repeat: null,
+    colorId: e.colorId,
     // A series' rule isn't cached: the editor loads it (events.recurrence) and sets both fields.
     repeatWas: e.recurringEventId ? undefined : null
   }
@@ -146,7 +149,8 @@ export function formToInput(f: EventForm, locale: Locale = 'en'): NewEventInput 
     location: f.location.trim() || undefined,
     description: f.description.trim() || undefined,
     ...(attendees.length ? { attendees } : {}),
-    ...(f.repeat ? { recurrence: f.repeat } : {})
+    ...(f.repeat ? { recurrence: f.repeat } : {}),
+    ...(f.colorId ? { colorId: f.colorId } : {})
   }
 }
 
@@ -165,6 +169,7 @@ export function applyForm(e: CalEvent, f: EventForm, locale: Locale = 'en'): Cal
     location: f.location.trim() || undefined,
     description: f.description.trim() || undefined,
     attendees: [...keep, ...invited],
+    colorId: f.colorId || undefined,
     // Only a changed rule is sent; absent keeps the series' rule.
     ...(repeatChanged(f) ? { recurrence: f.repeat } : {})
   }

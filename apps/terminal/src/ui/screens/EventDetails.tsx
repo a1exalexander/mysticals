@@ -1,5 +1,5 @@
 /**
- * Event details overlay: title, when, owner, location/meeting link, attendees (first 5, "a" or click for all), notes; RSVP, edit, delete (keys or clicks).
+ * Event details overlay: title, when, owner, location/meeting link, attendees (first 5, "a" or click for all), notes; RSVP, colour, edit, delete (keys or clicks).
  * Also exports EventInfo (the read-only body), reused by the shell's preview pane.
  * Owns ALL input while open. RSVPs and deletes always go through the event's own account (the event object itself).
  * Taller than `height` rows: the body scrolls (↑/↓, PgUp/PgDn, wheel) and the action buttons stay at the bottom.
@@ -11,7 +11,8 @@ import { errorText } from '@mysticals/core/logic/editor'
 import { eventLinks, eventMeetingUrl, linkLabel, locationText, type LinkKind } from '@mysticals/core/logic/meeting'
 import { eventBounds } from '@mysticals/core/logic/layout'
 import { startsLabel } from '@mysticals/core/logic/status'
-import type { Account, Calendar, CalEvent, DeleteScope, PartStat } from '@mysticals/core/shared/types'
+import { EVENT_COLORS, eventColorOf } from '@mysticals/core/logic/colors'
+import type { Account, Calendar, CalEvent, ColorScope, DeleteScope, PartStat } from '@mysticals/core/shared/types'
 import { openUrl as openInBrowser } from '../../daemon/google'
 import { useApi, useDirectory, useNow } from '../hooks'
 import { Button, Clickable, useKeys } from '../mouse'
@@ -29,6 +30,12 @@ export interface EventDetailsProps {
 type Reply = Exclude<PartStat, 'needsAction'>
 const REPLY_KEYS: Record<string, Reply> = { y: 'accepted', n: 'declined', m: 'tentative' }
 const SCOPE_KEYS: Record<string, DeleteScope> = { '1': 'one', '2': 'following', '3': 'all' }
+const COLOR_SCOPE_KEYS: Record<string, ColorScope> = { '1': 'one', '3': 'all' }
+/** The colour choices: the calendar's own (null), then the 11 event colours. */
+const COLORS: { id: string | null; name: string; hex?: string }[] = [
+  { id: null, name: 'calendar colour' },
+  ...EVENT_COLORS.map((c) => ({ id: c.id, name: c.key, hex: c.hex }))
+]
 const STATUS_LABEL: Record<PartStat, string> = { accepted: 'accepted', declined: 'declined', tentative: 'maybe', needsAction: 'not answered' }
 const STATUS_COLOR: Record<PartStat, string> = { accepted: C.green, declined: C.red, tentative: C.yellow, needsAction: C.muted }
 
@@ -43,11 +50,16 @@ export function EventDetails({ event: initial, onClose, onEdit, height = Infinit
   const [error, setError] = useState('')
   const [confirm, setConfirm] = useState(false)
   const [showAll, setShowAll] = useState(false)
+  /** Picking a colour: the highlighted choice (index into COLORS); then, for a series, which part it is for. */
+  const [picking, setPicking] = useState<number>()
+  const [colorAsk, setColorAsk] = useState<string | null>()
   const manyAttendees = initial.attendees.length > ATTENDEES_SHOWN
 
   const account = accounts.find((a) => a.id === event.accountId)
   const calendar = calendars.find((c) => c.accountId === event.accountId && c.id === event.calendarId)
   const editable = canEdit(event, account, calendar)
+  // Not canEdit: an invitee may recolour its own copy too.
+  const colorable = !!account && !!calendar && !calendar.readOnly
   const recurring = !!event.recurringEventId
   const url = eventMeetingUrl(event)
   const now = useNow()
@@ -67,6 +79,19 @@ export function EventDetails({ event: initial, onClose, onEdit, height = Infinit
   }
   const respond = (status: Reply): void =>
     run('Replying…', async () => setEvent(await api.events.respond(event, status)))
+  const recolor = (colorId: string | null, scope: ColorScope): void => {
+    setPicking(undefined)
+    setColorAsk(undefined)
+    if ((event.colorId ?? null) !== colorId) run('Recolouring…', async () => setEvent(await api.events.setColor(event, colorId, scope)))
+  }
+  const choose = (i: number): void => {
+    const id = COLORS[i].id
+    if (recurring && (event.colorId ?? null) !== id) {
+      setPicking(undefined)
+      setColorAsk(id)
+    } else recolor(id, 'one')
+  }
+  const startPicking = (): void => setPicking(Math.max(0, COLORS.findIndex((c) => c.id === (event.colorId ?? null))))
   const remove = (scope: DeleteScope): void =>
     run('Deleting…', async () => {
       await api.events.delete(event, scope)
@@ -75,10 +100,21 @@ export function EventDetails({ event: initial, onClose, onEdit, height = Infinit
 
   useKeys((input, key) => {
     if (key.escape && confirm) return setConfirm(false)
+    if (key.escape && (picking !== undefined || colorAsk !== undefined)) return (setPicking(undefined), setColorAsk(undefined))
     if (key.escape || input === 'q') return onClose()
     if (key.upArrow || key.downArrow) return scroll.scrollBy(key.upArrow ? -1 : 1)
     if (key.pageUp || key.pageDown) return scroll.scrollBy((key.pageUp ? -1 : 1) * Math.max(scroll.view.rows - 1, 1))
     if (busy) return
+    if (colorAsk !== undefined) {
+      if (Object.hasOwn(COLOR_SCOPE_KEYS, input)) recolor(colorAsk, COLOR_SCOPE_KEYS[input])
+      return
+    }
+    if (picking !== undefined) {
+      const step = key.leftArrow || input === 'h' ? -1 : key.rightArrow || input === 'l' ? 1 : 0
+      if (step) setPicking((picking + step + COLORS.length) % COLORS.length)
+      else if (key.return) choose(picking)
+      return
+    }
     if (confirm) {
       if (recurring && Object.hasOwn(SCOPE_KEYS, input)) return remove(SCOPE_KEYS[input])
       if (!recurring && (input === 'y' || key.return)) return remove('one')
@@ -89,6 +125,7 @@ export function EventDetails({ event: initial, onClose, onEdit, height = Infinit
     if (input === 'o' && url) return openUrl(url)
     if (input === 'e' && editable) return onEdit(event)
     if (input === 'x' && editable) return setConfirm(true)
+    if (input === 'c' && colorable) return startPicking()
     if (input === 'a' && manyAttendees) return setShowAll(!showAll)
   })
 
@@ -102,6 +139,27 @@ export function EventDetails({ event: initial, onClose, onEdit, height = Infinit
         <Box marginTop={1} flexWrap="wrap">
           {busy ? (
             <Text color={C.yellow}>{busy}</Text>
+          ) : colorAsk !== undefined ? (
+            <>
+              <Text>Recolour recurring event: </Text>
+              <Button k="1" label="this event" onPress={() => recolor(colorAsk, 'one')} />
+              <Button k="3" label="all events" onPress={() => recolor(colorAsk, 'all')} />
+              <Button k="esc" label="cancel" onPress={() => setColorAsk(undefined)} />
+            </>
+          ) : picking !== undefined ? (
+            <>
+              <Box marginRight={1} flexShrink={0}>
+                {COLORS.map((c, i) => (
+                  <Clickable key={c.name} onClick={() => choose(i)}>
+                    <Text inverse={i === picking} color={c.hex ?? eventColorOf({}, calendar, account)}>{c.id ? ' ● ' : ' ○ '}</Text>
+                  </Clickable>
+                ))}
+              </Box>
+              <Text bold>{COLORS[picking].name} </Text>
+              <Text color={C.muted}>←→ choose </Text>
+              <Button k="enter" label="apply" onPress={() => choose(picking)} />
+              <Button k="esc" label="cancel" onPress={() => setPicking(undefined)} />
+            </>
           ) : confirm && recurring ? (
             <>
               <Text color={C.red}>Delete recurring event: </Text>
@@ -124,6 +182,7 @@ export function EventDetails({ event: initial, onClose, onEdit, height = Infinit
               {url && <Button k="o" label="open link" onPress={() => openUrl(url)} />}
               {editable && <Button k="e" label="edit" onPress={() => onEdit(event)} />}
               {editable && <Button k="x" label="delete" onPress={() => setConfirm(true)} />}
+              {colorable && <Button k="c" label="colour" onPress={startPicking} />}
               {manyAttendees && <Button k="a" label={showAll ? 'fewer attendees' : 'all attendees'} onPress={() => setShowAll(!showAll)} />}
               <Button k="esc" label="close" onPress={onClose} />
               {scroll.more && <Text color={C.muted}>↑↓ scroll</Text>}
@@ -192,7 +251,7 @@ export function EventInfo({ event, account, calendar, now, showAll, onToggleAll 
         {event.recurringEventId && <Text color={C.muted}> ↻ repeats</Text>}
       </Text>
       <Text color={C.muted}>
-        <Text color={ansiOf(calendar?.color ?? account?.color ?? '')}>●</Text> {owner.calendar && `${owner.calendar} in `}
+        <Text color={ansiOf(eventColorOf(event, calendar, account))}>●</Text> {owner.calendar && `${owner.calendar} in `}
         <Text bold>{owner.label}</Text>
         {owner.email && ` · ${owner.email}`}
         {calendar?.readOnly && ' · read-only'}

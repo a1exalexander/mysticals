@@ -28,6 +28,8 @@ export interface GEvent {
   hangoutLink?: string
   /** Any conference (Meet, or Zoom/Teams add-ons); its `video` entry point is the join link. */
   conferenceData?: { entryPoints?: { entryPointType?: string; uri?: string }[] }
+  /** One of Google's event colours ('1'..'11'); absent: the calendar's colour. */
+  colorId?: string
 }
 
 /** The event's video-call link: Meet's hangoutLink, else the conference's video entry point. */
@@ -66,7 +68,8 @@ export function mapEvent(g: GEvent, accountId: string, calendarId: string): CalE
     myStatus: self ? toStatus(self.responseStatus) : undefined,
     etag: g.etag,
     raw: g,
-    recurringEventId: g.recurringEventId
+    recurringEventId: g.recurringEventId,
+    ...(g.colorId ? { colorId: g.colorId } : {})
   }
 }
 
@@ -173,7 +176,12 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
 
   /** The editable fields of `event` as a Google body. */
   const fields = (event: CalEvent, prevAttendees: GAttendee[] | undefined, organizer: boolean): Record<string, unknown> => {
-    const body: Record<string, unknown> = { summary: event.title, location: event.location ?? null, description: event.description ?? null }
+    const body: Record<string, unknown> = {
+      summary: event.title,
+      location: event.location ?? null,
+      description: event.description ?? null,
+      colorId: event.colorId ?? null
+    }
     // Only the organizer controls the guest list. Existing guests keep Google's fields (incl. their
     // responseStatus, so a stale local copy can't reset replies); new guests are just an email.
     if (organizer) {
@@ -263,6 +271,7 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
           location: input.location,
           description: input.description,
           attendees,
+          ...(input.colorId ? { colorId: input.colorId } : {}),
           ...(rule ? { recurrence: rruleLines(rule, input.allDay) } : {})
         }
       )
@@ -337,6 +346,13 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
         }
       }
       await api('DELETE', eventPath(event.calendarId, series), q)
+    },
+
+    async setColor(event, colorId, scope) {
+      const id = scope === 'all' ? (event.recurringEventId ?? event.id) : event.id
+      const g = await api<GEvent>('PATCH', eventPath(event.calendarId, id), { sendUpdates: 'none' }, { colorId })
+      // The series' PATCH answers with the master; the instance keeps its own id and time.
+      return id === event.id ? map(g, event.calendarId) : { ...event, colorId: g.colorId || undefined }
     },
 
     async getRecurrence(event) {

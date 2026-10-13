@@ -29,6 +29,7 @@ const api: Api = {
     update: call(IPC.eventsUpdate),
     delete: call(IPC.eventsDelete),
     respond: call(IPC.eventsRespond),
+    setColor: call(IPC.eventsSetColor),
     recurrence: call(IPC.eventsRecurrence)
   },
   sync: { now: call(IPC.syncNow) },
