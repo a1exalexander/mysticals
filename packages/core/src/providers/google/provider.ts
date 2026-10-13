@@ -166,7 +166,7 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
     if (res.status === 204 || (method === 'DELETE' && res.status === 410)) return undefined as T
     if (!res.ok) {
       const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-      throw new Error(`Google API ${res.status}: ${err.error?.message ?? res.statusText}`)
+      throw Object.assign(new Error(`Google API ${res.status}: ${err.error?.message ?? res.statusText}`), { status: res.status })
     }
     return (await res.json()) as T
   }
@@ -181,6 +181,23 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
     return !e.organizer || e.organizer.email.toLowerCase() === ctx.email.toLowerCase()
   }
   const map = (g: GEvent, calendarId: string): CalEvent => mapEvent(g, ctx.accountId, calendarId)
+
+  /** Every page of a calendar's events list; Google puts the sync token on the last one. */
+  async function listAll(calendarId: string, query: Record<string, string>): Promise<{ items: GEvent[]; syncToken?: string }> {
+    const items: GEvent[] = []
+    let page: { items?: GEvent[]; nextPageToken?: string; nextSyncToken?: string } = {}
+    do {
+      page = await api('GET', eventPath(calendarId), { ...query, singleEvents: 'true', maxResults: '2500', ...(page.nextPageToken ? { pageToken: page.nextPageToken } : {}) })
+      items.push(...(page.items ?? []))
+    } while (page.nextPageToken)
+    return { items, syncToken: page.nextSyncToken }
+  }
+
+  /**
+   * Per calendar: the sync token, when the last full list ran, and its events kept up to date by the changes since.
+   * A token keeps its first list's window, so a full list runs again daily to slide it.
+   */
+  const synced = new Map<string, { token: string; fullAt: number; events: Map<string, CalEvent> }>()
 
   /** The editable fields of `event` as a Google body. */
   const fields = (event: CalEvent, prevAttendees: GAttendee[] | undefined, organizer: boolean): Record<string, unknown> => {
@@ -249,20 +266,36 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
     },
 
     async listEvents(calendarId, range) {
-      const out: CalEvent[] = []
-      let pageToken: string | undefined
-      do {
-        const page = await api<{ items?: GEvent[]; nextPageToken?: string }>('GET', eventPath(calendarId), {
-          singleEvents: 'true',
-          timeMin: new Date(range.start).toISOString(),
-          timeMax: new Date(range.end).toISOString(),
-          maxResults: '2500',
-          ...(pageToken ? { pageToken } : {})
+      const memo = synced.get(calendarId)
+      if (memo && Date.now() - memo.fullAt < DAY) {
+        // 410 Gone: the token expired, list everything again.
+        const changes = await listAll(calendarId, { syncToken: memo.token }).catch((e: unknown) => {
+          if ((e as { status?: number }).status === 410) return undefined
+          throw e
         })
-        for (const g of page.items ?? []) if (g.status !== 'cancelled') out.push(map(g, calendarId))
-        pageToken = page.nextPageToken
-      } while (pageToken)
-      return out
+        if (changes) {
+          const from = Date.parse(range.start)
+          const to = Date.parse(range.end)
+          for (const g of changes.items) {
+            memo.events.delete(g.id)
+            if (g.status === 'cancelled') {
+              // A cancelled series takes its instances with it.
+              for (const [id, e] of memo.events) if (e.recurringEventId === g.id) memo.events.delete(id)
+              continue
+            }
+            const e = map(g, calendarId)
+            if (Date.parse(e.end) > from && Date.parse(e.start) < to) memo.events.set(g.id, e)
+          }
+          memo.token = changes.syncToken ?? memo.token
+          // ponytail: events that slid out of the window stay until the next daily full list.
+          return [...memo.events.values()]
+        }
+      }
+      synced.delete(calendarId)
+      const { items, syncToken } = await listAll(calendarId, { timeMin: new Date(range.start).toISOString(), timeMax: new Date(range.end).toISOString() })
+      const events = new Map(items.filter((g) => g.status !== 'cancelled').map((g) => [g.id, map(g, calendarId)]))
+      if (syncToken) synced.set(calendarId, { token: syncToken, fullAt: Date.now(), events })
+      return [...events.values()]
     },
 
     async createEvent(calendarId, input) {
