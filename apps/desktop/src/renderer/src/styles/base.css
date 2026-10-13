@@ -127,24 +127,24 @@
   --red: #d9594c;
   --yellow: #d2d98a;
 }
-/* Bubblegum: pastel marshmallow pinks swirled with Cloud's sky blues (pink canvas, blue chrome). */
+/* Bubblegum: Chupa Chups wrapper, hot pink and candy blue on a Cloud-blue sidebar, ink outlines, lemon hovers. */
 :root[data-theme='bubble'] {
-  --bg: #fff5fa;
-  --surface: #eaf6ff;
+  --bg: #fff9fc;
+  --surface: #dcf5ff;
   --surface-2: #ffffff;
-  --hover: #ffe3f1;
-  --line: #f3d9ea;
-  --line-strong: #cfd8f2;
-  --fg: #3d2f4d;
-  --muted: #79689a;
-  --faint: #d6cdef;
-  --accent: #c92d7b;
-  --pink: #a742bd;
-  --green: #2a7f5f;
-  --cyan: #3d9fe0;
-  --orange: #b35134;
-  --red: #e04468;
-  --yellow: #e6ae3a;
+  --hover: #fff0b0;
+  --line: #f2d8e4;
+  --line-strong: #2a1640;
+  --fg: #2a1640;
+  --muted: #6a4a7e;
+  --faint: #d3b8d8;
+  --accent: #c8006a;
+  --pink: #0062c4;
+  --green: #0a7a52;
+  --cyan: #0d6e9e;
+  --orange: #a83f00;
+  --red: #c8102e;
+  --yellow: #ffbf00;
 }
 /* Cartoon: cream paper, bold ink outlines, candy colours. */
 :root[data-theme='toon'] {
@@ -214,9 +214,9 @@
   --ev-lmin: 0.7;
   --ev-lmax: 0.9;
   --ev-cmax: 0.2;
-  --ev-mix: 18%;
+  --ev-mix: 26%;
   --ev-text-l: 0.9;
-  --ev-text-cmax: 0.08;
+  --ev-text-cmax: 0.12;
   /* Hue of a tinted canvas (light themes) and whether same-hue events get a hairline: 0 off, 1 on. */
   --ev-clash-h: 0;
   --ev-clash: 0;
@@ -238,11 +238,12 @@
   /* Account colours are picked for dark bgs: inks go darker, titles near-black in the event's hue. */
   --ev-lmin: 0.42;
   --ev-lmax: 0.6;
-  --ev-mix: 16%;
-  --ev-text-l: 0.36;
-  --ev-text-cmax: 0.14;
+  --ev-cmax: 0.26;
+  --ev-mix: 30%;
+  --ev-text-l: 0.31;
+  --ev-text-cmax: 0.22;
 }
-:root[data-theme='bubble'] { --shadow: 150 100 190; --shadow-k: 0.3; --ev-clash: 1; --ev-clash-h: 345; }
+:root[data-theme='bubble'] { --shadow: 42 22 64; --shadow-k: 0.45; --ev-clash: 1; --ev-clash-h: 345; }
 :root[data-theme='toon'] { --shadow: 43 33 64; --shadow-k: 0.5; --ev-clash: 1; --ev-clash-h: 96; }
 :root[data-theme='cloud'] { --shadow: 40 130 145; --shadow-k: 0.28; --ev-clash: 1; --ev-clash-h: 197; }
 :root[data-theme='light'] { --shadow: 0 0 0; --shadow-k: 0.12; --ev-cmax: 0.09; }
@@ -536,8 +537,8 @@ body[data-dragging='col-resize'] .app { transition: none; }
 .ev:is(.ev-timed, .ev-allday) { box-shadow: inset 0 0 0 1px var(--ev-ring); }
 .ev.is-declined { opacity: 0.45; }
 .ev.is-declined .ev-title { text-decoration: line-through; }
-.ev.is-past { opacity: 0.55; }
-.ev.is-past.is-declined { opacity: 0.4; }
+.ev.is-past { opacity: 0.35; filter: saturate(0.5); }
+.ev.is-past.is-declined { opacity: 0.3; }
 .ev.is-past:hover { opacity: 0.85; }
 
 /* Week / day time grid */
