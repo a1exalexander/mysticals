@@ -31,7 +31,8 @@
   flex: 1; min-width: 0; display: grid; grid-template-columns: var(--ag-time) 3px minmax(0, 1fr); align-items: center; gap: 10px;
   padding: 7px 8px; border: 0; border-radius: var(--r-sm); background: none; color: var(--fg); text-align: left;
 }
-.ag-row[data-past='true'], .ag-row[data-declined='true'] { opacity: 0.45; }
+.ag-row[data-declined='true'] { opacity: 0.45; }
+.ag-row[data-past='true'] { opacity: 0.35; filter: saturate(0.5); }
 .ag-row[data-declined='true'] .ag-title { text-decoration: line-through; }
 .ag-time { font: 12px/1 var(--mono); color: var(--muted); }
 .ag-row[data-live='true'] .ag-time { color: var(--green); }
@@ -103,7 +104,7 @@
 }
 .ag-today-btn:hover { background: var(--hover); }
 .ag[data-other-day] .ag-rows, .ag[data-other-day] .ag-allday, .ag[data-other-day] .ag-focus { opacity: 0.55; filter: saturate(0.4); }
-.ag[data-other-day] .ag-row[data-past='true'] { opacity: 1; }
+.ag[data-other-day] .ag-row[data-past='true'] { opacity: 1; filter: none; }
 
 /* Now line between the events that have started and the ones still to come (the time grid's .tg-now look). */
 .ag-rows .ag-now { position: relative; height: 0; margin: 5px 0 5px calc(8px + var(--ag-time)); border-top: 2px solid var(--pink); animation: none; }

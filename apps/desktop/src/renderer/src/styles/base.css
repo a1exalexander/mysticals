@@ -609,7 +609,8 @@ body[data-dragging='col-resize'] .app { transition: none; }
 .ev-rail::after { content: ''; position: absolute; inset: 0 -2px; } /* a wider hit area */
 .ev-rail:hover { z-index: 2; background: var(--ink); }
 .ev-rail.is-pending { background: repeating-linear-gradient(180deg, var(--ink) 0 4px, transparent 4px 8px); }
-.ev-rail.is-declined, .ev-rail.is-past { opacity: 0.45; }
+.ev-rail.is-declined { opacity: 0.45; }
+.ev-rail.is-past { opacity: 0.35; filter: saturate(0.5); }
 /* The busy hours of long events (rails and all-day modes), hatched behind everything. */
 .tg-busy {
   position: absolute; left: 0; right: 0; z-index: 0; pointer-events: none;
