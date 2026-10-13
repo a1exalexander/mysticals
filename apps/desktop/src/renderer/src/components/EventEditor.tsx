@@ -8,7 +8,8 @@ import { RepeatField } from './ui/RepeatField'
 import { Select } from './ui/Select'
 import { useModal } from './ui/usePopover'
 import { extraEmail } from '@mysticals/core/logic/details'
-import { EVENT_COLORS, eventColor } from '@mysticals/core/logic/colors'
+import { eventColor } from '@mysticals/core/logic/colors'
+import { EventColors } from './EventColors'
 import {
   applyForm, emptyForm, setAllDay, errorText, formFromEvent, formToInput, isEmail, moveStart, repeatChanged, soleId, splitEmails,
   withLoadedRepeat, writableAccounts, writableCalendars, type EventForm
@@ -242,18 +243,11 @@ export function EventEditorHost(): React.JSX.Element | null {
             />
           )}
 
-          <label htmlFor="ed-color">{t('eventColor.label')}</label>
-          <Select
-            id="ed-color"
-            data-testid="editor-color"
-            aria-label={t('eventColor.label')}
-            compact
-            value={form.colorId ?? ''}
-            options={[
-              { value: '', label: t('eventColor.default'), color: calendar?.color ?? account?.color },
-              ...EVENT_COLORS.map((c) => ({ value: c.id, label: t(`eventColor.${c.key}`), color: c.hex }))
-            ]}
-            onChange={(colorId) => set({ colorId: colorId || undefined })}
+          <label>{t('eventColor.label')}</label>
+          <EventColors
+            value={form.colorId}
+            calendarColor={calendar?.color ?? account?.color ?? 'var(--muted)'}
+            onPick={(colorId) => set({ colorId: colorId ?? undefined })}
           />
 
           <label htmlFor="ed-allday">{t('editor.allDay')}</label>

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import type { CalEvent } from '@shared/types'
 import { EVENT_COLORS } from '@mysticals/core/logic/colors'
 import { rovingIndex } from './ui/roving'
 import { t } from '../i18n'
@@ -11,17 +10,17 @@ import './EventColors.css'
  * menu they are menuitemradios that the menu reaches as one stop; elsewhere one Tab stop with pressed buttons.
  */
 export function EventColors({
-  event,
+  value = '',
   calendarColor,
   menu,
   onPick
 }: {
-  event: CalEvent
+  /** The chosen colorId; none (or '') is the calendar's own colour. */
+  value?: string
   calendarColor: string
   menu?: boolean
   onPick: (colorId: string | null) => void
 }): React.JSX.Element {
-  const value = event.colorId ?? ''
   const options = [
     { id: '', hex: calendarColor, label: t('eventColor.default') },
     ...EVENT_COLORS.map((c) => ({ id: c.id as string, hex: c.hex as string, label: t(`eventColor.${c.key}`) }))

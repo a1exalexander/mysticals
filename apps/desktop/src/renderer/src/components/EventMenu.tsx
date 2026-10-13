@@ -118,21 +118,20 @@ export function deleteEvent(e: CalEvent): void {
 }
 
 /**
- * Recolours an event, the same from the menu and the details popover: a recurring event first asks for this one or the
- * whole series. Undo puts back a single one's colour (like a move, a series change has none).
+ * Recolours an event from the menu: a recurring event first asks for this one or the whole series. Undo puts back a
+ * single one's colour (like a move, a series change has none).
  */
-export function recolor(e: CalEvent, colorId: string | null, done?: (updated: CalEvent) => void): void {
+function recolor(e: CalEvent, colorId: string | null): void {
   if ((e.colorId ?? null) === colorId) return
   const run = (scope: DeleteScope): void =>
     void window.api.events.setColor(e, colorId, scope === 'all' ? 'all' : 'one').then(
       (updated) => {
-        done?.(updated)
         bus.emit('toast', {
           text: t(scope === 'all' ? 'toast.coloredAll' : 'toast.colored', { title: name(e) }),
           action:
             scope === 'all'
               ? undefined
-              : { label: t('common.undo'), run: () => void window.api.events.setColor(updated, e.colorId ?? null, 'one').then(done, () => {}) }
+              : { label: t('common.undo'), run: () => void window.api.events.setColor(updated, e.colorId ?? null, 'one').catch(() => {}) }
         })
       },
       (err) => bus.emit('toast', { text: t('toast.colorFailed', { title: name(e), error: errorText(err) }), error: true })
@@ -298,7 +297,7 @@ export function EventMenuHost(): React.JSX.Element | null {
             <EventColors
               key="colors"
               menu
-              event={menu.event}
+              value={menu.event.colorId}
               calendarColor={calendarColor}
               onPick={(colorId) => {
                 setMenu(null)

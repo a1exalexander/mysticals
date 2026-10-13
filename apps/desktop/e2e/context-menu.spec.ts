@@ -236,17 +236,20 @@ test('event colours: from the menu (mouse and keys), a series asks this one or a
   await expect(toast).toContainText('Recoloured “Morning run” (all events)')
   await expect.poll(() => colorOf('Morning run')).toBe('#0b8043')
 
-  // The details popover, then the editor.
-  await page.getByTestId('event-block').filter({ hasText: 'Gym' }).click()
-  const details = page.getByTestId('details')
-  await expect(details.getByRole('button', { name: 'Lavender' })).toHaveAttribute('aria-pressed', 'true')
-  await details.getByRole('button', { name: 'Sage' }).click()
-  await expect(details.getByRole('button', { name: 'Sage' })).toHaveAttribute('aria-pressed', 'true')
+  // The editor: inline swatches, saved with Save.
+  const editor = page.getByTestId('editor')
+  const edit = async (): Promise<void> => {
+    await page.getByTestId('event-block').filter({ hasText: 'Gym' }).click()
+    await page.getByTestId('details').getByRole('button', { name: 'Edit' }).click()
+  }
+  await edit()
+  await expect(editor.getByRole('button', { name: 'Lavender' })).toHaveAttribute('aria-pressed', 'true')
+  await editor.getByRole('button', { name: 'Sage' }).click()
+  await editor.getByRole('button', { name: 'Save' }).click()
   await expect.poll(() => colorOf('Gym')).toBe('#33b679')
-  await details.getByRole('button', { name: 'Edit' }).click()
-  await page.getByTestId('editor-color').click()
-  await page.getByRole('option', { name: 'Calendar colour' }).click()
-  await page.getByTestId('editor').getByRole('button', { name: 'Save' }).click()
+  await edit()
+  await editor.getByRole('button', { name: 'Calendar colour' }).click()
+  await editor.getByRole('button', { name: 'Save' }).click()
   await expect.poll(() => colorOf('Gym')).toBe(calendar)
   await app.close()
 })

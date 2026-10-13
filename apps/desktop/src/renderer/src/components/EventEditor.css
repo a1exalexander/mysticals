@@ -23,6 +23,8 @@
 .editor-grid textarea { resize: vertical; }
 .editor-static { padding: 4px 0; font-weight: 500; }
 .editor-switch { display: flex; align-items: center; min-height: 28px; }
+/* The colour swatches (EventColors) in one row. */
+.editor-grid .ev-colors { grid-template-columns: repeat(12, 18px); gap: 6px; padding: 4px 0; }
 
 .editor-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 3px 4px; }
 .editor-grid .editor-chips input { flex: 1; min-width: 120px; border: 0; box-shadow: none; padding: 1px 4px; min-height: 20px; background: transparent; }

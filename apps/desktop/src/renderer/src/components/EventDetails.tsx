@@ -3,8 +3,7 @@ import { addDays, subDays } from 'date-fns'
 import type { CalEvent, PartStat } from '@shared/types'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
-import { deleteEvent, name, recolor } from './EventMenu'
-import { EventColors } from './EventColors'
+import { deleteEvent, name } from './EventMenu'
 import { eventColorOf } from '@mysticals/core/logic/colors'
 import { canEdit, cleanNotes, formatWhen, isHtml, linkify, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
@@ -134,7 +133,6 @@ export function EventDetailsHost(): React.JSX.Element | null {
   const calendar = calendars.find((c) => c.accountId === event.accountId && c.id === event.calendarId)
   const editable = canEdit(event, account, calendar)
   // Any copy on a writable calendar takes a colour, an invite's too.
-  const colorable = !!account && !!calendar && !calendar.readOnly
   const links = eventLinks(event)
   const where = locationText(event.location)
   const owner = ownerLine(calendar?.name ?? t('editor.calendar'), account?.label ?? event.accountId, account?.email)
@@ -258,16 +256,6 @@ export function EventDetailsHost(): React.JSX.Element | null {
               ))}
             </div>
             <div className="mc-muted details-replyas">{t('rsvp.replyAs', { email: account?.email ?? event.accountId })}</div>
-          </div>
-        )}
-
-        {colorable && !gone && (
-          <div className="details-colors">
-            <EventColors
-              event={event}
-              calendarColor={eventColorOf({}, calendar, account)}
-              onPick={(colorId) => recolor(event, colorId, (updated) => still() && setOpened((o) => o && { ...o, event: { ...o.event, colorId: updated.colorId } }))}
-            />
           </div>
         )}
 
