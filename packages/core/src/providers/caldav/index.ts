@@ -123,6 +123,7 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
   // Read by listEvents: the engine calls listCalendars right before it every pass.
   let ctags = new Map<string, string | undefined>()
   const memo = new Map<string, { ctag: string; fetchedAt: number; events: CalEvent[] }>()
+  let writes = 0
 
   const mapCtx = (calendarId: string) => ({ accountId: ctx.accountId, calendarId, email: ctx.email })
 
@@ -142,10 +143,20 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
     return ev
   }
 
+  /** Every write goes through here: afterwards, drop the calendar's memo and void any listEvents still in flight. */
+  const write = async (calendarId: string, req: Promise<Response>, what: string): Promise<void> => {
+    try {
+      check(await req, what)
+    } finally {
+      memo.delete(calendarId)
+      writes++
+    }
+  }
+
   const put = async (event: CalEvent, ics: string, what: string): Promise<void> => {
     const { headers } = await getConn()
     const raw = event.raw as CaldavRaw
-    check(await updateCalendarObject({ calendarObject: { url: raw.href, data: ics, etag: event.etag }, headers, fetch: davFetch }), what)
+    await write(event.calendarId, updateCalendarObject({ calendarObject: { url: raw.href, data: ics, etag: event.etag }, headers, fetch: davFetch }), what)
   }
 
   const provider: CalendarProvider = {
@@ -153,6 +164,7 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
       const c = await getConn()
       const cals = await listVeventCalendars(c)
       ctags = new Map(cals.map((cal) => [cal.url, cal.ctag]))
+      for (const id of memo.keys()) if (!ctags.has(id)) memo.delete(id)
       return cals.map((cal) => toCalendar(cal, ctx.accountId))
     },
 
@@ -162,26 +174,25 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
       // ponytail: an unchanged ctag reuses events fetched for an older range; window edges slide at most a day, the daily refetch keeps it moving. RFC 6578 sync-collection if that's not enough.
       if (ctag && hit?.ctag === ctag && Date.now() - hit.fetchedAt < DAY) return hit.events
       const { headers } = await getConn()
+      const before = writes
       const objs = await fetchCalendarObjects({ calendar: { url: calendarId }, timeRange: range, headers, urlFilter: () => true, fetch: davFetch })
       const events = objs.flatMap((o) => (o.data ? parseEvents(o.data, o.url, o.etag, mapCtx(calendarId), range) : []))
-      if (ctag) memo.set(calendarId, { ctag, fetchedAt: Date.now(), events })
+      if (ctag && writes === before) memo.set(calendarId, { ctag, fetchedAt: Date.now(), events })
       else memo.delete(calendarId)
       return events
     },
 
     async createEvent(calendarId, input) {
-      memo.delete(calendarId)
       const { headers } = await getConn()
       const uid = randomUUID()
       const filename = `${uid}.ics`
       const ics = buildIcs(uid, input, ctx.email)
-      check(await createCalendarObject({ calendar: { url: calendarId }, filename, iCalString: ics, headers, fetch: davFetch }), 'Create event')
+      await write(calendarId, createCalendarObject({ calendar: { url: calendarId }, filename, iCalString: ics, headers, fetch: davFetch }), 'Create event')
       const href = new URL(filename, calendarId.endsWith('/') ? calendarId : `${calendarId}/`).href
       return reload(calendarId, href, undefined, input)
     },
 
     async updateEvent(event, scope = 'one') {
-      memo.delete(event.calendarId)
       const raw = event.raw as CaldavRaw
       if (!raw.recurrenceId || scope === 'one') {
         await put(event, applyUpdate(event, ctx.email), 'Update event')
@@ -199,18 +210,17 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
       await put(event, split.rest, 'Update event')
       const { headers } = await getConn()
       const filename = `${uid}.ics`
-      check(await createCalendarObject({ calendar: { url: event.calendarId }, filename, iCalString: split.next, headers, fetch: davFetch }), 'Update event')
+      await write(event.calendarId, createCalendarObject({ calendar: { url: event.calendarId }, filename, iCalString: split.next, headers, fetch: davFetch }), 'Update event')
       const href = new URL(filename, event.calendarId.endsWith('/') ? event.calendarId : `${event.calendarId}/`).href
       return reload(event.calendarId, href, undefined, event)
     },
 
     async deleteEvent(event, scope = 'one') {
-      memo.delete(event.calendarId)
       const raw = event.raw as CaldavRaw
       const rest = !raw.recurrenceId || scope === 'all' ? null : scope === 'following' ? applyDeleteFollowing(raw) : applyDeleteInstance(raw)
       if (rest) return put(event, rest, 'Delete event')
       const { headers } = await getConn()
-      check(await deleteCalendarObject({ calendarObject: { url: raw.href, etag: event.etag }, headers, fetch: davFetch }), 'Delete event')
+      await write(event.calendarId, deleteCalendarObject({ calendarObject: { url: raw.href, etag: event.etag }, headers, fetch: davFetch }), 'Delete event')
     },
 
     async getRecurrence(event) {
@@ -218,14 +228,12 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
     },
 
     async respond(event, status) {
-      memo.delete(event.calendarId)
       // The server performs RFC 6638 scheduling (iTIP REPLY to the organizer) on this PUT.
       await put(event, applyRespond(event.raw as CaldavRaw, ctx.email, status), 'Respond')
       return reload(event.calendarId, (event.raw as CaldavRaw).href, event.id, event)
     },
 
     async setColor(event, colorId, scope) {
-      memo.delete(event.calendarId)
       await put(event, applyColor(event.raw as CaldavRaw, colorId, scope), 'Set colour')
       return reload(event.calendarId, (event.raw as CaldavRaw).href, event.id, event)
     }
