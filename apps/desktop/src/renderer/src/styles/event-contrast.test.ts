@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { describe, expect, it } from 'vitest'
-import { THEMES } from '../theme'
+import { EVENT_FILLS, THEMES } from '../theme'
 import { SWATCHES } from '../components/AccountsShared'
 
 // Event colours are whatever the provider sends; .ev in base.css derives the bar/tint/title through --ink.
@@ -14,13 +14,14 @@ const CLASSIC = ['#ac725e', '#d06b64', '#f83a22', '#fa573c', '#ff7537', '#ffad46
   '#92e1c0', '#9fe1e7', '#9fc6e7', '#4986e7', '#9a9cff', '#b99aff', '#c2c2c2', '#cabdbf', '#cca6ac', '#f691b2', '#cd74e6', '#a47ae2']
 const COLOURS = [...SWATCHES, ...GOOGLE, ...CLASSIC, '#8e8e93', '#4285f4']
 
-/** Custom properties on <html> for a theme: every `:root…` rule that matches, in source order. */
-const vars = (id: string, scheme: string): Record<string, string> => {
+/** Custom properties on <html> for a theme and event fill mode: every `:root…` rule that matches, in source order. */
+const vars = (id: string, scheme: string, fill = 'opacity'): Record<string, string> => {
   const out: Record<string, string> = {}
   for (const [, sel, body] of css.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
     const hits = sel.split(/,(?![^(]*\))/).some((s) => {
       s = s.trim()
       if (!/^:root(\[[^\]]+\]|:is\([^)]*\))*$/.test(s)) return false
+      if (s.includes(`data-fill='fill'`) && fill !== 'fill') return false
       return s === ':root' || s.includes(`'${id}'`) || (scheme === 'light' && s.includes(`data-scheme='light'`))
     })
     if (hits) for (const [, k, v] of body.matchAll(/--([\w-]+):\s*([^;]+);/g)) out[k] = v.trim()
@@ -56,8 +57,8 @@ const lum = (c: RGB): number => { const [r, g, b] = c.map(lin); return 0.2126 * 
 const contrast = (a: RGB, b: RGB): number => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) }
 
 describe('event colours', () => {
-  it.each(THEMES.map((th) => [th.id, th.scheme]))('%s keeps every calendar colour legible', (id, scheme) => {
-    const v = vars(id, scheme)
+  it.each(THEMES.flatMap((th) => EVENT_FILLS.map((f) => [th.id, f, th.scheme])))('%s (%s) keeps every calendar colour legible', (id, fill, scheme) => {
+    const v = vars(id, scheme, fill)
     const n = (k: string): number => parseFloat(v[k])
     const bg = hex(v.bg)
     const bad = COLOURS.flatMap((c) => {

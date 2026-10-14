@@ -74,3 +74,41 @@ export const useTheme = (): ThemeId =>
     },
     () => current
   )
+
+/** How events are coloured: a soft tint of the canvas (opacity) or a solid fill. base.css reads html[data-fill]. */
+export const EVENT_FILLS = ['opacity', 'fill'] as const
+export type EventFill = (typeof EVENT_FILLS)[number]
+
+const FILL_KEY = 'mysticals-event-fill'
+
+function readFill(): EventFill {
+  try {
+    const v = localStorage.getItem(FILL_KEY)
+    if (EVENT_FILLS.includes(v as EventFill)) return v as EventFill
+  } catch {
+    // storage unavailable: fall back to default
+  }
+  return 'opacity'
+}
+
+let fill = readFill()
+
+export function applyEventFill(v: EventFill = fill): void {
+  fill = v
+  document.documentElement.dataset.fill = v
+  try {
+    localStorage.setItem(FILL_KEY, v)
+  } catch {
+    // per-device preference only; ignore
+  }
+  subs.forEach((f) => f())
+}
+
+export const useEventFill = (): EventFill =>
+  useSyncExternalStore(
+    (cb) => {
+      subs.add(cb)
+      return () => void subs.delete(cb)
+    },
+    () => fill
+  )

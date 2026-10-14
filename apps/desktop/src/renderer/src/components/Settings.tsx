@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Account } from '@shared/types'
 import { bus } from '../bus'
-import { THEMES, applyTheme, themeName, useTheme } from '../theme'
+import { EVENT_FILLS, THEMES, applyEventFill, applyTheme, themeName, useEventFill, useTheme } from '../theme'
 import { KindIcon, Sheet, Swatches, errorText } from './AccountsShared'
 import { SegTabs } from './ui/SegTabs'
 import { useRadioGroup } from './ui/roving'
@@ -92,7 +92,12 @@ export function SettingsHost(): React.JSX.Element | null {
               }}
             />
           )}
-          {tab === 'themes' && <ThemePicker />}
+          {tab === 'themes' && (
+            <>
+              <EventFillPicker />
+              <ThemePicker />
+            </>
+          )}
           {tab === 'events' && <EventsPanel />}
           {tab === 'general' && (
             <>
@@ -269,6 +274,27 @@ function LongPreview({ mode }: { mode: LongMode }): React.JSX.Element {
         <span className="lp-meet" />
       </span>
     </span>
+  )
+}
+
+/** Soft tinted events (default) or solid fills; a per-device preference, like the theme. */
+function EventFillPicker(): React.JSX.Element {
+  const fill = useEventFill()
+  return (
+    <div className="acc-reminders set-fill">
+      <div className="acc-reminders-row">
+        <span>{t('settings.eventFill')}</span>
+        <SegTabs
+          kind="radio"
+          className="set-seg"
+          ariaLabel={t('settings.eventFill')}
+          value={fill}
+          tabs={EVENT_FILLS.map((id) => ({ id, label: t(`settings.eventFill.${id}`) }))}
+          testId={(id) => `event-fill-${id}`}
+          onChange={applyEventFill}
+        />
+      </div>
+    </div>
   )
 }
 
