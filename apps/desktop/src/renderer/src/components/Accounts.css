@@ -155,6 +155,7 @@
 .acc-sheet button.acc-link:hover { background: none; text-decoration: underline; }
 
 /* Theme picker */
+.set-fill { margin-bottom: 12px; }
 .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .acc-sheet button.theme-opt {
   height: auto; display: grid; gap: 8px; padding: 10px; text-align: left; border-radius: var(--r-md); background: var(--bg);

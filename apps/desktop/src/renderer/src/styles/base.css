@@ -246,9 +246,12 @@
 :root[data-theme='bubble'] { --shadow: 150 100 190; --shadow-k: 0.3; --ev-clash: 1; --ev-clash-h: 345; --ev-tint-ylift: 0.12; }
 :root[data-theme='toon'] { --shadow: 43 33 64; --shadow-k: 0.5; --ev-clash: 1; --ev-clash-h: 96; }
 :root[data-theme='cloud'] { --shadow: 40 130 145; --shadow-k: 0.28; --ev-clash: 1; --ev-clash-h: 197; }
-/* Solid event fills (see .ev): lightness band and chroma cap of the fill. Candy themes: bright candy fills whose
-   lightness follows the event's colour (yellow stays near-white bright, blue drops), deeper bars, near-black titles. */
-:root:is([data-theme='bubble'], [data-theme='toon'], [data-theme='cloud']) {
+/* Soft tints on a tinted canvas stay faint: more ink mixed into pink, yellow or cyan muddies the hue. */
+:root:is([data-theme='bubble'], [data-theme='toon'], [data-theme='cloud']) { --ev-mix: 18%; }
+/* Solid event fills (Settings › Themes › Solid, html[data-fill='fill']; see .ev): lightness band and chroma cap of the
+   fill. Candy themes: bright candy fills whose lightness follows the event's colour (yellow stays near-white bright,
+   blue drops), deeper bars, near-black titles. */
+:root[data-fill='fill']:is([data-theme='bubble'], [data-theme='toon'], [data-theme='cloud']) {
   --ev-tint-lmin: 0.8;
   --ev-tint-l: 0.95;
   --ev-tint-cmax: 0.22;
@@ -259,7 +262,7 @@
   --ev-text-cmax: 0.2;
 }
 /* Colourful dark themes: the same solid fills, lighter, with near-black titles. Ink mixed into black reads as mud. */
-:root:is([data-theme='dracula'], [data-theme='tokyo'], [data-theme='catppuccin'], [data-theme='vscode']) {
+:root[data-fill='fill']:is([data-theme='dracula'], [data-theme='tokyo'], [data-theme='catppuccin'], [data-theme='vscode']) {
   --ev-tint-lmin: 0.7;
   --ev-tint-l: 0.9;
   --ev-tint-cmax: 0.22;
@@ -531,24 +534,24 @@ body[data-dragging='col-resize'] .app { transition: none; }
 .ev, .ev-rail, .sbar-ev, .ag-chip, .ag-rows li, .ag-focus, .sb-cal .mc-check {
   --ink: oklch(from var(--c) clamp(var(--ev-lmin), l, var(--ev-lmax)) min(c, var(--ev-cmax)) h);
 }
-/* Soft tint + strong left border. */
+/* Soft tint (default, opacity mode) + strong left border. */
 .ev {
   --tint: color-mix(in srgb, var(--ink) var(--ev-mix), var(--bg));
   color: oklch(from var(--c) var(--ev-text-l) min(c, var(--ev-text-cmax), var(--ev-cmax)) h);
   background: var(--tint);
   border-radius: 0; overflow: hidden; font-size: 11px; line-height: 14px;
 }
-/* Solid-fill themes: the fill comes straight from the event's colour. Mixing the ink into a tinted canvas greys it.
+/* Solid fills (fill mode, colourful themes): the fill comes straight from the event's colour. Mixing the ink into a tinted canvas greys it.
    Pending invites and drag previews sit on that fill too, so their dark titles stay legible on dark canvases; the month
    grid's preview keeps its own background (later, same specificity) since its text is --fg. --ev-tint-ylift raises the
    floor for yellows (full within 12° of h 92, none by 24°): on pink Bubblegum a mid-lightness yellow reads as mustard. */
-:root:is([data-theme='bubble'], [data-theme='toon'], [data-theme='cloud'], [data-theme='dracula'], [data-theme='tokyo'],
-  [data-theme='catppuccin'], [data-theme='vscode']) .ev {
+:root[data-fill='fill']:is([data-theme='bubble'], [data-theme='toon'], [data-theme='cloud'], [data-theme='dracula'],
+  [data-theme='tokyo'], [data-theme='catppuccin'], [data-theme='vscode']) .ev {
   --tint: oklch(from var(--c) clamp(calc(var(--ev-tint-lmin) + var(--ev-tint-ylift, 0) * clamp(0, (24 - abs(h - 92)) / 12, 1)),
     l, var(--ev-tint-l)) min(c, var(--ev-tint-cmax)) h);
 }
-:root:is([data-theme='bubble'], [data-theme='toon'], [data-theme='cloud'], [data-theme='dracula'], [data-theme='tokyo'],
-  [data-theme='catppuccin'], [data-theme='vscode']) :is(.ev.is-pending, .ev-preview) { background-color: var(--tint); }
+:root[data-fill='fill']:is([data-theme='bubble'], [data-theme='toon'], [data-theme='cloud'], [data-theme='dracula'],
+  [data-theme='tokyo'], [data-theme='catppuccin'], [data-theme='vscode']) :is(.ev.is-pending, .ev-preview) { background-color: var(--tint); }
 .ev { animation: fade-in 140ms ease-out; }
 .ev-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ev.is-pending {
