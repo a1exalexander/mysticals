@@ -4,6 +4,7 @@ import { bus } from '../bus'
 import { setCalendarVisible, useCalendarData } from '../hooks/useCalendarData'
 import { MiniMonth } from './MiniMonth'
 import { t, useLocale } from '../i18n'
+import { useThemedColor } from '../theme'
 import './ui/ui.css'
 
 const COLLAPSED_KEY = 'mysticals-collapsed-accounts'
@@ -22,6 +23,7 @@ function readCollapsed(): string[] {
 export function Sidebar({ collapsed: hidden = false }: { collapsed?: boolean }): React.JSX.Element {
   const { accounts, calendars } = useCalendarData()
   useLocale()
+  const themed = useThemedColor()
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const toggleAccount = (id: string): void => {
     const next = collapsed.includes(id) ? collapsed.filter((x) => x !== id) : [...collapsed, id]
@@ -108,7 +110,7 @@ export function Sidebar({ collapsed: hidden = false }: { collapsed?: boolean }):
                       className="mc-check"
                       data-testid={`sidebar-calendar-${a.id}-${c.id}`}
                       checked={c.visible !== false}
-                      style={{ '--c': c.color } as React.CSSProperties}
+                      style={{ '--c': c.color && themed(c.color) } as React.CSSProperties}
                       onChange={(e) => setCalendarVisible(a.id, c.id, e.target.checked)}
                     />
                     <span className="sb-cal-name">{c.name}</span>

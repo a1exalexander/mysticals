@@ -18,6 +18,7 @@ import { useClock, weekNo } from '../clock'
 import type { Key } from '@mysticals/core/i18n'
 import { SegTabs } from '../components/ui/SegTabs'
 import { toggleSidebar } from '../sidebar'
+import { useThemedColor } from '../theme'
 
 const VIEWS: DeskView[] = ['agenda', 'day', '3day', 'week', 'month']
 const LABEL: Record<DeskView, Key> = { agenda: 'view.agenda', day: 'view.day', '3day': 'view.3day', week: 'view.week', month: 'view.month' }
@@ -62,6 +63,7 @@ const readAhead = (): boolean => {
 export function CalendarView(): React.JSX.Element {
   const { date: navDate, view: deskView } = useNav()
   useLocale()
+  const themed = useThemedColor()
   const { weekStartsOn } = useClock()
   const agenda = deskView === 'agenda'
   // The agenda shows one day (today unless stepped away); underneath it loads like the day view.
@@ -146,8 +148,8 @@ export function CalendarView(): React.JSX.Element {
   const colorOf = useMemo<ColorOf>(() => {
     const cal = new Map(calendars.map((c) => [`${c.accountId}/${c.id}`, c.color]))
     const acc = new Map(accounts.map((a) => [a.id, a.color]))
-    return (e) => eventColorOf(e, { color: cal.get(`${e.accountId}/${e.calendarId}`) }, { color: acc.get(e.accountId) })
-  }, [accounts, calendars])
+    return (e) => themed(eventColorOf(e, { color: cal.get(`${e.accountId}/${e.calendarId}`) }, { color: acc.get(e.accountId) }))
+  }, [accounts, calendars, themed])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {

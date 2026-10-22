@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { EVENT_COLORS } from '@mysticals/core/logic/colors'
 import { rovingIndex } from './ui/roving'
 import { t } from '../i18n'
+import { useEventPalette, useThemedColor } from '../theme'
 import './EventColors.css'
 
 /**
  * An event's colour choices: its calendar's own colour, then the 11 event colours. ←/→ (Home/End) move between them,
  * a click / Enter / Space picks one: picking writes to the server, so moving through them must not. In the right-click
- * menu they are menuitemradios that the menu reaches as one stop; elsewhere one Tab stop with pressed buttons.
+ * menu they are menuitemradios that the menu reaches as one stop; elsewhere one Tab stop with pressed buttons. With the
+ * theme palette on, each swatch is split: the theme's colour on top, the original below.
  */
 export function EventColors({
   value = '',
@@ -25,6 +27,8 @@ export function EventColors({
     { id: '', hex: calendarColor, label: t('eventColor.default') },
     ...EVENT_COLORS.map((c) => ({ id: c.id as string, hex: c.hex as string, label: t(`eventColor.${c.key}`) }))
   ]
+  const themed = useThemedColor()
+  const split = useEventPalette() === 'theme'
   const [focused, setFocused] = useState<number>()
   const stop = focused ?? Math.max(0, options.findIndex((o) => o.id === value))
   return (
@@ -55,9 +59,9 @@ export function EventColors({
           aria-label={o.label}
           title={o.label}
           tabIndex={menu ? -1 : i === stop ? 0 : -1}
-          className={o.id ? 'ev-swatch' : 'ev-swatch calendar'}
+          className={`ev-swatch${o.id ? '' : ' calendar'}${split ? ' split' : ''}`}
           data-color={o.id || 'calendar'}
-          style={{ '--sw': o.hex } as React.CSSProperties}
+          style={{ '--sw': o.hex, '--sw-th': themed(o.hex) } as React.CSSProperties}
           onFocus={() => setFocused(i)}
           onClick={() => onPick(o.id || null)}
         />

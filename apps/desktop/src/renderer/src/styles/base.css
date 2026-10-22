@@ -276,6 +276,12 @@
 /* Monochrome themes: event colours keep their hue but only as a hint. */
 :root:is([data-theme='amber'], [data-theme='matrix']) { --ev-cmax: 0.11; }
 :root[data-theme='mono'] { --ev-cmax: 0.06; }
+/* Theme event palette (Settings › Themes › Theme, html[data-palette='theme']; THEMES[].events in theme.ts): the colours
+   are already the theme's, so Amber and Matrix lift the hint cap, and the one-hue themes widen the lightness band, since
+   lightness is all that tells their events apart. */
+:root[data-palette='theme']:is([data-theme='amber'], [data-theme='matrix']) { --ev-cmax: 0.2; --ev-lmin: 0.6; --ev-lmax: 0.95; }
+:root[data-palette='theme'][data-theme='mono'] { --ev-lmin: 0.55; --ev-lmax: 1; }
+:root[data-palette='theme'][data-theme='light'] { --ev-lmin: 0.25; }
 /* Matrix: everything in mono with a barely-there phosphor glow. */
 :root[data-theme='matrix'] { --shadow: 0 0 0; font-family: var(--mono); }
 :root[data-theme='matrix'] :is(input, textarea, .invites-panel) { font-family: var(--mono); }

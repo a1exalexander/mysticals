@@ -1,7 +1,18 @@
 import { useEffect, useState } from 'react'
 import type { Account } from '@shared/types'
 import { bus } from '../bus'
-import { EVENT_FILLS, THEMES, applyEventFill, applyTheme, themeName, useEventFill, useTheme } from '../theme'
+import {
+  EVENT_FILLS,
+  EVENT_PALETTES,
+  THEMES,
+  applyEventFill,
+  applyEventPalette,
+  applyTheme,
+  themeName,
+  useEventFill,
+  useEventPalette,
+  useTheme
+} from '../theme'
 import { KindIcon, Sheet, Swatches, errorText } from './AccountsShared'
 import { SegTabs } from './ui/SegTabs'
 import { useRadioGroup } from './ui/roving'
@@ -95,6 +106,7 @@ export function SettingsHost(): React.JSX.Element | null {
           {tab === 'themes' && (
             <>
               <EventFillPicker />
+              <EventPalettePicker />
               <ThemePicker />
             </>
           )}
@@ -292,6 +304,27 @@ function EventFillPicker(): React.JSX.Element {
           tabs={EVENT_FILLS.map((id) => ({ id, label: t(`settings.eventFill.${id}`) }))}
           testId={(id) => `event-fill-${id}`}
           onChange={applyEventFill}
+        />
+      </div>
+    </div>
+  )
+}
+
+/** Calendar colours (default) or the theme's own event palette; a per-device preference, like the theme. */
+function EventPalettePicker(): React.JSX.Element {
+  const palette = useEventPalette()
+  return (
+    <div className="acc-reminders set-fill">
+      <div className="acc-reminders-row">
+        <span>{t('settings.eventPalette')}</span>
+        <SegTabs
+          kind="radio"
+          className="set-seg"
+          ariaLabel={t('settings.eventPalette')}
+          value={palette}
+          tabs={EVENT_PALETTES.map((id) => ({ id, label: t(`settings.eventPalette.${id}`) }))}
+          testId={(id) => `event-palette-${id}`}
+          onChange={applyEventPalette}
         />
       </div>
     </div>

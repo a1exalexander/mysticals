@@ -12,3 +12,14 @@
 .ev-swatch.calendar[aria-checked='true'], .ev-swatch.calendar[aria-pressed='true'] {
   box-shadow: inset 0 0 0 2.5px var(--sw), 0 0 0 2px var(--surface-2), 0 0 0 3.5px var(--fg);
 }
+/* Theme palette on: the theme's colour on top, the original below. The calendar ring splits the same way: a ring cut out
+   of a split disc in ::before (the inset ring can't take two colours, and a mask on the button would clip its rings). */
+.ev-swatch.split { background: linear-gradient(var(--sw-th) 50%, var(--sw) 50%); }
+.ev-swatch.calendar.split { position: relative; background: none; box-shadow: none; }
+.ev-swatch.calendar.split::before {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  background: linear-gradient(var(--sw-th) 50%, var(--sw) 50%);
+  -webkit-mask: radial-gradient(circle, transparent 6px, #000 6.5px);
+  mask: radial-gradient(circle, transparent 6px, #000 6.5px);
+}
+.ev-swatch.calendar.split:is([aria-checked='true'], [aria-pressed='true']) { box-shadow: 0 0 0 2px var(--surface-2), 0 0 0 3.5px var(--fg); }
