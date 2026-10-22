@@ -9,8 +9,8 @@ describe('nearestEventColor', () => {
   })
   it('maps greys to graphite and calendar colours to their nearest hue', () => {
     expect(['#c2c2c2', '#8e8e93', '#ffffff'].map(key)).toEqual(['graphite', 'graphite', 'graphite'])
-    expect(['#fbe983', '#9fe1e7', '#f691b2', '#42d692', '#7bd148', '#9a9cff'].map(key)).toEqual(
-      ['banana', 'peacock', 'flamingo', 'sage', 'basil', 'lavender']
+    expect(['#fbe983', '#9fe1e7', '#f691b2', '#42d692', '#9a9cff', '#4285f4', '#f83a22', '#ff5555', '#50fa7b'].map(key)).toEqual(
+      ['banana', 'peacock', 'flamingo', 'sage', 'lavender', 'blueberry', 'tomato', 'tomato', 'sage']
     )
   })
 })

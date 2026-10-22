@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { describe, expect, it } from 'vitest'
-import { EVENT_FILLS, EVENT_PALETTES, THEMES } from '../theme'
+import { EVENT_FILLS, EVENT_PALETTES, SWATCH_SLOTS, THEMES, themedColor } from '../theme'
 import { SWATCHES } from '../components/AccountsShared'
 
 // Event colours are whatever the provider sends; .ev in base.css derives the bar/tint/title through --ink.
@@ -112,5 +112,17 @@ describe('UI tokens', () => {
       return r >= 4.5 ? [] : [`--${fg} on --${bg} ${r.toFixed(2)}`]
     })
     expect(bad).toEqual([])
+  })
+})
+
+describe('theme event palette', () => {
+  it('slots every account swatch, and Dracula keeps them as they are', () => {
+    expect(Object.keys(SWATCH_SLOTS).sort()).toEqual([...SWATCHES].sort())
+    expect(SWATCHES.map((c) => themedColor(c, 'dracula', 'theme'))).toEqual(SWATCHES)
+    expect(new Set(SWATCHES.map((c) => themedColor(c, 'matrix', 'theme'))).size).toBe(SWATCHES.length)
+  })
+  it('leaves colours alone with the palette off, and non-hex values always', () => {
+    expect(themedColor('#d50000', 'matrix', 'calendar')).toBe('#d50000')
+    expect(themedColor('var(--muted)', 'matrix', 'theme')).toBe('var(--muted)')
   })
 })

@@ -1,5 +1,5 @@
 import { useCallback, useSyncExternalStore } from 'react'
-import { nearestEventColor } from '@mysticals/core/logic/colors'
+import { EVENT_COLORS, nearestEventColor, type EventColor } from '@mysticals/core/logic/colors'
 import { t } from './i18n'
 
 /**
@@ -171,10 +171,27 @@ export const useEventPalette = (): EventPalette =>
     () => palette
   )
 
+/**
+ * The app's own account swatches (SWATCHES in components/AccountsShared.tsx), slotted by hand: by nearest hue, pink and
+ * purple would share grape and orange and yellow banana. On Dracula each one lands on itself.
+ */
+export const SWATCH_SLOTS: Record<string, EventColor['key']> = {
+  '#bd93f9': 'lavender',
+  '#50fa7b': 'sage',
+  '#8be9fd': 'peacock',
+  '#ff79c6': 'flamingo',
+  '#ffb86c': 'tangerine',
+  '#f1fa8c': 'banana',
+  '#ff5555': 'tomato',
+  '#6272a4': 'graphite'
+}
+
 /** A colour in the current theme's event palette (nearest of its 11 slots), or as is with the palette off. */
 export const themedColor = (hex: string, id: ThemeId, p: EventPalette): string => {
   if (p !== 'theme' || !/^#[\da-f]{6}$/i.test(hex)) return hex
-  return (THEMES.find((x) => x.id === id) ?? THEMES[0]).events[nearestEventColor(hex)]
+  const swatch = SWATCH_SLOTS[hex.toLowerCase()]
+  const slot = swatch ? EVENT_COLORS.findIndex((c) => c.key === swatch) : nearestEventColor(hex)
+  return (THEMES.find((x) => x.id === id) ?? THEMES[0]).events[slot]
 }
 
 /** themedColor bound to the current theme and palette; a new function whenever either changes. */

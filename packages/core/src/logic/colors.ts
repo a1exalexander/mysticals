@@ -49,9 +49,9 @@ const GRAPHITE = EVENT_COLORS.findIndex((c) => c.key === 'graphite')
 
 /**
  * Index in EVENT_COLORS of the event colour nearest a #rrggbb hex, so theme palettes can redraw any calendar colour.
- * Hue decides (pastel calendar colours are far lighter than the event colours), lightness splits same-hue pairs
- * (sage/basil, lavender/blueberry); near-greys are graphite. ponytail: any calendar colour collapses to 11 slots, so
- * two close calendar colours can land on the same one.
+ * Hue decides (pastel calendar colours are far lighter than the event colours); chroma, then lightness, split same-hue
+ * pairs (tomato/flamingo, sage/basil, lavender/blueberry); near-greys are graphite. ponytail: any calendar colour
+ * collapses to 11 slots, so two close calendar colours can land on the same one.
  */
 export const nearestEventColor = (hex: string): number => {
   const [L, a, b] = oklab(hex)
@@ -62,7 +62,7 @@ export const nearestEventColor = (hex: string): number => {
   LABS.forEach(([L2, a2, b2], i) => {
     if (i === GRAPHITE) return
     const c2 = Math.hypot(a2, b2)
-    const d = Math.hypot(a / c - a2 / c2, b / c - b2 / c2) + 0.5 * Math.abs(L - L2)
+    const d = Math.hypot(a / c - a2 / c2, b / c - b2 / c2) + 3 * Math.abs(c - c2) + 0.5 * Math.abs(L - L2)
     if (d < min) [best, min] = [i, d]
   })
   return best

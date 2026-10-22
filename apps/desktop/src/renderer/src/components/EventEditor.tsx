@@ -17,6 +17,7 @@ import {
 import './ui/ui.css'
 import './EventEditor.css'
 import { currentLocale, t, useLocale } from '../i18n'
+import { useThemedColor } from '../theme'
 
 type Opened = { mode: 'create'; prefill: BusEvents['event:create'] } | { mode: 'edit'; event: CalEvent }
 
@@ -24,6 +25,7 @@ type Opened = { mode: 'create'; prefill: BusEvents['event:create'] } | { mode: '
 export function EventEditorHost(): React.JSX.Element | null {
   const { accounts, calendars, loaded } = useDirectory()
   useLocale()
+  const themed = useThemedColor()
   const [opened, setOpened] = useState<Opened | null>(null)
   const [form, setForm] = useState<EventForm | null>(null)
   const [initial, setInitial] = useState<EventForm | null>(null) // the form as opened, to tell an edit apart
@@ -175,7 +177,7 @@ export function EventEditorHost(): React.JSX.Element | null {
     setDraft('')
   }
   const calendar = calendars.find((c) => c.accountId === form.accountId && c.id === form.calendarId)
-  const cal = eventColor(form.colorId)?.hex ?? account?.color ?? 'var(--muted)'
+  const cal = themed(eventColor(form.colorId)?.hex ?? account?.color ?? 'var(--muted)')
 
   return (
     <dialog
@@ -238,7 +240,7 @@ export function EventEditorHost(): React.JSX.Element | null {
               placeholder={form.accountId ? t('editor.chooseCalendar') : t('editor.accountFirst')}
               disabled={!form.accountId}
               value={form.calendarId}
-              options={accountCals.map((c) => ({ value: c.id, label: c.name, color: c.color }))}
+              options={accountCals.map((c) => ({ value: c.id, label: c.name, color: c.color && themed(c.color) }))}
               onChange={(calendarId) => set({ calendarId })}
             />
           )}
