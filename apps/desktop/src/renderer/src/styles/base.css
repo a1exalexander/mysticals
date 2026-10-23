@@ -282,6 +282,8 @@
 :root[data-palette='theme']:is([data-theme='amber'], [data-theme='matrix']) { --ev-cmax: 0.2; --ev-lmin: 0.6; --ev-lmax: 0.95; }
 :root[data-palette='theme'][data-theme='mono'] { --ev-lmin: 0.55; --ev-lmax: 1; }
 :root[data-palette='theme'][data-theme='light'] { --ev-lmin: 0.25; }
+/* Bubblegum's all-pink palette: a lower floor, so its deep berries stay apart from the mid pinks. */
+:root[data-palette='theme'][data-theme='bubble'] { --ev-lmin: 0.34; }
 /* Matrix: everything in mono with a barely-there phosphor glow. */
 :root[data-theme='matrix'] { --shadow: 0 0 0; font-family: var(--mono); }
 :root[data-theme='matrix'] :is(input, textarea, .invites-panel) { font-family: var(--mono); }

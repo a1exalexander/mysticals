@@ -156,6 +156,13 @@
 
 /* Theme picker */
 .set-fill { margin-bottom: 12px; }
+.set-row-gap { margin-top: 6px; }
+/* Sample events under the colour switches: on the canvas colour, since soft tints mix into --bg. */
+.ev-sample {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-top: 4px; padding: 4px;
+  border: 1px solid var(--line); border-radius: 0; background: var(--bg);
+}
+.ev-sample .ev { cursor: default; }
 .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .acc-sheet button.theme-opt {
   height: auto; display: grid; gap: 8px; padding: 10px; text-align: left; border-radius: var(--r-md); background: var(--bg);

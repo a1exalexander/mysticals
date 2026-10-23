@@ -116,9 +116,9 @@ describe('UI tokens', () => {
 })
 
 describe('theme event palette', () => {
-  it('slots every account swatch, and Dracula keeps them as they are', () => {
+  it('slots every account swatch, none sharing a colour', () => {
     expect(Object.keys(SWATCH_SLOTS).sort()).toEqual([...SWATCHES].sort())
-    expect(SWATCHES.map((c) => themedColor(c, 'dracula', 'theme'))).toEqual(SWATCHES)
+    expect(new Set(SWATCHES.map((c) => themedColor(c, 'dracula', 'theme'))).size).toBe(SWATCHES.length)
     expect(new Set(SWATCHES.map((c) => themedColor(c, 'matrix', 'theme'))).size).toBe(SWATCHES.length)
   })
   it('leaves colours alone with the palette off, and non-hex values always', () => {

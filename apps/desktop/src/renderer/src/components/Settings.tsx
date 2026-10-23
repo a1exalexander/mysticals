@@ -11,7 +11,9 @@ import {
   themeName,
   useEventFill,
   useEventPalette,
-  useTheme
+  useTheme,
+  useThemedColor,
+  type ThemeId
 } from '../theme'
 import { KindIcon, Sheet, Swatches, errorText } from './AccountsShared'
 import { SegTabs } from './ui/SegTabs'
@@ -20,6 +22,7 @@ import { cap, currentLocale, fmt, setLanguage, t, useLocale } from '../i18n'
 import { setClock, useClock } from '../clock'
 import { LOCALE_NAME, LOCALES, type Key, type LocaleSetting } from '@mysticals/core/i18n'
 import { REMINDER_CHOICES } from '@mysticals/core/logic/reminders'
+import { EVENT_COLORS } from '@mysticals/core/logic/colors'
 import { LONG_RANGE, LONG_MODES, usesThreshold, type LongMode } from '@mysticals/core/logic/layout'
 import { setLongEvents, useLongEvents } from '../longEvents'
 import { Select } from './ui/Select'
@@ -105,8 +108,7 @@ export function SettingsHost(): React.JSX.Element | null {
           )}
           {tab === 'themes' && (
             <>
-              <EventFillPicker />
-              <EventPalettePicker />
+              <EventLookPanel />
               <ThemePicker />
             </>
           )}
@@ -289,9 +291,26 @@ function LongPreview({ mode }: { mode: LongMode }): React.JSX.Element {
   )
 }
 
-/** Soft tinted events (default) or solid fills; a per-device preference, like the theme. */
-function EventFillPicker(): React.JSX.Element {
+/** Themes left out of base.css's `data-fill='fill'` rules: Solid draws them soft too. */
+const SOFT_ONLY: readonly ThemeId[] = ['amber', 'mono', 'matrix', 'light']
+
+/** The sample strip: Google colours, so the palette switch visibly redraws them. */
+const SAMPLE = [
+  ['peacock', 'settings.eventSample.standup'],
+  ['sage', 'settings.eventSample.lunch'],
+  ['tomato', 'settings.eventSample.release'],
+  ['banana', 'settings.eventSample.gym']
+] as const satisfies readonly (readonly [string, Key])[]
+
+/**
+ * Soft tints (default) or solid fills, and calendar colours (default) or the theme's own palette; per-device preferences,
+ * like the theme. A hint per switch and a strip of sample events drawn through the real .ev styles show what each does.
+ */
+function EventLookPanel(): React.JSX.Element {
   const fill = useEventFill()
+  const palette = useEventPalette()
+  const theme = useTheme()
+  const themed = useThemedColor()
   return (
     <div className="acc-reminders set-fill">
       <div className="acc-reminders-row">
@@ -306,16 +325,10 @@ function EventFillPicker(): React.JSX.Element {
           onChange={applyEventFill}
         />
       </div>
-    </div>
-  )
-}
-
-/** Calendar colours (default) or the theme's own event palette; a per-device preference, like the theme. */
-function EventPalettePicker(): React.JSX.Element {
-  const palette = useEventPalette()
-  return (
-    <div className="acc-reminders set-fill">
-      <div className="acc-reminders-row">
+      <p className="acc-hint-line">
+        {fill === 'fill' && SOFT_ONLY.includes(theme) ? t('settings.eventFill.softOnly') : t(`settings.eventFill.${fill}Hint`)}
+      </p>
+      <div className="acc-reminders-row set-row-gap">
         <span>{t('settings.eventPalette')}</span>
         <SegTabs
           kind="radio"
@@ -326,6 +339,14 @@ function EventPalettePicker(): React.JSX.Element {
           testId={(id) => `event-palette-${id}`}
           onChange={applyEventPalette}
         />
+      </div>
+      <p className="acc-hint-line">{t(`settings.eventPalette.${palette}Hint`)}</p>
+      <div className="ev-sample" aria-hidden>
+        {SAMPLE.map(([key, title]) => (
+          <span key={key} className="ev ev-allday" style={{ '--c': themed(EVENT_COLORS.find((c) => c.key === key)!.hex) } as React.CSSProperties}>
+            <span className="ev-title">{t(title)}</span>
+          </span>
+        ))}
       </div>
     </div>
   )
