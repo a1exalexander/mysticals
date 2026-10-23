@@ -7,7 +7,7 @@ import { t } from './i18n'
  * events: the theme's own versions of Google's 11 event colours, in EVENT_COLORS order (lavender, sage, grape, flamingo,
  * banana, tangerine, peacock, graphite, blueberry, basil, tomato), drawn instead of calendar colours when the theme
  * palette is on (Settings › Themes). Tokyo Night takes its Moon variant's accents, VS Code One Dark Pro's, Cartoon Riso
- * inks; Dracula goes gothic (blood, wine, candle gold), Catppuccin aurora, Bubblegum pinks only, Cloud a dawn sky.
+ * inks; Dracula goes gothic (blood, wine, candle gold), Catppuccin aurora, Bubblegum pinks only, Cloud blues only.
  */
 export const THEMES = [
   { id: 'dracula', name: 'Dracula', scheme: 'dark', preview: ['#0b0b10', '#bd93f9', '#ff79c6', '#8be9fd', '#50fa7b'],
@@ -25,11 +25,11 @@ export const THEMES = [
   { id: 'matrix', name: 'Matrix', scheme: 'dark', preview: ['#0a0a0a', '#3ecf68', '#a8d66a', '#6fcfa2', '#35b85a'],
     events: ['#7fd8be', '#6fcf8f', '#4fae8a', '#b6e37d', '#d8f08a', '#9fd648', '#43d6b0', '#5c7a64', '#2fa37a', '#35b85a', '#c8ff6a'] },
   { id: 'bubble', name: 'Bubblegum', scheme: 'light', preview: ['#fff5fa', '#c92d7b', '#d0246c', '#ffa3d1', '#cfeeff'],
-    events: ['#b693cb', '#d59ba2', '#7e2485', '#ec6c9e', '#cdb1a1', '#cb6861', '#fdbae8', '#48474c', '#8661c0', '#7a3260', '#dd395b'] },
+    events: ['#dcabd6', '#cc939a', '#871459', '#ee83af', '#fcd4e6', '#dd6d79', '#d740a2', '#846875', '#a13b85', '#681d3b', '#d4225f'] },
   { id: 'toon', name: 'Cartoon', scheme: 'light', preview: ['#fffbea', '#7b3ff2', '#d0105f', '#18b6f6', '#ffd60a'],
     events: ['#765ba7', '#00a95c', '#9d7ad2', '#ff48b0', '#ffe800', '#ff6c2f', '#5ec8e5', '#88898a', '#3255a4', '#00838a', '#f15060'] },
   { id: 'cloud', name: 'Cloud', scheme: 'light', preview: ['#f2fefe', '#137d8b', '#e0ffff', '#f7c3d9', '#b4ebd9'],
-    events: ['#a09ed9', '#9ae8d8', '#79459a', '#eb98cc', '#f3d9b4', '#ed8c86', '#47c2f0', '#6a747a', '#2d62be', '#07706d', '#be366e'] },
+    events: ['#9dafe5', '#8fd0e1', '#294793', '#67addd', '#c6e8f6', '#3699b8', '#28acdf', '#617581', '#145ec1', '#014867', '#137ece'] },
   { id: 'light', name: 'Light', scheme: 'light', preview: ['#ffffff', '#111111', '#525252', '#a3a3a3', '#e5e5e5'],
     events: ['#3c3c3c', '#585858', '#222222', '#454545', '#767676', '#333333', '#626262', '#808080', '#2a2a2a', '#4e4e4e', '#6c6c6c'] }
 ] as const
