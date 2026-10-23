@@ -23,10 +23,10 @@ export function ownerLine(calendar: string | undefined, label: string, email?: s
   return { calendar: same(calendar, label) || same(calendar, email) ? undefined : calendar, label, email: extraEmail(label, email) }
 }
 
-/** Edit/Delete only for events this account organizes (or plain events) in writable calendars. */
+/** Edit/Delete only for events this account organizes, plain events or ones whose guests may edit, in writable calendars. */
 export function canEdit(e: CalEvent, account?: Account, calendar?: Calendar): boolean {
   if (!account || !calendar || calendar.readOnly) return false
-  if (e.attendees.length === 0) return true
+  if (e.attendees.length === 0 || e.guestsCanModify) return true
   return same(e.organizer?.email, account.email) || e.attendees.some((a) => a.self && a.organizer)
 }
 

@@ -20,6 +20,12 @@ describe('canEdit', () => {
     expect(canEdit(ev({ attendees, organizer: { email: 'pm@work.example' } }), account, cal)).toBe(false)
     expect(canEdit(ev({ attendees, organizer: { email: 'ME@work.example' } }), account, cal)).toBe(true)
   })
+  it('allows guests when the organizer lets them edit', () => {
+    const attendees = [{ email: 'pm@work.example', status: 'accepted' as const, organizer: true }]
+    const invite = ev({ attendees, organizer: { email: 'pm@work.example' }, guestsCanModify: true })
+    expect(canEdit(invite, account, cal)).toBe(true)
+    expect(canEdit(invite, account, { ...cal, readOnly: true })).toBe(false)
+  })
 })
 
 describe('pendingInvites', () => {

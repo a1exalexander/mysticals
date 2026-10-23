@@ -42,6 +42,7 @@ export interface GEvent {
   conferenceData?: { entryPoints?: { entryPointType?: string; uri?: string }[] }
   /** One of Google's event colours ('1'..'11'); absent: the calendar's colour. */
   colorId?: string
+  guestsCanModify?: boolean
 }
 
 /** The event's video-call link: Meet's hangoutLink, else the conference's video entry point. */
@@ -81,7 +82,8 @@ export function mapEvent(g: GEvent, accountId: string, calendarId: string): CalE
     etag: g.etag,
     raw: g,
     recurringEventId: g.recurringEventId,
-    ...(g.colorId ? { colorId: g.colorId } : {})
+    ...(g.colorId ? { colorId: g.colorId } : {}),
+    ...(g.guestsCanModify ? { guestsCanModify: true } : {})
   }
 }
 

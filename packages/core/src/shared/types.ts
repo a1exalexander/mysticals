@@ -65,6 +65,8 @@ export interface CalEvent {
   recurrence?: Recurrence | null
   /** The event's own colour (an EVENT_COLORS id, Google's colorId); absent draws it in its calendar's colour. */
   colorId?: string
+  /** Google: the organizer let guests edit the event. */
+  guestsCanModify?: boolean
 }
 
 export type Weekday = 'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU'

@@ -70,6 +70,8 @@ describe('mapEvent', () => {
     })
     expect(e.attendees[1]).toMatchObject({ email: 'me@gmail.com', self: true, status: 'needsAction' })
     expect(e.attendees[0].organizer).toBe(true)
+    expect(e.guestsCanModify).toBeUndefined()
+    expect(mapEvent({ ...invite, guestsCanModify: true }, 'acc1', 'primary').guestsCanModify).toBe(true)
   })
 
   it('maps an all-day event with dates', () => {
