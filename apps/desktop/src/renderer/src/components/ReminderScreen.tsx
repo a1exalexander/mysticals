@@ -3,7 +3,7 @@ import type { ReminderMeeting } from '@shared/ipc'
 import { linkKind, linkLabel } from '@mysticals/core/logic/meeting'
 import { currentLocale, t, useLocale } from '../i18n'
 import { hm, useClock } from '../clock'
-import { followTheme } from '../theme'
+import { followTheme, useThemedColor } from '../theme'
 import './ReminderScreen.css'
 
 /** The Full-screen reminder window (`#reminder`): every due meeting with a Call link, until Join, Esc or Backspace. */
@@ -67,6 +67,7 @@ export function ReminderScreen(): React.JSX.Element {
 
 function Card({ m, now, i }: { m: ReminderMeeting; now: number; i: number }): React.JSX.Element {
   const [copied, setCopied] = useState(false)
+  const themed = useThemedColor()
   const start = new Date(m.start)
   const min = Math.ceil((start.getTime() - now) / 60_000)
   const copy = (): void =>
@@ -77,7 +78,7 @@ function Card({ m, now, i }: { m: ReminderMeeting; now: number; i: number }): Re
   return (
     <article className="rs-card" style={{ '--i': i } as React.CSSProperties}>
       <div className="rs-meta">
-        <span className="mc-dot" style={{ background: m.color || undefined }} />
+        <span className="mc-dot" style={{ background: m.color ? themed(m.color) : undefined }} />
         <span className="rs-account">{m.account}</span>
         <span className="rs-when">{min > 0 ? t('reminder.in', { n: min }) : t('reminder.now')}</span>
       </div>

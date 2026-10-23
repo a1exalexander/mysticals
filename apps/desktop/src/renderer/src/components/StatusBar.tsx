@@ -13,12 +13,14 @@ import { useDirectory } from './ui/useDirectory'
 import { pickNowNext, startsLabel } from '@mysticals/core/logic/status'
 import { eventColorOf } from '@mysticals/core/logic/colors'
 import { cap, currentLocale, fmt, t, useLocale } from '../i18n'
+import { useThemedColor } from '../theme'
 import { hm, hour12, weekStartsOn } from '../clock'
 
 /** Events happening now (max 2, then +N) and the next one within 24h; click opens details. */
 function NowNext(): React.JSX.Element {
   const { accounts, calendars, loaded } = useDirectory()
   useLocale()
+  const themed = useThemedColor()
   const [events, setEvents] = useState<CalEvent[]>([])
   const [now, setNow] = useState(() => new Date())
 
@@ -45,10 +47,12 @@ function NowNext(): React.JSX.Element {
   }, [])
 
   const colorOf = (e: CalEvent): string =>
-    eventColorOf(
-      e,
-      calendars.find((c) => c.accountId === e.accountId && c.id === e.calendarId),
-      accounts.find((a) => a.id === e.accountId)
+    themed(
+      eventColorOf(
+        e,
+        calendars.find((c) => c.accountId === e.accountId && c.id === e.calendarId),
+        accounts.find((a) => a.id === e.accountId)
+      )
     )
   const { current, next } = pickNowNext(loaded ? visibleEvents(events, calendars) : [], now)
   const item = (e: CalEvent, label: React.ReactNode): React.JSX.Element => (

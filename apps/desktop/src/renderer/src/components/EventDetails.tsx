@@ -16,6 +16,7 @@ import './ui/ui.css'
 import './EventDetails.css'
 import type { Key } from '@mysticals/core/i18n'
 import { currentLocale, t, useLocale } from '../i18n'
+import { useThemedColor } from '../theme'
 import { hour12 } from '../clock'
 
 type Reply = Exclude<PartStat, 'needsAction'>
@@ -33,6 +34,7 @@ const GAP = 8
 export function EventDetailsHost(): React.JSX.Element | null {
   const { accounts, calendars } = useDirectory()
   useLocale()
+  const themed = useThemedColor()
   const [opened, setOpened] = useState<{ event: CalEvent; anchor?: DOMRect; el?: HTMLElement } | null>(null)
   // Deleted elsewhere (another device, the web) while shown: kept open with a notice instead of vanishing.
   const [gone, setGone] = useState(false)
@@ -168,7 +170,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
         data-testid="details"
         role="dialog"
         aria-label={name(event)}
-        style={{ '--cal': eventColorOf(event, calendar, account), left: pos?.left ?? -9999, top: pos?.top ?? 0 } as React.CSSProperties}
+        style={{ '--cal': themed(eventColorOf(event, calendar, account)), left: pos?.left ?? -9999, top: pos?.top ?? 0 } as React.CSSProperties}
       >
         {gone && (
           <div className="details-gone" role="alert" data-testid="details-gone">
