@@ -516,7 +516,7 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
                       {a.email.split('@')[1] ?? a.email} · {a.kind === 'google' ? 'Google' : 'CalDAV'}
                     </span>
                   </span>
-                  <span className={`acc-state is-${stateOf(a)}`} aria-hidden />
+                  <span className={`acc-state is-${stateOf(a)}`} role="img" aria-label={t(STATE_TEXT[stateOf(a)])} title={t(STATE_TEXT[stateOf(a)])} />
                 </button>
               </li>
             ))}
@@ -586,6 +586,10 @@ const PlayIcon = (): React.JSX.Element => (
 
 /** The list dot: ok, syncing, failed or signed out. */
 const stateOf = (a: Account): 'ok' | 'syncing' | 'err' => (a.syncing ? 'syncing' : a.error || a.authError ? 'err' : 'ok')
+const STATE_TEXT = { ok: 'settings.sync.stateOk', syncing: 'settings.sync.stateSyncing', err: 'settings.sync.stateError' } as const satisfies Record<
+  ReturnType<typeof stateOf>,
+  Key
+>
 
 function PrivacyPanel(): React.JSX.Element {
   const [on, setOn] = useState<boolean>()

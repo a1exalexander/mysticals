@@ -63,7 +63,7 @@ export function Sidebar({ collapsed: hidden = false }: { collapsed?: boolean }):
                   <span className="sb-spin" aria-hidden />
                 ) : (
                   a.error && (
-                    <span className="sb-error" title={a.error} aria-label={t('sidebar.syncError', { error: a.error })}>
+                    <span className="sb-error" role="img" title={a.error} aria-label={t('sidebar.syncError', { error: a.error })}>
                       !
                     </span>
                   )

@@ -335,7 +335,7 @@ function Focus({ e, now, color, calendar }: { e: CalEvent; now: Date; color: str
                 <ul className="details-people ag-people" data-testid="agenda-people">
                   {e.attendees.map((a) => (
                     <li key={a.email} title={t(PARTSTAT[a.status])}>
-                      <span className={`status ${a.status}`} aria-label={t(PARTSTAT[a.status])}>{STATUS_ICON[a.status]}</span>
+                      <span className={`status ${a.status}`} role="img" aria-label={t(PARTSTAT[a.status])}>{STATUS_ICON[a.status]}</span>
                       <span className="who">{a.name ?? a.email}</span>
                       {a.self && <span className="tag">{t('details.you')}</span>}
                       {a.organizer && <span className="tag">{t('details.organizerTag')}</span>}
