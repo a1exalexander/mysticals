@@ -632,7 +632,8 @@ interface DetailProps {
 
 function AccountDetail({ account: a, syncingAll, notify, onNotify }: DetailProps): React.JSX.Element {
   const [label, setLabel] = useState(a.label)
-  const [confirm, setConfirm] = useState(false)
+  // null until Remove is first clicked; false after Cancel, which hands focus back to Remove.
+  const [confirm, setConfirm] = useState<boolean | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState('')
   const [error, setError] = useState('')
@@ -741,9 +742,10 @@ function AccountDetail({ account: a, syncingAll, notify, onNotify }: DetailProps
       )}
       {error && <p className="acc-error" role="alert">{error}</p>}
       {confirm ? (
-        <div className="acc-confirm">
-          <p>{t('settings.account.removeNote', { email: a.email })}</p>
-          <button type="button" onClick={() => setConfirm(false)}>{t('common.cancel')}</button>
+        <div className="acc-confirm" role="group" aria-labelledby={`account-remove-note-${a.id}`}>
+          <p id={`account-remove-note-${a.id}`}>{t('settings.account.removeNote', { email: a.email })}</p>
+          {/* The safe choice takes focus: Remove's button is gone, and focus would drop to the page. */}
+          <button type="button" autoFocus onClick={() => setConfirm(false)}>{t('common.cancel')}</button>
           <button
             type="button"
             className="acc-danger acc-primary-danger"
@@ -755,7 +757,7 @@ function AccountDetail({ account: a, syncingAll, notify, onNotify }: DetailProps
         </div>
       ) : (
         <div className="acc-md-danger">
-          <button type="button" className="acc-danger acc-remove" onClick={() => setConfirm(true)}>
+          <button type="button" className="acc-danger acc-remove" autoFocus={confirm === false} onClick={() => setConfirm(true)}>
             {t('settings.account.remove')}
           </button>
         </div>
