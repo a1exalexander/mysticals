@@ -135,9 +135,11 @@ describe('SyncEngine', () => {
     const last = onResult.mock.lastCall![1]
     expect(last.prev.events).toEqual([])
     expect(last.next.events.map((e: CalEvent) => e.id)).toEqual(['w1'])
-    vi.spyOn(work, 'listCalendars').mockRejectedValue(new AuthError('expired'))
-    await expect(engine.syncNow('work')).rejects.toThrow('expired')
-    expect(onResult).toHaveBeenLastCalledWith('work', { ok: false, error: 'expired', auth: true })
+    vi.spyOn(work, 'listCalendars').mockRejectedValue(new AuthError('error.google.rejected'))
+    const expired = 'Google rejected the sign-in; sign in again'
+    await expect(engine.syncNow('work')).rejects.toThrow(expired)
+    expect(onResult).toHaveBeenLastCalledWith('work', { ok: false, error: expired, auth: true })
+    expect(engine.errorKey('work')).toEqual({ key: 'error.google.rejected', params: undefined })
   })
 
   it('does not run concurrent syncs for the same account', async () => {
@@ -206,14 +208,14 @@ describe('SyncEngine', () => {
 
   it('rejected credentials: keeps cache, flags the account and stops retrying until synced on purpose', async () => {
     const work = store.add('work')
-    const fail = vi.spyOn(work, 'listCalendars').mockRejectedValue(new AuthError('revoked'))
+    const fail = vi.spyOn(work, 'listCalendars').mockRejectedValue(new AuthError('error.caldav.passwordRevoked'))
     const cache = { calendars: [{ id: 'work-cal', accountId: 'work', name: 'C', color: '#1', readOnly: false }], events: [ev('old', 'work-cal', '2026-09-23T09:00:00Z', '2026-09-23T10:00:00Z')] }
     store.caches.set('work', cache)
     const changed = vi.fn()
     const engine = new SyncEngine(store, changed, { intervalMs: 60_000, triggers: noTriggers })
     engine.start()
     await tick()
-    expect(store.accounts[0]).toMatchObject({ error: 'revoked', authError: true })
+    expect(store.accounts[0]).toMatchObject({ error: 'CalDAV login failed: the password was changed or revoked', authError: true })
     expect(store.caches.get('work')).toEqual(cache)
     expect(changed).toHaveBeenCalledWith('work')
 

@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import type { Api } from '@shared/ipc'
 import { IPC } from '@shared/ipc'
+import { wireError } from '@mysticals/core/errors'
 
 type Impl = Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'>
 
@@ -8,7 +9,14 @@ type Impl = Omit<Api, 'onChanged' | 'onMenu' | 'onSignIn'>
 export function registerApi(api: Impl): void {
   const h = (ch: string, fn: (...a: never[]) => unknown): void => {
     ipcMain.removeHandler(ch)
-    ipcMain.handle(ch, (_e, ...args) => (fn as (...a: unknown[]) => unknown)(...args))
+    // Electron keeps only an error's message: a core AppError rides in it with its key, for the renderer to translate.
+    ipcMain.handle(ch, async (_e, ...args) => {
+      try {
+        return await (fn as (...a: unknown[]) => unknown)(...args)
+      } catch (e) {
+        throw wireError(e)
+      }
+    })
   }
   h(IPC.accountsList, api.accounts.list)
   h(IPC.accountsAddGoogle, api.accounts.addGoogle)

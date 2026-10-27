@@ -3,7 +3,7 @@ import { accountName, extraEmail } from '@mysticals/core/logic/details'
 import { bus } from '../bus'
 import { setCalendarVisible, useCalendarData } from '../hooks/useCalendarData'
 import { MiniMonth } from './MiniMonth'
-import { t, useLocale } from '../i18n'
+import { accountError, t, useLocale } from '../i18n'
 import { useThemedColor } from '../theme'
 import './ui/ui.css'
 
@@ -73,7 +73,7 @@ export function Sidebar({ collapsed: hidden = false }: { collapsed?: boolean }):
                   <span className="sb-spin" aria-hidden />
                 ) : (
                   a.error && (
-                    <span className="sb-error" role="img" title={a.error} aria-label={t('sidebar.syncError', { error: a.error })}>
+                    <span className="sb-error" role="img" title={accountError(a)} aria-label={t('sidebar.syncError', { error: accountError(a) })}>
                       !
                     </span>
                   )

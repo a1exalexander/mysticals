@@ -175,6 +175,5 @@ export function applyForm(e: CalEvent, f: EventForm, locale: Locale = 'en'): Cal
   }
 }
 
-/** Strip Electron's "Error invoking remote method 'x': Error: " prefix. */
-export const errorText = (e: unknown): string =>
-  String(e instanceof Error ? e.message : e).replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, '')
+/** An error's text for the UI (see errors.ts): Electron's "Error invoking remote method" prefix stripped, keyed errors translated. */
+export { errorText } from '../errors'

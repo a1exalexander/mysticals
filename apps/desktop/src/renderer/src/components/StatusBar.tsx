@@ -12,7 +12,7 @@ import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
 import { pickNowNext, startsLabel } from '@mysticals/core/logic/status'
 import { eventColorOf } from '@mysticals/core/logic/colors'
-import { cap, currentLocale, fmt, t, useLocale } from '../i18n'
+import { accountError, cap, currentLocale, fmt, t, useLocale } from '../i18n'
 import { useThemedColor } from '../theme'
 import { hm, hour12, weekStartsOn } from '../clock'
 
@@ -152,7 +152,7 @@ export function StatusBar(): React.JSX.Element {
         <button
           type="button"
           className="sbar-seg sbar-err"
-          title={accounts.filter((a) => a.error).map((a) => `${a.label}: ${a.error}`).join('\n')}
+          title={accounts.filter((a) => a.error).map((a) => `${a.label}: ${accountError(a)}`).join('\n')}
           onClick={() => {
             const off = accounts.find((a) => a.authError)
             if (off) bus.emit('reauth:open', { accountId: off.id })

@@ -3,6 +3,7 @@ import ICAL from 'ical.js'
 import type { Attendee, CalEvent, ColorScope, NewEventInput, PartStat, Recurrence, TimeRange } from '../../shared/types'
 import { fromRRule, toRRule } from '../../logic/recurrence'
 import { colorIdFromCss, eventColor } from '../../logic/colors'
+import { AppError } from '../../errors'
 
 /** Provider payload stored in CalEvent.raw. */
 export interface CaldavRaw {
@@ -700,6 +701,6 @@ export function applyRespond(raw: CaldavRaw, own: string | string[], status: Exc
     }
     if (found) v.updatePropertyWithValue('dtstamp', utcNow())
   }
-  if (!found) throw new Error('This account is not an attendee of the event')
+  if (!found) throw new AppError('error.notAttendee')
   return root.toString()
 }

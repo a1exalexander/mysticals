@@ -5,12 +5,11 @@ import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
 import { visibleEvents } from '@mysticals/core/logic/visible'
 import { formatWhen, ownerLine, pendingInvites } from '@mysticals/core/logic/details'
-import { errorText } from '@mysticals/core/logic/editor'
 import { eventKey } from '@mysticals/core/logic/layout'
 import { usePopoverFocus } from './ui/usePopover'
 import './ui/ui.css'
 import './Invites.css'
-import { currentLocale, t, useLocale } from '../i18n'
+import { currentLocale, errorText, t, useLocale } from '../i18n'
 import { hour12 } from '../clock'
 
 // Status-bar inbox of unanswered invites (next 60 days). Each reply goes through the invite's own account.

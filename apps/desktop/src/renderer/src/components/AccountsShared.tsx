@@ -35,11 +35,8 @@ export function suggestLabel(email: string, locale: Locale = currentLocale()): s
   return tr(locale, PERSONAL_DOMAINS.test(domain) ? 'accounts.personal' : 'accounts.work')
 }
 
-/** Strips Electron's "Error invoking remote method 'x': Error: " prefix. */
-export function errorText(e: unknown): string {
-  const msg = e instanceof Error ? e.message : String(e)
-  return msg.replace(/^Error invoking remote method '[^']*': (?:\w*Error: )?/, '')
-}
+/** An error for the UI in the UI language, Electron's "Error invoking remote method 'x': Error: " prefix stripped. */
+export { errorText } from '../i18n'
 
 export function Sheet(props: {
   open: boolean

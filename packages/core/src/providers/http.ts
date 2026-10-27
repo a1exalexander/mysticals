@@ -1,3 +1,5 @@
+import { AppError } from '../errors'
+
 /** Per-request budget (headers + body), and retries of transient failures. Mutable only so tests can change them. */
 export const http = { timeoutMs: 30_000, retries: 2, backoffMs: 500 }
 
@@ -10,18 +12,18 @@ export const timedFetch: typeof fetch = async (input, init) => {
   try {
     return await fetch(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout })
   } catch (e) {
-    if (timeout.aborted) throw new TimeoutError(`Request to ${new URL(String(input instanceof Request ? input.url : input)).host} timed out`)
+    if (timeout.aborted) throw new TimeoutError('error.timeout', { host: new URL(String(input instanceof Request ? input.url : input)).host })
     throw e
   }
 }
 
 /** `timedFetch` gave up waiting. */
-export class TimeoutError extends Error {
+export class TimeoutError extends AppError {
   override name = 'TimeoutError'
 }
 
 /** The server rejected the stored credentials (revoked app password, expired Google grant): only a new sign-in helps. */
-export class AuthError extends Error {
+export class AuthError extends AppError {
   override name = 'AuthError'
 }
 

@@ -3,6 +3,7 @@ import { createServer } from 'http'
 import type { AddressInfo } from 'net'
 import type { Credentials } from '../../shared/types'
 import { AuthError, timedFetch } from '../http'
+import { AppError } from '../../errors'
 
 export type GoogleCredentials = Extract<Credentials, { kind: 'google' }>
 
@@ -26,7 +27,7 @@ export function setClientConfig(cfg: Partial<ClientConfig>): void {
 
 export function getClientConfig(): ClientConfig {
   const { clientId, clientSecret } = clientConfig
-  if (!clientId || !clientSecret) throw new Error('Google sign-in is not configured in this build: add a CalDAV account, or build from source with MYSTICALS_GOOGLE_CLIENT_ID/SECRET set')
+  if (!clientId || !clientSecret) throw new AppError('error.google.notConfigured')
   return { clientId, clientSecret }
 }
 
@@ -71,9 +72,9 @@ export interface TokenResult {
 export function parseTokenResponse(json: unknown, now = Date.now()): TokenResult {
   const j = (json ?? {}) as Record<string, unknown>
   if (typeof j.error === 'string') {
-    const msg = `Google token error: ${j.error}${j.error_description ? ` (${j.error_description})` : ''}`
+    const params = { error: j.error, detail: j.error_description ? ` (${String(j.error_description)})` : '' }
     // invalid_grant: the refresh token was revoked or expired.
-    throw j.error === 'invalid_grant' ? new AuthError(msg) : new Error(msg)
+    throw j.error === 'invalid_grant' ? new AuthError('error.google.token', params) : new AppError('error.google.token', params)
   }
   if (typeof j.access_token !== 'string') throw new Error('Google token response has no access_token')
   const expiresIn = typeof j.expires_in === 'number' ? j.expires_in : 3600
@@ -130,7 +131,7 @@ export async function runOAuthFlow(
     const redirectUri = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
 
     const code = await new Promise<string>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('Google sign-in timed out')), TIMEOUT_MS)
+      const timer = setTimeout(() => reject(new AppError('error.google.timedOut')), TIMEOUT_MS)
       const finish = (err: Error | null, value?: string): void => {
         clearTimeout(timer)
         if (err) reject(err)
@@ -148,9 +149,9 @@ export async function runOAuthFlow(
           return
         }
         if (params.get('state') !== state) {
-          reply(400, 'Sign-in failed', () => finish(new Error('Google sign-in failed: state mismatch')))
+          reply(400, 'Sign-in failed', () => finish(new AppError('error.google.stateMismatch')))
         } else if (params.has('error')) {
-          reply(400, 'Sign-in cancelled', () => finish(new Error(`Google sign-in failed: ${params.get('error')}`)))
+          reply(400, 'Sign-in cancelled', () => finish(new AppError('error.google.failed', { error: params.get('error') ?? '' })))
         } else {
           const code = params.get('code')!
           reply(200, 'Signed in', () => finish(null, code))
@@ -170,7 +171,7 @@ export async function runOAuthFlow(
       client_id: cfg.clientId,
       client_secret: cfg.clientSecret
     })
-    if (!tok.refreshToken) throw new Error('Google did not return a refresh token')
+    if (!tok.refreshToken) throw new AppError('error.google.noRefreshToken')
     const email = tok.email ?? (await fetchUserEmail(tok.accessToken))
     return { email, credentials: { kind: 'google', refreshToken: tok.refreshToken, accessToken: tok.accessToken, expiresAt: tok.expiresAt } }
   } finally {
@@ -182,6 +183,6 @@ export async function runOAuthFlow(
 async function fetchUserEmail(accessToken: string): Promise<string> {
   const res = await timedFetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: `Bearer ${accessToken}` } })
   const json = (await res.json().catch(() => ({}))) as { email?: unknown }
-  if (!res.ok || typeof json.email !== 'string') throw new Error('Could not read Google account email')
+  if (!res.ok || typeof json.email !== 'string') throw new AppError('error.google.noEmail')
   return json.email
 }
