@@ -16,6 +16,7 @@ const t = {
     stats: 'Anonymous, cookie-free stats via PostHog.', details: 'Details',
     home: 'Home', privacy: 'Privacy', terms: 'Terms', donate: 'Donate',
     theme: 'Theme', system: 'Same as system', light: 'Light', dark: 'Dark', language: 'Language',
+    skip: 'Skip to content', main: 'Main', site: 'Site',
   },
   uk: {
     description: 'Календар для кількох акаунтів Google і CalDAV, на десктопі або просто в терміналі. Кожен акаунт живе окремо.',
@@ -27,6 +28,7 @@ const t = {
     stats: 'Анонімна статистика без cookie через PostHog.', details: 'Докладніше',
     home: 'Головна', privacy: 'Конфіденційність', terms: 'Умови', donate: 'Підтримати',
     theme: 'Тема', system: 'Як у системі', light: 'Світла', dark: 'Темна', language: 'Мова',
+    skip: 'Перейти до змісту', main: 'Головне меню', site: 'Сайт',
   },
 }[lang]
 const { title, description = t.description } = Astro.props
@@ -97,14 +99,15 @@ const icons = {
     {phKey && <Analytics apiKey={phKey} />}
   </head>
   <body>
-    <div class="ua-bar">
-      <span class="ua-pill"><svg class="ua-flag" viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="1" fill="#0057B7" /><rect y="1" width="3" height="1" fill="#FFD700" /></svg>{t.madeIn}</span>
-      <a class="donate" href={donate} data-track="donate_click" data-props='{"place":"top"}'><img src="/monobank-base.png" alt="" width="14" height="14" />{t.donate}</a>
-    </div>
+    <a class="skip" href="#content">{t.skip}</a>
     <header>
+      <div class="ua-bar">
+        <span class="ua-pill"><svg class="ua-flag" viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="1" fill="#0057B7" /><rect y="1" width="3" height="1" fill="#FFD700" /></svg>{t.madeIn}</span>
+        <a class="donate" href={donate} data-track="donate_click" data-props='{"place":"top"}'><img src="/monobank-base.png" alt="" width="14" height="14" />{t.donate}</a>
+      </div>
       <div class="wrap nav">
         <a class="brand" href={href('/')}><img src="/icon.svg" alt="" width="30" height="30" />mysticals</a>
-        <nav>
+        <nav aria-label={t.main}>
           <a class="sec" href={href('/#why')}>{t.why}</a>
           <a class="sec" href={href('/#themes')}>{t.themes}</a>
           <a class="sec" href={href('/#isolation')}>{t.isolation}</a>
@@ -120,11 +123,11 @@ const icons = {
         <div class="wrap"><Fragment set:html={t.preview} /> <a class="ul" href={gh}>GitHub</a>.</div>
       </div>
     )}
-    <main><slot /></main>
+    <main id="content" tabindex="-1"><slot /></main>
     <footer class="wrap foot">
       <div class="frow">
         <span class="mono">mysticals · MIT · © <a class="ul" href="https://www.sashkoratushnyi.com/">{t.author}</a></span>
-        <nav>
+        <nav aria-label={t.site}>
           <a href={href('/')}>{t.home}</a>{!PREVIEW && <><a href={href('/download/')}>{t.download}</a><a href={href('/install/')}>{t.install}</a></>}
           <a href={gh}>GitHub</a>{!PREVIEW && <a href="https://www.npmjs.com/package/mysticals">npm</a>}
           <a href={href('/privacy/')}>{t.privacy}</a><a href={href('/terms/')}>{t.terms}</a>
