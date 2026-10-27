@@ -314,7 +314,7 @@ const caption = {
   .bar i:nth-child(2) { background: var(--yellow); }
   .bar i:nth-child(3) { background: var(--green); }
   .bar span { flex: 1; text-align: center; margin-right: 46px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .screen { margin: 0; padding: 12px 14px; border: 0; background: none; overflow: hidden; font-size: min(15.5px, (100cqw - 30px) / (var(--cols, 80) * .62)); line-height: 1.45; white-space: pre; }
+  .screen { margin: 0; padding: 12px 14px; border: 0; background: none; overflow: hidden; font-size: min(15.5px, (100cqw - 30px) / (var(--cols, 80) * .62)); line-height: 1.45; white-space: pre; min-height: calc(22 * 1.45em + 24px); } /* the script fills H = 22 rows; reserve them so the page doesn't shift */
   .key { position: absolute; bottom: 70px; right: 14px; padding: 2px 10px; background: var(--accent); color: var(--bg); font-weight: 700; font-size: 13px; opacity: 0; }
   .key.on { animation: key 1.2s ease-out forwards; }
   @keyframes key { 0% { opacity: 0; transform: translateY(-4px); } 12%, 70% { opacity: 1; transform: none; } 100% { opacity: 0; } }
