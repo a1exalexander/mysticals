@@ -193,7 +193,77 @@ export function buildIcs(uid: string, input: NewEventInput, email: string): stri
   setAttendees(v, input.attendees ?? [], email)
   if (input.recurrence) setRule(v, input.recurrence, input.allDay)
   root.addSubcomponent(v)
+  if (input.recurrence) zoneSeries(root, v)
   return root.toString()
+}
+
+const DAY_MS = 86_400_000
+const DOW = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA']
+
+/** Minutes east of UTC at `ms` in the zone of `f` (a 'longOffset' formatter: "GMT+03:00", or "GMT" for UTC). */
+function offsetAt(f: Intl.DateTimeFormat, ms: number): number {
+  const m = /GMT([+-])(\d{2}):(\d{2})/.exec(f.formatToParts(ms).find((p) => p.type === 'timeZoneName')?.value ?? '')
+  return m ? (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) : 0
+}
+
+const icsOffset = (min: number): string =>
+  `${min < 0 ? '-' : '+'}${String(Math.floor(Math.abs(min) / 60)).padStart(2, '0')}${String(Math.abs(min) % 60).padStart(2, '0')}`
+
+/**
+ * A VTIMEZONE for IANA zone `tz` from this machine's zone data: the offset changes of `year`, each repeating yearly on
+ * the same weekday of its month (e.g. the last Sunday of March).
+ * ponytail: assumes the zone keeps that year's rules; clients that know the TZID use their own data anyway.
+ */
+export function vtimezone(tz: string, year: number): ICAL.Component {
+  const f = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longOffset' })
+  const changes: { at: number; from: number; to: number }[] = []
+  for (let t = Date.UTC(year, 0, 1); t < Date.UTC(year + 1, 0, 1); t += DAY_MS) {
+    const from = offsetAt(f, t)
+    if (offsetAt(f, t + DAY_MS) === from) continue
+    // The minute it changes.
+    let [lo, hi] = [t, t + DAY_MS]
+    while (hi - lo > 60_000) {
+      const mid = lo + Math.floor((hi - lo) / 120_000) * 60_000
+      if (offsetAt(f, mid) === from) lo = mid
+      else hi = mid
+    }
+    changes.push({ at: hi, from, to: offsetAt(f, hi) })
+  }
+  const yearly = changes.length === 2
+  const lines = ['BEGIN:VTIMEZONE', `TZID:${tz}`]
+  if (!changes.length) {
+    const o = icsOffset(offsetAt(f, Date.UTC(year, 0, 1)))
+    lines.push('BEGIN:STANDARD', 'DTSTART:19700101T000000', `TZOFFSETFROM:${o}`, `TZOFFSETTO:${o}`, 'END:STANDARD')
+  }
+  for (const { at, from, to } of changes) {
+    // Its wall-clock time just before the change, read off the UTC fields.
+    const local = new Date(at + from * 60_000)
+    const day = local.getUTCDate()
+    const monthDays = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth() + 1, 0)).getUTCDate()
+    const kind = yearly && to === Math.max(...changes.map((c) => c.to)) ? 'DAYLIGHT' : 'STANDARD'
+    lines.push(`BEGIN:${kind}`, `DTSTART:${local.toISOString().slice(0, 19).replace(/[-:]/g, '')}`, `TZOFFSETFROM:${icsOffset(from)}`, `TZOFFSETTO:${icsOffset(to)}`)
+    if (yearly) lines.push(`RRULE:FREQ=YEARLY;BYMONTH=${local.getUTCMonth() + 1};BYDAY=${day + 7 > monthDays ? -1 : Math.ceil(day / 7)}${DOW[local.getUTCDay()]}`)
+    lines.push(`END:${kind}`)
+  }
+  lines.push('END:VTIMEZONE')
+  return new ICAL.Component(ICAL.parse(lines.join('\r\n')))
+}
+
+/**
+ * A new series' timed DTSTART/DTEND (UTC, from fromIso) moved into this machine's time zone, with its VTIMEZONE, so
+ * the rule repeats at the same wall-clock time across DST like the Google provider's series, not the same UTC instant.
+ */
+function zoneSeries(root: ICAL.Component, v: ICAL.Component): void {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const start = dtstart(v)
+  if (!tz || /^(Etc\/)?UTC$/i.test(tz) || start.isDate || start.zone?.tzid !== 'UTC') return
+  const vtz = root.getAllSubcomponents('vtimezone').find((c) => c.getFirstPropertyValue('tzid') === tz) ?? vtimezone(tz, start.year - 1)
+  if (!vtz.parent) root.addSubcomponent(vtz)
+  const zone = new ICAL.Timezone(vtz)
+  for (const name of ['dtstart', 'dtend']) {
+    const t = v.getFirstPropertyValue(name) as ICAL.Time | null
+    if (t) v.addProperty(replaceTime(v, name, t.convertToZone(zone)))
+  }
 }
 
 function setRule(v: ICAL.Component, r: Recurrence, allDay: boolean): void {
@@ -311,7 +381,10 @@ export function applyUpdate(event: CalEvent, email: string): string {
   const v = targetVevent(root, raw)
   writeEdit(v, event, email, fromIso(event.start, event.allDay), fromIso(event.end, event.allDay))
   // A single event can start repeating here; a series' rule changes via applyUpdateSeries / applySplitFollowing.
-  if (event.recurrence && !raw.recurrenceId && !v.hasProperty('rrule')) setRule(v, event.recurrence, event.allDay)
+  if (event.recurrence && !raw.recurrenceId && !v.hasProperty('rrule')) {
+    setRule(v, event.recurrence, event.allDay)
+    zoneSeries(root, v)
+  }
   return root.toString()
 }
 
