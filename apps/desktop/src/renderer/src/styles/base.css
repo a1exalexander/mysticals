@@ -731,7 +731,7 @@ body[data-dragging='col-resize'] .app { transition: none; }
   font: 11px/23px var(--mono); color: var(--muted); white-space: nowrap;
 }
 /* Bubblegum: a pink bubble along the bottom, not Cloud's blue chrome. Text darkened to stay legible on the pink. */
-:root[data-theme='bubble'] .statusbar { --surface: #ffd6eb; --line: #f6b8d6; --hover: #ffc4e1; --muted: #61517b; }
+:root[data-theme='bubble'] .statusbar { --surface: #ffd6eb; --line: #f6b8d6; --hover: #ffc4e1; --muted: #61517b; --red: #a2314b; }
 .sbar-mode {
   flex: none; padding: 0 10px; background: var(--accent); color: var(--on-accent);
   font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
