@@ -75,7 +75,7 @@ export function InvitesPanel(): React.JSX.Element {
   return (
     <div className="invites" ref={ref}>
       {open && (
-        <div className="mc-popover invites-panel">
+        <div className="mc-popover invites-panel" role="dialog" aria-label={t('invites.title')}>
           <div className="invites-title" tabIndex={-1}>{t('invites.title')}</div>
           {invites.length === 0 && <div className="mc-muted invites-empty">{t('invites.empty')}</div>}
           <ul>

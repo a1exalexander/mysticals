@@ -158,6 +158,9 @@ export const en = {
   'toolbar.previous': 'Previous',
   'toolbar.next': 'Next',
   'toolbar.today': 'today',
+  'toolbar.previousHint': 'Previous (H or ←)',
+  'toolbar.nextHint': 'Next (L or →)',
+  'toolbar.todayHint': 'Go to today (T)',
   'toolbar.newEventHint': 'New event (N)',
   'toolbar.new': '+ new',
   'toolbar.syncing': 'Syncing',
@@ -462,6 +465,8 @@ export const en = {
   'sidebar.readOnlyTitle': 'Read-only',
   'sidebar.readOnly': 'read-only',
   'sidebar.add': 'Add calendar',
+  'sidebar.empty': 'No calendars yet',
+  'sidebar.emptyHint': 'Connect a Google or CalDAV account to see its events here.',
   'sidebar.resize': 'Resize sidebar',
   'sidebar.resetWidth': 'Double-click to reset width',
 

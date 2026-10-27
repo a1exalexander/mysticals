@@ -159,6 +159,9 @@ export const uk: Record<Key, Msg> = {
   'toolbar.previous': 'Назад',
   'toolbar.next': 'Вперед',
   'toolbar.today': 'сьогодні',
+  'toolbar.previousHint': 'Назад (H або ←)',
+  'toolbar.nextHint': 'Вперед (L або →)',
+  'toolbar.todayHint': 'Перейти до сьогодні (T)',
   'toolbar.newEventHint': 'Нова подія (N)',
   'toolbar.new': '+ нова',
   'toolbar.syncing': 'Синхронізація',
@@ -463,6 +466,8 @@ export const uk: Record<Key, Msg> = {
   'sidebar.readOnlyTitle': 'Лише перегляд',
   'sidebar.readOnly': 'лише перегляд',
   'sidebar.add': 'Додати календар',
+  'sidebar.empty': 'Календарів ще немає',
+  'sidebar.emptyHint': 'Підключіть обліковий запис Google або CalDAV, щоб бачити тут його події.',
   'sidebar.resize': 'Змінити ширину бічної панелі',
   'sidebar.resetWidth': 'Двічі клацніть, щоб скинути ширину',
 

@@ -23,6 +23,7 @@ import { useThemedColor } from '../theme'
 const VIEWS: DeskView[] = ['agenda', 'day', '3day', 'week', 'month']
 const LABEL: Record<DeskView, Key> = { agenda: 'view.agenda', day: 'view.day', '3day': 'view.3day', week: 'view.week', month: 'view.month' }
 const KEY_VIEW: Record<string, DeskView> = { a: 'agenda', d: 'day', '3': '3day', w: 'week', m: 'month' }
+const VIEW_KEY = Object.fromEntries(Object.entries(KEY_VIEW).map(([k, v]) => [v, k.toUpperCase()])) as Record<DeskView, string>
 const MENU_VIEW: Partial<Record<MenuCommand, DeskView>> = {
   'view-agenda': 'agenda',
   'view-day': 'day',
@@ -210,13 +211,13 @@ export function CalendarView(): React.JSX.Element {
         </h1>
         <ViewSwitch view={deskView} />
         <div className="toolbar-nav">
-          <button className="icon-btn" aria-label={t('toolbar.previous')} onClick={() => go(-1)}>
+          <button className="icon-btn" aria-label={t('toolbar.previous')} title={t('toolbar.previousHint')} onClick={() => go(-1)}>
             ‹
           </button>
-          <button className="today-btn" onClick={today}>
+          <button className="today-btn" title={t('toolbar.todayHint')} onClick={today}>
             {t('toolbar.today')}
           </button>
-          <button className="icon-btn" aria-label={t('toolbar.next')} onClick={() => go(1)}>
+          <button className="icon-btn" aria-label={t('toolbar.next')} title={t('toolbar.nextHint')} onClick={() => go(1)}>
             ›
           </button>
         </div>
@@ -248,7 +249,7 @@ function ViewSwitch({ view }: { view: DeskView }): React.JSX.Element {
   useLocale()
   return (
     <SegTabs
-      tabs={VIEWS.map((v) => ({ id: v, label: t(LABEL[v]) }))}
+      tabs={VIEWS.map((v) => ({ id: v, label: t(LABEL[v]), title: `${t(LABEL[v])} (${VIEW_KEY[v]})` }))}
       value={view}
       onChange={(v) => nav.set({ view: v })}
       testId={(v) => `view-switch-${v}`}

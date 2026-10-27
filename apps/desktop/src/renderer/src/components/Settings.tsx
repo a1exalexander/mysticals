@@ -516,7 +516,7 @@ function AccountsPanel({ accounts, onAdd }: { accounts: Account[]; onAdd: () => 
                       {a.email.split('@')[1] ?? a.email} · {a.kind === 'google' ? 'Google' : 'CalDAV'}
                     </span>
                   </span>
-                  <span className={`acc-state is-${stateOf(a)}`} aria-hidden />
+                  <span className={`acc-state is-${stateOf(a)}`} role="img" aria-label={t(STATE_TEXT[stateOf(a)])} title={t(STATE_TEXT[stateOf(a)])} />
                 </button>
               </li>
             ))}
@@ -586,13 +586,23 @@ const PlayIcon = (): React.JSX.Element => (
 
 /** The list dot: ok, syncing, failed or signed out. */
 const stateOf = (a: Account): 'ok' | 'syncing' | 'err' => (a.syncing ? 'syncing' : a.error || a.authError ? 'err' : 'ok')
+const STATE_TEXT = { ok: 'settings.sync.stateOk', syncing: 'settings.sync.stateSyncing', err: 'settings.sync.stateError' } as const satisfies Record<
+  ReturnType<typeof stateOf>,
+  Key
+>
 
 function PrivacyPanel(): React.JSX.Element {
   const [on, setOn] = useState<boolean>()
+  const [error, setError] = useState('')
   useEffect(() => void window.telemetry.enabled().then(setOn, () => {}), [])
+  // Like the reminder switches: flips at once, flips back with the reason if the write fails.
   const toggle = (next: boolean): void => {
     setOn(next)
-    void window.telemetry.setEnabled(next).catch(() => {})
+    setError('')
+    window.telemetry.setEnabled(next).catch((e) => {
+      setOn(!next)
+      setError(errorText(e))
+    })
   }
   return (
     <>
@@ -613,6 +623,7 @@ function PrivacyPanel(): React.JSX.Element {
         />
         {t('settings.privacy.share')}
       </label>
+      {error && <p className="acc-error" role="alert">{error}</p>}
     </>
   )
 }
@@ -628,7 +639,8 @@ interface DetailProps {
 
 function AccountDetail({ account: a, syncingAll, notify, onNotify }: DetailProps): React.JSX.Element {
   const [label, setLabel] = useState(a.label)
-  const [confirm, setConfirm] = useState(false)
+  // null until Remove is first clicked; false after Cancel, which hands focus back to Remove.
+  const [confirm, setConfirm] = useState<boolean | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState('')
   const [error, setError] = useState('')
@@ -737,9 +749,10 @@ function AccountDetail({ account: a, syncingAll, notify, onNotify }: DetailProps
       )}
       {error && <p className="acc-error" role="alert">{error}</p>}
       {confirm ? (
-        <div className="acc-confirm">
-          <p>{t('settings.account.removeNote', { email: a.email })}</p>
-          <button type="button" onClick={() => setConfirm(false)}>{t('common.cancel')}</button>
+        <div className="acc-confirm" role="group" aria-labelledby={`account-remove-note-${a.id}`}>
+          <p id={`account-remove-note-${a.id}`}>{t('settings.account.removeNote', { email: a.email })}</p>
+          {/* The safe choice takes focus: Remove's button is gone, and focus would drop to the page. */}
+          <button type="button" autoFocus onClick={() => setConfirm(false)}>{t('common.cancel')}</button>
           <button
             type="button"
             className="acc-danger acc-primary-danger"
@@ -751,7 +764,7 @@ function AccountDetail({ account: a, syncingAll, notify, onNotify }: DetailProps
         </div>
       ) : (
         <div className="acc-md-danger">
-          <button type="button" className="acc-danger acc-remove" onClick={() => setConfirm(true)}>
+          <button type="button" className="acc-danger acc-remove" autoFocus={confirm === false} onClick={() => setConfirm(true)}>
             {t('settings.account.remove')}
           </button>
         </div>

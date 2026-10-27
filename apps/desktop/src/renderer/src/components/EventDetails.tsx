@@ -228,7 +228,7 @@ export function EventDetailsHost(): React.JSX.Element | null {
             {showPeople && <ul className="details-people">
               {event.attendees.map((a) => (
                 <li key={a.email} title={t(PARTSTAT[a.status])}>
-                  <span className={`status ${a.status}`} aria-label={t(PARTSTAT[a.status])}>{STATUS_ICON[a.status]}</span>
+                  <span className={`status ${a.status}`} role="img" aria-label={t(PARTSTAT[a.status])}>{STATUS_ICON[a.status]}</span>
                   <span className="who">{a.name ?? a.email}</span>
                   {a.self && <span className="tag">{t('details.you')}</span>}
                   {a.organizer && <span className="tag">{t('details.organizerTag')}</span>}

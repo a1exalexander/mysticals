@@ -8,7 +8,7 @@
   --line: #1f1f2b;
   --line-strong: #2d2d3d;
   --fg: #f8f8f2;
-  --muted: #6979ac;
+  --muted: #7281b0;
   --faint: #3c4460;
   --accent: #bd93f9;
   --pink: #ff79c6;
@@ -26,7 +26,7 @@
   --line: #1c1e2b;
   --line-strong: #2a2d42;
   --fg: #c0caf5;
-  --muted: #737aa2;
+  --muted: #7980a9;
   --faint: #363b57;
   --accent: #7aa2f7;
   --pink: #bb9af7;
@@ -44,7 +44,7 @@
   --line: #212132;
   --line-strong: #2f2f45;
   --fg: #cdd6f4;
-  --muted: #757990;
+  --muted: #7e829a;
   --faint: #45475a;
   --accent: #cba6f7;
   --pink: #f5c2e7;
@@ -62,7 +62,7 @@
   --line: #241d12;
   --line-strong: #3a2f1c;
   --fg: #ffcc66;
-  --muted: #95753e;
+  --muted: #9b7a40;
   --faint: #4d3b1d;
   --accent: #ffb000;
   --pink: #ff6a00;
@@ -105,7 +105,7 @@
   --green: #89d185;
   --cyan: #4ec9b0;
   --orange: #ce9178;
-  --red: #f14c4c;
+  --red: #f45b5b;
   --yellow: #dcdcaa;
 }
 /* Matrix: retro terminal, neutral black screen; only the text glows phosphor green (extras below). */
@@ -117,7 +117,7 @@
   --line: #1e1e1e;
   --line-strong: #2c2c2c;
   --fg: #8fd99e;
-  --muted: #4d8a5c;
+  --muted: #4f8c5e;
   --faint: #2b4232;
   --accent: #3ecf68;
   --pink: #a8d66a;
@@ -143,7 +143,7 @@
   --green: #2a7f5f;
   --cyan: #3d9fe0;
   --orange: #b35134;
-  --red: #e04468;
+  --red: #c33b5a;
   --yellow: #e6ae3a;
 }
 /* Cartoon: cream paper, bold ink outlines, candy colours. */
@@ -162,7 +162,7 @@
   --green: #1f7a3a;
   --cyan: #0ea5e9;
   --orange: #b05100;
-  --red: #f0263c;
+  --red: #d12134;
   --yellow: #f5c400;
 }
 /* Cloud: airy light cyan around #e0ffff. */
@@ -181,7 +181,7 @@
   --green: #1c7a5e;
   --cyan: #5aa8e6;
   --orange: #b4561c;
-  --red: #e15b6b;
+  --red: #bb4c59;
   --yellow: #e0b13f;
 }
 /* Light: Black & White inverted, plain white paper and black ink. */
@@ -193,7 +193,7 @@
   --line: #e5e5e5;
   --line-strong: #d4d4d4;
   --fg: #111111;
-  --muted: #737373;
+  --muted: #707070;
   --faint: #d4d4d4;
   --accent: #111111;
   --pink: #111111;
@@ -458,6 +458,10 @@ body[data-dragging='col-resize'] .app { transition: none; }
 .sb-cal input { flex: none; }
 .sb-cal-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sb-ro { font: 10px/1 var(--mono); color: var(--muted); }
+.sb-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 2px 6px; font: 11px/1.5 var(--mono); color: var(--muted); }
+.sb-empty p { margin: 0; }
+.sb-empty-title { color: var(--fg); font-weight: 600; }
+.sb-empty .mc-btn { margin-top: 4px; }
 
 .sb-foot {
   display: flex; align-items: center; gap: 4px; padding: 6px 8px;
@@ -727,7 +731,7 @@ body[data-dragging='col-resize'] .app { transition: none; }
   font: 11px/23px var(--mono); color: var(--muted); white-space: nowrap;
 }
 /* Bubblegum: a pink bubble along the bottom, not Cloud's blue chrome. Text darkened to stay legible on the pink. */
-:root[data-theme='bubble'] .statusbar { --surface: #ffd6eb; --line: #f6b8d6; --hover: #ffc4e1; --muted: #61517b; }
+:root[data-theme='bubble'] .statusbar { --surface: #ffd6eb; --line: #f6b8d6; --hover: #ffc4e1; --muted: #61517b; --red: #a2314b; }
 .sbar-mode {
   flex: none; padding: 0 10px; background: var(--accent); color: var(--on-accent);
   font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
