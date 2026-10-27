@@ -1,6 +1,8 @@
+import { createElement } from 'react'
 import { describe, expect, it } from 'vitest'
-import type { Key } from 'ink'
-import { editLine } from './lineEdit'
+import { Box, type Key } from 'ink'
+import { render } from 'ink-testing-library'
+import { editLine, LineView } from './lineEdit'
 
 const none: Key = {
   upArrow: false, downArrow: false, leftArrow: false, rightArrow: false, pageDown: false, pageUp: false, home: false, end: false,
@@ -36,5 +38,13 @@ describe('editLine', () => {
     for (const key of [{ return: true }, { tab: true }, { upArrow: true }, { downArrow: true }, { escape: true }, { ctrl: true }]) {
       expect(type('abc', 1, key.ctrl ? 's' : '', key)).toBeUndefined()
     }
+  })
+
+  it('LineView scrolls by terminal cells, so the cursor stays in view after wide characters', async () => {
+    const value = '一二三四五六七八九十' // 20 cells in a 12-cell field
+    const r = render(createElement(Box, { width: 12 }, createElement(LineView, { value, at: [...value].length })))
+    await new Promise((done) => setTimeout(done, 20)) // the field measures its width after the first layout
+    expect(r.lastFrame()?.trimEnd()).toBe('六七八九十')
+    r.unmount()
   })
 })

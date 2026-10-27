@@ -54,6 +54,20 @@ describe('App shell', () => {
     expect(await opened()).toContain('Foxtrot')
   })
 
+  it('month: an event selected on a day of the previous month keeps the cursor there; → goes to the next day', async () => {
+    const at = (m: number, d: number, h: number): string => new Date(2026, m, d, h).toISOString()
+    const ev = (title: string, m: number, d: number): CalEvent =>
+      ({ id: title, title, accountId: 'work', calendarId: 'work-main', start: at(m, d, 10), end: at(m, d, 11), allDay: false, attendees: [] })
+    const all = [ev('Sep29', 8, 29), ev('Sep30', 8, 30), ev('Oct2', 9, 2)]
+    const client = createTestClient()
+    client.events.list.mockImplementation(async (r: TimeRange) => all.filter((e) => e.start < r.end && e.end > r.start))
+    t = renderApp({ client, nav: { view: 'month', date: new Date(2026, 9, 1) } })
+    await t.waitFor('Sep29')
+    await t.press('j', KEY.right, KEY.enter) // Oct grid starts Mon 28 Sep: j selects Sep29, → the next day
+    const f = await t.waitFor('esc close')
+    expect(f.split('\n')[2]).toContain('Sep30')
+  })
+
   it('day view ←/→ change the day; agenda arrows step events', async () => {
     t = renderApp({ nav: { view: 'day', date: new Date(2026, 8, 23) } })
     await t.waitFor('Wed 23 Sep 2026')
@@ -131,6 +145,14 @@ describe('App shell', () => {
     const lines = f.split('\n')
     const at = lines.findIndex((l) => l.includes('Up next · ↑↓ to select'))
     expect(lines[at + 1]).toContain('Gym')
+  })
+
+  it('says nothing about events before they load', async () => {
+    const client = createTestClient()
+    client.events.list.mockReturnValue(new Promise(() => {}))
+    t = renderApp({ client })
+    await t.waitFor('Loading…')
+    expect(t.lastFrame()).not.toMatch(/No events|nothing on/)
   })
 
   it('reloads events on a change push', async () => {

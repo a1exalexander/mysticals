@@ -6,6 +6,7 @@
  */
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Box, Text, measureElement, type DOMElement, type Key } from 'ink'
+import stringWidth from 'string-width'
 
 export interface Line {
   value: string
@@ -57,13 +58,20 @@ export function LineView({ value, at, mask }: Line & { mask?: string }) {
   })
   const chars = [...value].map((c) => mask ?? c)
   const room = Math.max(width, 1)
-  // First shown character: moves only as far as needed to keep the cursor cell (which may be one past the end) in view.
+  // In terminal cells: CJK and emoji take two. The cursor cell one past the end is a space.
+  const cells = chars.map((c) => stringWidth(c))
+  const span = (a: number, b: number): number => cells.slice(a, b).reduce((n, w) => n + w, 0)
+  // First shown character: moves only as far as needed to keep the cursor cell in view, and back while the rest fits.
   const from = useRef(0)
-  from.current = Math.max(Math.min(from.current, at, Math.max(chars.length + 1 - room, 0)), at - room + 1, 0)
-  const f = from.current
+  let f = Math.min(from.current, at)
+  while (f > 0 && span(f - 1, chars.length) + 1 <= room) f--
+  while (f < at && span(f, at) + (cells[at] ?? 1) > room) f++
+  from.current = f
+  let to = f
+  while (to < chars.length && span(f, to + 1) <= room) to++
   return (
     <Box ref={box} flexGrow={1} flexShrink={1} height={1} overflow="hidden">
-      <Text wrap="truncate-end">{cursorText({ value: chars.slice(f, f + room).join(''), at: at - f })}</Text>
+      <Text wrap="truncate-end">{cursorText({ value: chars.slice(f, to).join(''), at: at - f })}</Text>
     </Box>
   )
 }

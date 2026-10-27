@@ -31,6 +31,11 @@ describe('Month view', () => {
     expect(t.lastFrame()).not.toContain('Alpha')
   })
 
+  it('names an untitled event', () => {
+    t = renderWith(<Month {...props} events={[ev(0, '')]} height={19} />)
+    expect(t.lastFrame()).toContain('(no title)')
+  })
+
   it('is reachable from the shell and pages by month', async () => {
     t = renderApp({ nav: { view: 'month', date: new Date(2026, 8, 23) } })
     await t.waitFor('September 2026')
