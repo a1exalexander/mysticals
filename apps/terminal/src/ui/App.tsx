@@ -253,13 +253,17 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
   const close = (): void => setOverlay(undefined)
 
   // Day cursor of the grid views (day, 2day, week, month); falls back to the anchor day once off the page.
-  const [cursorAt, setCursor] = useState(() => startOfDay(nav.date))
-  const onPageOf = ({ view, date }: Nav, day: Date): boolean => {
-    if (view === 'month') return isSameMonth(day, date)
-    const r = navRange({ view, date })
+  // `page`: the page it was moved on, where it stays even off the page proper (month: a day of the next or previous
+  // month in the grid, reached by selecting its event).
+  const [cursorAt, setCursorAt] = useState(() => ({ day: startOfDay(nav.date), page: '' }))
+  const pageKey = ({ view, date }: Nav): string => `${view}|${+date}`
+  const setCursor = (day: Date, page = ''): void => setCursorAt({ day, page })
+  const inGrid = (nav: Nav, day: Date): boolean => {
+    const r = navRange(nav)
     return day >= new Date(r.start) && day < new Date(r.end)
   }
-  const cursor = onPageOf(nav, cursorAt) ? cursorAt : startOfDay(nav.date)
+  const onPageOf = (nav: Nav, day: Date): boolean => (nav.view === 'month' ? isSameMonth(day, nav.date) : inGrid(nav, day))
+  const cursor = onPageOf(nav, cursorAt.day) || cursorAt.page === pageKey(nav) ? cursorAt.day : startOfDay(nav.date)
   const grid = nav.view !== 'agenda'
 
   // Keys can arrive faster than renders (key repeat), so steps read and write the latest cursor, page, selection and
@@ -283,7 +287,7 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
     choose(e)
     if (!e) return
     live.current.cursor = max([startOfDay(eventBounds(e).start), startOfDay(new Date(range.start))])
-    setCursor(live.current.cursor)
+    setCursor(live.current.cursor, pageKey(live.current))
   }
 
   /** The event of `day` starting closest to `minute` (the first one when no minute), else nothing. */
@@ -325,9 +329,11 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
     const sel = ordered.find((e) => eventKey(e) === key)
     const minute = sel ? (sel.allDay ? undefined : Math.max(differenceInMinutes(eventBounds(sel).start, from), 0)) : live.current.minute
     const day = addDays(from, n)
-    const nextDate = onPageOf({ view, date }, day) ? date : view === '2day' && n > 0 ? addDays(day, -1) : day
+    // month: from a day of another month (see cursorAt) the cursor moves freely within the grid
+    const stays = onPageOf({ view, date }, day) || (view === 'month' && !onPageOf({ view, date }, from) && inGrid({ view, date }, day))
+    const nextDate = stays ? date : view === '2day' && n > 0 ? addDays(day, -1) : day
     Object.assign(live.current, { cursor: day, date: nextDate, minute })
-    setCursor(day)
+    setCursor(day, pageKey({ view, date: nextDate }))
     if (+nextDate !== +date) setDate(nextDate)
     // this page's events are loaded: pick now (a burst may still be ahead of the render, hence both checks)
     if (+nextDate === +nav.date && view === nav.view) return choose(pickOn(events, day, minute))
