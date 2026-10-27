@@ -95,11 +95,12 @@ describe('account colours', () => {
 
 // Text drawn on or in the palette's own hues (WCAG 4.5:1): primary buttons, the today badge and now clock,
 // Join buttons, the pending-invites count in the status bar, today in the sidebar and week header, accent-coloured
-// links and labels on every surface (Join call in the details popover), secondary text, and error text and danger
-// buttons (sync errors in the sidebar and status bar, failed saves in the editor, sheets and popovers).
+// links and labels on every surface (Join call in the details popover), secondary text on every surface (sidebar,
+// status bar, popovers and sheets), and error text and danger buttons (sync errors in the sidebar and status bar,
+// failed saves in the editor, sheets and popovers).
 const UI_PAIRS = [['on-accent', 'accent'], ['on-accent', 'pink'], ['bg', 'green'], ['orange', 'surface'], ['pink', 'bg'], ['pink', 'surface'],
-  ['accent', 'bg'], ['accent', 'surface'], ['accent', 'surface-2'], ['muted', 'bg'], ['red', 'bg'], ['red', 'surface'], ['red', 'surface-2'],
-  ['on-accent', 'red']]
+  ['accent', 'bg'], ['accent', 'surface'], ['accent', 'surface-2'], ['muted', 'bg'], ['muted', 'surface'], ['muted', 'surface-2'],
+  ['red', 'bg'], ['red', 'surface'], ['red', 'surface-2'], ['on-accent', 'red']]
 
 describe('UI tokens', () => {
   it.each(THEMES.map((th) => [th.id, th.scheme]))('%s keeps text on its own hues legible', (id, scheme) => {
