@@ -127,6 +127,25 @@
   --red: #d9594c;
   --yellow: #d2d98a;
 }
+/* ARC Raiders: the game's retro-futurist menus, warm near-black, cream text, gold actions, logo stripes as hues (extras below). */
+:root[data-theme='arc'] {
+  --bg: #0d0c0a;
+  --surface: #14130f;
+  --surface-2: #1b1a15;
+  --hover: #22201a;
+  --line: #24221b;
+  --line-strong: #36332a;
+  --fg: #ece2d0;
+  --muted: #9a8f7b;
+  --faint: #4a4436;
+  --accent: #f1aa1c;
+  --pink: #ff5b3d;
+  --green: #9ccf4a;
+  --cyan: #33c3e0;
+  --orange: #f7811e;
+  --red: #ff5a4a;
+  --yellow: #ffd23f;
+}
 /* Bubblegum: pastel marshmallow pinks swirled with Cloud's sky blues (pink canvas, blue chrome), deep bubblegum today. */
 :root[data-theme='bubble'] {
   --bg: #fff5fa;
@@ -262,7 +281,7 @@
   --ev-text-cmax: 0.2;
 }
 /* Colourful dark themes: the same solid fills, lighter, with near-black titles. Ink mixed into black reads as mud. */
-:root[data-fill='fill']:is([data-theme='dracula'], [data-theme='tokyo'], [data-theme='catppuccin'], [data-theme='vscode']) {
+:root[data-fill='fill']:is([data-theme='dracula'], [data-theme='tokyo'], [data-theme='catppuccin'], [data-theme='vscode'], [data-theme='arc']) {
   --ev-tint-lmin: 0.7;
   --ev-tint-l: 0.9;
   --ev-tint-cmax: 0.22;
@@ -288,6 +307,9 @@
 :root[data-theme='matrix'] { --shadow: 0 0 0; font-family: var(--mono); }
 :root[data-theme='matrix'] :is(input, textarea, .invites-panel) { font-family: var(--mono); }
 :root[data-theme='matrix'] body { text-shadow: 0 0 2px color-mix(in srgb, var(--accent) 10%, transparent); }
+/* ARC Raiders: flat like its menus, tracked uppercase titles (the logo stripes sit on the status bar, below). */
+:root[data-theme='arc'] { --shadow-k: 0.6; }
+:root[data-theme='arc'] .toolbar-title { text-transform: uppercase; letter-spacing: 0.06em; }
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
@@ -558,12 +580,12 @@ body[data-dragging='col-resize'] .app { transition: none; }
    grid's preview keeps its own background (later, same specificity) since its text is --fg. --ev-tint-ylift raises the
    floor for yellows (full within 12° of h 92, none by 24°): on pink Bubblegum a mid-lightness yellow reads as mustard. */
 :root[data-fill='fill']:is([data-theme='bubble'], [data-theme='toon'], [data-theme='cloud'], [data-theme='dracula'],
-  [data-theme='tokyo'], [data-theme='catppuccin'], [data-theme='vscode']) .ev {
+  [data-theme='tokyo'], [data-theme='catppuccin'], [data-theme='vscode'], [data-theme='arc']) .ev {
   --tint: oklch(from var(--c) clamp(calc(var(--ev-tint-lmin) + var(--ev-tint-ylift, 0) * clamp(0, (24 - abs(h - 92)) / 12, 1)),
     l, var(--ev-tint-l)) min(c, var(--ev-tint-cmax)) h);
 }
 :root[data-fill='fill']:is([data-theme='bubble'], [data-theme='toon'], [data-theme='cloud'], [data-theme='dracula'],
-  [data-theme='tokyo'], [data-theme='catppuccin'], [data-theme='vscode']) :is(.ev.is-pending, .ev-preview) { background-color: var(--tint); }
+  [data-theme='tokyo'], [data-theme='catppuccin'], [data-theme='vscode'], [data-theme='arc']) :is(.ev.is-pending, .ev-preview) { background-color: var(--tint); }
 .ev { animation: fade-in 140ms ease-out; }
 .ev-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ev.is-pending {
@@ -729,6 +751,12 @@ body[data-dragging='col-resize'] .app { transition: none; }
   grid-column: 1 / -1; position: relative; display: flex; align-items: stretch; height: 24px;
   background: var(--surface); border-top: 1px solid var(--line);
   font: 11px/23px var(--mono); color: var(--muted); white-space: nowrap;
+}
+/* ARC Raiders: the logo's four diagonal stripes at the right end, a background layer so the bar stays square. */
+:root[data-theme='arc'] .statusbar {
+  padding-right: 48px;
+  background: linear-gradient(115deg, transparent 0 22%, var(--cyan) 22% 36%, var(--green) 36% 50%, var(--yellow) 50% 64%,
+    var(--red) 64% 78%, transparent 78%) right 12px center / 32px 12px no-repeat, var(--surface);
 }
 /* Bubblegum: a pink bubble along the bottom, not Cloud's blue chrome. Text darkened to stay legible on the pink. */
 :root[data-theme='bubble'] .statusbar { --surface: #ffd6eb; --line: #f6b8d6; --hover: #ffc4e1; --muted: #61517b; --red: #a2314b; }
