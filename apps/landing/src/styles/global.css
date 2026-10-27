@@ -124,7 +124,7 @@ section.band { padding-block: clamp(48px, 6vw, 80px); border-top: 1px solid var(
 .plus li { display: flex; gap: 12px; }
 .plus li::before { content: '+'; font-family: var(--mono); color: var(--muted); }
 
-/* shell snippets */
+/* shell snippets; tabindex="0" in the markup lets keyboards scroll the long ones */
 .code { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; font: 14px/1.5 var(--mono); overflow-x: auto; }
 .code div { display: flex; gap: 12px; white-space: nowrap; }
 .code div::before { content: '$'; color: var(--muted); user-select: none; }

@@ -124,6 +124,7 @@ const icons = {
       </div>
     )}
     <main id="content" tabindex="-1"><slot /></main>
+    <span class="sr-only" role="status" data-copy-status></span>
     <footer class="wrap foot">
       <div class="frow">
         <span class="mono">mysticals · MIT · © <a class="ul" href="https://www.sashkoratushnyi.com/">{t.author}</a></span>
@@ -155,16 +156,28 @@ const icons = {
       const store = (k: string, v: string | null) => {
         try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v) } catch {}
       }
-      // <button data-copy="text"> copies its text and says so for a moment
-      const copied = document.documentElement.lang === 'uk' ? 'скопійовано' : 'copied'
+      // <button data-copy="text"> copies its text and says so for a moment, also to screen readers (the buttons
+      // have an aria-label, so their own text change isn't announced). The clipboard can refuse (permissions, old
+      // browsers): then it says so instead of claiming success.
+      const uk = document.documentElement.lang === 'uk'
+      const status = document.querySelector<HTMLElement>('[data-copy-status]')!
       for (const b of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
         const label = b.querySelector('.lbl')
+        const was = label?.textContent
+        let timer = 0
         b.addEventListener('click', async () => {
-          await navigator.clipboard.writeText(b.dataset.copy!)
+          let msg: string
+          try {
+            await navigator.clipboard.writeText(b.dataset.copy!)
+            msg = uk ? 'скопійовано' : 'copied'
+          } catch {
+            msg = uk ? 'не вдалося скопіювати' : 'couldn’t copy'
+          }
+          status.textContent = msg
           if (!label) return
-          const was = label.textContent
-          label.textContent = copied
-          setTimeout(() => (label.textContent = was), 1500)
+          label.textContent = msg
+          clearTimeout(timer)
+          timer = window.setTimeout(() => (label.textContent = was!), 1500)
         })
       }
       // Theme: system (nothing saved), light or dark; the head script applies the saved one before paint

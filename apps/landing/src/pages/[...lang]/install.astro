@@ -157,7 +157,7 @@ const downloads = to(lang, '/download/')
           <p set:html={t.appimageText} />
           <a class="btn" href={downloads}>{t.toDownloads}</a></div></li>
         <li><div><h2>{t.runIt}</h2>
-          <div class="code"><div>chmod +x Mysticals-x86_64.AppImage &amp;&amp; ./Mysticals-x86_64.AppImage</div><div class="c">{t.or}</div><div>sudo apt install ./Mysticals-amd64.deb</div><div class="c">{t.onArm}</div></div></div></li>
+          <div class="code" tabindex="0"><div>chmod +x Mysticals-x86_64.AppImage &amp;&amp; ./Mysticals-x86_64.AppImage</div><div class="c">{t.or}</div><div>sudo apt install ./Mysticals-amd64.deb</div><div class="c">{t.onArm}</div></div></div></li>
         <li><div><h2>{t.keyring}</h2>
           <p>{t.keyringText}</p></div></li>
         <li><div><h2>{t.first}</h2>
@@ -168,19 +168,19 @@ const downloads = to(lang, '/download/')
         <ol class="steps">
           <li><div><h2>{t.node}</h2>
             <p set:html={t.nodeText} />
-            <div class="code"><div>node -v <span class="c">{t.newer}</span></div></div></div></li>
+            <div class="code" tabindex="0"><div>node -v <span class="c">{t.newer}</span></div></div></div></li>
           <li><div><h2>{t.npm}</h2>
-            <div class="code"><div>npm i -g mysticals</div></div></div></li>
+            <div class="code" tabindex="0"><div>npm i -g mysticals</div></div></div></li>
           <li><div><h2>{t.runTerm}</h2>
             <p set:html={t.runTermText} />
-            <div class="code"><div>mysticals</div><div>MYSTICALS_MOCK=1 mysticals <span class="c"># macOS, Linux</span></div><div>$env:MYSTICALS_MOCK=1; mysticals <span class="c"># Windows PowerShell</span></div><div>set "MYSTICALS_MOCK=1" &amp;&amp; mysticals <span class="c"># Windows cmd</span></div></div></div></li>
+            <div class="code" tabindex="0"><div>mysticals</div><div>MYSTICALS_MOCK=1 mysticals <span class="c"># macOS, Linux</span></div><div>$env:MYSTICALS_MOCK=1; mysticals <span class="c"># Windows PowerShell</span></div><div>set "MYSTICALS_MOCK=1" &amp;&amp; mysticals <span class="c"># Windows cmd</span></div></div></div></li>
           <li data-only="mac"><div><h2>{t.keychain}</h2>
             <p set:html={t.keychainText} /></div></li>
           <li data-only="windows" hidden><div><h2>{t.nothing}</h2>
             <p set:html={t.nothingText} /></div></li>
           <li data-only="linux" hidden><div><h2>{t.secret}</h2>
             <p set:html={t.secretText} />
-            <div class="code"><div>sudo apt install libsecret-tools <span class="c"># Fedora/Arch: libsecret</span></div></div></div></li>
+            <div class="code" tabindex="0"><div>sudo apt install libsecret-tools <span class="c"># Fedora/Arch: libsecret</span></div></div></div></li>
           <li><div><h2>{t.withS}</h2>
             <p set:html={t.withSText} /></div></li>
         </ol>
