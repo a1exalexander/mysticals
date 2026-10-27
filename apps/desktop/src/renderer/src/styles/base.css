@@ -105,7 +105,7 @@
   --green: #89d185;
   --cyan: #4ec9b0;
   --orange: #ce9178;
-  --red: #f14c4c;
+  --red: #f45b5b;
   --yellow: #dcdcaa;
 }
 /* Matrix: retro terminal, neutral black screen; only the text glows phosphor green (extras below). */
@@ -143,7 +143,7 @@
   --green: #2a7f5f;
   --cyan: #3d9fe0;
   --orange: #b35134;
-  --red: #e04468;
+  --red: #c33b5a;
   --yellow: #e6ae3a;
 }
 /* Cartoon: cream paper, bold ink outlines, candy colours. */
@@ -162,7 +162,7 @@
   --green: #1f7a3a;
   --cyan: #0ea5e9;
   --orange: #b05100;
-  --red: #f0263c;
+  --red: #d12134;
   --yellow: #f5c400;
 }
 /* Cloud: airy light cyan around #e0ffff. */
@@ -181,7 +181,7 @@
   --green: #1c7a5e;
   --cyan: #5aa8e6;
   --orange: #b4561c;
-  --red: #e15b6b;
+  --red: #bb4c59;
   --yellow: #e0b13f;
 }
 /* Light: Black & White inverted, plain white paper and black ink. */
