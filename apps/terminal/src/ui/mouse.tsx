@@ -118,12 +118,13 @@ export function Clickable({ onClick, onWheel, children, ...box }: BoxProps & Han
   )
 }
 
-/** Key hint that is also a click target: the key as a colored keycap, then the label. */
+/** Key hint that is also a click target: the key as a colored keycap, then the label (none: just the keycap). */
 export function Button({ k, label, onPress, color = C.accent }: { k: string; label: string; onPress(): void; color?: string }) {
   return (
     <Clickable onClick={onPress} marginRight={2} flexShrink={0}>
       <Text>
-        <Text inverse color={color} bold>{k}</Text> {label}
+        <Text inverse color={color} bold>{k}</Text>
+        {label && ` ${label}`}
       </Text>
     </Clickable>
   )

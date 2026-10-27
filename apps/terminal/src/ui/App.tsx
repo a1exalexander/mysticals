@@ -86,6 +86,10 @@ const MIN_HEIGHT = 12
 /** How long an action's result stays in the status line. */
 const MESSAGE_MS = 5000
 
+/** Cells of the full tab row and of the ‹ today › control (with its margins). */
+const TABS_W = TABS.reduce((n, v) => n + VIEW_LABEL[v].length + 2, 0)
+const TODAY_W = 13
+
 function Header({ nav, width, onView, onShift, onToday }: {
   nav: Nav
   width: number
@@ -93,6 +97,9 @@ function Header({ nav, width, onView, onShift, onToday }: {
   onShift(dir: 1 | -1): void
   onToday(): void
 }) {
+  const heading = title(nav)
+  // too narrow for every label and the range: the other tabs show just their key
+  const compact = width < TABS_W + TODAY_W + heading.length
   return (
     <Box width={width} height={1} overflow="hidden">
       {TABS.map((v) => (
@@ -101,7 +108,7 @@ function Header({ nav, width, onView, onShift, onToday }: {
           <Text inverse={v === nav.view} color={v === nav.view ? C.accent : C.muted} bold={v === nav.view}>
             {' '}
             <Text underline>{VIEW_LABEL[v][0]}</Text>
-            {`${VIEW_LABEL[v].slice(1)} `}
+            {`${compact && v !== nav.view ? '' : VIEW_LABEL[v].slice(1)} `}
           </Text>
         </Clickable>
       ))}
@@ -119,7 +126,7 @@ function Header({ nav, width, onView, onShift, onToday }: {
         </Clickable>
       </Box>
       <Box flexGrow={1} flexShrink={1}>
-        <Text bold wrap="truncate">{title(nav)}</Text>
+        <Text bold wrap="truncate">{heading}</Text>
       </Box>
     </Box>
   )

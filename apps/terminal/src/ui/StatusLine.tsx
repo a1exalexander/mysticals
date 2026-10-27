@@ -2,7 +2,8 @@
  * Bottom bar, two rows truncated to `width`:
  *   1. info: a spinner while accounts sync, current event(s) and the next one within 24h (core `pickNowNext`, `startsLabel`), pending invite count,
  *      accounts whose last sync failed, a transient `message` from the shell, and last a newer-version hint (`update`);
- *   2. actions: new, sync, invites, accounts, help, quit as key buttons, then (with `hints`) how to move and open.
+ *   2. actions: new, sync, invites, accounts, help, quit as key buttons, then (with `hints`) how to move and open;
+ *      too narrow for all labels, only help and quit keep theirs, so `?` stays findable.
  * Every part is clickable (opens the event / overlay, or runs the action).
  * Now/next and invites come from a today+60d fetch, so they don't depend on the viewed range.
  */
@@ -22,9 +23,9 @@ export interface StatusLineProps {
   events: CalEvent[]
   now: Date
   message?: string
-  /** Newer published version (see `checkUpdate`); shows an install hint at the end of the info row. */
   /** `message` is a failure: shown in red. */
   messageError?: boolean
+  /** Newer published version (see `checkUpdate`); shows an install hint at the end of the info row. */
   update?: string
   width: number
   /** Show the move/open hint after the buttons (off while a panel has the keys). */
@@ -41,6 +42,9 @@ export interface StatusLineProps {
 const DAY_MS = 24 * 3600_000
 const noop = (): void => {}
 const FRAMES = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+/** Bottom-bar buttons, key and label; each takes its label plus the key and 3 cells of gaps. */
+const ACTIONS = [['n', 'new'], ['r', 'sync'], ['i', 'invites'], ['s', 'accounts'], ['?', 'help'], ['q', 'quit']] as const
+const ACTIONS_W = ACTIONS.reduce((n, [k, l]) => n + k.length + l.length + 3, 0)
 
 /** Braille spinner; animates only while mounted. */
 export function Spinner() {
@@ -88,12 +92,14 @@ export function StatusLine({ now, message, messageError, update, width, hints, o
         ))}
       </Box>
       <Box width={width} height={1} overflow="hidden">
-        <Button k="n" label="new" onPress={onNew ?? noop} />
-        <Button k="r" label="sync" onPress={onSync ?? noop} />
-        <Button k="i" label="invites" onPress={onInvites ?? noop} />
-        <Button k="s" label="accounts" onPress={onAccounts ?? noop} />
-        <Button k="?" label="help" onPress={onHelp ?? noop} />
-        <Button k="q" label="quit" onPress={onQuit ?? noop} />
+        {ACTIONS.map(([k, label]) => (
+          <Button
+            key={k}
+            k={k}
+            label={width >= ACTIONS_W || k === '?' || k === 'q' ? label : ''}
+            onPress={{ n: onNew, r: onSync, i: onInvites, s: onAccounts, '?': onHelp, q: onQuit }[k] ?? noop}
+          />
+        ))}
         {hints && (
           <Box flexShrink={0}>
             <Text color={C.muted}>←→↑↓ move · enter open</Text>

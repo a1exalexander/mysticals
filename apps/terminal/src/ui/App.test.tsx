@@ -101,6 +101,15 @@ describe('App shell', () => {
     expect(lines[0]).not.toContain('mysticals')
   })
 
+  it('narrow: the other tabs shrink to their key so the range still fits', async () => {
+    t = renderApp({ nav: { view: 'agenda', date: new Date(2026, 8, 23) } })
+    await t.waitFor('Day  2 Days')
+    Object.defineProperty(t.stdout, 'columns', { value: 60 })
+    t.stdout.emit('resize')
+    const f = await t.waitFor(' Agenda  D  2  W  M ')
+    expect(f.split('\n')[0]).toContain('23 Sep – 6 Oct 2026')
+  })
+
   it('reports a deleted event in the status line', async () => {
     t = renderApp()
     await t.waitFor('Up next')
