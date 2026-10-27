@@ -47,10 +47,15 @@ async function main(argv: string[]): Promise<void> {
     // + mouse press/wheel reports in SGR encoding. Always undone on exit, or the shell fills with "[<0;…M" junk.
     process.stdout.write('\x1b[?1049h\x1b[H\x1b[?1000h\x1b[?1006h')
     leaveScreen = () => void process.stdout.write('\x1b[?1006l\x1b[?1000l\x1b[?1049l')
-    process.on('exit', leaveScreen)
     for (const s of ['SIGTERM', 'SIGHUP'] as const) process.on(s, () => process.exit(0))
   }
   const app = render(createElement(ApiContext.Provider, { value: api }, createElement(App, { updateCheck: checkUpdate(stopUpdate.signal), notice })))
+  // Ink's own exit hook runs after every 'exit' listener: on a signal or crash it would draw its last frame (clearing
+  // the screen and scrollback) after we left the alternate screen, i.e. over the shell. Unmount it first.
+  process.on('exit', () => {
+    app.unmount()
+    leaveScreen()
+  })
   // Piped stdin (e.g. `echo | mysticals`): no keys; draw and quit when the input ends.
   if (!process.stdin.isTTY) process.stdin.on('end', () => app.unmount()).resume()
   await app.waitUntilExit()
