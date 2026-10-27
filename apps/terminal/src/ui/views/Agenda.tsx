@@ -269,7 +269,7 @@ export function Agenda({ events, date, now, selectedKey, width, height, onSelect
     const row1 = [
       { text: (e.allDay ? ' all day' : `  ${clockOf(start, '…')}`).padEnd(TIME_W), color: running ? C.green : undefined, bold: running },
       { text: '▌ ', color: colorOf(e) },
-      ...fitParts([{ text: `${rsvpMark(e)}${e.title || '(no title)'}`, bold: true, strike: e.myStatus === 'declined' }, ...badges], titleW),
+      ...fitParts([{ text: `${rsvpMark(e)}${e.title || 'Untitled'}`, bold: true, strike: e.myStatus === 'declined' }, ...badges], titleW),
       ...(dur ? [{ text: `  ${dur}`, color: C.muted }] : [])
     ]
 

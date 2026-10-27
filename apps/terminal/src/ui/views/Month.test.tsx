@@ -31,9 +31,9 @@ describe('Month view', () => {
     expect(t.lastFrame()).not.toContain('Alpha')
   })
 
-  it('names an untitled event', () => {
+  it('names an event without a title "Untitled" instead of leaving a blank line', () => {
     t = renderWith(<Month {...props} events={[ev(0, '')]} height={19} />)
-    expect(t.lastFrame()).toContain('(no title)')
+    expect(t.lastFrame()).toContain('Untitled')
   })
 
   it('is reachable from the shell and pages by month', async () => {

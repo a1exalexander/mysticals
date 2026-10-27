@@ -297,7 +297,7 @@ export function Accounts({ onClose, height = Infinity }: AccountsProps) {
             )}
           </Box>
         )}
-        {(mode.kind === 'rename' || mode.kind === 'reauth') && <Text color={C.muted}>enter save  esc cancel</Text>}
+        {(mode.kind === 'rename' || mode.kind === 'reauth') && <Text color={C.muted}>enter save · esc cancel</Text>}
         {loadError && <Text color={C.red}>{loadError}</Text>}
         {message && <Text color={message.error ? C.red : C.green}>{message.text}</Text>}
         {mode.kind === 'list' && (
