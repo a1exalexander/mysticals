@@ -133,7 +133,7 @@ test('editor fields are named by their labels, a label click focuses its field, 
   await app.close()
 })
 
-test('Esc or a click outside asks before discarding changes; an untouched editor just closes', async () => {
+test('Esc, Cancel or a click outside asks before discarding changes; an untouched editor just closes', async () => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, MYSTICALS_MOCK: '1' } })
   const page = await app.firstWindow()
   await page.setViewportSize({ width: 1200, height: 800 })
@@ -169,6 +169,14 @@ test('Esc or a click outside asks before discarding changes; an untouched editor
   await discard.getByRole('button', { name: 'Keep editing' }).click()
   await expect(discard).toHaveCount(0)
   await page.keyboard.press('Escape')
+  await discard.getByRole('button', { name: 'Discard' }).click()
+  await expect(editor).toHaveCount(0)
+
+  // So does Cancel.
+  await page.getByTestId('new-event').click()
+  await title.fill('Half-written')
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(discard).toBeVisible()
   await discard.getByRole('button', { name: 'Discard' }).click()
   await expect(editor).toHaveCount(0)
 

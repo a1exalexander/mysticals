@@ -34,7 +34,7 @@ export function EventEditorHost(): React.JSX.Element | null {
   const [saving, setSaving] = useState(false)
   // Saving a recurring event first asks which part of the series the edit is for.
   const [askScope, setAskScope] = useState(false)
-  // Esc or a click outside with changes asks before throwing them away.
+  // Esc, Cancel or a click outside with changes asks before throwing them away.
   const [discard, setDiscard] = useState(false)
   const [repeatFailed, setRepeatFailed] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
@@ -342,7 +342,7 @@ export function EventEditorHost(): React.JSX.Element | null {
           </div>
         ) : (
           <div className="mc-actions">
-            <button type="button" className="mc-btn" onClick={close}>{t('common.cancel')}</button>
+            <button type="button" className="mc-btn" onClick={requestClose}>{t('common.cancel')}</button>
             <button type="submit" className="mc-btn primary" data-testid="editor-save" disabled={!canSave}>
               {saving ? t('editor.saving') : editing ? t('common.save') : t('editor.add')}
             </button>
