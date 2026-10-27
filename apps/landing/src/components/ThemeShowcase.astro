@@ -123,7 +123,7 @@ const evs: [number, number, number, string][] = [
   @media (min-width: 1100px) { .minis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 12px; } }
   .mini { width: 100%; padding: 0; display: flex; flex-direction: column; gap: 8px; border: 0; background: none; color: var(--muted); font: inherit; text-align: left; cursor: pointer; }
   .mname { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 8px; font: 12px/1.35 var(--mono); min-width: 0; }
-  .mname small { font-size: 11px; color: var(--faint); }
+  .mname small { font-size: 11px; color: var(--muted); }
   .mini:hover .mname, .mini[aria-pressed='true'] .mname { color: var(--fg); }
   .mwin {
     position: relative; display: grid; grid-template-columns: 26% 1fr; aspect-ratio: 16 / 10.5; overflow: hidden;
