@@ -74,6 +74,12 @@ describe('mapEvent', () => {
     expect(mapEvent({ ...invite, guestsCanModify: true }, 'acc1', 'primary').guestsCanModify).toBe(true)
   })
 
+  it('marks an organizer that is the calendar itself (an event organized by a secondary calendar)', () => {
+    const team: GEvent = { ...invite, organizer: { email: 'team@group.calendar.google.com', displayName: 'Team', self: true } }
+    expect(mapEvent(team, 'acc1', 'team').organizer).toEqual({ email: 'team@group.calendar.google.com', name: 'Team', self: true })
+    expect(mapEvent(invite, 'acc1', 'primary').organizer).not.toHaveProperty('self')
+  })
+
   it('maps an all-day event with dates', () => {
     const e = mapEvent(own, 'acc1', 'primary')
     expect(e).toMatchObject({ allDay: true, start: '2026-09-23', end: '2026-09-24', attendees: [] })

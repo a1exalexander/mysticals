@@ -73,6 +73,11 @@ export function fromRRule(text: string, start?: string): Recurrence {
     const days = kv.get('BYDAY')!.split(',')
     if (freq !== 'weekly' || days.some((d) => !WEEKDAYS.includes(d as Weekday))) return custom()
     out.byDay = WEEKDAYS.filter((d) => days.includes(d))
+    // The app writes no WKST (Monday). One that splits these days into other weeks (e.g. Sun + Mon every 2 weeks with
+    // WKST=SU, as Google writes it) would move instances once rewritten without it: keep such a rule as it is.
+    const wkst = WEEKDAYS.indexOf(kv.get('WKST') as Weekday)
+    const at = out.byDay.map((d) => WEEKDAYS.indexOf(d))
+    if (interval > 1 && wkst > 0 && at.some((i) => i < wkst) && at.some((i) => i >= wkst)) return custom()
   }
   const until = kv.get('UNTIL')
   if (until) {

@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
-  applyColor, applyDeleteFollowing, applyDeleteInstance, applyRespond, applySplitFollowing, applyUpdate, applyUpdateSeries, buildIcs, mapPartStat, parseEvents,
+  applyColor, applyDeleteFollowing, applyDeleteInstance, applyRespond, applySplitFollowing, applyUpdate, applyUpdateSeries, buildIcs, mapPartStat, parseEvents, vtimezone,
   recurrenceOf, type CaldavRaw
 } from './ics'
 
@@ -160,6 +160,10 @@ describe('buildIcs', () => {
       ['a@x.example', 'needsAction'],
       ['b@x.example', 'needsAction']
     ])
+  })
+
+  it('stamps DTSTAMP and CREATED in UTC', () => {
+    expect(buildIcs('uid-4', base, ctx.email)).toMatch(/DTSTAMP:\d{8}T\d{6}Z\r\nCREATED:\d{8}T\d{6}Z/)
   })
 
   it('writes all-day events as VALUE=DATE', () => {
@@ -457,5 +461,35 @@ describe('applyColor', () => {
     const all = parse(applyColor(raw(DAILY, '2026-01-06T09:00:00Z'), '5', 'all'))
     // The moved instance is an override with its own (no) colour.
     expect(all.map((e) => e.colorId)).toEqual(['5', '5', undefined, '5'])
+  })
+})
+
+describe('series across DST', () => {
+  const tz = process.env.TZ
+  beforeEach(() => void (process.env.TZ = 'Europe/Kyiv'))
+  afterEach(() => void (tz === undefined ? delete process.env.TZ : (process.env.TZ = tz)))
+  const YEAR = { start: '2026-01-01T00:00:00.000Z', end: '2027-01-01T00:00:00.000Z' }
+  const localTimes = (ics: string) => new Set(parseEvents(ics, HREF, undefined, ctx, YEAR).map((e) => new Date(e.start).toTimeString().slice(0, 5)))
+  // 09:00 in Kyiv (UTC+2 in winter, UTC+3 in summer).
+  const standup = { accountId: 'a', calendarId: 'c', title: 'Standup', start: '2026-01-05T07:00:00.000Z', end: '2026-01-05T07:30:00.000Z', allDay: false }
+
+  it('a new series repeats at its wall-clock time, not its UTC instant', () => {
+    const ics = buildIcs('u1', { ...standup, recurrence: { freq: 'weekly' } }, ctx.email)
+    expect(ics).toMatch(/DTSTART;TZID=Europe\/Kiev?:20260105T090000/)
+    expect(ics).toMatch(/BEGIN:VTIMEZONE/)
+    expect(localTimes(ics)).toEqual(new Set(['09:00']))
+  })
+
+  it('a single event that starts repeating does too', () => {
+    const [single] = parseEvents(buildIcs('u2', standup, ctx.email), HREF, undefined, ctx, JAN)
+    expect(localTimes(applyUpdate({ ...single, recurrence: { freq: 'weekly' } }, ctx.email))).toEqual(new Set(['09:00']))
+  })
+
+  it('builds VTIMEZONEs with yearly rules from the zone data', () => {
+    const ny = vtimezone('America/New_York', 2025).toString()
+    expect(ny).toMatch(/TZOFFSETFROM:-0500\r\nTZOFFSETTO:-0400\r\nRRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU/)
+    expect(ny).toMatch(/TZOFFSETFROM:-0400\r\nTZOFFSETTO:-0500\r\nRRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU/)
+    expect(vtimezone('Europe/Kyiv', 2025).toString()).toMatch(/DTSTART:20251026T040000\r\nTZOFFSETFROM:\+0300\r\nTZOFFSETTO:\+0200\r\nRRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU/)
+    expect(vtimezone('Asia/Kolkata', 2025).toString()).toMatch(/TZOFFSETFROM:\+0530\r\nTZOFFSETTO:\+0530\r\nEND:STANDARD/)
   })
 })

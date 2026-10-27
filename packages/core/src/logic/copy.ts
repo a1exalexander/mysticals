@@ -26,7 +26,8 @@ export function copyInput(e: CalEvent, at?: PasteSlot, { guests = false } = {}):
     ...(at ? moved(e, at) : { start: e.start, end: e.end, allDay: e.allDay }),
     location: e.location || undefined,
     description: e.description || undefined,
-    ...(attendees.length ? { attendees } : {})
+    ...(attendees.length ? { attendees } : {}),
+    ...(e.colorId ? { colorId: e.colorId } : {})
   }
 }
 

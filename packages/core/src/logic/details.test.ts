@@ -20,6 +20,10 @@ describe('canEdit', () => {
     expect(canEdit(ev({ attendees, organizer: { email: 'pm@work.example' } }), account, cal)).toBe(false)
     expect(canEdit(ev({ attendees, organizer: { email: 'ME@work.example' } }), account, cal)).toBe(true)
   })
+  it('allows events organized by the calendar they are in (a Google secondary or shared calendar)', () => {
+    const attendees = [{ email: 'pm@work.example', status: 'needsAction' as const }]
+    expect(canEdit(ev({ attendees, organizer: { email: 'team@group.calendar.google.com', self: true } }), account, cal)).toBe(true)
+  })
   it('allows guests when the organizer lets them edit', () => {
     const attendees = [{ email: 'pm@work.example', status: 'accepted' as const, organizer: true }]
     const invite = ev({ attendees, organizer: { email: 'pm@work.example' }, guestsCanModify: true })
