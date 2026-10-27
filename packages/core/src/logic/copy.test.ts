@@ -34,6 +34,11 @@ describe('copyInput', () => {
     })
   })
 
+  it('keeps the event colour, so an undone delete comes back as it was', () => {
+    expect(copyInput(ev({ colorId: '5' })).colorId).toBe('5')
+    expect(copyInput(ev(), undefined, { guests: true })).not.toHaveProperty('colorId')
+  })
+
   it('keeps guests other than the owner only when asked (undo)', () => {
     expect(copyInput(ev(), undefined, { guests: true }).attendees).toEqual(['ann@work.example'])
   })
