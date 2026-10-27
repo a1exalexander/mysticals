@@ -76,7 +76,7 @@ export function mapEvent(g: GEvent, accountId: string, calendarId: string): CalE
     location: g.location,
     conferenceUrl: conferenceUrlOf(g),
     description: g.description,
-    organizer: g.organizer?.email ? { email: g.organizer.email, name: g.organizer.displayName } : undefined,
+    organizer: g.organizer?.email ? { email: g.organizer.email, name: g.organizer.displayName, ...(g.organizer.self ? { self: true } : {}) } : undefined,
     attendees,
     myStatus: self ? toStatus(self.responseStatus) : undefined,
     etag: g.etag,

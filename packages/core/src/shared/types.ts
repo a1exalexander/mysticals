@@ -52,7 +52,8 @@ export interface CalEvent {
   /** Video call attached by the provider (Google Meet / conferenceData), separate from `location`. */
   conferenceUrl?: string
   description?: string
-  organizer?: { email: string; name?: string }
+  /** `self`: the organizer is the calendar this copy is in (Google: a secondary or shared calendar organizes it). */
+  organizer?: { email: string; name?: string; self?: boolean }
   attendees: Attendee[]
   /** Owning account's own response when it is an invitee. */
   myStatus?: PartStat
