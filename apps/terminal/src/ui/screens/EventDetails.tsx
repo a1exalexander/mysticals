@@ -38,7 +38,8 @@ const COLORS: { id: string | null; name: string; hex?: string }[] = [
   ...EVENT_COLORS.map((c) => ({ id: c.id, name: c.key, hex: c.hex }))
 ]
 const STATUS_LABEL: Record<PartStat, string> = { accepted: 'accepted', declined: 'declined', tentative: 'maybe', needsAction: 'not answered' }
-const STATUS_COLOR: Record<PartStat, string> = { accepted: C.green, declined: C.red, tentative: C.yellow, needsAction: C.muted }
+// a function: C.yellow is settled at startup, after this module loads
+const statusColor = (s: PartStat): string => ({ accepted: C.green, declined: C.red, tentative: C.yellow, needsAction: C.muted })[s]
 
 // Argument vector, no shell (see openCommand): the URL comes from event data and must never be interpreted.
 const openUrl = (url: string): void => void openInBrowser(url).catch(() => {})
@@ -279,7 +280,7 @@ export function EventInfo({ event, account, calendar, now, showAll, onToggleAll 
           </Text>
           {(showAll ? event.attendees : event.attendees.slice(0, ATTENDEES_SHOWN)).map((a) => (
             <Text key={a.email} wrap="truncate">
-              <Text color={STATUS_COLOR[a.status]}>{STATUS_ICON[a.status]}</Text> {a.name ?? a.email}
+              <Text color={statusColor(a.status)}>{STATUS_ICON[a.status]}</Text> {a.name ?? a.email}
               {a.name && <Text color={C.muted}> {a.email}</Text>}
               {a.self ? ' (you)' : ''}
               {a.organizer ? ' (organizer)' : ''}
@@ -302,7 +303,7 @@ export function EventInfo({ event, account, calendar, now, showAll, onToggleAll 
       {event.myStatus && (
         <Box marginTop={1}>
           <Text>
-            Your reply: <Text bold color={STATUS_COLOR[event.myStatus]}>{STATUS_ICON[event.myStatus]} {STATUS_LABEL[event.myStatus]}</Text>
+            Your reply: <Text bold color={statusColor(event.myStatus)}>{STATUS_ICON[event.myStatus]} {STATUS_LABEL[event.myStatus]}</Text>
             <Text color={C.muted}> as {account?.email ?? event.accountId}</Text>
           </Text>
         </Box>

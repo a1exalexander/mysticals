@@ -84,7 +84,7 @@ The agenda shows each day as a heading (relative day, event count, busy time) fo
 
 Day, 2 Days and Week are time-grid tables: one row per hour, a column per day, all-day events on top. Events are blocks in their calendar's colour. The current time is red: the clock in the hour column, a red line through today's free cells, a red line between past and upcoming events in the agenda, and today's date in the month grid.
 
-Colours come from your terminal theme: the app only uses the 16 ANSI colours and reverse video, and each calendar's colour is snapped to the nearest ANSI hue (white and near-white use the theme's text colour, so they show on light themes too). Only the event colour picker previews the real colours. `NO_COLOR=1` turns colours off.
+Colours come from your terminal theme: the app only uses the 16 ANSI colours and reverse video, and each calendar's colour is snapped to the nearest ANSI hue (white and near-white use the theme's text colour, so they show on light themes too). Two exceptions: the event colour picker previews the real colours, and on a light background yellow and orange become a dark amber and a dark orange, because ANSI yellow barely shows on white. At startup the app asks the terminal for its background colour (OSC 11, at most a quarter of a second, while it connects to the daemon), falls back to `COLORFGBG`, and assumes a dark background when neither answers. `NO_COLOR=1` turns colours off.
 
 ### Mouse
 

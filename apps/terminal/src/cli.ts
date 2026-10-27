@@ -6,6 +6,8 @@ import { connect } from './client'
 import { runDaemon } from './daemon/server'
 import { ApiContext } from './ui/hooks'
 import { App } from './ui/App'
+import { detectLightBackground } from './ui/background'
+import { setLightBackground } from './ui/theme'
 import { telemetry, TELEMETRY_NOTICE } from './telemetry'
 import { checkUpdate } from './update'
 
@@ -40,7 +42,9 @@ async function main(argv: string[]): Promise<void> {
   // Before connect(): a daemon spawned by it would otherwise create the install id first and this run would miss the notice.
   // ponytail: a quit right after the first launch waits for app_installed (5 s cap, first run only).
   const notice = telemetry()?.installed ? TELEMETRY_NOTICE : undefined
-  const api = await connect()
+  // The background query runs while the daemon connects: usually a few ms, at most its 250 ms timeout.
+  const [api, light] = await Promise.all([connect(), detectLightBackground()])
+  setLightBackground(light)
   const stopUpdate = new AbortController() // a slow registry must not keep the process alive after quit
   if (process.stdin.isTTY && process.stdout.isTTY) {
     // Alternate screen (restores the shell on exit; the app is drawn from row 1 so mouse cells map to layout)

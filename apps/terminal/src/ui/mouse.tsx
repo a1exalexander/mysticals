@@ -5,24 +5,26 @@
  *
  *   <MouseProvider> once near the root; <Clickable onClick onWheel> anywhere below it (outside one it is a plain Box).
  *   A click or wheel goes to the smallest region under the pointer that handles it.
- *   useKeys = Ink's useInput minus mouse reports; use it instead of useInput so reports never reach key handlers.
+ *   useKeys = Ink's useInput minus mouse reports (and a background-colour reply that came after its timeout, see
+ *   ui/background.ts); use it instead of useInput so reports never reach key handlers.
  */
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { C } from './theme'
+import { isTerminalReply } from './background'
 import { Box, Text, useInput, useStdin, type BoxProps, type DOMElement, type Key } from 'ink'
 
 const REPORT = /^\[<(\d+);(\d+);(\d+)([Mm])$/
 
 export const isMouse = (input: string): boolean => REPORT.test(input)
 
-/** Ink's useInput, skipping mouse reports. */
+/** Ink's useInput, skipping mouse reports and late terminal replies. */
 export function useKeys(handler: (input: string, key: Key) => void, options?: { isActive?: boolean }): void {
   // Ink re-subscribes a new handler in a passive effect, after the render; a key right behind the one that changed
   // state (fast typing, paste, a slow machine) would hit the old closure. Call the latest committed handler instead.
   const latest = useRef(handler)
   useLayoutEffect(() => void (latest.current = handler))
   const stable = useCallback((input: string, key: Key) => {
-    if (!isMouse(input)) latest.current(input, key)
+    if (!isMouse(input) && !isTerminalReply(input)) latest.current(input, key)
   }, [])
   useInput(stable, options)
 }

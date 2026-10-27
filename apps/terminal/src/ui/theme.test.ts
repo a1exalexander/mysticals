@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { PALETTE } from './screens/AddCaldav'
-import { ansiOf } from './theme'
+import { ansiOf, C, setLightBackground } from './theme'
+
+afterEach(() => setLightBackground(false))
 
 describe('ansiOf', () => {
   it('keeps the default account colors distinct', () => {
@@ -19,5 +21,16 @@ describe('ansiOf', () => {
   it('leaves near-white to the theme foreground, so it shows on light backgrounds too', () => {
     expect(ansiOf('#ffffff')).toBeUndefined()
     expect(ansiOf('#f0f0f0')).toBeUndefined()
+  })
+
+  it('swaps the yellows for darker ones on a light background, and back', () => {
+    setLightBackground(true)
+    expect(C.yellow).toBe('#9a6700')
+    expect(ansiOf('#f1fa8c')).toBe('#9a6700') // yellow calendar
+    expect(ansiOf('#ffb86c')).toBe('#bc4c00') // orange calendar
+    expect(new Set(PALETTE.map(ansiOf)).size).toBe(PALETTE.length)
+    setLightBackground(false)
+    expect(C.yellow).toBe('yellow')
+    expect(ansiOf('#ffb86c')).toBe('yellowBright')
   })
 })

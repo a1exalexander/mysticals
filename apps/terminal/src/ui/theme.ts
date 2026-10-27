@@ -1,6 +1,8 @@
 /**
  * Colors are the terminal's own: ANSI names, so the user's theme decides the actual shades (and NO_COLOR turns them
  * off). Highlights use `inverse`, which swaps the theme's own foreground and background.
+ * Exception: yellow and bright yellow barely show on a light background, so there (`setLightBackground`, called once
+ * at startup) they become a dark amber and a dark orange. Read `C.yellow` at render time, not into a module constant.
  */
 export const C = {
   red: 'red',
@@ -15,7 +17,17 @@ export const C = {
   now: 'red',
   /** Secondary text. */
   muted: 'gray'
-} as const
+}
+
+/** Dark amber and orange that read on white (GitHub's light-theme attention and severe colours). */
+const ON_LIGHT = { yellow: '#9a6700', yellowBright: '#bc4c00' }
+let orange = 'yellowBright'
+
+/** Swaps the yellows for ones that read on a light terminal background (see ui/background.ts). */
+export function setLightBackground(light: boolean): void {
+  C.yellow = light ? ON_LIGHT.yellow : 'yellow'
+  orange = light ? ON_LIGHT.yellowBright : 'yellowBright'
+}
 
 /**
  * Nearest ANSI color for a calendar/account hex color, so events follow the terminal theme too.
@@ -31,8 +43,8 @@ export function ansiOf(hex: string): string | undefined {
   if (d < 0.15) return max > 0.8 ? undefined : C.muted
   const h = (max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4) * 60
   if (h < 15 || h >= 345) return 'red'
-  if (h < 45) return 'yellowBright' // orange
-  if (h < 75) return 'yellow'
+  if (h < 45) return orange
+  if (h < 75) return C.yellow
   if (h < 165) return 'green'
   if (h < 200) return 'cyan'
   if (h < 250) return 'blue'
