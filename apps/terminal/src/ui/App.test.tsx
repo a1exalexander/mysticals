@@ -124,6 +124,7 @@ describe('App shell', () => {
     await t.waitFor('Agenda ')
     await t.press('?')
     await t.waitFor('this help')
+    expect(t.lastFrame()).toContain('Open event')
     await t.press('w') // consumed by the overlay, not a view switch
     await t.waitFor('Agenda ')
     expect(t.lastFrame()).not.toContain('this help')

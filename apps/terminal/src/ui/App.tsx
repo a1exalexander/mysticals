@@ -30,7 +30,9 @@ const VIEWS: Record<View, (p: ViewProps) => ReactNode> = { agenda: Agenda, day: 
 const VIEW_KEYS: Record<string, View> = { a: 'agenda', d: 'day', '2': '2day', w: 'week', m: 'month' }
 const VIEW_LABEL: Record<View, string> = { agenda: 'Agenda', day: 'Day', '2day': '2 Days', week: 'Week', month: 'Month' }
 
+/** Help rows; a row without a key is a section heading. */
 const HELP: [string, string][] = [
+  ['', 'Calendar'],
   ['a d 2 w m', 'agenda, day, 2 days, week or month view'],
   ['← → (h l)', 'previous / next day; in the agenda: event'],
   ['↑ ↓', 'previous / next event of the day; in month: any event'],
@@ -46,7 +48,14 @@ const HELP: [string, string][] = [
   ['q', 'quit (esc or q closes a panel first)'],
   ['click', 'tabs, buttons, days; an event selects it, again opens it'],
   ['wheel', 'scroll the list or the hours'],
-  process.platform === 'darwin' ? ['⌥ drag', 'select text (Shift in some terminals)'] : ['⇧ drag', 'select text']
+  process.platform === 'darwin' ? ['⌥ drag', 'select text (Shift in some terminals)'] : ['⇧ drag', 'select text'],
+  ['', 'Open event'],
+  ['y n m', 'accept, decline or maybe (invitations)'],
+  ['o', 'open the video-call link'],
+  ['e x', 'edit or delete'],
+  ['c', 'change its colour'],
+  ['a', 'all / fewer attendees'],
+  ['', 'Panels list their own keys at the bottom']
 ]
 
 function Help({ onClose, height }: { onClose(): void; height: number }) {
@@ -63,14 +72,18 @@ function Help({ onClose, height }: { onClose(): void; height: number }) {
           <Text bold color={C.accent}>Keys</Text>
           {scroll.more && <Text color={C.muted}> · ↑↓ scroll</Text>}
         </Text>
-        {HELP.map(([k, d]) => (
-          <Box key={k}>
-            <Box width={13} flexShrink={0}>
-              <Text color={C.cyan}>{k}</Text>
+        {HELP.map(([k, d]) =>
+          k ? (
+            <Box key={k}>
+              <Box width={13} flexShrink={0}>
+                <Text color={C.cyan}>{k}</Text>
+              </Box>
+              <Text>{d}</Text>
             </Box>
-            <Text>{d}</Text>
-          </Box>
-        ))}
+          ) : (
+            <Text key={d} bold>{d}</Text>
+          )
+        )}
         <Text color={C.muted}>any other key or a click closes this</Text>
       </Scroll>
     </Clickable>
