@@ -57,9 +57,24 @@ In an open event:
 | `o` | Open the video-call link from the event's place |
 | `e` | Edit (saving a repeating event asks `1` this, `2` this and following, `3` all; a changed repeat rule offers only `2` and `3`) |
 | `x` | Delete (confirm with `y`; for a repeating event `1` this, `2` this and following, `3` all) |
+| `c` | Colour: `←` `→` choose, `enter` applies (a repeating event asks `1` this or `3` all) |
 | `a` | Show all / fewer attendees (long guest lists) |
 | `↑` `↓` `PgUp` `PgDn` | Scroll an event that doesn't fit on screen |
 | `esc` `q` | Close |
+
+In accounts and calendars (`s`):
+
+| Key | Action |
+| --- | --- |
+| `j` `k` (or `↓` `↑`) | Move |
+| `space` | Show / hide the selected calendar |
+| `r` / `R` | Sync the selected account / all accounts |
+| `e` `c` `x` | Rename, recolour or remove the selected account (remove asks `y`) |
+| `p` | Reconnect an account whose sign-in stopped working |
+| `g` / `a` | Add a Google / CalDAV account |
+| `esc` `q` | Close |
+
+The result of an action (`Synced`, `Event saved`, `Event deleted`) shows in the bottom bar for a few seconds; a failure stays, in red, until the next one.
 
 In text fields (new or edited event, adding a CalDAV account, renaming an account) `←` `→` move the cursor, `home` `end` (or `ctrl+a` `ctrl+e`) jump to the start or end, and `ctrl+u` erases everything before the cursor. `esc` on an event you changed asks before dropping the changes.
 
@@ -69,7 +84,7 @@ The agenda shows each day as a heading (relative day, event count, busy time) fo
 
 Day, 2 Days and Week are time-grid tables: one row per hour, a column per day, all-day events on top. Events are blocks in their calendar's colour. The current time is red: the clock in the hour column, a red line through today's free cells, a red line between past and upcoming events in the agenda, and today's date in the month grid.
 
-Colours come from your terminal theme: the app only uses the 16 ANSI colours and reverse video, and each calendar's colour is snapped to the nearest ANSI hue. `NO_COLOR=1` turns colours off.
+Colours come from your terminal theme: the app only uses the 16 ANSI colours and reverse video, and each calendar's colour is snapped to the nearest ANSI hue (white and near-white use the theme's text colour, so they show on light themes too). Only the event colour picker previews the real colours. `NO_COLOR=1` turns colours off.
 
 ### Mouse
 
@@ -77,7 +92,7 @@ Everything with a key also works with a click: view tabs, `‹ today ›`, the b
 
 At 100 columns or wider, the agenda, day and 2 days views show the selected event in a pane on the right. With nothing selected it shows what's on now or next, preferring a timed event over an all-day one.
 
-Panels that don't fit (a long event description, many calendars) scroll and keep their buttons on screen. The app needs at least 40×12 cells and asks for a bigger window below that.
+Panels that don't fit (a long event description, many calendars) scroll and keep their buttons on screen. In a narrow window the view tabs other than the current one show just their key, and the bottom bar keeps the labels of only `? help` and `q quit`. The app needs at least 40×12 cells and asks for a bigger window below that.
 
 mysticals runs in the terminal's alternate screen with mouse reporting on, so a plain drag no longer selects text. To select and copy, hold ⌥ Option while dragging on macOS, or Shift on most Linux and Windows terminals (Shift in some macOS terminals too). In tmux, turn on `set -g mouse on` to pass clicks through.
 
