@@ -8,6 +8,8 @@ export interface Account {
   label: string
   /** The account's own identity; used as ORGANIZER for events it creates. */
   email: string
+  /** CalDAV: its other addresses on the server (calendar-user-address-set); invites to them are its own. */
+  aliases?: string[]
   color: string
   /** Set by sync engine when the last sync for this account failed. */
   error?: string

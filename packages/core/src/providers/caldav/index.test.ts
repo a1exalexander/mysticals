@@ -9,6 +9,8 @@ import { createCaldavProvider, davFetch, toCalendar } from './index'
 // Real tsdav unless a test sets `dav.cals`; then the server is faked and REPORTs are counted.
 const dav = vi.hoisted(() => ({
   cals: undefined as { url: string; ctag?: string }[] | undefined,
+  addresses: ['mailto:u@example.com'] as string[],
+  addressLookups: 0,
   reports: 0,
   onReport: undefined as (() => Promise<unknown>) | undefined
 }))
@@ -19,6 +21,11 @@ vi.mock('tsdav', async (importOriginal) => {
     ...real,
     createAccount: (async (o) => (dav.cals ? o.account : real.createAccount(o))) as typeof real.createAccount,
     fetchCalendars: (async (o) => dav.cals ?? real.fetchCalendars(o)) as typeof real.fetchCalendars,
+    fetchCalendarUserAddresses: (async (o) => {
+      if (!dav.cals) return real.fetchCalendarUserAddresses(o)
+      dav.addressLookups++
+      return dav.addresses
+    }) as typeof real.fetchCalendarUserAddresses,
     fetchCalendarObjects: (async (o) => {
       if (!dav.cals) return real.fetchCalendarObjects(o)
       if (o.timeRange) {
@@ -153,5 +160,43 @@ describe('ctag memo', () => {
     await p.listCalendars()
     await syncPass(p, '1')
     expect(dav.reports).toBe(2)
+  })
+})
+
+describe('account addresses', () => {
+  const cal = 'https://dav.example/u/work/'
+  const range = { start: '2025-10-01T00:00:00Z', end: '2026-04-01T00:00:00Z' }
+  const credentials = { kind: 'caldav' as const, serverUrl: 'https://dav.example/', username: 'u', password: 'p' }
+
+  beforeEach(() => {
+    dav.cals = [{ url: cal }]
+    dav.addressLookups = 0
+    return () => {
+      dav.cals = undefined
+      dav.addresses = ['mailto:u@example.com']
+    }
+  })
+
+  it('looks up and stores an older account\'s other addresses once, and knows invites to them as its own', async () => {
+    // The fake object invites u@example.com; the account's email is its other address.
+    dav.addresses = ['mailto:Me@iCloud.example', 'mailto:U@example.com', '/123/principal/', 'mailto:u@example.com']
+    const saveAliases = vi.fn(async () => {})
+    const p = createCaldavProvider({ accountId: 'acc', email: 'me@icloud.example', credentials, saveCredentials: async () => {}, saveAliases })
+    await p.listCalendars()
+    const [ev] = await p.listEvents(cal, range)
+    expect(saveAliases).toHaveBeenCalledExactlyOnceWith(['u@example.com'])
+    expect(ev!.myStatus).toBe('needsAction')
+    await p.respond(ev!, 'accepted')
+    expect(dav.addressLookups).toBe(1)
+  })
+
+  it('uses stored addresses without asking the server', async () => {
+    const saveAliases = vi.fn(async () => {})
+    const p = createCaldavProvider({ accountId: 'acc', email: 'me@icloud.example', aliases: [], credentials, saveCredentials: async () => {}, saveAliases })
+    await p.listCalendars()
+    const [ev] = await p.listEvents(cal, range)
+    expect(ev!.myStatus).toBeUndefined()
+    expect(dav.addressLookups).toBe(0)
+    expect(saveAliases).not.toHaveBeenCalled()
   })
 })

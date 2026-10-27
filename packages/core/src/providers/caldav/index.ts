@@ -108,24 +108,46 @@ function check(res: Response, what: string): void {
   throw new Error(`${what} failed: ${res.status} ${res.statusText}`)
 }
 
+/** The principal's mailto: addresses (calendar-user-address-set), lowercased; undefined when the server won't say. */
+async function addressesOf(conn: Conn): Promise<string[] | undefined> {
+  const hrefs = await fetchCalendarUserAddresses({ account: conn.account, headers: conn.headers, fetch: davFetch }).catch(() => undefined)
+  return hrefs && [...new Set(hrefs.filter((a) => /^mailto:/i.test(a)).map(cleanEmail).filter((m) => m.includes('@')))]
+}
+
+/** The addresses other than `email`: invites sent to them reach this account too. */
+const aliasesOf = (addresses: string[], email: string): string[] => addresses.filter((m) => m !== cleanEmail(email))
+
 export const createCaldavProvider: ProviderFactory = (ctx) => {
   if (ctx.credentials.kind !== 'caldav') throw new Error('CalDAV provider needs caldav credentials')
   const { serverUrl, username, password } = ctx.credentials
+  // Accounts added before aliases were stored get them on the first connect.
+  let aliases = ctx.aliases
   let conn: Promise<Conn> | undefined
   const getConn = (): Promise<Conn> => {
-    conn ??= connect(serverUrl, username, password).catch((e) => {
-      conn = undefined
-      throw e
-    })
+    conn ??= connect(serverUrl, username, password)
+      .then(async (c) => {
+        const found = aliases ? undefined : await addressesOf(c)
+        if (found) {
+          aliases = aliasesOf(found, ctx.email)
+          ctx.saveAliases?.(aliases).catch((e) => console.error('saving CalDAV addresses failed', e))
+        }
+        return c
+      })
+      .catch((e) => {
+        conn = undefined
+        throw e
+      })
     return conn
   }
+  /** Every address of this account, for telling its own ATTENDEE apart. */
+  const own = (): string[] => [ctx.email, ...(aliases ?? [])]
 
   // Read by listEvents: the engine calls listCalendars right before it every pass.
   let ctags = new Map<string, string | undefined>()
   const memo = new Map<string, { ctag: string; fetchedAt: number; events: CalEvent[] }>()
   let writes = 0
 
-  const mapCtx = (calendarId: string) => ({ accountId: ctx.accountId, calendarId, email: ctx.email })
+  const mapCtx = (calendarId: string) => ({ accountId: ctx.accountId, calendarId, email: ctx.email, aliases: aliases ?? [] })
 
   /**
    * Re-read one object after a write to get fresh etag + server-normalized ICS.
@@ -228,8 +250,9 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
     },
 
     async respond(event, status) {
+      await getConn() // knows the account's addresses
       // The server performs RFC 6638 scheduling (iTIP REPLY to the organizer) on this PUT.
-      await put(event, applyRespond(event.raw as CaldavRaw, ctx.email, status), 'Respond')
+      await put(event, applyRespond(event.raw as CaldavRaw, own(), status), 'Respond')
       return reload(event.calendarId, (event.raw as CaldavRaw).href, event.id, event)
     },
 
@@ -241,15 +264,14 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
   return provider
 }
 
-/** Validates credentials against the server and returns the account identity (email). */
-export async function verifyCaldav(input: CaldavAccountInput): Promise<{ email: string }> {
+/** Validates credentials against the server and returns the account identity (email) and its other addresses. */
+export async function verifyCaldav(input: CaldavAccountInput): Promise<{ email: string; aliases: string[] }> {
   const c = await connect(input.serverUrl.trim(), input.username, input.password)
   await listVeventCalendars(c)
   // Prefer the server's calendar-user-address (what invites are sent to); the login name may differ.
-  const addresses = await fetchCalendarUserAddresses({ account: c.account, headers: c.headers, fetch: davFetch }).catch(() => [])
-  const mails = addresses.filter((a) => /^mailto:/i.test(a)).map(cleanEmail)
+  const mails = (await addressesOf(c)) ?? []
   const login = cleanEmail(input.username)
   const email = mails.find((m) => m === login) ?? mails[0] ?? (login.includes('@') ? login : undefined)
   if (!email) throw new Error('Could not determine the account email; use your full email address as the username')
-  return { email }
+  return { email, aliases: aliasesOf(mails, email) }
 }

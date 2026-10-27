@@ -113,7 +113,7 @@ export class AccountStore {
   }
   async add(meta: Omit<Account, 'id'>, creds: Credentials): Promise<Account> {
     if (creds.kind !== meta.kind) throw new Error('Credentials kind does not match account kind')
-    const account: Account = { id: randomUUID(), kind: meta.kind, label: meta.label, email: meta.email, color: meta.color }
+    const account: Account = { id: randomUUID(), kind: meta.kind, label: meta.label, email: meta.email, color: meta.color, ...(meta.aliases ? { aliases: [...meta.aliases] } : {}) }
     return this.serial(account.id, async () => {
       // Creds first: if encryption is unavailable nothing is registered.
       await this.writeCreds(account.id, creds)
@@ -124,7 +124,7 @@ export class AccountStore {
   }
   async update(
     id: string,
-    patch: { label?: string; color?: string; error?: string; authError?: boolean; credentials?: Credentials }
+    patch: { label?: string; color?: string; error?: string; authError?: boolean; credentials?: Credentials; aliases?: string[] }
   ): Promise<Account> {
     return this.serial(id, async () => {
       const acc = this.accounts.find((a) => a.id === id)
@@ -136,6 +136,7 @@ export class AccountStore {
       }
       if (patch.label !== undefined) acc.label = patch.label
       if (patch.color !== undefined) acc.color = patch.color
+      if (patch.aliases !== undefined) acc.aliases = [...patch.aliases]
       if ('error' in patch) {
         if (patch.error) acc.error = patch.error
         else delete acc.error
@@ -176,6 +177,14 @@ export class AccountStore {
           if (this.providers.get(acc.id) !== provider) return
           if (creds.kind !== acc.kind) throw new Error('Credentials kind does not match account kind')
           await this.writeCreds(acc.id, creds)
+        }),
+      aliases: acc.aliases,
+      saveAliases: (aliases) =>
+        this.serial(acc.id, async () => {
+          const current = this.accounts.find((a) => a.id === acc.id)
+          if (this.providers.get(acc.id) !== provider || !current) return
+          current.aliases = [...aliases]
+          await this.saveRegistry()
         })
     })
     this.providers.set(id, provider)

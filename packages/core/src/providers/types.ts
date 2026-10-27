@@ -23,6 +23,10 @@ export interface ProviderContext {
   credentials: Credentials
   /** Persist refreshed credentials (e.g. new Google access token) for THIS account only. */
   saveCredentials(creds: Credentials): Promise<void>
+  /** CalDAV: the account's other addresses, as stored; undefined until first looked up. */
+  aliases?: string[]
+  /** CalDAV: store the addresses found on the server for THIS account only (accounts added before aliases existed). */
+  saveAliases?(aliases: string[]): Promise<void>
 }
 
 export type ProviderFactory = (ctx: ProviderContext) => CalendarProvider
