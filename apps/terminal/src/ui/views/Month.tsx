@@ -49,7 +49,7 @@ export function EventLine({ e, day, now, selected, time, onSelect, onOpen }: {
         color={selected ? C.accent : isPast(e, now) || e.myStatus === 'declined' ? C.muted : live ? C.green : e.allDay ? C.yellow : undefined}
       >
         {prefix}
-        {e.title}
+        {e.title || '(no title)'}
       </Text>
     </Clickable>
   )
