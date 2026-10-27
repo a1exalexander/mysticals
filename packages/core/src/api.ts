@@ -9,7 +9,7 @@ import { fieldChanges, snap } from './logic/activity'
 import { EVENT_COLOR_IDS } from './logic/colors'
 
 export interface ApiDeps {
-  verifyCaldav(input: CaldavAccountInput): Promise<{ email: string }>
+  verifyCaldav(input: CaldavAccountInput): Promise<{ email: string; aliases?: string[] }>
   googleSignIn(): Promise<{ email: string; credentials: Extract<Credentials, { kind: 'google' }> }>
   /** Notify renderer that an account's data changed (visibility, label, removal). */
   onChanged?(accountId: string): void
@@ -165,10 +165,10 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
       },
       addCaldav: async (raw) => {
         const input = CaldavInput.parse(raw)
-        const { email } = await deps.verifyCaldav(input)
+        const { email, aliases } = await deps.verifyCaldav(input)
         const { label, serverUrl, username, password } = input
         const a = await store.add(
-          { kind: 'caldav', label, email, color: input.color ?? nextColor() },
+          { kind: 'caldav', label, email, aliases, color: input.color ?? nextColor() },
           { kind: 'caldav', serverUrl, username, password }
         )
         syncOne(a.id)
@@ -183,6 +183,7 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
       reauth: async (accountId, raw) => {
         const a = account(accountId)
         let credentials: Credentials
+        let aliases: string[] | undefined
         if (a.kind === 'google') {
           const signed = await deps.googleSignIn()
           if (signed.email.toLowerCase() !== a.email.toLowerCase())
@@ -192,10 +193,10 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
           const { password } = ReauthInput.parse(raw)
           const old = store.readCreds(a.id)
           if (old.kind !== 'caldav') throw new Error('Credentials kind does not match account kind')
-          await deps.verifyCaldav({ label: a.label, serverUrl: old.serverUrl, username: old.username, password })
+          aliases = (await deps.verifyCaldav({ label: a.label, serverUrl: old.serverUrl, username: old.username, password })).aliases
           credentials = { ...old, password }
         }
-        const updated = await store.update(a.id, { credentials, error: undefined, authError: false })
+        const updated = await store.update(a.id, { credentials, error: undefined, authError: false, ...(aliases ? { aliases } : {}) })
         deps.onChanged?.(a.id)
         syncOne(a.id)
         return updated

@@ -27,7 +27,8 @@ export function ownerLine(calendar: string | undefined, label: string, email?: s
 export function canEdit(e: CalEvent, account?: Account, calendar?: Calendar): boolean {
   if (!account || !calendar || calendar.readOnly) return false
   if (e.attendees.length === 0 || e.guestsCanModify) return true
-  return !!e.organizer?.self || same(e.organizer?.email, account.email) || e.attendees.some((a) => a.self && a.organizer)
+  const own = [account.email, ...(account.aliases ?? [])]
+  return !!e.organizer?.self || own.some((m) => same(e.organizer?.email, m)) || e.attendees.some((a) => a.self && a.organizer)
 }
 
 /** An invite this account still has to answer: never one it organizes itself (its own guest entry may stay unanswered). */

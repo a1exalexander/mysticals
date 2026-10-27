@@ -48,9 +48,24 @@ describe('AccountStore isolation', () => {
     store.getProvider(work.id)
     store.getProvider(personal.id)
     expect(contexts).toHaveLength(2)
-    expect(Object.keys(contexts[0]).sort()).toEqual(['accountId', 'credentials', 'email', 'saveCredentials'])
+    expect(Object.keys(contexts[0]).sort()).toEqual(['accountId', 'aliases', 'credentials', 'email', 'saveAliases', 'saveCredentials'])
     expect(contexts[0]).toMatchObject({ accountId: work.id, email: 'me@work.example', credentials: workCreds })
     expect(contexts[1]).toMatchObject({ accountId: personal.id, email: 'me@gmail.com', credentials: personalCreds })
+  })
+
+  it("saveAliases stores the addresses on that account only, and a removed account's are dropped", async () => {
+    const { work, personal } = await addBoth()
+    store.getProvider(work.id)
+    await contexts[0].saveAliases!(['me@alias.example'])
+    expect(store.get(work.id)?.aliases).toEqual(['me@alias.example'])
+    expect(store.get(personal.id)?.aliases).toBeUndefined()
+    const reopened = new AccountStore(dir, { caldav: factory(), google: factory() }, fakeCrypto)
+    expect(reopened.get(work.id)?.aliases).toEqual(['me@alias.example'])
+    reopened.getProvider(work.id)
+    expect(contexts.at(-1)?.aliases).toEqual(['me@alias.example'])
+    await store.remove(work.id)
+    await contexts[0].saveAliases!(['late@alias.example'])
+    expect(store.get(work.id)).toBeUndefined()
   })
 
   it('memoizes one provider per account', async () => {

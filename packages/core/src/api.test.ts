@@ -263,6 +263,17 @@ describe('createApi validation', () => {
     expect(sync.syncNow).toHaveBeenCalledWith('new', { quiet: true, fresh: true })
   })
 
+  it("keeps a CalDAV account's other addresses on add and on reconnect", async () => {
+    const { api, store, deps } = setup()
+    deps.verifyCaldav.mockResolvedValue({ email: 'me@pe.example', aliases: ['me@alias.example'] } as never)
+    await api.accounts.addCaldav({ label: 'PE', username: 'u', password: 'p', serverUrl: 'https://mail.privateemail.com/caldav' })
+    expect(store.add).toHaveBeenCalledWith(expect.objectContaining({ email: 'me@pe.example', aliases: ['me@alias.example'] }), expect.anything())
+    const old = { kind: 'caldav' as const, serverUrl: 'https://dav.work.example/', username: 'me', password: 'old' }
+    Object.assign(store, { readCreds: () => old, update: vi.fn(async (id: string) => store.get(id)) })
+    await api.accounts.reauth('work', { password: 'new' })
+    expect(store.update).toHaveBeenCalledWith('work', expect.objectContaining({ credentials: { ...old, password: 'new' }, aliases: ['me@alias.example'] }))
+  })
+
   it('reports added accounts by provider and preset only (no PII)', async () => {
     const { store, sync, deps } = setup()
     const onAccountAdded = vi.fn()

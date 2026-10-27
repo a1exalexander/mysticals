@@ -192,6 +192,22 @@ describe('applyRespond', () => {
   it('throws when the account is not an attendee', () => {
     expect(() => applyRespond(raw, 'stranger@else.example', 'accepted')).toThrow(/not an attendee/)
   })
+
+  it('knows an invite sent to another address of the account as its own, and replies there', () => {
+    // The account is me@icloud.example; the invite went to its other address me@work.example.
+    const alias = { ...ctx, email: 'me@icloud.example', aliases: ['me@work.example'] }
+    const [inv] = parseEvents(DAILY, HREF, undefined, alias, JAN)
+    expect(inv.myStatus).toBe('needsAction')
+    expect(inv.attendees.find((a) => a.self)?.email).toBe('me@work.example')
+    expect(parseEvents(DAILY, HREF, undefined, { ...alias, aliases: [] }, JAN)[0].myStatus).toBeUndefined()
+    const out = applyRespond(raw, ['me@icloud.example', 'me@work.example'], 'declined')
+    expect(parseEvents(out, HREF, undefined, alias, JAN)[0].attendees.map((a) => [a.email, a.status])).toEqual([
+      ['boss@work.example', 'accepted'],
+      ['me@work.example', 'declined'],
+      ['other@work.example', 'tentative']
+    ])
+    expect(out).not.toMatch(/me@icloud/)
+  })
 })
 
 describe('applyUpdate', () => {
@@ -525,6 +541,21 @@ describe('regressions', () => {
     const edited = applyUpdate({ ...ev, title: 'renamed' }, ctx.email)
     expect(edited).toContain('urn:uuid:1234')
     expect(edited).not.toContain('mailto:me@work.example')
+  })
+
+  it('matches an EMAIL parameter naming another address of the account (iCloud alias)', () => {
+    const ics = wrap(
+      [
+        'BEGIN:VEVENT', 'UID:e', 'DTSTAMP:20251201T000000Z', 'DTSTART:20260105T090000Z', 'DTEND:20260105T100000Z',
+        'ORGANIZER;EMAIL=boss@work.example:urn:uuid:boss', 'ATTENDEE;EMAIL=me@work.example;PARTSTAT=NEEDS-ACTION:urn:uuid:1234', 'END:VEVENT'
+      ].join('\r\n')
+    )
+    const alias = { ...ctx, email: 'me@icloud.example', aliases: ['me@work.example'] }
+    const [ev] = parseEvents(ics, HREF, undefined, alias, JAN)
+    expect(ev.myStatus).toBe('needsAction')
+    const replied = applyRespond({ href: HREF, ics }, ['me@icloud.example', 'me@work.example'], 'accepted')
+    expect(parseEvents(replied, HREF, undefined, alias, JAN)[0].myStatus).toBe('accepted')
+    expect(() => applyRespond({ href: HREF, ics }, 'me@icloud.example', 'accepted')).toThrow(/not an attendee/)
   })
 
   it('an edit keeps a COLOR outside the palette', () => {

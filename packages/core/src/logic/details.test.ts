@@ -20,6 +20,12 @@ describe('canEdit', () => {
     expect(canEdit(ev({ attendees, organizer: { email: 'pm@work.example' } }), account, cal)).toBe(false)
     expect(canEdit(ev({ attendees, organizer: { email: 'ME@work.example' } }), account, cal)).toBe(true)
   })
+  it("allows events organized from another of the account's addresses", () => {
+    const attendees = [{ email: 'pm@work.example', status: 'needsAction' as const }]
+    const fromAlias = ev({ attendees, organizer: { email: 'me@alias.example' } })
+    expect(canEdit(fromAlias, account, cal)).toBe(false)
+    expect(canEdit(fromAlias, { ...account, aliases: ['me@alias.example'] }, cal)).toBe(true)
+  })
   it('allows events organized by the calendar they are in (a Google secondary or shared calendar)', () => {
     const attendees = [{ email: 'pm@work.example', status: 'needsAction' as const }]
     expect(canEdit(ev({ attendees, organizer: { email: 'team@group.calendar.google.com', self: true } }), account, cal)).toBe(true)

@@ -17,6 +17,8 @@ export interface MapCtx {
   calendarId: string
   /** The owning account's own identity. */
   email: string
+  /** Its other addresses on the server (calendar-user-address-set): invites to them are its own too. */
+  aliases?: string[]
 }
 
 const MAX_INSTANCES = 100_000
@@ -43,6 +45,8 @@ export const cleanEmail = (v: unknown): string =>
     .toLowerCase()
 
 const sameEmail = (a: unknown, b: unknown): boolean => cleanEmail(a) !== '' && cleanEmail(a) === cleanEmail(b)
+/** Whether `v` is one of the account's own addresses. */
+const isOwn = (v: unknown, own: string[]): boolean => own.some((m) => sameEmail(v, m))
 
 /** ATTENDEE/ORGANIZER address: the mailto: value, else its EMAIL parameter (iCloud uses urn:uuid: or principal values). */
 const addrOf = (p: ICAL.Property): string => {
@@ -89,7 +93,7 @@ function touch(vevent: ICAL.Component): void {
   vevent.updatePropertyWithValue('last-modified', utcNow())
 }
 
-function mapPeople(vevent: ICAL.Component, email: string) {
+function mapPeople(vevent: ICAL.Component, own: string[]) {
   const orgProp = vevent.getFirstProperty('organizer')
   const organizer = orgProp
     ? { email: addrOf(orgProp), name: (orgProp.getParameter('cn') as string) || undefined }
@@ -98,7 +102,7 @@ function mapPeople(vevent: ICAL.Component, email: string) {
     const a: Attendee = { email: addrOf(p), status: mapPartStat(p.getParameter('partstat')) }
     const cn = p.getParameter('cn')
     if (cn) a.name = String(cn)
-    if (sameEmail(a.email, email)) a.self = true
+    if (isOwn(a.email, own)) a.self = true
     if (organizer && sameEmail(a.email, organizer.email)) a.organizer = true
     return a
   })
@@ -143,7 +147,7 @@ export function parseEvents(ics: string, href: string, etag: string | undefined,
       description: item.description || undefined,
       ...(conference ? { conferenceUrl: conference } : {}),
       ...(colorId ? { colorId } : {}),
-      ...mapPeople(item.component, ctx.email),
+      ...mapPeople(item.component, [ctx.email, ...(ctx.aliases ?? [])]),
       etag,
       raw,
       ...(rid ? { recurringEventId: href } : {})
@@ -678,16 +682,17 @@ export function applyDeleteFollowing(raw: CaldavRaw): string | null {
 }
 
 /**
- * Set ONLY the own ATTENDEE's PARTSTAT (matched by `email`) on every VEVENT of the object.
+ * Set ONLY the own ATTENDEE's PARTSTAT (matched by the account's `own` addresses) on every VEVENT of the object.
  * Never touches ORGANIZER or other attendees. Throws if the account is not invited.
  * ponytail: responds to the whole series; per-instance RSVP needs an override like applyUpdate.
  */
-export function applyRespond(raw: CaldavRaw, email: string, status: Exclude<PartStat, 'needsAction'>): string {
+export function applyRespond(raw: CaldavRaw, own: string | string[], status: Exclude<PartStat, 'needsAction'>): string {
+  const mine = [own].flat()
   const root = parse(raw.ics)
   let found = false
   for (const v of root.getAllSubcomponents('vevent')) {
     for (const p of v.getAllProperties('attendee')) {
-      if (!sameEmail(addrOf(p), email)) continue
+      if (!isOwn(addrOf(p), mine)) continue
       p.setParameter('partstat', PARTSTAT_OUT[status])
       p.removeParameter('rsvp')
       p.removeParameter('schedule-status')
