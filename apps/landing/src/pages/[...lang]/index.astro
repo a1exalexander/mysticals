@@ -299,6 +299,9 @@ const colors = ['var(--personal)', 'var(--work)', 'var(--family)']
   @media (min-width: 760px) {
     .stage { --swap: 48s; display: grid; }
     .desk, .term { grid-area: 1 / 1; animation: swap var(--swap) ease-in-out infinite both; }
+    /* still frame (reduced motion): terminal in front, and each demo its own stacking context so the desktop's events stay inside it */
+    .desk { z-index: 1; }
+    .term { z-index: 2; }
     .desk { margin-right: 10%; }
     .term { --term-cols: 80; width: 62%; justify-self: end; margin-top: 40%; animation-delay: calc(var(--swap) / -2); }
     .term :global(.win) { margin-right: 0; }

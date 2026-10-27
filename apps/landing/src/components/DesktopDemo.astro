@@ -549,7 +549,7 @@ const chevron = '<svg viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" /></svg>'
   .seg .t-a { animation: tabA var(--T) infinite both; }
   .seg .t-w { animation: tabW var(--T) infinite both; }
   .tw, .sw { animation: inW var(--T) infinite both; }
-  .ta, .sa { animation: outW var(--T) infinite both; }
+  .ta, .sa { opacity: 0; animation: outW var(--T) infinite both; } /* base = week, so a still shows one title */
   @keyframes thumb { 0%, 27.5% { left: .15em; width: var(--aw); } 29%, 100% { left: var(--wx); width: var(--ww); } }
   @keyframes tabA { 0%, 27.5% { color: var(--accent); } 28.5%, 100% { color: var(--muted); } }
   @keyframes tabW { 0%, 27.5% { color: var(--muted); } 28.5%, 100% { color: var(--accent); } }
