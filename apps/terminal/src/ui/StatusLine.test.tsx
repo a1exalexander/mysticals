@@ -54,7 +54,7 @@ describe('StatusLine', () => {
 
   it('ends the info row with the update hint, after the empty-day fallback', async () => {
     t = renderWith(<StatusLine nav={nav} events={[]} now={now} update="9.9.9" width={200} />)
-    const f = await t.waitFor('available')
+    const f = await t.waitFor('nothing on')
     expect(f).toContain('nothing on in the next 24h · ↑ 9.9.9 available · npm i -g mysticals')
   })
 })

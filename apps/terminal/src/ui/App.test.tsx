@@ -147,6 +147,14 @@ describe('App shell', () => {
     expect(lines[at + 1]).toContain('Gym')
   })
 
+  it('says nothing about events before they load', async () => {
+    const client = createTestClient()
+    client.events.list.mockReturnValue(new Promise(() => {}))
+    t = renderApp({ client })
+    await t.waitFor('Loading…')
+    expect(t.lastFrame()).not.toMatch(/No events|nothing on/)
+  })
+
   it('reloads events on a change push', async () => {
     t = renderApp()
     await t.waitFor('Agenda ')

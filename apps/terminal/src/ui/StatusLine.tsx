@@ -51,7 +51,7 @@ export function Spinner() {
 }
 
 export function StatusLine({ now, message, update, width, hints, onOpen, onInvites, onAccounts, onHelp, onNew, onSync, onQuit }: StatusLineProps) {
-  const { events } = useUpcoming(now)
+  const { events, loaded } = useUpcoming(now)
   const { accounts } = useDirectory()
   const failed = accounts.filter((a) => a.error)
   const syncing = accounts.filter((a) => a.syncing)
@@ -69,7 +69,7 @@ export function StatusLine({ now, message, update, width, hints, onOpen, onInvit
   if (off.length) parts.push([<Text color={C.red}>⚠ {off.map((a) => a.label).join(', ')} disconnected (s)</Text>, onAccounts])
   if (broken.length) parts.push([<Text color={C.red}>⚠ {broken.map((a) => a.label).join(', ')} sync failed (s)</Text>, onAccounts])
   if (message) parts.push([message])
-  if (!parts.length) parts.push([<Text color={C.muted}>nothing on in the next 24h</Text>])
+  if (!parts.length && loaded) parts.push([<Text color={C.muted}>nothing on in the next 24h</Text>])
   if (update) parts.push([<Text color={C.yellow}>↑ {update} available · npm i -g mysticals</Text>])
 
   // Parts never shrink; each row clips at `width`, so the tail is what gets cut.

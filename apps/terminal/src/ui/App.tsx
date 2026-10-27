@@ -233,7 +233,7 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
   const { isRawModeSupported } = useStdin()
   const { nav, setView, setDate, shift, today } = useNav(initialNav)
   const range = useMemo(() => navRange(nav), [nav])
-  const { events, loadedFor, error } = useEvents(range)
+  const { events, loaded, loadedFor, error } = useEvents(range)
   const now = useNow()
   const { width, height } = useTermSize()
   const [selectedKey, setSelectedKey] = useState<string>()
@@ -425,6 +425,8 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
       case 'help':
         return <Help height={bodyHeight} onClose={close} />
       default:
+        // until the first load lands, an empty list would claim there are no events
+        if (!loaded) return <Text color={C.muted}>Loading…</Text>
         return (
           <FirstSync pending={!events.length} width={width} height={bodyHeight} onAccounts={() => setOverlay({ kind: 'accounts' })}>
             <ViewComponent
