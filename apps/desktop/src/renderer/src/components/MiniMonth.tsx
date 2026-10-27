@@ -58,10 +58,10 @@ export function MiniMonth(): React.JSX.Element {
     <div className="mini">
       <div className="mini-head">
         <span className="mini-title">{fmt(shown, 'LLLL yyyy')}</span>
-        <button className="mini-arrow" aria-label={t('mini.prev')} onClick={() => setShown(addMonths(shown, -1))}>
+        <button className="mini-arrow" aria-label={t('mini.prev')} title={t('mini.prev')} onClick={() => setShown(addMonths(shown, -1))}>
           ‹
         </button>
-        <button className="mini-arrow" aria-label={t('mini.next')} onClick={() => setShown(addMonths(shown, 1))}>
+        <button className="mini-arrow" aria-label={t('mini.next')} title={t('mini.next')} onClick={() => setShown(addMonths(shown, 1))}>
           ›
         </button>
       </div>
