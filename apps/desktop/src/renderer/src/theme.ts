@@ -7,7 +7,8 @@ import { t } from './i18n'
  * events: the theme's own versions of Google's 11 event colours, in EVENT_COLORS order (lavender, sage, grape, flamingo,
  * banana, tangerine, peacock, graphite, blueberry, basil, tomato), drawn instead of calendar colours when the theme
  * palette is on (Settings › Themes). Tokyo Night takes its Moon variant's accents, VS Code One Dark Pro's, Cartoon Riso
- * inks; Dracula goes gothic (blood, wine, candle gold), Catppuccin aurora, Bubblegum pinks only, Cloud blues only.
+ * inks; Dracula goes gothic (blood, wine, candle gold), Catppuccin aurora, Bubblegum pinks only, Cloud blues only, ARC Raiders
+ * its logo stripes (cyan, green, yellow, red) and gold on dusty 70s hues.
  */
 export const THEMES = [
   { id: 'dracula', name: 'Dracula', scheme: 'dark', preview: ['#0b0b10', '#bd93f9', '#ff79c6', '#8be9fd', '#50fa7b'],
@@ -24,6 +25,8 @@ export const THEMES = [
     events: ['#b294e8', '#98c379', '#c678dd', '#f0a0b0', '#e5c07b', '#d19a66', '#56b6c2', '#7f848e', '#61afef', '#4fa66a', '#e06c75'] },
   { id: 'matrix', name: 'Matrix', scheme: 'dark', preview: ['#0a0a0a', '#3ecf68', '#a8d66a', '#6fcfa2', '#35b85a'],
     events: ['#7fd8be', '#6fcf8f', '#4fae8a', '#b6e37d', '#d8f08a', '#9fd648', '#43d6b0', '#5c7a64', '#2fa37a', '#35b85a', '#c8ff6a'] },
+  { id: 'arc', name: 'ARC Raiders', scheme: 'dark', preview: ['#0d0c0a', '#f1aa1c', '#ff5b3d', '#33c3e0', '#9ccf4a'],
+    events: ['#a99bd6', '#a9c08a', '#b07cc6', '#e8907a', '#ffd23f', '#f7811e', '#33c3e0', '#8a8170', '#5b8fd9', '#6fae4a', '#ff4f3d'] },
   { id: 'bubble', name: 'Bubblegum', scheme: 'light', preview: ['#fff5fa', '#c92d7b', '#d0246c', '#ffa3d1', '#cfeeff'],
     events: ['#dcabd6', '#cc939a', '#871459', '#ee83af', '#fcd4e6', '#dd6d79', '#d740a2', '#846875', '#a13b85', '#681d3b', '#d4225f'] },
   { id: 'toon', name: 'Cartoon', scheme: 'light', preview: ['#fffbea', '#7b3ff2', '#d0105f', '#18b6f6', '#ffd60a'],
