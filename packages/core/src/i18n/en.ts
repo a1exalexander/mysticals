@@ -462,6 +462,8 @@ export const en = {
   'sidebar.readOnlyTitle': 'Read-only',
   'sidebar.readOnly': 'read-only',
   'sidebar.add': 'Add calendar',
+  'sidebar.empty': 'No calendars yet',
+  'sidebar.emptyHint': 'Connect a Google or CalDAV account to see its events here.',
   'sidebar.resize': 'Resize sidebar',
   'sidebar.resetWidth': 'Double-click to reset width',
 

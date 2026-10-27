@@ -21,7 +21,7 @@ function readCollapsed(): string[] {
 
 /** Mini-month + one section per account listing ONLY that account's calendars. */
 export function Sidebar({ collapsed: hidden = false }: { collapsed?: boolean }): React.JSX.Element {
-  const { accounts, calendars } = useCalendarData()
+  const { accounts, calendars, loaded } = useCalendarData()
   useLocale()
   const themed = useThemedColor()
   const [collapsed, setCollapsed] = useState(readCollapsed)
@@ -38,6 +38,16 @@ export function Sidebar({ collapsed: hidden = false }: { collapsed?: boolean }):
     <aside className="sidebar" data-testid="sidebar" aria-hidden={hidden || undefined} inert={hidden || undefined}>
       <MiniMonth />
       <div className="sb-accounts">
+        {/* First run: say what goes here instead of an empty column. */}
+        {loaded && !accounts.length && (
+          <div className="sb-empty" data-testid="sidebar-empty">
+            <p className="sb-empty-title">{t('sidebar.empty')}</p>
+            <p>{t('sidebar.emptyHint')}</p>
+            <button type="button" className="mc-btn primary" onClick={() => bus.emit('accounts:open', {})}>
+              {t('sidebar.add')}
+            </button>
+          </div>
+        )}
         {accounts.map((a) => {
           const open = !collapsed.includes(a.id)
           const name = accountName(a.label, a.email)

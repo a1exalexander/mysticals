@@ -463,6 +463,8 @@ export const uk: Record<Key, Msg> = {
   'sidebar.readOnlyTitle': 'Лише перегляд',
   'sidebar.readOnly': 'лише перегляд',
   'sidebar.add': 'Додати календар',
+  'sidebar.empty': 'Календарів ще немає',
+  'sidebar.emptyHint': 'Підключіть обліковий запис Google або CalDAV, щоб бачити тут його події.',
   'sidebar.resize': 'Змінити ширину бічної панелі',
   'sidebar.resetWidth': 'Двічі клацніть, щоб скинути ширину',
 

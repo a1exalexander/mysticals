@@ -458,6 +458,10 @@ body[data-dragging='col-resize'] .app { transition: none; }
 .sb-cal input { flex: none; }
 .sb-cal-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sb-ro { font: 10px/1 var(--mono); color: var(--muted); }
+.sb-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 2px 6px; font: 11px/1.5 var(--mono); color: var(--muted); }
+.sb-empty p { margin: 0; }
+.sb-empty-title { color: var(--fg); font-weight: 600; }
+.sb-empty .mc-btn { margin-top: 4px; }
 
 .sb-foot {
   display: flex; align-items: center; gap: 4px; padding: 6px 8px;
