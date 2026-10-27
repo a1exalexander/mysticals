@@ -85,7 +85,7 @@ export function AccountsHost(): React.JSX.Element | null {
         </>
       )}
       {step === 'google' && (
-        <div className="acc-waiting">
+        <div className="acc-waiting" role="status">
           <span className="acc-spinner" aria-hidden />
           <p>{t('accounts.google.waiting')}</p>
           <p className="acc-hint-center">{t('accounts.google.finish')}</p>
