@@ -250,7 +250,11 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
 
   const ordered = useMemo(() => [...events].sort(chronological), [events])
   const selectedIdx = ordered.findIndex((e) => eventKey(e) === selectedKey)
-  const close = (): void => setOverlay(undefined)
+  /** Closes the overlay; `done` ("Event deleted") goes to the status line. */
+  const close = (done?: string): void => {
+    setOverlay(undefined)
+    if (done) setMessage({ text: done, fade: true })
+  }
 
   // Day cursor of the grid views (day, 2day, week, month); falls back to the anchor day once off the page.
   // `page`: the page it was moved on, where it stays even off the page proper (month: a day of the next or previous

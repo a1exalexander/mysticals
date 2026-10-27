@@ -32,7 +32,8 @@ import { C } from '../theme'
 export interface EventEditorProps {
   event?: CalEvent
   initialStart?: Date
-  onClose(): void
+  /** `done`: "Event created" / "Event saved" after a save, for the status line. */
+  onClose(done?: string): void
   /** Rows the overlay may take, border included. */
   height?: number
 }
@@ -220,7 +221,7 @@ export function EventEditor({ event, initialStart, onClose, height = Infinity }:
     setSaving(true)
     try {
       await request
-      if (alive.current) onClose()
+      if (alive.current) onClose(event ? 'Event saved' : 'Event created')
     } catch (e) {
       busy.current = false
       if (alive.current) {

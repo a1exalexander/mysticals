@@ -101,6 +101,15 @@ describe('App shell', () => {
     expect(lines[0]).not.toContain('mysticals')
   })
 
+  it('reports a deleted event in the status line', async () => {
+    t = renderApp()
+    await t.waitFor('Up next')
+    await t.click('Gym') // in the preview pane: opens it
+    await t.waitFor('x delete')
+    await t.press('x', 'y')
+    await t.waitFor('Event deleted')
+  })
+
   it('help overlay pauses the global keymap and closes on any key', async () => {
     t = renderApp()
     await t.waitFor('Agenda ')

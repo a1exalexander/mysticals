@@ -80,7 +80,7 @@ describe('EventDetails', () => {
     expect(t.lastFrame()).not.toContain('Delete this event?')
     await t.press('x', 'y')
     expect(client.events.delete).toHaveBeenCalledWith(event, 'one')
-    expect(onClose).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledWith('Event deleted')
   })
 
   it('asks the scope for recurring events', async () => {
@@ -89,7 +89,7 @@ describe('EventDetails', () => {
     await t.waitFor('this and following')
     await t.press('2')
     expect(client.events.delete).toHaveBeenCalledWith(event, 'following')
-    expect(onClose).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledWith('Events deleted')
   })
 
   it('recolours with c, ←/→ and enter; an invite too; a series asks this one or all', async () => {

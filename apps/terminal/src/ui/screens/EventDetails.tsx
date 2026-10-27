@@ -21,7 +21,8 @@ import { ansiOf, C } from '../theme'
 
 export interface EventDetailsProps {
   event: CalEvent
-  onClose(): void
+  /** `done`: what an action that closed the overlay did ("Event deleted"), for the status line. */
+  onClose(done?: string): void
   onEdit(event: CalEvent): void
   /** Rows the overlay may take, border included. */
   height?: number
@@ -95,7 +96,7 @@ export function EventDetails({ event: initial, onClose, onEdit, height = Infinit
   const remove = (scope: DeleteScope): void =>
     run('Deleting…', async () => {
       await api.events.delete(event, scope)
-      onClose()
+      onClose(scope === 'one' ? 'Event deleted' : 'Events deleted')
     })
 
   useKeys((input, key) => {
