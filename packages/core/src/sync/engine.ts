@@ -3,6 +3,7 @@ import type { CalEvent, TimeRange } from '../shared/types'
 import type { AccountCache, AccountStore } from '../accounts/store'
 import { diffEvents, type Note } from './notify'
 import { AuthError } from '../providers/http'
+import { AppError, type ErrorKey } from '../errors'
 
 /** The slice of AccountStore the engine needs. Keeps tests free of disk. */
 export type SyncStore = Pick<AccountStore, 'list' | 'getProvider' | 'readCache' | 'writeCache' | 'update'>
@@ -35,6 +36,8 @@ export class SyncEngine {
   private timers = new Map<string, ReturnType<typeof setTimeout>>()
   private inflight = new Map<string, Promise<void>>()
   private failures = new Map<string, number>()
+  /** The key of each account's last failure, when it had one (in memory: `error` alone is persisted). */
+  private errorKeys = new Map<string, ErrorKey | undefined>()
   /** Follow-up passes queued behind a running one (see `fresh`). */
   private queued = new Map<string, Promise<void>>()
   /** Bumped by `edited`: a pass that started before a local edit must not overwrite it. */
@@ -114,6 +117,11 @@ export class SyncEngine {
     this.edits.set(accountId, (this.edits.get(accountId) ?? 0) + 1)
   }
 
+  /** The message key of this account's last sync failure, so an app can show `error` in its own language. */
+  errorKey(accountId: string): ErrorKey | undefined {
+    return this.errorKeys.get(accountId)
+  }
+
   /** True while a sync of this account is running. */
   isSyncing(accountId: string): boolean {
     return this.inflight.has(accountId)
@@ -170,7 +178,7 @@ export class SyncEngine {
       // next pass confirms it.
       if (!calendars.length && prev?.calendars.length && !this.emptied.has(id)) {
         this.emptied.add(id)
-        throw new Error('The server returned no calendars; showing the last synced data')
+        throw new AppError('error.noCalendars')
       }
       this.emptied.delete(id)
       // The store compares with what it last saved (one serialization, no rewrite when nothing changed).
@@ -188,6 +196,7 @@ export class SyncEngine {
       this.failures.set(id, (this.failures.get(id) ?? 0) + 1)
       const message = e instanceof Error ? e.message : String(e)
       const auth = e instanceof AuthError
+      this.errorKeys.set(id, e instanceof AppError ? { key: e.key, params: e.params } : undefined)
       await this.store.update(id, { error: message, ...(auth ? { authError: true } : {}) }).catch(() => {})
       if (!hadError || (auth && !acc?.authError)) this.onChanged(id)
       this.opts.onResult?.(id, { ok: false, error: message, auth })

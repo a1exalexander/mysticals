@@ -7,6 +7,7 @@ import { caldavPreset, type AccountAdded } from './telemetry'
 import { conferenceUrlOf, type GEvent } from './providers/google/provider'
 import { fieldChanges, snap } from './logic/activity'
 import { EVENT_COLOR_IDS } from './logic/colors'
+import { AppError } from './errors'
 
 export interface ApiDeps {
   verifyCaldav(input: CaldavAccountInput): Promise<{ email: string; aliases?: string[] }>
@@ -110,7 +111,7 @@ const ColorId = z.enum(EVENT_COLOR_IDS).nullable()
 export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps): CoreApi {
   const account = (accountId: unknown) => {
     const a = store.get(id.parse(accountId))
-    if (!a) throw new Error('unknown account')
+    if (!a) throw new AppError('error.unknownAccount')
     return a
   }
 
@@ -142,20 +143,23 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
     account(ref.accountId)
     const ev = store.readCache(ref.accountId).events.find((e) => sameEvent(e, ref))
     if (!ev || ev.accountId !== ref.accountId || ev.calendarId !== ref.calendarId)
-      throw new Error('event does not belong to this account/calendar')
+      throw new AppError('error.notThisCalendar')
     return ev
   }
 
   const writable = (ev: CalEvent): CalEvent => {
     const cal = store.readCache(ev.accountId).calendars.find((c) => c.id === ev.calendarId)
-    if (!cal || cal.readOnly) throw new Error('calendar is read-only')
+    if (!cal || cal.readOnly) throw new AppError('error.readOnly')
     return ev
   }
 
   const api: CoreApi = {
     accounts: {
       list: async () =>
-        store.list().map((a) => ({ ...a, syncing: sync.isSyncing(a.id), synced: !!store.readCache(a.id).syncedAt })),
+        store.list().map((a) => {
+          const errorKey = a.error ? sync.errorKey(a.id) : undefined
+          return { ...a, ...(errorKey ? { errorKey } : {}), syncing: sync.isSyncing(a.id), synced: !!store.readCache(a.id).syncedAt }
+        }),
       addGoogle: async () => {
         const { email, credentials } = await deps.googleSignIn()
         const a = await store.add({ kind: 'google', label: email, email, color: nextColor() }, credentials)
@@ -187,7 +191,7 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
         if (a.kind === 'google') {
           const signed = await deps.googleSignIn()
           if (signed.email.toLowerCase() !== a.email.toLowerCase())
-            throw new Error(`Signed in as ${signed.email}; sign in as ${a.email} to reconnect this account`)
+            throw new AppError('error.reauthOtherAccount', { signed: signed.email, email: a.email })
           credentials = signed.credentials
         } else {
           const { password } = ReauthInput.parse(raw)
@@ -216,7 +220,7 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
       setVisible: async (accountId, calendarId, visible) => {
         const a = account(accountId)
         const cal = id.parse(calendarId)
-        if (!store.readCache(a.id).calendars.some((c) => c.id === cal)) throw new Error('calendar does not belong to account')
+        if (!store.readCache(a.id).calendars.some((c) => c.id === cal)) throw new AppError('error.calendarNotInAccount')
         await store.setCalendarVisible(a.id, cal, z.boolean().parse(visible))
         deps.onChanged?.(a.id)
       }
@@ -232,8 +236,8 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
         const input = NewEvent.parse(raw)
         const a = account(input.accountId)
         const cal = store.readCache(a.id).calendars.find((c) => c.id === input.calendarId)
-        if (!cal) throw new Error('calendar does not belong to account')
-        if (cal.readOnly) throw new Error('calendar is read-only')
+        if (!cal) throw new AppError('error.calendarNotInAccount')
+        if (cal.readOnly) throw new AppError('error.readOnly')
         const ev = await store.getProvider(a.id).createEvent(cal.id, { ...input, accountId: a.id })
         upsert(ev, a.id, cal.id)
         syncOne(a.id)
@@ -245,7 +249,7 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
         const how = cached.recurringEventId ? Scope.parse(scope) : 'one'
         const { title, start, end, allDay, location, description, attendees, recurrence, colorId } = edit
         if (recurrence !== undefined && cached.recurringEventId && how === 'one')
-          throw new Error('The repeat rule belongs to the series: choose “This and following” or “All events”')
+          throw new AppError('error.repeatScope')
         const ev = await store
           .getProvider(cached.accountId)
           .updateEvent({ ...cached, title, start, end, allDay, location, description, attendees, colorId, ...(recurrence !== undefined ? { recurrence } : {}) }, how)

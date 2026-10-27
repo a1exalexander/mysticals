@@ -13,6 +13,8 @@ export interface Account {
   color: string
   /** Set by sync engine when the last sync for this account failed. */
   error?: string
+  /** `error` as a message key and params (set by accounts.list while the app still knows it): `error` in the UI language. */
+  errorKey?: { key: string; params?: Record<string, string | number> }
   /** The server rejected the stored credentials (password revoked, sign-in expired). Sync pauses until accounts.reauth. */
   authError?: boolean
   /** A sync of this account is running (set by accounts.list). */

@@ -27,6 +27,7 @@ import {
   type CaldavRaw
 } from './ics'
 import { AuthError, timedFetch } from '../http'
+import { AppError } from '../../errors'
 
 const FALLBACK_COLOR = '#8e8e93'
 const DAY = 864e5
@@ -40,7 +41,7 @@ async function connect(serverUrl: string, username: string, password: string): P
   try {
     new URL(serverUrl)
   } catch {
-    throw new Error(`Invalid server URL: ${serverUrl}`)
+    throw new AppError('error.caldav.badUrl', { url: serverUrl })
   }
   const headers = getBasicAuthHeaders({ username, password })
   let unauthorized = false
@@ -57,8 +58,8 @@ async function connect(serverUrl: string, username: string, password: string): P
     })
     return { account, headers }
   } catch (e) {
-    if (unauthorized) throw new AuthError('CalDAV login failed: wrong username or password')
-    throw new Error(`Could not find a CalDAV service at ${serverUrl}: ${(e as Error).message}`)
+    if (unauthorized) throw new AuthError('error.caldav.wrongPassword')
+    throw new AppError('error.caldav.noService', { url: serverUrl, error: (e as Error).message })
   }
 }
 
@@ -98,14 +99,23 @@ async function listVeventCalendars(conn: Conn) {
  */
 export const davFetch: typeof fetch = async (input, init) => {
   const res = await timedFetch(input, init)
-  if (res.status === 401) throw new AuthError('CalDAV login failed: the password was changed or revoked')
+  if (res.status === 401) throw new AuthError('error.caldav.passwordRevoked')
   return res
 }
 
-function check(res: Response, what: string): void {
+const FAILED = {
+  'Create event': ['error.caldav.createConflict', 'error.caldav.createFailed'],
+  'Update event': ['error.caldav.updateConflict', 'error.caldav.updateFailed'],
+  'Delete event': ['error.caldav.deleteConflict', 'error.caldav.deleteFailed'],
+  Respond: ['error.caldav.respondConflict', 'error.caldav.respondFailed'],
+  'Set colour': ['error.caldav.colorConflict', 'error.caldav.colorFailed']
+} as const
+
+function check(res: Response, what: keyof typeof FAILED): void {
   if (res.ok) return
-  if (res.status === 412) throw new Error(`${what} failed: the event was changed on the server, refresh and try again`)
-  throw new Error(`${what} failed: ${res.status} ${res.statusText}`)
+  const [conflict, failed] = FAILED[what]
+  if (res.status === 412) throw new AppError(conflict)
+  throw new AppError(failed, { status: `${res.status} ${res.statusText}` })
 }
 
 /** The principal's mailto: addresses (calendar-user-address-set), lowercased; undefined when the server won't say. */
@@ -156,17 +166,17 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
   async function reload(calendarId: string, href: string, id: string | undefined, around: TimeRange): Promise<CalEvent> {
     const { headers } = await getConn()
     const [obj] = await fetchCalendarObjects({ calendar: { url: calendarId }, objectUrls: [href], headers, urlFilter: () => true, fetch: davFetch })
-    if (!obj?.data) throw new Error('Saved event could not be read back from the server')
+    if (!obj?.data) throw new AppError('error.caldav.notReadBack')
     const range = { start: new Date(new Date(around.start).getTime() - DAY).toISOString(), end: new Date(new Date(around.end).getTime() + DAY).toISOString() }
     const events = parseEvents(obj.data, id === undefined ? obj.url : href, obj.etag, mapCtx(calendarId), range)
     const at = Date.parse(around.start)
     const ev = id === undefined ? (events.find((e) => Date.parse(e.start) === at) ?? events[0]) : events.find((e) => e.id === id)
-    if (!ev) throw new Error('Saved event not found on the server')
+    if (!ev) throw new AppError('error.caldav.notFound')
     return ev
   }
 
   /** Every write goes through here: afterwards, drop the calendar's memo and void any listEvents still in flight. */
-  const write = async (calendarId: string, req: Promise<Response>, what: string): Promise<void> => {
+  const write = async (calendarId: string, req: Promise<Response>, what: keyof typeof FAILED): Promise<void> => {
     try {
       check(await req, what)
     } finally {
@@ -175,7 +185,7 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
     }
   }
 
-  const put = async (event: CalEvent, ics: string, what: string): Promise<void> => {
+  const put = async (event: CalEvent, ics: string, what: keyof typeof FAILED): Promise<void> => {
     const { headers } = await getConn()
     const raw = event.raw as CaldavRaw
     await write(event.calendarId, updateCalendarObject({ calendarObject: { url: raw.href, data: ics, etag: event.etag }, headers, fetch: davFetch }), what)
