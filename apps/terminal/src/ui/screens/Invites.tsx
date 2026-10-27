@@ -60,7 +60,7 @@ export function Invites({ onClose, height = Infinity }: InvitesProps) {
       (err: unknown) => {
         busy.current.delete(k)
         setRows(({ [k]: _, ...r }) => r)
-        setError(errorText(err))
+        setError(`Reply to ${e.title || 'Untitled'} not sent: ${errorText(err)}`)
       }
     )
   }

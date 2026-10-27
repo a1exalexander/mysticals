@@ -217,7 +217,7 @@ export function Accounts({ onClose, height = Infinity }: AccountsProps) {
         </Text>
       )
     }
-    const problem = a.authError ? `Disconnected: ${a.error ?? 'credentials rejected'} — p to reconnect` : a.error && `Last sync failed: ${a.error}`
+    const problem = a.authError ? `Disconnected: ${a.error ?? 'credentials rejected'} — p to reconnect` : a.error && `Last sync failed: ${a.error} — r to retry`
     if (problem) out.push(<Text key={`${a.id}/error`} wrap="truncate-end" color={C.red}>{`    ${problem}`}</Text>)
     if (mode.kind === 'reauth' && mode.account.id === a.id) {
       out.push(

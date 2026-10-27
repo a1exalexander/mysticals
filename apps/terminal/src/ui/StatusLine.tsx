@@ -23,6 +23,8 @@ export interface StatusLineProps {
   now: Date
   message?: string
   /** Newer published version (see `checkUpdate`); shows an install hint at the end of the info row. */
+  /** `message` is a failure: shown in red. */
+  messageError?: boolean
   update?: string
   width: number
   /** Show the move/open hint after the buttons (off while a panel has the keys). */
@@ -50,7 +52,7 @@ export function Spinner() {
   return <Text color={C.accent}>{FRAMES[i]}</Text>
 }
 
-export function StatusLine({ now, message, update, width, hints, onOpen, onInvites, onAccounts, onHelp, onNew, onSync, onQuit }: StatusLineProps) {
+export function StatusLine({ now, message, messageError, update, width, hints, onOpen, onInvites, onAccounts, onHelp, onNew, onSync, onQuit }: StatusLineProps) {
   const { events, loaded } = useUpcoming(now)
   const { accounts } = useDirectory()
   const failed = accounts.filter((a) => a.error)
@@ -68,7 +70,7 @@ export function StatusLine({ now, message, update, width, hints, onOpen, onInvit
   const broken = failed.filter((a) => !a.authError)
   if (off.length) parts.push([<Text color={C.red}>⚠ {off.map((a) => a.label).join(', ')} disconnected (s)</Text>, onAccounts])
   if (broken.length) parts.push([<Text color={C.red}>⚠ {broken.map((a) => a.label).join(', ')} sync failed (s)</Text>, onAccounts])
-  if (message) parts.push([message])
+  if (message) parts.push([<Text color={messageError ? C.red : undefined}>{message}</Text>])
   if (!parts.length && loaded) parts.push([<Text color={C.muted}>nothing on in the next 24h</Text>])
   if (update) parts.push([<Text color={C.yellow}>↑ {update} available · npm i -g mysticals</Text>])
 

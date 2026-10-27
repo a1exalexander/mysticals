@@ -225,7 +225,7 @@ export function EventEditor({ event, initialStart, onClose, height = Infinity }:
     } catch (e) {
       busy.current = false
       if (alive.current) {
-        setError(errorText(e))
+        setError(`Not saved: ${errorText(e)}`)
         setSaving(false)
       }
     }

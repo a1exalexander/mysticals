@@ -67,23 +67,24 @@ export function EventDetails({ event: initial, onClose, onEdit, height = Infinit
   const [foot, footHeight] = useHeight()
   const scroll = useScrollArea(height - 2 - footHeight) // 2: border
 
-  const run = (label: string, fn: () => Promise<void>): void => {
+  /** Shows `label` while `fn` runs; a failure shows as "`failed`: reason". */
+  const run = (label: string, failed: string, fn: () => Promise<void>): void => {
     setBusy(label)
     setError('')
     fn().then(
       () => setBusy(undefined),
       (e: unknown) => {
         setBusy(undefined)
-        setError(errorText(e))
+        setError(`${failed}: ${errorText(e)}`)
       }
     )
   }
   const respond = (status: Reply): void =>
-    run('Replying…', async () => setEvent(await api.events.respond(event, status)))
+    run('Replying…', 'Reply not sent', async () => setEvent(await api.events.respond(event, status)))
   const recolor = (colorId: string | null, scope: ColorScope): void => {
     setPicking(undefined)
     setColorAsk(undefined)
-    if ((event.colorId ?? null) !== colorId) run('Recolouring…', async () => setEvent(await api.events.setColor(event, colorId, scope)))
+    if ((event.colorId ?? null) !== colorId) run('Recolouring…', 'Colour not changed', async () => setEvent(await api.events.setColor(event, colorId, scope)))
   }
   const choose = (i: number): void => {
     const id = COLORS[i].id
@@ -94,7 +95,7 @@ export function EventDetails({ event: initial, onClose, onEdit, height = Infinit
   }
   const startPicking = (): void => setPicking(Math.max(0, COLORS.findIndex((c) => c.id === (event.colorId ?? null))))
   const remove = (scope: DeleteScope): void =>
-    run('Deleting…', async () => {
+    run('Deleting…', 'Not deleted', async () => {
       await api.events.delete(event, scope)
       onClose(scope === 'one' ? 'Event deleted' : 'Events deleted')
     })

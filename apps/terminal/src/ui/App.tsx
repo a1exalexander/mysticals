@@ -238,8 +238,8 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
   const { width, height } = useTermSize()
   const [selectedKey, setSelectedKey] = useState<string>()
   const [overlay, setOverlay] = useState<Overlay>()
-  // `fade`: an action's result ("Synced") clears itself; failures and the notice stay until the next message.
-  const [message, setMessage] = useState<{ text: string; fade?: boolean } | undefined>(notice ? { text: notice } : undefined)
+  // `fade`: an action's result ("Synced") clears itself; failures (`error`, shown red) and the notice stay until the next message.
+  const [message, setMessage] = useState<{ text: string; fade?: boolean; error?: boolean } | undefined>(notice ? { text: notice } : undefined)
   useEffect(() => {
     if (!message?.fade) return
     const t = setTimeout(() => setMessage((m) => (m === message ? undefined : m)), MESSAGE_MS)
@@ -361,7 +361,7 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
     setMessage(undefined)
     api.sync.now().then(
       () => setMessage({ text: 'Synced', fade: true }),
-      (e: unknown) => setMessage({ text: `Sync failed: ${errorText(e)}` })
+      (e: unknown) => setMessage({ text: `Sync failed: ${errorText(e)} · r to retry`, error: true })
     )
   }
 
@@ -485,7 +485,8 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
         nav={nav}
         events={events}
         now={now}
-        message={error ? `Error: ${error}` : message?.text}
+        message={error ? `Couldn't load events: ${error}` : message?.text}
+        messageError={!!error || message?.error}
         update={update}
         width={width}
         hints={!overlay}
