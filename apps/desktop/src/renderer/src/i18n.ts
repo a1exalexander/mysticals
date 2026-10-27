@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from 'react'
 import type { LocaleState } from '@shared/ipc'
 import * as core from '@mysticals/core/i18n'
+import { errorText as coreErrorText, keyText } from '@mysticals/core/errors'
+import type { Account } from '@shared/types'
 import type { Key, LocaleSetting, Params } from '@mysticals/core/i18n'
 
 // The UI language comes from the main process (Settings > Language, else the OS) so menus,
@@ -33,6 +35,11 @@ export const fmt = (date: Date | number, pattern: string): string => core.fmt(st
 /** Ukrainian month names are lowercase; a heading starts with a capital. */
 export const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1)
 export const currentLocale = (): core.Locale => state.locale
+/** An error's text for the UI, in the UI language: errors from the core carry their message key over IPC. */
+export const errorText = (e: unknown): string => coreErrorText(e, state.locale)
+/** An account's last sync error in the UI language (English when only the text is known, e.g. right after a restart). */
+export const accountError = (a: Pick<Account, 'error' | 'errorKey'>): string =>
+  a.error && a.errorKey ? keyText(a.errorKey, state.locale, a.error) : (a.error ?? '')
 export const dateLocale = (): ReturnType<typeof core.dateLocale> => core.dateLocale(state.locale)
 
 export const useLocale = (): LocaleState =>

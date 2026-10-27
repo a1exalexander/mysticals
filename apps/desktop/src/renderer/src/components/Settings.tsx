@@ -18,7 +18,7 @@ import {
 import { KindIcon, Sheet, Swatches, errorText } from './AccountsShared'
 import { SegTabs } from './ui/SegTabs'
 import { useRadioGroup } from './ui/roving'
-import { cap, currentLocale, fmt, setLanguage, t, useLocale } from '../i18n'
+import { accountError, cap, currentLocale, fmt, setLanguage, t, useLocale } from '../i18n'
 import { setClock, useClock } from '../clock'
 import { LOCALE_NAME, LOCALES, type Key, type LocaleSetting } from '@mysticals/core/i18n'
 import { REMINDER_CHOICES } from '@mysticals/core/logic/reminders'
@@ -744,7 +744,7 @@ function AccountDetail({ account: a, syncingAll, notify, onNotify }: DetailProps
       </div>
       {failed && (
         <p className="acc-error" role="alert">
-          {syncError || t('settings.sync.lastFailed', { error: a.error ?? '' })}
+          {syncError || t('settings.sync.lastFailed', { error: accountError(a) })}
         </p>
       )}
       {error && <p className="acc-error" role="alert">{error}</p>}
