@@ -21,7 +21,8 @@ import { ansiOf, C } from '../theme'
 
 export interface EventDetailsProps {
   event: CalEvent
-  onClose(): void
+  /** `done`: what an action that closed the overlay did ("Event deleted"), for the status line. */
+  onClose(done?: string): void
   onEdit(event: CalEvent): void
   /** Rows the overlay may take, border included. */
   height?: number
@@ -37,7 +38,8 @@ const COLORS: { id: string | null; name: string; hex?: string }[] = [
   ...EVENT_COLORS.map((c) => ({ id: c.id, name: c.key, hex: c.hex }))
 ]
 const STATUS_LABEL: Record<PartStat, string> = { accepted: 'accepted', declined: 'declined', tentative: 'maybe', needsAction: 'not answered' }
-const STATUS_COLOR: Record<PartStat, string> = { accepted: C.green, declined: C.red, tentative: C.yellow, needsAction: C.muted }
+// a function: C.yellow is settled at startup, after this module loads
+const statusColor = (s: PartStat): string => ({ accepted: C.green, declined: C.red, tentative: C.yellow, needsAction: C.muted })[s]
 
 // Argument vector, no shell (see openCommand): the URL comes from event data and must never be interpreted.
 const openUrl = (url: string): void => void openInBrowser(url).catch(() => {})
@@ -66,23 +68,24 @@ export function EventDetails({ event: initial, onClose, onEdit, height = Infinit
   const [foot, footHeight] = useHeight()
   const scroll = useScrollArea(height - 2 - footHeight) // 2: border
 
-  const run = (label: string, fn: () => Promise<void>): void => {
+  /** Shows `label` while `fn` runs; a failure shows as "`failed`: reason". */
+  const run = (label: string, failed: string, fn: () => Promise<void>): void => {
     setBusy(label)
     setError('')
     fn().then(
       () => setBusy(undefined),
       (e: unknown) => {
         setBusy(undefined)
-        setError(errorText(e))
+        setError(`${failed}: ${errorText(e)}`)
       }
     )
   }
   const respond = (status: Reply): void =>
-    run('Replying…', async () => setEvent(await api.events.respond(event, status)))
+    run('Replying…', 'Reply not sent', async () => setEvent(await api.events.respond(event, status)))
   const recolor = (colorId: string | null, scope: ColorScope): void => {
     setPicking(undefined)
     setColorAsk(undefined)
-    if ((event.colorId ?? null) !== colorId) run('Recolouring…', async () => setEvent(await api.events.setColor(event, colorId, scope)))
+    if ((event.colorId ?? null) !== colorId) run('Recolouring…', 'Colour not changed', async () => setEvent(await api.events.setColor(event, colorId, scope)))
   }
   const choose = (i: number): void => {
     const id = COLORS[i].id
@@ -93,9 +96,9 @@ export function EventDetails({ event: initial, onClose, onEdit, height = Infinit
   }
   const startPicking = (): void => setPicking(Math.max(0, COLORS.findIndex((c) => c.id === (event.colorId ?? null))))
   const remove = (scope: DeleteScope): void =>
-    run('Deleting…', async () => {
+    run('Deleting…', 'Not deleted', async () => {
       await api.events.delete(event, scope)
-      onClose()
+      onClose(scope === 'one' ? 'Event deleted' : 'Events deleted')
     })
 
   useKeys((input, key) => {
@@ -277,7 +280,7 @@ export function EventInfo({ event, account, calendar, now, showAll, onToggleAll 
           </Text>
           {(showAll ? event.attendees : event.attendees.slice(0, ATTENDEES_SHOWN)).map((a) => (
             <Text key={a.email} wrap="truncate">
-              <Text color={STATUS_COLOR[a.status]}>{STATUS_ICON[a.status]}</Text> {a.name ?? a.email}
+              <Text color={statusColor(a.status)}>{STATUS_ICON[a.status]}</Text> {a.name ?? a.email}
               {a.name && <Text color={C.muted}> {a.email}</Text>}
               {a.self ? ' (you)' : ''}
               {a.organizer ? ' (organizer)' : ''}
@@ -300,7 +303,7 @@ export function EventInfo({ event, account, calendar, now, showAll, onToggleAll 
       {event.myStatus && (
         <Box marginTop={1}>
           <Text>
-            Your reply: <Text bold color={STATUS_COLOR[event.myStatus]}>{STATUS_ICON[event.myStatus]} {STATUS_LABEL[event.myStatus]}</Text>
+            Your reply: <Text bold color={statusColor(event.myStatus)}>{STATUS_ICON[event.myStatus]} {STATUS_LABEL[event.myStatus]}</Text>
             <Text color={C.muted}> as {account?.email ?? event.accountId}</Text>
           </Text>
         </Box>

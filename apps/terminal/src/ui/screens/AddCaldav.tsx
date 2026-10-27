@@ -1,4 +1,7 @@
-/** Add-CalDAV form inside the Accounts overlay. Mirrors desktop components/Accounts.tsx CaldavForm. Fields and buttons are clickable. */
+/**
+ * Add-CalDAV form inside the Accounts overlay. Mirrors desktop components/Accounts.tsx CaldavForm. Fields and buttons are clickable.
+ * In fewer than `height` rows the helper notes go first, then the heading, so the fields and buttons stay on screen.
+ */
 import { useRef, useState, type ReactNode } from 'react'
 import { Box, Text } from 'ink'
 import { errorText } from '@mysticals/core/logic/editor'
@@ -73,7 +76,7 @@ const INITIAL = {
   error: ''
 }
 
-export function AddCaldav({ onBack, onDone }: { onBack(): void; onDone(): void }) {
+export function AddCaldav({ onBack, onDone, height = Infinity }: { onBack(): void; onDone(): void; height?: number }) {
   const api = useApi()
   const [get, set] = useKeyState(INITIAL)
   const patch = (p: Partial<typeof INITIAL>): void => set({ ...get(), ...p })
@@ -136,6 +139,10 @@ export function AddCaldav({ onBack, onDone }: { onBack(): void; onDone(): void }
   })
 
   const v = get()
+  const needed = FIELDS.length + 1 + (v.busy || v.error ? 1 : 0) // fields, buttons, status
+  const titled = height > needed
+  // the two notes, plus a row each in case they wrap
+  const noted = height >= needed + 5
   const shown = (f: Field): ReactNode => {
     if (f === 'provider') return `‹ ${PRESETS.find((p) => p.id === v.preset)!.name} ›`
     if (f === 'color') return <Text color={ansiOf(v.color)}>‹ ● {v.color} ›</Text>
@@ -145,8 +152,8 @@ export function AddCaldav({ onBack, onDone }: { onBack(): void; onDone(): void }
 
   return (
     <Box flexDirection="column">
-      <Text bold>Add CalDAV account</Text>
-      <Text color={C.muted}>Each account is isolated: events and invitations are only sent from the account they belong to.</Text>
+      {titled && <Text bold>Add CalDAV account</Text>}
+      {noted && <Text color={C.muted}>Each account is isolated: events and invitations are only sent from the account they belong to.</Text>}
       {FIELDS.map((f) => (
         <Clickable key={f} height={1} onClick={() => clickField(f)}>
           <Box flexShrink={0}>
@@ -164,7 +171,7 @@ export function AddCaldav({ onBack, onDone }: { onBack(): void; onDone(): void }
           )}
         </Clickable>
       ))}
-      <Text color={C.muted}>Use an app-specific password from your provider's security settings, not your login password.</Text>
+      {noted && <Text color={C.muted}>Use an app-specific password from your provider's security settings, not your login password.</Text>}
       {v.busy && (
         <Text>
           <Spinner /> Signing in to {URL.canParse(v.serverUrl.trim()) ? new URL(v.serverUrl.trim()).host : 'the server'}…

@@ -60,7 +60,7 @@ export function Invites({ onClose, height = Infinity }: InvitesProps) {
       (err: unknown) => {
         busy.current.delete(k)
         setRows(({ [k]: _, ...r }) => r)
-        setError(errorText(err))
+        setError(`Reply to ${e.title || 'Untitled'} not sent: ${errorText(err)}`)
       }
     )
   }
@@ -93,7 +93,7 @@ export function Invites({ onClose, height = Infinity }: InvitesProps) {
           return (
             <Clickable key={eventKey(e)} height={1} onClick={() => setIdx(i)}>
               <Text wrap="truncate" inverse={i === sel}>
-                {i === sel ? '▸ ' : '  '}
+                {i === sel ? '› ' : '  '}
                 <Text bold>{e.title || 'Untitled'}</Text> <Text color={C.muted}>{formatWhen(e)}</Text>{' '}
                 <Text color={ansiOf(a?.color ?? '')}>●</Text> {o.label}
                 {o.email ? ` · ${o.email}` : ''}

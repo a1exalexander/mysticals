@@ -217,7 +217,7 @@ export function Accounts({ onClose, height = Infinity }: AccountsProps) {
         </Text>
       )
     }
-    const problem = a.authError ? `Disconnected: ${a.error ?? 'credentials rejected'} — p to reconnect` : a.error && `Last sync failed: ${a.error}`
+    const problem = a.authError ? `Disconnected: ${a.error ?? 'credentials rejected'} — p to reconnect` : a.error && `Last sync failed: ${a.error} — r to retry`
     if (problem) out.push(<Text key={`${a.id}/error`} wrap="truncate-end" color={C.red}>{`    ${problem}`}</Text>)
     if (mode.kind === 'reauth' && mode.account.id === a.id) {
       out.push(
@@ -248,6 +248,7 @@ export function Accounts({ onClose, height = Infinity }: AccountsProps) {
     return (
       <Box flexDirection="column" borderStyle="round" borderColor={C.muted} paddingX={1}>
         <AddCaldav
+          height={height - 2} // border
           onBack={() => setMode({ kind: 'list' })}
           onDone={() => {
             setMode({ kind: 'list' })
@@ -296,7 +297,7 @@ export function Accounts({ onClose, height = Infinity }: AccountsProps) {
             )}
           </Box>
         )}
-        {(mode.kind === 'rename' || mode.kind === 'reauth') && <Text color={C.muted}>enter save  esc cancel</Text>}
+        {(mode.kind === 'rename' || mode.kind === 'reauth') && <Text color={C.muted}>enter save · esc cancel</Text>}
         {loadError && <Text color={C.red}>{loadError}</Text>}
         {message && <Text color={message.error ? C.red : C.green}>{message.text}</Text>}
         {mode.kind === 'list' && (

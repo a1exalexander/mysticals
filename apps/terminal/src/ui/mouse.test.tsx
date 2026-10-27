@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Box, Text } from 'ink'
 import { renderApp, renderWith, type Rendered } from '../test/harness'
-import { Clickable, MouseProvider } from './mouse'
+import { Clickable, MouseProvider, useKeys } from './mouse'
 
 let t: Rendered
 afterEach(() => t?.unmount())
@@ -101,5 +101,19 @@ describe('mouse', () => {
     await t.click('the row under')
     expect(below).toHaveBeenCalled()
     expect(hidden).not.toHaveBeenCalled()
+  })
+
+  it('a background-colour reply that arrives late never reaches key handlers', async () => {
+    const keys = vi.fn()
+    function Keys() {
+      useKeys((input) => keys(input))
+      return <Text>keys</Text>
+    }
+    t = renderWith(<Keys />)
+    await t.waitFor('keys')
+    await t.press('\x1b]11;rgb:ffff/ffff/ffff\x07', '\x1b]11;rgb:fd/f6/e3\x1b\\', '\x1b[?62;22c', 'x')
+    const got = keys.mock.calls.map(([k]) => String(k))
+    expect(got.filter((k) => /rgb|\?62/.test(k))).toEqual([])
+    expect(got.at(-1)).toBe('x')
   })
 })

@@ -32,7 +32,7 @@ import { eventColorOf } from '@mysticals/core/logic/colors'
 import { duration } from '../screens/EventDetails'
 
 /** Event color (its own, else its calendar's, else its account's, as ANSI: same fallback chain as the desktop app), account and calendar names. */
-export function useOwnerOf(): { colorOf(e: CalEvent): string; accountOf(e: CalEvent): string; calendarOf(e: CalEvent): string } {
+export function useOwnerOf(): { colorOf(e: CalEvent): string | undefined; accountOf(e: CalEvent): string; calendarOf(e: CalEvent): string } {
   const { accounts, calendars } = useDirectory()
   return useMemo(() => {
     const cal = new Map(calendars.map((c) => [`${c.accountId}/${c.id}`, c]))
@@ -45,7 +45,7 @@ export function useOwnerOf(): { colorOf(e: CalEvent): string; accountOf(e: CalEv
   }, [accounts, calendars])
 }
 
-export const useColorOf = (): ((e: CalEvent) => string) => useOwnerOf().colorOf
+export const useColorOf = (): ((e: CalEvent) => string | undefined) => useOwnerOf().colorOf
 
 /** Click selects; a click on the already selected event opens it. */
 export const clickEvent = (e: CalEvent, selected: boolean, { onSelect, onOpen }: Pick<ViewProps, 'onSelect' | 'onOpen'>) =>
@@ -269,7 +269,7 @@ export function Agenda({ events, date, now, selectedKey, width, height, onSelect
     const row1 = [
       { text: (e.allDay ? ' all day' : `  ${clockOf(start, '…')}`).padEnd(TIME_W), color: running ? C.green : undefined, bold: running },
       { text: '▌ ', color: colorOf(e) },
-      ...fitParts([{ text: `${rsvpMark(e)}${e.title || '(no title)'}`, bold: true, strike: e.myStatus === 'declined' }, ...badges], titleW),
+      ...fitParts([{ text: `${rsvpMark(e)}${e.title || 'Untitled'}`, bold: true, strike: e.myStatus === 'declined' }, ...badges], titleW),
       ...(dur ? [{ text: `  ${dur}`, color: C.muted }] : [])
     ]
 

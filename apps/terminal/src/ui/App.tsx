@@ -30,7 +30,9 @@ const VIEWS: Record<View, (p: ViewProps) => ReactNode> = { agenda: Agenda, day: 
 const VIEW_KEYS: Record<string, View> = { a: 'agenda', d: 'day', '2': '2day', w: 'week', m: 'month' }
 const VIEW_LABEL: Record<View, string> = { agenda: 'Agenda', day: 'Day', '2day': '2 Days', week: 'Week', month: 'Month' }
 
+/** Help rows; a row without a key is a section heading. */
 const HELP: [string, string][] = [
+  ['', 'Calendar'],
   ['a d 2 w m', 'agenda, day, 2 days, week or month view'],
   ['← → (h l)', 'previous / next day; in the agenda: event'],
   ['↑ ↓', 'previous / next event of the day; in month: any event'],
@@ -46,7 +48,14 @@ const HELP: [string, string][] = [
   ['q', 'quit (esc or q closes a panel first)'],
   ['click', 'tabs, buttons, days; an event selects it, again opens it'],
   ['wheel', 'scroll the list or the hours'],
-  process.platform === 'darwin' ? ['⌥ drag', 'select text (Shift in some terminals)'] : ['⇧ drag', 'select text']
+  process.platform === 'darwin' ? ['⌥ drag', 'select text (Shift in some terminals)'] : ['⇧ drag', 'select text'],
+  ['', 'Open event'],
+  ['y n m', 'accept, decline or maybe (invitations)'],
+  ['o', 'open the video-call link'],
+  ['e x', 'edit or delete'],
+  ['c', 'change its colour'],
+  ['a', 'all / fewer attendees'],
+  ['', 'Panels list their own keys at the bottom']
 ]
 
 function Help({ onClose, height }: { onClose(): void; height: number }) {
@@ -63,14 +72,18 @@ function Help({ onClose, height }: { onClose(): void; height: number }) {
           <Text bold color={C.accent}>Keys</Text>
           {scroll.more && <Text color={C.muted}> · ↑↓ scroll</Text>}
         </Text>
-        {HELP.map(([k, d]) => (
-          <Box key={k}>
-            <Box width={13} flexShrink={0}>
-              <Text color={C.cyan}>{k}</Text>
+        {HELP.map(([k, d]) =>
+          k ? (
+            <Box key={k}>
+              <Box width={13} flexShrink={0}>
+                <Text color={C.cyan}>{k}</Text>
+              </Box>
+              <Text>{d}</Text>
             </Box>
-            <Text>{d}</Text>
-          </Box>
-        ))}
+          ) : (
+            <Text key={d} bold>{d}</Text>
+          )
+        )}
         <Text color={C.muted}>any other key or a click closes this</Text>
       </Scroll>
     </Clickable>
@@ -86,6 +99,10 @@ const MIN_HEIGHT = 12
 /** How long an action's result stays in the status line. */
 const MESSAGE_MS = 5000
 
+/** Cells of the full tab row and of the ‹ today › control (with its margins). */
+const TABS_W = TABS.reduce((n, v) => n + VIEW_LABEL[v].length + 2, 0)
+const TODAY_W = 13
+
 function Header({ nav, width, onView, onShift, onToday }: {
   nav: Nav
   width: number
@@ -93,6 +110,9 @@ function Header({ nav, width, onView, onShift, onToday }: {
   onShift(dir: 1 | -1): void
   onToday(): void
 }) {
+  const heading = title(nav)
+  // too narrow for every label and the range: the other tabs show just their key
+  const compact = width < TABS_W + TODAY_W + heading.length
   return (
     <Box width={width} height={1} overflow="hidden">
       {TABS.map((v) => (
@@ -101,7 +121,7 @@ function Header({ nav, width, onView, onShift, onToday }: {
           <Text inverse={v === nav.view} color={v === nav.view ? C.accent : C.muted} bold={v === nav.view}>
             {' '}
             <Text underline>{VIEW_LABEL[v][0]}</Text>
-            {`${VIEW_LABEL[v].slice(1)} `}
+            {`${compact && v !== nav.view ? '' : VIEW_LABEL[v].slice(1)} `}
           </Text>
         </Clickable>
       ))}
@@ -119,7 +139,7 @@ function Header({ nav, width, onView, onShift, onToday }: {
         </Clickable>
       </Box>
       <Box flexGrow={1} flexShrink={1}>
-        <Text bold wrap="truncate">{title(nav)}</Text>
+        <Text bold wrap="truncate">{heading}</Text>
       </Box>
     </Box>
   )
@@ -238,8 +258,8 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
   const { width, height } = useTermSize()
   const [selectedKey, setSelectedKey] = useState<string>()
   const [overlay, setOverlay] = useState<Overlay>()
-  // `fade`: an action's result ("Synced") clears itself; failures and the notice stay until the next message.
-  const [message, setMessage] = useState<{ text: string; fade?: boolean } | undefined>(notice ? { text: notice } : undefined)
+  // `fade`: an action's result ("Synced") clears itself; failures (`error`, shown red) and the notice stay until the next message.
+  const [message, setMessage] = useState<{ text: string; fade?: boolean; error?: boolean } | undefined>(notice ? { text: notice } : undefined)
   useEffect(() => {
     if (!message?.fade) return
     const t = setTimeout(() => setMessage((m) => (m === message ? undefined : m)), MESSAGE_MS)
@@ -250,7 +270,11 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
 
   const ordered = useMemo(() => [...events].sort(chronological), [events])
   const selectedIdx = ordered.findIndex((e) => eventKey(e) === selectedKey)
-  const close = (): void => setOverlay(undefined)
+  /** Closes the overlay; `done` ("Event deleted") goes to the status line. */
+  const close = (done?: string): void => {
+    setOverlay(undefined)
+    if (done) setMessage({ text: done, fade: true })
+  }
 
   // Day cursor of the grid views (day, 2day, week, month); falls back to the anchor day once off the page.
   // `page`: the page it was moved on, where it stays even off the page proper (month: a day of the next or previous
@@ -357,7 +381,7 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
     setMessage(undefined)
     api.sync.now().then(
       () => setMessage({ text: 'Synced', fade: true }),
-      (e: unknown) => setMessage({ text: `Sync failed: ${errorText(e)}` })
+      (e: unknown) => setMessage({ text: `Sync failed: ${errorText(e)} · r to retry`, error: true })
     )
   }
 
@@ -481,7 +505,8 @@ function Shell({ initialNav, updateCheck, notice }: { initialNav?: Nav; updateCh
         nav={nav}
         events={events}
         now={now}
-        message={error ? `Error: ${error}` : message?.text}
+        message={error ? `Couldn't load events: ${error}` : message?.text}
+        messageError={!!error || message?.error}
         update={update}
         width={width}
         hints={!overlay}

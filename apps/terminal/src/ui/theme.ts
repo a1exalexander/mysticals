@@ -1,6 +1,8 @@
 /**
  * Colors are the terminal's own: ANSI names, so the user's theme decides the actual shades (and NO_COLOR turns them
  * off). Highlights use `inverse`, which swaps the theme's own foreground and background.
+ * Exception: yellow and bright yellow barely show on a light background, so there (`setLightBackground`, called once
+ * at startup) they become a dark amber and a dark orange. Read `C.yellow` at render time, not into a module constant.
  */
 export const C = {
   red: 'red',
@@ -15,23 +17,34 @@ export const C = {
   now: 'red',
   /** Secondary text. */
   muted: 'gray'
-} as const
+}
+
+/** Dark amber and orange that read on white (GitHub's light-theme attention and severe colours). */
+const ON_LIGHT = { yellow: '#9a6700', yellowBright: '#bc4c00' }
+let orange = 'yellowBright'
+
+/** Swaps the yellows for ones that read on a light terminal background (see ui/background.ts). */
+export function setLightBackground(light: boolean): void {
+  C.yellow = light ? ON_LIGHT.yellow : 'yellow'
+  orange = light ? ON_LIGHT.yellowBright : 'yellowBright'
+}
 
 /**
  * Nearest ANSI color for a calendar/account hex color, so events follow the terminal theme too.
  * Hue buckets; orange and pink take the bright variants so the default account palette stays distinct.
+ * Near-white is the theme's own foreground (undefined), not `white`, which vanishes on a light background.
  */
-export function ansiOf(hex: string): string {
+export function ansiOf(hex: string): string | undefined {
   const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex)
   if (!m) return C.muted
   const [r, g, b] = m.slice(1).map((x) => parseInt(x, 16) / 255)
   const max = Math.max(r, g, b)
   const d = max - Math.min(r, g, b)
-  if (d < 0.15) return max > 0.8 ? 'white' : C.muted
+  if (d < 0.15) return max > 0.8 ? undefined : C.muted
   const h = (max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4) * 60
   if (h < 15 || h >= 345) return 'red'
-  if (h < 45) return 'yellowBright' // orange
-  if (h < 75) return 'yellow'
+  if (h < 45) return orange
+  if (h < 75) return C.yellow
   if (h < 165) return 'green'
   if (h < 200) return 'cyan'
   if (h < 250) return 'blue'

@@ -49,6 +49,7 @@ describe('EventEditor', () => {
     expect(t.client.events.create).not.toHaveBeenCalled()
     await t.press(...clear(4), KEY.enter) // enter on last field saves
     await t.waitFor(() => onClose.mock.calls.length > 0)
+    expect(onClose).toHaveBeenCalledWith('Event created')
     expect(t.client.events.create).toHaveBeenCalledWith(
       expect.objectContaining({
         accountId: 'work', calendarId: 'work-main', attendees: ['bob@x.com'],

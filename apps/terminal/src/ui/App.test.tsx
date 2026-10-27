@@ -101,11 +101,30 @@ describe('App shell', () => {
     expect(lines[0]).not.toContain('mysticals')
   })
 
+  it('narrow: the other tabs shrink to their key so the range still fits', async () => {
+    t = renderApp({ nav: { view: 'agenda', date: new Date(2026, 8, 23) } })
+    await t.waitFor('Day  2 Days')
+    Object.defineProperty(t.stdout, 'columns', { value: 60 })
+    t.stdout.emit('resize')
+    const f = await t.waitFor(' Agenda  D  2  W  M ')
+    expect(f.split('\n')[0]).toContain('23 Sep – 6 Oct 2026')
+  })
+
+  it('reports a deleted event in the status line', async () => {
+    t = renderApp()
+    await t.waitFor('Up next')
+    await t.click('Gym') // in the preview pane: opens it
+    await t.waitFor('x delete')
+    await t.press('x', 'y')
+    await t.waitFor('Event deleted')
+  })
+
   it('help overlay pauses the global keymap and closes on any key', async () => {
     t = renderApp()
     await t.waitFor('Agenda ')
     await t.press('?')
     await t.waitFor('this help')
+    expect(t.lastFrame()).toContain('Open event')
     await t.press('w') // consumed by the overlay, not a view switch
     await t.waitFor('Agenda ')
     expect(t.lastFrame()).not.toContain('this help')

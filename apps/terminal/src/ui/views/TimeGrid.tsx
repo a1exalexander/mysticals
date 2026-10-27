@@ -146,7 +146,7 @@ export function TimeGrid({ days, events, now, cursor, selectedKey, width, height
       const first = p.start / 60
       const { start, end } = eventBounds(e)
       const from = isSameDay(start, day) ? format(start, 'HH:mm') : '…'
-      const title = `${rsvpMark(e)}${e.title || '(no title)'}`
+      const title = `${rsvpMark(e)}${e.title || 'Untitled'}`
       const where = eventPlace(e)
       // narrow columns (week) put the title first and the times below; wide ones fit time + title on one row
       // (the row already names the hour, so a one-row block only adds its minutes when they aren't :00)
@@ -221,7 +221,7 @@ export function TimeGrid({ days, events, now, cursor, selectedKey, width, height
             <Clickable height={1} width={colW} onClick={clickEvent(e, selected, { onSelect, onOpen })}>
               <Text wrap="truncate" inverse={selected} color={selected ? C.accent : C.yellow} bold={selected}>
                 <Text color={selected ? C.accent : colorOf(e)}> ●</Text> {rsvpMark(e)}
-                {e.title || '(no title)'}
+                {e.title || 'Untitled'}
               </Text>
             </Clickable>
           )
