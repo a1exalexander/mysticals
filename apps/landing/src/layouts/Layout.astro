@@ -16,6 +16,7 @@ const t = {
     stats: 'Anonymous, cookie-free stats via PostHog.', details: 'Details',
     home: 'Home', privacy: 'Privacy', terms: 'Terms', donate: 'Donate',
     theme: 'Theme', system: 'Same as system', light: 'Light', dark: 'Dark', language: 'Language',
+    skip: 'Skip to content', main: 'Main', site: 'Site',
   },
   uk: {
     description: 'Календар для кількох акаунтів Google і CalDAV, на десктопі або просто в терміналі. Кожен акаунт живе окремо.',
@@ -27,6 +28,7 @@ const t = {
     stats: 'Анонімна статистика без cookie через PostHog.', details: 'Докладніше',
     home: 'Головна', privacy: 'Конфіденційність', terms: 'Умови', donate: 'Підтримати',
     theme: 'Тема', system: 'Як у системі', light: 'Світла', dark: 'Темна', language: 'Мова',
+    skip: 'Перейти до змісту', main: 'Головне меню', site: 'Сайт',
   },
 }[lang]
 const { title, description = t.description } = Astro.props
@@ -38,6 +40,8 @@ const donate = 'https://base.monobank.ua/4VzJ6ms12UeMhR#donate'
 const abs = (p: string) => new URL(p, Astro.site).href
 const ogImage = abs('/og-image.png')
 const phKey = process.env.MYSTICALS_POSTHOG_KEY
+// Self-hosted fonts (global.css) that every page in this language paints with; other subsets load on demand
+const fonts = ['geist-latin', 'geist-mono-latin', ...(lang === 'uk' ? ['geist-cyrillic', 'geist-mono-cyrillic'] : [])]
 const icons = {
   system: '<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
   light: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
@@ -90,21 +94,21 @@ const icons = {
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" />
+    {fonts.map((f) => <link rel="preload" href={`/fonts/${f}.woff2`} as="font" type="font/woff2" crossorigin />)}
     <title>{title}</title>
+    <slot name="head" />
     {phKey && <Analytics apiKey={phKey} />}
   </head>
   <body>
-    <div class="ua-bar">
-      <span class="ua-pill"><svg class="ua-flag" viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="1" fill="#0057B7" /><rect y="1" width="3" height="1" fill="#FFD700" /></svg>{t.madeIn}</span>
-      <a class="donate" href={donate} data-track="donate_click" data-props='{"place":"top"}'><img src="/monobank-base.png" alt="" width="14" height="14" />{t.donate}</a>
-    </div>
+    <a class="skip" href="#content">{t.skip}</a>
     <header>
+      <div class="ua-bar">
+        <span class="ua-pill"><svg class="ua-flag" viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="1" fill="#0057B7" /><rect y="1" width="3" height="1" fill="#FFD700" /></svg>{t.madeIn}</span>
+        <a class="donate" href={donate} data-track="donate_click" data-props='{"place":"top"}'><img src="/monobank-base.png" alt="" width="14" height="14" />{t.donate}</a>
+      </div>
       <div class="wrap nav">
         <a class="brand" href={href('/')}><img src="/icon.svg" alt="" width="30" height="30" />mysticals</a>
-        <nav>
+        <nav aria-label={t.main}>
           <a class="sec" href={href('/#why')}>{t.why}</a>
           <a class="sec" href={href('/#themes')}>{t.themes}</a>
           <a class="sec" href={href('/#isolation')}>{t.isolation}</a>
@@ -120,11 +124,12 @@ const icons = {
         <div class="wrap"><Fragment set:html={t.preview} /> <a class="ul" href={gh}>GitHub</a>.</div>
       </div>
     )}
-    <main><slot /></main>
+    <main id="content" tabindex="-1"><slot /></main>
+    <span class="sr-only" role="status" data-copy-status></span>
     <footer class="wrap foot">
       <div class="frow">
         <span class="mono">mysticals · MIT · © <a class="ul" href="https://www.sashkoratushnyi.com/">{t.author}</a></span>
-        <nav>
+        <nav aria-label={t.site}>
           <a href={href('/')}>{t.home}</a>{!PREVIEW && <><a href={href('/download/')}>{t.download}</a><a href={href('/install/')}>{t.install}</a></>}
           <a href={gh}>GitHub</a>{!PREVIEW && <a href="https://www.npmjs.com/package/mysticals">npm</a>}
           <a href={href('/privacy/')}>{t.privacy}</a><a href={href('/terms/')}>{t.terms}</a>
@@ -152,16 +157,28 @@ const icons = {
       const store = (k: string, v: string | null) => {
         try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v) } catch {}
       }
-      // <button data-copy="text"> copies its text and says so for a moment
-      const copied = document.documentElement.lang === 'uk' ? 'скопійовано' : 'copied'
+      // <button data-copy="text"> copies its text and says so for a moment, also to screen readers (the buttons
+      // have an aria-label, so their own text change isn't announced). The clipboard can refuse (permissions, old
+      // browsers): then it says so instead of claiming success.
+      const uk = document.documentElement.lang === 'uk'
+      const status = document.querySelector<HTMLElement>('[data-copy-status]')!
       for (const b of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
         const label = b.querySelector('.lbl')
+        const was = label?.textContent
+        let timer = 0
         b.addEventListener('click', async () => {
-          await navigator.clipboard.writeText(b.dataset.copy!)
+          let msg: string
+          try {
+            await navigator.clipboard.writeText(b.dataset.copy!)
+            msg = uk ? 'скопійовано' : 'copied'
+          } catch {
+            msg = uk ? 'не вдалося скопіювати' : 'couldn’t copy'
+          }
+          status.textContent = msg
           if (!label) return
-          const was = label.textContent
-          label.textContent = copied
-          setTimeout(() => (label.textContent = was), 1500)
+          label.textContent = msg
+          clearTimeout(timer)
+          timer = window.setTimeout(() => (label.textContent = was!), 1500)
         })
       }
       // Theme: system (nothing saved), light or dark; the head script applies the saved one before paint

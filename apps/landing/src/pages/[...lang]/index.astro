@@ -123,8 +123,25 @@ const t = {
   },
 }[lang]
 const colors = ['var(--personal)', 'var(--work)', 'var(--family)']
+// Structured data for search engines: what the app is, where it runs, that it's free
+const ld = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Mysticals',
+  url: new URL(href('/'), Astro.site).href,
+  description: t.lead,
+  inLanguage: lang,
+  applicationCategory: 'ProductivityApplication',
+  operatingSystem: 'macOS, Windows, Linux',
+  softwareVersion: desktop.version,
+  license: 'https://opensource.org/licenses/MIT',
+  codeRepository: gh,
+  author: { '@type': 'Person', name: t.author, url: 'https://www.sashkoratushnyi.com/' },
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+}
 ---
 <Layout title={t.title}>
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify(ld)} />
   <section class="wrap hero">
     <div class="intro">
       <p class="eyebrow dot">{PREVIEW ? t.dev : `v${desktop.version}`} · macOS · Windows · Linux · <Fragment set:html={t.free} /></p>
@@ -299,6 +316,9 @@ const colors = ['var(--personal)', 'var(--work)', 'var(--family)']
   @media (min-width: 760px) {
     .stage { --swap: 48s; display: grid; }
     .desk, .term { grid-area: 1 / 1; animation: swap var(--swap) ease-in-out infinite both; }
+    /* still frame (reduced motion): terminal in front, and each demo its own stacking context so the desktop's events stay inside it */
+    .desk { z-index: 1; }
+    .term { z-index: 2; }
     .desk { margin-right: 10%; }
     .term { --term-cols: 80; width: 62%; justify-self: end; margin-top: 40%; animation-delay: calc(var(--swap) / -2); }
     .term :global(.win) { margin-right: 0; }

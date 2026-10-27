@@ -129,63 +129,63 @@ const downloads = to(lang, '/download/')
   <section class="wrap guide">
     <div class="panels">
       <ol class="steps" data-panel="desktop-mac">
-        <li><div><h3>{t.dmg}</h3>
+        <li><div><h2>{t.dmg}</h2>
           <p set:html={t.dmgText} />
           <a class="btn" href={downloads}>{t.toDownloads}</a></div></li>
-        <li><div><h3>{t.drag}</h3>
+        <li><div><h2>{t.drag}</h2>
           <p>{t.dragText}</p></div></li>
-        <li><div><h3>{t.first}</h3>
+        <li><div><h2>{t.first}</h2>
           <p>{t.firstText}</p></div></li>
-        <li><div><h3>{t.auto}</h3>
+        <li><div><h2>{t.auto}</h2>
           <p>{t.autoText}</p></div></li>
       </ol>
 
       <ol class="steps" data-panel="desktop-windows" hidden>
-        <li><div><h3>{t.exe}</h3>
+        <li><div><h2>{t.exe}</h2>
           <p set:html={t.exeText} />
           <a class="btn" href={downloads}>{t.toDownloads}</a></div></li>
-        <li><div><h3>{t.run}</h3>
+        <li><div><h2>{t.run}</h2>
           <p>{t.runText}</p></div></li>
-        <li><div><h3>{t.first}</h3>
+        <li><div><h2>{t.first}</h2>
           <p>{t.firstText} {t.dpapi}</p></div></li>
-        <li><div><h3>{t.updates}</h3>
+        <li><div><h2>{t.updates}</h2>
           <p>{t.winUpdates}</p></div></li>
       </ol>
 
       <ol class="steps" data-panel="desktop-linux" hidden>
-        <li><div><h3>{t.appimage}</h3>
+        <li><div><h2>{t.appimage}</h2>
           <p set:html={t.appimageText} />
           <a class="btn" href={downloads}>{t.toDownloads}</a></div></li>
-        <li><div><h3>{t.runIt}</h3>
-          <div class="code"><div>chmod +x Mysticals-x86_64.AppImage &amp;&amp; ./Mysticals-x86_64.AppImage</div><div class="c">{t.or}</div><div>sudo apt install ./Mysticals-amd64.deb</div><div class="c">{t.onArm}</div></div></div></li>
-        <li><div><h3>{t.keyring}</h3>
+        <li><div><h2>{t.runIt}</h2>
+          <div class="code" tabindex="0"><div>chmod +x Mysticals-x86_64.AppImage &amp;&amp; ./Mysticals-x86_64.AppImage</div><div class="c">{t.or}</div><div>sudo apt install ./Mysticals-amd64.deb</div><div class="c">{t.onArm}</div></div></div></li>
+        <li><div><h2>{t.keyring}</h2>
           <p>{t.keyringText}</p></div></li>
-        <li><div><h3>{t.first}</h3>
+        <li><div><h2>{t.first}</h2>
           <p>{t.linuxFirst}</p></div></li>
       </ol>
 
       <div data-panel="terminal" hidden>
         <ol class="steps">
-          <li><div><h3>{t.node}</h3>
+          <li><div><h2>{t.node}</h2>
             <p set:html={t.nodeText} />
-            <div class="code"><div>node -v <span class="c">{t.newer}</span></div></div></div></li>
-          <li><div><h3>{t.npm}</h3>
-            <div class="code"><div>npm i -g mysticals</div></div></div></li>
-          <li><div><h3>{t.runTerm}</h3>
+            <div class="code" tabindex="0"><div>node -v <span class="c">{t.newer}</span></div></div></div></li>
+          <li><div><h2>{t.npm}</h2>
+            <div class="code" tabindex="0"><div>npm i -g mysticals</div></div></div></li>
+          <li><div><h2>{t.runTerm}</h2>
             <p set:html={t.runTermText} />
-            <div class="code"><div>mysticals</div><div>MYSTICALS_MOCK=1 mysticals <span class="c"># macOS, Linux</span></div><div>$env:MYSTICALS_MOCK=1; mysticals <span class="c"># Windows PowerShell</span></div><div>set "MYSTICALS_MOCK=1" &amp;&amp; mysticals <span class="c"># Windows cmd</span></div></div></div></li>
-          <li data-only="mac"><div><h3>{t.keychain}</h3>
+            <div class="code" tabindex="0"><div>mysticals</div><div>MYSTICALS_MOCK=1 mysticals <span class="c"># macOS, Linux</span></div><div>$env:MYSTICALS_MOCK=1; mysticals <span class="c"># Windows PowerShell</span></div><div>set "MYSTICALS_MOCK=1" &amp;&amp; mysticals <span class="c"># Windows cmd</span></div></div></div></li>
+          <li data-only="mac"><div><h2>{t.keychain}</h2>
             <p set:html={t.keychainText} /></div></li>
-          <li data-only="windows" hidden><div><h3>{t.nothing}</h3>
+          <li data-only="windows" hidden><div><h2>{t.nothing}</h2>
             <p set:html={t.nothingText} /></div></li>
-          <li data-only="linux" hidden><div><h3>{t.secret}</h3>
+          <li data-only="linux" hidden><div><h2>{t.secret}</h2>
             <p set:html={t.secretText} />
-            <div class="code"><div>sudo apt install libsecret-tools <span class="c"># Fedora/Arch: libsecret</span></div></div></div></li>
-          <li><div><h3>{t.withS}</h3>
+            <div class="code" tabindex="0"><div>sudo apt install libsecret-tools <span class="c"># Fedora/Arch: libsecret</span></div></div></div></li>
+          <li><div><h2>{t.withS}</h2>
             <p set:html={t.withSText} /></div></li>
         </ol>
         <div class="keys">
-          <h3>{t.keys}</h3>
+          <h2>{t.keys}</h2>
           <div class="table" style="--cols: 2">
             <div>{t.keyHead.map((h) => <span>{h}</span>)}</div>
             {keyCaps.map((ks, i) => <div><span>{ks.map((k) => <kbd>{k}</kbd>)}</span><span class="muted">{t.keyText[i]}</span></div>)}
@@ -195,7 +195,7 @@ const downloads = to(lang, '/download/')
       </div>
     </div>
 
-    <aside>
+    <div class="aside">
       <div class="side">
         <span class="eyebrow">{t.req}</span>
         {t.reqRows.map(([k, v]) => <div><span class="muted">{k}</span><span>{v}</span></div>)}
@@ -205,7 +205,7 @@ const downloads = to(lang, '/download/')
         <span class="muted" set:html={t.dataText} />
         <span class="muted">{t.dataNote}</span>
       </div>
-    </aside>
+    </div>
   </section>
 
   <section class="wrap block">
@@ -234,7 +234,10 @@ const downloads = to(lang, '/download/')
 
 <script>
   // Show the steps for the picked app and system. #terminal in the URL preselects the terminal app.
-  const s = { app: location.hash === '#terminal' ? 'terminal' : 'desktop', os: 'mac' }
+  // The system starts on this computer's, as on the download page (macOS when it can't tell).
+  const ua = navigator.userAgent
+  const os = /Windows/.test(ua) ? 'windows' : /Linux/.test(ua) && !/Android/.test(ua) ? 'linux' : 'mac'
+  const s = { app: location.hash === '#terminal' ? 'terminal' : 'desktop', os }
   function show() {
     for (const b of document.querySelectorAll<HTMLElement>('[data-app]')) b.setAttribute('aria-pressed', String(b.dataset.app === s.app))
     for (const b of document.querySelectorAll<HTMLElement>('[data-os]')) b.setAttribute('aria-pressed', String(b.dataset.os === s.os))
@@ -256,6 +259,8 @@ const downloads = to(lang, '/download/')
   .pickers { padding-bottom: 40px; display: flex; flex-wrap: wrap; gap: 24px 48px; }
   .picker { display: flex; align-items: center; gap: 16px; }
   .picker .eyebrow { font-size: 13px; }
+  /* phones: label above its switch, so both switches start at the same edge */
+  @media (max-width: 560px) { .picker { flex-direction: column; align-items: flex-start; gap: 8px; } }
   .seg { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--line-strong); border-radius: 10px; }
   .seg button { min-height: 44px; padding: 0 clamp(12px, 1.6vw, 20px); border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: 15px var(--mono); cursor: pointer; }
   .seg button:hover { color: var(--fg); }
@@ -265,10 +270,10 @@ const downloads = to(lang, '/download/')
   @media (min-width: 1000px) {
     .guide { grid-template-columns: repeat(12, minmax(0, 1fr)); }
     .panels { grid-column: span 8; }
-    aside { grid-column: 10 / span 3; }
+    .aside { grid-column: 10 / span 3; }
   }
-  .panels, aside { min-width: 0; }
-  aside { display: flex; flex-direction: column; gap: 20px; }
+  .panels, .aside { min-width: 0; }
+  .aside { display: flex; flex-direction: column; gap: 20px; }
   .side { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 24px; display: flex; flex-direction: column; gap: 14px; font-size: 14px; line-height: 1.55; }
   .side .eyebrow { font-size: 13px; }
   .side > div { display: flex; justify-content: space-between; gap: 12px; }
@@ -278,6 +283,7 @@ const downloads = to(lang, '/download/')
   .steps > li[hidden] { display: none; }
 
   .keys { margin-top: 40px; display: flex; flex-direction: column; gap: 20px; }
+  .keys h2 { font-size: 22px; letter-spacing: -.03em; }
   .keys .table > div:not(:first-child) { padding-block: 12px; }
   @media (max-width: 720px) { .keys .table > div { grid-template-columns: auto 1fr; } }
   .keys kbd { margin-right: 4px; }

@@ -1,3 +1,10 @@
+/* Geist and Geist Mono, self-hosted (SIL OFL 1.1, public/fonts/OFL.txt): Google Fonts' variable subsets, only the ones
+   the site's text uses (latin and cyrillic, plus box drawing for the terminal demo). Anything else falls back to the system font. */
+@font-face { font-family: 'Geist'; font-weight: 400 600; font-display: swap; src: url('/fonts/geist-latin.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Geist'; font-weight: 400 600; font-display: swap; src: url('/fonts/geist-cyrillic.woff2') format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Geist Mono'; font-weight: 400 600; font-display: swap; src: url('/fonts/geist-mono-latin.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Geist Mono'; font-weight: 400 600; font-display: swap; src: url('/fonts/geist-mono-cyrillic.woff2') format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Geist Mono'; font-weight: 400 600; font-display: swap; src: url('/fonts/geist-mono-symbols2.woff2') format('woff2'); unicode-range: U+2000-2001, U+2004-2008, U+200A, U+23B8-23BD, U+2500-259F; }
 :root {
   --bg: #0b0b10; --surface: #111118; --line: #1f1f2b; --line-strong: #2d2d3d;
   --fg: #f2f2ec; --muted: #9a9aa8; --soft: #d4d4cc; --faint: #3c3c4c; --hi: #ffffff; --kbd: #1d1d29;
@@ -37,6 +44,10 @@ main { flex: 1; }
 a { color: inherit; text-decoration: none; }
 :focus-visible { outline: 2px solid var(--personal); outline-offset: 3px; border-radius: 4px; }
 .wrap { max-width: 1440px; margin: 0 auto; padding-inline: clamp(16px, 5.5vw, 80px); }
+/* skip link: off screen until focused */
+.skip { position: absolute; z-index: 10; left: 16px; top: -100px; padding: 8px 14px; border-radius: 8px; background: var(--fg); color: var(--bg); font-weight: 600; }
+.skip:focus { top: 8px; }
+main:focus { outline: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .mono, code, kbd { font-family: var(--mono); }
 .muted { color: var(--muted); }
@@ -120,7 +131,7 @@ section.band { padding-block: clamp(48px, 6vw, 80px); border-top: 1px solid var(
 .plus li { display: flex; gap: 12px; }
 .plus li::before { content: '+'; font-family: var(--mono); color: var(--muted); }
 
-/* shell snippets */
+/* shell snippets; tabindex="0" in the markup lets keyboards scroll the long ones */
 .code { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; font: 14px/1.5 var(--mono); overflow-x: auto; }
 .code div { display: flex; gap: 12px; white-space: nowrap; }
 .code div::before { content: '$'; color: var(--muted); user-select: none; }
@@ -133,7 +144,7 @@ section.band { padding-block: clamp(48px, 6vw, 80px); border-top: 1px solid var(
 .steps > li { counter-increment: s; padding-block: 24px; border-bottom: 1px solid var(--line); display: flex; gap: clamp(16px, 2vw, 28px); }
 .steps > li::before { content: counter(s, decimal-leading-zero); font: 15px var(--mono); color: var(--muted); padding-top: 4px; }
 .steps > li > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-.steps h3 { font: 600 21px/1.3 var(--sans); letter-spacing: 0; }
+.steps h2 { font: 600 21px/1.3 var(--sans); letter-spacing: 0; }
 .steps p { font-size: 16px; line-height: 1.65; color: var(--muted); }
 .steps .btn { align-self: flex-start; }
 
