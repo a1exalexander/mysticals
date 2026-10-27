@@ -593,10 +593,16 @@ const STATE_TEXT = { ok: 'settings.sync.stateOk', syncing: 'settings.sync.stateS
 
 function PrivacyPanel(): React.JSX.Element {
   const [on, setOn] = useState<boolean>()
+  const [error, setError] = useState('')
   useEffect(() => void window.telemetry.enabled().then(setOn, () => {}), [])
+  // Like the reminder switches: flips at once, flips back with the reason if the write fails.
   const toggle = (next: boolean): void => {
     setOn(next)
-    void window.telemetry.setEnabled(next).catch(() => {})
+    setError('')
+    window.telemetry.setEnabled(next).catch((e) => {
+      setOn(!next)
+      setError(errorText(e))
+    })
   }
   return (
     <>
@@ -617,6 +623,7 @@ function PrivacyPanel(): React.JSX.Element {
         />
         {t('settings.privacy.share')}
       </label>
+      {error && <p className="acc-error" role="alert">{error}</p>}
     </>
   )
 }

@@ -84,7 +84,13 @@ function createCopy(e: CalEvent, at: PasteSlot | undefined, done: 'toast.duplica
     (made) =>
       bus.emit('toast', {
         text: t(done, { title: name(e) }),
-        action: { label: t('common.undo'), run: () => void window.api.events.delete(made, 'one').catch(() => {}) }
+        action: {
+          label: t('common.undo'),
+          run: () =>
+            void window.api.events.delete(made, 'one').catch((err) =>
+              bus.emit('toast', { text: t('toast.deleteFailed', { title: name(made), error: errorText(err) }), error: true })
+            )
+        }
       }),
     (err) => bus.emit('toast', { text: t('toast.createFailed', { title: name(e), error: errorText(err) }), error: true })
   )
@@ -131,7 +137,13 @@ function recolor(e: CalEvent, colorId: string | null): void {
           action:
             scope === 'all'
               ? undefined
-              : { label: t('common.undo'), run: () => void window.api.events.setColor(updated, e.colorId ?? null, 'one').catch(() => {}) }
+              : {
+                  label: t('common.undo'),
+                  run: () =>
+                    void window.api.events.setColor(updated, e.colorId ?? null, 'one').catch((err) =>
+                      bus.emit('toast', { text: t('toast.colorFailed', { title: name(e), error: errorText(err) }), error: true })
+                    )
+                }
         })
       },
       (err) => bus.emit('toast', { text: t('toast.colorFailed', { title: name(e), error: errorText(err) }), error: true })
