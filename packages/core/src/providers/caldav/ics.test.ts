@@ -493,3 +493,57 @@ describe('series across DST', () => {
     expect(vtimezone('Asia/Kolkata', 2025).toString()).toMatch(/TZOFFSETFROM:\+0530\r\nTZOFFSETTO:\+0530\r\nEND:STANDARD/)
   })
 })
+
+describe('regressions', () => {
+  const Y = { start: '2026-01-01T00:00:00.000Z', end: '2027-01-01T00:00:00.000Z' }
+  const parseY = (ics: string) => parseEvents(ics, HREF, undefined, ctx, Y)
+  const RDATE = wrap(
+    [
+      'BEGIN:VEVENT', 'UID:r', 'DTSTAMP:20251201T000000Z', 'DTSTART:20260105T090000Z', 'DTEND:20260105T100000Z',
+      'RRULE:FREQ=DAILY;COUNT=3', 'RDATE:20260120T090000Z', 'SUMMARY:x', 'END:VEVENT'
+    ].join('\r\n'),
+    [
+      'BEGIN:VEVENT', 'UID:r', 'DTSTAMP:20251201T000000Z', 'RECURRENCE-ID:20260120T090000Z',
+      'DTSTART:20260120T130000Z', 'DTEND:20260120T140000Z', 'SUMMARY:moved', 'END:VEVENT'
+    ].join('\r\n')
+  )
+
+  it('finds self and the organizer by the EMAIL parameter when the value is not mailto: (iCloud)', () => {
+    const ics = wrap(
+      [
+        'BEGIN:VEVENT', 'UID:e', 'DTSTAMP:20251201T000000Z', 'DTSTART:20260105T090000Z', 'DTEND:20260105T100000Z',
+        'ORGANIZER;EMAIL=boss@work.example:urn:uuid:boss', 'ATTENDEE;EMAIL=boss@work.example;PARTSTAT=ACCEPTED:urn:uuid:boss',
+        'ATTENDEE;EMAIL=me@work.example;PARTSTAT=NEEDS-ACTION:urn:uuid:1234', 'END:VEVENT'
+      ].join('\r\n')
+    )
+    const [ev] = parseY(ics)
+    expect(ev.myStatus).toBe('needsAction')
+    expect(ev.organizer?.email).toBe('boss@work.example')
+    const replied = applyRespond({ href: HREF, ics }, ctx.email, 'accepted')
+    expect(parseY(replied)[0].myStatus).toBe('accepted')
+    // an edit keeps the existing attendee lines rather than replacing them with new mailto: ones
+    const edited = applyUpdate({ ...ev, title: 'renamed' }, ctx.email)
+    expect(edited).toContain('urn:uuid:1234')
+    expect(edited).not.toContain('mailto:me@work.example')
+  })
+
+  it('an edit keeps a COLOR outside the palette', () => {
+    const ics = wrap(
+      ['BEGIN:VEVENT', 'UID:c', 'DTSTAMP:20251201T000000Z', 'DTSTART:20260105T090000Z', 'DTEND:20260105T100000Z', 'SUMMARY:x', 'COLOR:papayawhip', 'END:VEVENT'].join('\r\n')
+    )
+    const [ev] = parseY(ics)
+    expect(applyUpdate({ ...ev, title: 'renamed' }, ctx.email)).toContain('COLOR:papayawhip')
+    expect(applyUpdate({ ...ev, colorId: '5' }, ctx.email)).toContain('COLOR:gold')
+  })
+
+  it('delete "this and following" drops RDATE instances from the cut on', () => {
+    const rest = applyDeleteFollowing({ href: HREF, ics: RDATE, recurrenceId: '2026-01-06T09:00:00Z' })!
+    expect(parseY(rest).map((e) => e.start)).toEqual(['2026-01-05T09:00:00.000Z'])
+  })
+
+  it('a new rule for all events keeps an override on an RDATE slot', () => {
+    const [first] = parseY(RDATE)
+    const out = applyUpdateSeries({ ...first, title: 'y', recurrence: { freq: 'daily', count: 3 } }, ctx.email)
+    expect(parseY(out).map((e) => e.start)).toContain('2026-01-20T13:00:00.000Z')
+  })
+})

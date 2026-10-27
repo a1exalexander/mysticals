@@ -44,6 +44,13 @@ export const cleanEmail = (v: unknown): string =>
 
 const sameEmail = (a: unknown, b: unknown): boolean => cleanEmail(a) !== '' && cleanEmail(a) === cleanEmail(b)
 
+/** ATTENDEE/ORGANIZER address: the mailto: value, else its EMAIL parameter (iCloud uses urn:uuid: or principal values). */
+const addrOf = (p: ICAL.Property): string => {
+  const v = String(p.getFirstValue() ?? '')
+  const param = p.getParameter('email')
+  return /^mailto:/i.test(v) || !param ? cleanEmail(v) : cleanEmail(param)
+}
+
 function parse(ics: string): ICAL.Component {
   const root = new ICAL.Component(ICAL.parse(ics))
   // Register the object's own VTIMEZONEs so TZID times convert correctly.
@@ -85,10 +92,10 @@ function touch(vevent: ICAL.Component): void {
 function mapPeople(vevent: ICAL.Component, email: string) {
   const orgProp = vevent.getFirstProperty('organizer')
   const organizer = orgProp
-    ? { email: cleanEmail(orgProp.getFirstValue()), name: (orgProp.getParameter('cn') as string) || undefined }
+    ? { email: addrOf(orgProp), name: (orgProp.getParameter('cn') as string) || undefined }
     : undefined
   const attendees: Attendee[] = vevent.getAllProperties('attendee').map((p) => {
-    const a: Attendee = { email: cleanEmail(p.getFirstValue()), status: mapPartStat(p.getParameter('partstat')) }
+    const a: Attendee = { email: addrOf(p), status: mapPartStat(p.getParameter('partstat')) }
     const cn = p.getParameter('cn')
     if (cn) a.name = String(cn)
     if (sameEmail(a.email, email)) a.self = true
@@ -300,6 +307,8 @@ function applyRule(root: ICAL.Component, master: ICAL.Component, event: CalEvent
   const slots = new Set<number>()
   const it = (master.getFirstPropertyValue('rrule') as ICAL.Recur).iterator(dtstart(master))
   for (let t = it.next(), n = 0; t && ms(t) <= last && n < MAX_INSTANCES; t = it.next(), n++) slots.add(ms(t))
+  // RDATEs are slots too: their overrides stay.
+  for (const t of master.getAllProperties('rdate').flatMap((p) => p.getValues())) if (t instanceof ICAL.Time) slots.add(ms(t))
   for (const o of overrides) if (!slots.has(ms(rid(o)))) root.removeSubcomponent(o)
   mapDates(master, 'exdate', (t) => (slots.has(ms(t)) ? t : null))
 }
@@ -310,7 +319,7 @@ function applyRule(root: ICAL.Component, master: ICAL.Component, event: CalEvent
  */
 function setAttendees(v: ICAL.Component, emails: string[], email: string): void {
   const wanted = [...new Set(emails.map(cleanEmail).filter(Boolean))]
-  const existing = new Map(v.getAllProperties('attendee').map((p) => [cleanEmail(p.getFirstValue()), p]))
+  const existing = new Map(v.getAllProperties('attendee').map((p) => [addrOf(p), p]))
   v.removeAllProperties('attendee')
   for (const e of wanted) {
     let p = existing.get(e)
@@ -396,7 +405,8 @@ function writeEdit(v: ICAL.Component, event: CalEvent, email: string, start: ICA
   setText(v, 'summary', event.title)
   setText(v, 'location', event.location)
   setText(v, 'description', event.description)
-  setText(v, 'color', eventColor(event.colorId)?.css)
+  // A COLOR outside the palette parses to no colorId: keep it unless the colour was changed here.
+  if (colorIdFromCss(v.getFirstPropertyValue('color')) !== event.colorId) setText(v, 'color', eventColor(event.colorId)?.css)
   setAttendees(
     v,
     event.attendees.map((a) => a.email),
@@ -503,7 +513,7 @@ function mapDates(v: ICAL.Component, name: 'exdate' | 'rdate', map: (t: ICAL.Tim
 }
 
 const attendeeKey = (v: ICAL.Component): string =>
-  v.getAllProperties('attendee').map((p) => cleanEmail(p.getFirstValue())).sort().join(',')
+  v.getAllProperties('attendee').map(addrOf).sort().join(',')
 
 /**
  * Apply the edit of one instance to a whole series: the master takes the edited fields and its slots
@@ -647,6 +657,8 @@ export function applyDeleteFollowing(raw: CaldavRaw): string | null {
     const t = v.getFirstPropertyValue('recurrence-id') as ICAL.Time | null
     if (t && t.toJSDate().getTime() >= cut) root.removeSubcomponent(v)
   }
+  // UNTIL only bounds the RRULE: RDATEs from the cut on go too.
+  mapDates(master, 'rdate', (t) => (t.toJSDate().getTime() < cut ? t : null))
   // RFC 5545: UNTIL is a DATE for all-day series, UTC for zoned ones, local for floating ones.
   let until = time.clone()
   if (until.isDate) until.adjust(-1, 0, 0, 0)
@@ -675,7 +687,7 @@ export function applyRespond(raw: CaldavRaw, email: string, status: Exclude<Part
   let found = false
   for (const v of root.getAllSubcomponents('vevent')) {
     for (const p of v.getAllProperties('attendee')) {
-      if (!sameEmail(p.getFirstValue(), email)) continue
+      if (!sameEmail(addrOf(p), email)) continue
       p.setParameter('partstat', PARTSTAT_OUT[status])
       p.removeParameter('rsvp')
       p.removeParameter('schedule-status')
