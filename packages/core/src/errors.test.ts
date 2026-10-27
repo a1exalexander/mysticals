@@ -10,6 +10,7 @@ describe('AppError', () => {
     expect(new AppError('error.readOnly').message).toBe('calendar is read-only')
     expect(new AuthError('error.caldav.wrongPassword').message).toBe('CalDAV login failed: wrong username or password')
     expect(new TimeoutError('error.timeout', { host: 'dav.example.com' }).message).toBe('Request to dav.example.com timed out')
+    expect(new AppError('error.caldav.noEmail').message).toBe('Could not determine the account email; use your full email address as the username')
   })
   it('subclasses stay recognisable', () => {
     const e = new AuthError('error.google.rejected')

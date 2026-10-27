@@ -282,6 +282,6 @@ export async function verifyCaldav(input: CaldavAccountInput): Promise<{ email: 
   const mails = (await addressesOf(c)) ?? []
   const login = cleanEmail(input.username)
   const email = mails.find((m) => m === login) ?? mails[0] ?? (login.includes('@') ? login : undefined)
-  if (!email) throw new Error('Could not determine the account email; use your full email address as the username')
+  if (!email) throw new AppError('error.caldav.noEmail')
   return { email, aliases: aliasesOf(mails, email) }
 }

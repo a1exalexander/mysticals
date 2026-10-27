@@ -25,6 +25,7 @@ export const uk: Record<Key, Msg> = {
   'error.caldav.wrongPassword': 'Не вдалося увійти в CalDAV: неправильне ім’я користувача або пароль',
   'error.caldav.noService': 'Не вдалося знайти службу CalDAV за адресою {url}: {error}',
   'error.caldav.passwordRevoked': 'Не вдалося увійти в CalDAV: пароль змінено або відкликано',
+  'error.caldav.noEmail': 'Не вдалося визначити адресу облікового запису; вкажіть повну адресу електронної пошти як ім’я користувача',
   'error.caldav.createConflict': 'Не вдалося створити подію: її змінено на сервері, оновіть і спробуйте ще раз',
   'error.caldav.updateConflict': 'Не вдалося змінити подію: її змінено на сервері, оновіть і спробуйте ще раз',
   'error.caldav.deleteConflict': 'Не вдалося видалити подію: її змінено на сервері, оновіть і спробуйте ще раз',

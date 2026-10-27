@@ -24,6 +24,7 @@ export const en = {
   'error.caldav.wrongPassword': 'CalDAV login failed: wrong username or password',
   'error.caldav.noService': 'Could not find a CalDAV service at {url}: {error}',
   'error.caldav.passwordRevoked': 'CalDAV login failed: the password was changed or revoked',
+  'error.caldav.noEmail': 'Could not determine the account email; use your full email address as the username',
   'error.caldav.createConflict': 'Create event failed: the event was changed on the server, refresh and try again',
   'error.caldav.updateConflict': 'Update event failed: the event was changed on the server, refresh and try again',
   'error.caldav.deleteConflict': 'Delete event failed: the event was changed on the server, refresh and try again',
