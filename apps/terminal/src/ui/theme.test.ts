@@ -15,4 +15,9 @@ describe('ansiOf', () => {
     expect(ansiOf('#ff0000')).toBe('red')
     expect(ansiOf('#1a73e8')).toBe('blue')
   })
+
+  it('leaves near-white to the theme foreground, so it shows on light backgrounds too', () => {
+    expect(ansiOf('#ffffff')).toBeUndefined()
+    expect(ansiOf('#f0f0f0')).toBeUndefined()
+  })
 })

@@ -20,14 +20,15 @@ export const C = {
 /**
  * Nearest ANSI color for a calendar/account hex color, so events follow the terminal theme too.
  * Hue buckets; orange and pink take the bright variants so the default account palette stays distinct.
+ * Near-white is the theme's own foreground (undefined), not `white`, which vanishes on a light background.
  */
-export function ansiOf(hex: string): string {
+export function ansiOf(hex: string): string | undefined {
   const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex)
   if (!m) return C.muted
   const [r, g, b] = m.slice(1).map((x) => parseInt(x, 16) / 255)
   const max = Math.max(r, g, b)
   const d = max - Math.min(r, g, b)
-  if (d < 0.15) return max > 0.8 ? 'white' : C.muted
+  if (d < 0.15) return max > 0.8 ? undefined : C.muted
   const h = (max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4) * 60
   if (h < 15 || h >= 345) return 'red'
   if (h < 45) return 'yellowBright' // orange
