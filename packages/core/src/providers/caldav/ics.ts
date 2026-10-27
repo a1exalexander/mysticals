@@ -74,9 +74,12 @@ function setText(vevent: ICAL.Component, name: string, value: string | undefined
   if (value) vevent.addPropertyWithValue(name, value)
 }
 
+/** Now in UTC: DTSTAMP, CREATED and LAST-MODIFIED must be UTC (ICAL.Time.now() is floating local time). */
+const utcNow = (): ICAL.Time => ICAL.Time.fromJSDate(new Date(), true)
+
 function touch(vevent: ICAL.Component): void {
-  vevent.updatePropertyWithValue('dtstamp', ICAL.Time.now())
-  vevent.updatePropertyWithValue('last-modified', ICAL.Time.now())
+  vevent.updatePropertyWithValue('dtstamp', utcNow())
+  vevent.updatePropertyWithValue('last-modified', utcNow())
 }
 
 function mapPeople(vevent: ICAL.Component, email: string) {
@@ -178,8 +181,8 @@ export function buildIcs(uid: string, input: NewEventInput, email: string): stri
   root.addPropertyWithValue('version', '2.0')
   const v = new ICAL.Component('vevent')
   v.addPropertyWithValue('uid', uid)
-  v.addPropertyWithValue('dtstamp', ICAL.Time.now())
-  v.addPropertyWithValue('created', ICAL.Time.now())
+  v.addPropertyWithValue('dtstamp', utcNow())
+  v.addPropertyWithValue('created', utcNow())
   v.addPropertyWithValue('sequence', 0)
   setTime(v, 'dtstart', fromIso(input.start, input.allDay))
   setTime(v, 'dtend', fromIso(input.end, input.allDay))
@@ -530,7 +533,7 @@ export function applySplitFollowing(event: CalEvent, email: string, uid: string)
   for (const v of root.getAllSubcomponents('vevent')) {
     v.updatePropertyWithValue('uid', uid)
     v.updatePropertyWithValue('sequence', -1) // rewriteSeries bumps every VEVENT to 0
-    v.updatePropertyWithValue('created', ICAL.Time.now())
+    v.updatePropertyWithValue('created', utcNow())
   }
   rewriteSeries(root, master, edited, event, email, shift, slot)
   applyRule(root, master, event)
@@ -605,7 +608,7 @@ export function applyRespond(raw: CaldavRaw, email: string, status: Exclude<Part
       p.removeParameter('schedule-status')
       found = true
     }
-    if (found) v.updatePropertyWithValue('dtstamp', ICAL.Time.now())
+    if (found) v.updatePropertyWithValue('dtstamp', utcNow())
   }
   if (!found) throw new Error('This account is not an attendee of the event')
   return root.toString()

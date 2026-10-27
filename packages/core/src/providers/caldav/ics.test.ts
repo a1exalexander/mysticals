@@ -162,6 +162,10 @@ describe('buildIcs', () => {
     ])
   })
 
+  it('stamps DTSTAMP and CREATED in UTC', () => {
+    expect(buildIcs('uid-4', base, ctx.email)).toMatch(/DTSTAMP:\d{8}T\d{6}Z\r\nCREATED:\d{8}T\d{6}Z/)
+  })
+
   it('writes all-day events as VALUE=DATE', () => {
     const ics = buildIcs('uid-3', { ...base, allDay: true, start: '2026-01-20', end: '2026-01-21' }, ctx.email)
     expect(ics).toMatch(/DTSTART;VALUE=DATE:20260120/)
