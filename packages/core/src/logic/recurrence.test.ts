@@ -27,6 +27,15 @@ describe('toRRule / fromRRule', () => {
     expect(fromRRule(`FREQ=DAILY;UNTIL=${cut}`, WED).until).toBe('2026-10-04')
   })
 
+  it('keeps a rule whose WKST groups its days into other weeks than Monday does', () => {
+    // Every 2 weeks on Sun + Mon from Sun 4 Jan: 4, 5, 18, 19 Jan with WKST=SU, but 4, 12, 18, 26 Jan without it.
+    const google = 'FREQ=WEEKLY;WKST=SU;INTERVAL=2;BYDAY=SU,MO'
+    expect(fromRRule(google)).toEqual({ freq: 'weekly', rule: google })
+    // Where WKST makes no difference the rule stays editable.
+    expect(fromRRule('FREQ=WEEKLY;WKST=SU;INTERVAL=2;BYDAY=MO,TH')).toEqual({ freq: 'weekly', interval: 2, byDay: ['MO', 'TH'] })
+    expect(fromRRule('FREQ=WEEKLY;WKST=SU;BYDAY=SU,MO')).toEqual({ freq: 'weekly', byDay: ['MO', 'SU'] })
+  })
+
   it('keeps rules it cannot edit as-is', () => {
     expect(fromRRule('RRULE:FREQ=MONTHLY;BYDAY=2TU')).toEqual({ freq: 'monthly', rule: 'FREQ=MONTHLY;BYDAY=2TU' })
     expect(fromRRule('FREQ=HOURLY')).toEqual({ freq: 'daily', rule: 'FREQ=HOURLY' })
