@@ -248,6 +248,7 @@ export function Accounts({ onClose, height = Infinity }: AccountsProps) {
     return (
       <Box flexDirection="column" borderStyle="round" borderColor={C.muted} paddingX={1}>
         <AddCaldav
+          height={height - 2} // border
           onBack={() => setMode({ kind: 'list' })}
           onDone={() => {
             setMode({ kind: 'list' })

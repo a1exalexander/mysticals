@@ -166,6 +166,16 @@ describe('Accounts overlay', () => {
     expect(t.client.accounts.reauth).toHaveBeenCalledWith('personal')
     await t.waitFor('Personal reconnected')
   })
+  it('keeps the Add CalDAV fields and buttons on screen in a short panel', async () => {
+    t = renderWith(<Accounts onClose={() => {}} height={11} />)
+    await t.waitFor('add CalDAV')
+    await t.press('a')
+    const f = await t.waitFor('add account')
+    expect(f).toContain('App password')
+    expect(f).not.toContain('app-specific password')
+    expect(f.split('\n').length).toBeLessThanOrEqual(11)
+  })
+
   it('scrolls a long list with the cursor and keeps the heading and buttons on screen', async () => {
     const client = createTestClient()
     const many = Array.from({ length: 20 }, (_, i) => ({ id: `c${i}`, accountId: 'work', name: `Team ${i + 1}`, color: '#50fa7b', readOnly: false }))
