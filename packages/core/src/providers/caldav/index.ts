@@ -191,6 +191,18 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
     await write(event.calendarId, updateCalendarObject({ calendarObject: { url: raw.href, data: ics, etag: event.etag }, headers, fetch: davFetch }), what)
   }
 
+  /**
+   * The server's current copy of a series instance's object: every instance shares it, so one written since the last
+   * sync (another of a multi-selection, say) changed its ICS and etag. A single event is written as cached.
+   */
+  const current = async (event: CalEvent): Promise<CalEvent> => {
+    const raw = event.raw as CaldavRaw
+    if (!raw.recurrenceId) return event
+    const { headers } = await getConn()
+    const [obj] = await fetchCalendarObjects({ calendar: { url: event.calendarId }, objectUrls: [raw.href], headers, urlFilter: () => true, fetch: davFetch })
+    return obj?.data ? { ...event, etag: obj.etag, raw: { ...raw, ics: obj.data } } : event
+  }
+
   const provider: CalendarProvider = {
     async listCalendars() {
       const c = await getConn()
@@ -247,7 +259,8 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
       return reload(event.calendarId, href, undefined, event)
     },
 
-    async deleteEvent(event, scope = 'one') {
+    async deleteEvent(cached, scope = 'one') {
+      const event = scope === 'all' ? cached : await current(cached)
       const raw = event.raw as CaldavRaw
       const rest = !raw.recurrenceId || scope === 'all' ? null : scope === 'following' ? applyDeleteFollowing(raw) : applyDeleteInstance(raw)
       if (rest) return put(event, rest, 'Delete event')
@@ -259,10 +272,11 @@ export const createCaldavProvider: ProviderFactory = (ctx) => {
       return recurrenceOf(event.raw as CaldavRaw)
     },
 
-    async respond(event, status) {
+    async respond(cached, status, scope = 'one') {
       await getConn() // knows the account's addresses
+      const event = await current(cached)
       // The server performs RFC 6638 scheduling (iTIP REPLY to the organizer) on this PUT.
-      await put(event, applyRespond(event.raw as CaldavRaw, own(), status), 'Respond')
+      await put(event, applyRespond(event.raw as CaldavRaw, own(), status, scope), 'Respond')
       return reload(event.calendarId, (event.raw as CaldavRaw).href, event.id, event)
     },
 

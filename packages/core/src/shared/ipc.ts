@@ -37,7 +37,8 @@ export interface Api {
     create(input: NewEventInput): Promise<CalEvent>
     update(event: CalEvent, scope?: DeleteScope): Promise<CalEvent>
     delete(event: CalEvent, scope?: DeleteScope): Promise<void>
-    respond(event: CalEvent, status: Exclude<PartStat, 'needsAction'>): Promise<CalEvent>
+    /** The own reply; for a recurring invite, to this occurrence (default) or the whole series. */
+    respond(event: CalEvent, status: Exclude<PartStat, 'needsAction'>, scope?: ColorScope): Promise<CalEvent>
     /** Only the event's colour (an EVENT_COLORS id; null: the calendar's). Allowed on any writable calendar, invites too; tells no guests. */
     setColor(event: CalEvent, colorId: string | null, scope?: ColorScope): Promise<CalEvent>
     /** How the event's series repeats (null for a single event). Reads the provider, not the cache. */

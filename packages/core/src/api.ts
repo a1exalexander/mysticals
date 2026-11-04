@@ -273,10 +273,22 @@ export function createApi(store: AccountStore, sync: SyncEngine, deps: ApiDeps):
         const cached = cachedEvent(EventRef.parse(raw))
         return store.getProvider(cached.accountId).getRecurrence(cached)
       },
-      respond: async (raw, status) => {
+      respond: async (raw, status, scope) => {
         const cached = cachedEvent(EventRef.parse(raw))
-        const ev = await store.getProvider(cached.accountId).respond(cached, RsvpStatus.parse(status))
-        upsert(ev, cached.accountId, cached.calendarId)
+        const how = cached.recurringEventId ? ColorScope.parse(scope) : 'one'
+        const reply = RsvpStatus.parse(status)
+        const ev = await store.getProvider(cached.accountId).respond(cached, reply, how)
+        if (how === 'one') upsert(ev, cached.accountId, cached.calendarId)
+        else {
+          const series = cached.recurringEventId
+          applyLocal(cached.accountId, (events) =>
+            events.map((e) =>
+              e.recurringEventId === series && e.calendarId === cached.calendarId
+                ? { ...e, myStatus: reply, attendees: e.attendees.map((a) => (a.self ? { ...a, status: reply } : a)) }
+                : e
+            )
+          )
+        }
         syncOne(cached.accountId)
         return ev
       },

@@ -3,7 +3,7 @@ import { addDays, subDays } from 'date-fns'
 import type { CalEvent, PartStat } from '@shared/types'
 import { bus } from '../bus'
 import { useDirectory } from './ui/useDirectory'
-import { deleteEvent, name } from './EventMenu'
+import { deleteEvent, name, respondEvent, type Reply } from './EventMenu'
 import { eventColorOf } from '@mysticals/core/logic/colors'
 import { canEdit, cleanNotes, formatWhen, isHtml, linkify, ownerLine, STATUS_ICON } from '@mysticals/core/logic/details'
 import { eventBounds, eventKey } from '@mysticals/core/logic/layout'
@@ -18,7 +18,6 @@ import { currentLocale, errorText, t, useLocale } from '../i18n'
 import { useThemedColor } from '../theme'
 import { hour12 } from '../clock'
 
-type Reply = Exclude<PartStat, 'needsAction'>
 const REPLIES: [Reply, Key][] = [['accepted', 'rsvp.accept'], ['tentative', 'rsvp.maybe'], ['declined', 'rsvp.decline']]
 export const PARTSTAT: Record<PartStat, Key> = {
   accepted: 'partstat.accepted',
@@ -152,8 +151,8 @@ export function EventDetailsHost(): React.JSX.Element | null {
   }
   const respond = (status: Reply): Promise<void> =>
     run(async () => {
-      const updated = await window.api.events.respond(event, status)
-      if (still()) setOpened((o) => o && { ...o, event: updated })
+      const updated = await respondEvent(event, status)
+      if (updated && still()) setOpened((o) => o && { ...o, event: updated })
     })
   // The same flow as the right-click menu: gone at once with Undo in a toast; a series asks which part first.
   const remove = (): void => {

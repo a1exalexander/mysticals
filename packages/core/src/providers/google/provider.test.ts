@@ -424,6 +424,18 @@ describe('provider', () => {
     expect(e.myStatus).toBe('accepted')
   })
 
+  it('respond all: replies on the series master with its guest list', async () => {
+    const master = { ...invite, id: 'series1', recurringEventId: undefined }
+    respond = (c) => Response.json(c.method === 'GET' ? master : { ...master, attendees: c.body.attendees })
+    const e = await provider().respond(mapEvent(invite, 'acc1', 'primary'), 'declined', 'all')
+    expect(calls.map((c) => `${c.method} ${c.url.pathname}`)).toEqual([
+      'GET /calendar/v3/calendars/primary/events/series1',
+      'PATCH /calendar/v3/calendars/primary/events/series1'
+    ])
+    expect(calls[1].body.attendees[1]).toEqual({ ...invite.attendees![1], responseStatus: 'declined' })
+    expect(e).toMatchObject({ id: 'ev1', myStatus: 'declined' })
+  })
+
   it('respond: throws without a self attendee', async () => {
     respond = () => Response.json({})
     await expect(provider().respond(mapEvent(own, 'acc1', 'primary'), 'accepted')).rejects.toThrow()

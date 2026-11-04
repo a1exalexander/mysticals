@@ -11,6 +11,7 @@ import { Notes, PARTSTAT } from '../components/EventDetails'
 import { STATUS_ICON } from '@mysticals/core/logic/details'
 import { nav } from './nav'
 import { eventMenu } from '../components/EventMenu'
+import { useMarks } from '../selection'
 import '../components/EventDetails.css'
 import type { ColorOf } from './CalendarView'
 import './Agenda.css'
@@ -72,6 +73,7 @@ function useNow(): Date {
 export function Agenda({ day, events, colorOf, ahead, onAhead }: {
   day: Date; events: CalEvent[]; colorOf: ColorOf; ahead: boolean; onAhead: (open: boolean) => void
 }): React.JSX.Element {
+  useMarks()
   const now = useNow()
   const isToday = isSameDay(day, now)
   const { calendars } = useDirectory()

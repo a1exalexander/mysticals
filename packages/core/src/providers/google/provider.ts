@@ -414,18 +414,22 @@ export function createGoogleProviderImpl(ctx: ProviderContext): CalendarProvider
       return line ? fromRRule(line, master.start.dateTime ?? master.start.date) : null
     },
 
-    async respond(event, status) {
+    async respond(event, status, scope = 'one') {
+      // The whole series: the reply goes on its master, with the master's guest list.
+      const series = scope === 'all' ? event.recurringEventId : undefined
       const attendees: GAttendee[] =
-        rawOf(event)?.attendees ??
+        (series ? (await api<GEvent>('GET', eventPath(event.calendarId, series))).attendees : rawOf(event)?.attendees) ??
         event.attendees.map((a) => ({ email: a.email, displayName: a.name, responseStatus: a.status, self: a.self, organizer: a.organizer }))
       if (!attendees.some((a) => a.self)) throw new AppError('error.notAttendee')
       const g = await api<GEvent>(
         'PATCH',
-        eventPath(event.calendarId, event.id),
+        eventPath(event.calendarId, series ?? event.id),
         { sendUpdates: 'all' },
         { attendees: attendees.map((a) => (a.self ? { ...a, responseStatus: status } : a)) }
       )
-      return map(g, event.calendarId)
+      // The master's PATCH answers with the master; the instance keeps its own id and time (like setColor).
+      if (!series) return map(g, event.calendarId)
+      return { ...event, myStatus: status, attendees: event.attendees.map((a) => (a.self ? { ...a, status } : a)) }
     }
   }
 }

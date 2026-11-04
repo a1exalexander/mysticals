@@ -189,6 +189,16 @@ describe('applyRespond', () => {
     expect(out.match(/BEGIN:VEVENT/g)).toHaveLength(2)
   })
 
+  it('"one" answers just the instance (an override at its own time); "all" the series', () => {
+    const at = { ...raw, recurrenceId: '2026-01-06T09:00:00Z' }
+    const mine = (ics: string) => parseEvents(ics, HREF, undefined, ctx, JAN).map((e) => [e.start, e.myStatus])
+    const before = mine(DAILY)
+    const one = mine(applyRespond(at, ctx.email, 'accepted', 'one'))
+    expect(one.map(([s]) => s)).toEqual(before.map(([s]) => s))
+    expect(one.filter(([, st]) => st === 'accepted')).toEqual([[before[1][0], 'accepted']])
+    expect(mine(applyRespond(at, ctx.email, 'accepted', 'all')).every(([, st]) => st === 'accepted')).toBe(true)
+  })
+
   it('throws when the account is not an attendee', () => {
     expect(() => applyRespond(raw, 'stranger@else.example', 'accepted')).toThrow(/not an attendee/)
   })
@@ -474,6 +484,8 @@ describe('applyColor', () => {
   it('"one" recolours just the instance (an override); "all" the series', () => {
     const one = parse(applyColor(raw(DAILY, '2026-01-06T09:00:00Z'), '5', 'one'))
     expect(one.map((e) => e.colorId)).toEqual([undefined, '5', undefined, undefined])
+    // The new override stays at the instance's own time, not the series' first.
+    expect(one.map((e) => e.start)).toEqual(parse(DAILY).map((e) => e.start))
     const all = parse(applyColor(raw(DAILY, '2026-01-06T09:00:00Z'), '5', 'all'))
     // The moved instance is an override with its own (no) colour.
     expect(all.map((e) => e.colorId)).toEqual(['5', '5', undefined, '5'])
