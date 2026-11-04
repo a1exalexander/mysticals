@@ -1,12 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { CalEvent, DeleteScope } from '@shared/types'
+import type { CalEvent, DeleteScope, PartStat } from '@shared/types'
 import { bus, type BusEvents } from '../bus'
+import { bulkTargets, isPick, selection } from '../selection'
 import { useDirectory } from './ui/useDirectory'
 import { onLaterScroll } from './ui/usePopover'
 import { EventColors } from './EventColors'
 import { eventColorOf } from '@mysticals/core/logic/colors'
 import { canEdit, formatWhen } from '@mysticals/core/logic/details'
 import { copyInput, type PasteSlot } from '@mysticals/core/logic/copy'
+import { eventKey } from '@mysticals/core/logic/layout'
+import type { Key } from '@mysticals/core/i18n'
 import { currentLocale, errorText, t, useLocale } from '../i18n'
 import { hour12 } from '../clock'
 import './EventMenu.css'
@@ -19,12 +22,32 @@ let copied: CalEvent | null = null
 /** An event's title, or "Untitled" for one without. */
 export const name = (e: CalEvent): string => e.title || t('common.untitled')
 
-/** Spread onto an event pill: right-click opens its menu (instead of the window's native one). */
-export function eventMenu(event: CalEvent): Pick<React.HTMLAttributes<HTMLElement>, 'onContextMenu'> {
+/** The own reply to an invite. */
+export type Reply = Exclude<PartStat, 'needsAction'>
+
+/**
+ * Spread onto an event pill: right-click opens its menu (instead of the window's native one), for the whole selection
+ * when the pill is in it; ⌘-click (Ctrl-click off macOS) picks it instead of opening it, a plain click drops the
+ * selection. Marks the pill picked (`data-selected`) and busy while an action on it runs (`aria-busy`, a spinner): the
+ * view re-renders on those through `useMarks`.
+ */
+export function eventMenu(
+  event: CalEvent
+): Pick<React.HTMLAttributes<HTMLElement>, 'onContextMenu' | 'onClickCapture' | 'aria-busy'> & { 'data-event-key': string; 'data-selected'?: boolean } {
   return {
+    'data-event-key': eventKey(event),
+    'data-selected': selection.has(event) || undefined,
+    'aria-busy': selection.isBusy(event) || undefined,
+    onClickCapture: (e) => {
+      if (!isPick(e)) return selection.clear()
+      e.preventDefault()
+      e.stopPropagation()
+      selection.toggle(event)
+    },
     onContextMenu: (e) => {
       e.preventDefault()
       e.stopPropagation()
+      if (!selection.has(event)) selection.clear()
       bus.emit('menu:event', { event, x: e.clientX, y: e.clientY })
     }
   }
@@ -101,7 +124,7 @@ function createCopy(e: CalEvent, at: PasteSlot | undefined, done: 'toast.duplica
  */
 export function deleteEvent(e: CalEvent): void {
   const run = (scope: DeleteScope): void =>
-    void window.api.events.delete(e, scope).then(
+    void selection.track(e, window.api.events.delete(e, scope)).then(
       () =>
         bus.emit('toast', {
           text: t(scope === 'all' ? 'toast.deletedAll' : scope === 'following' ? 'toast.deletedFollowing' : 'toast.deleted', { title: name(e) }),
@@ -120,6 +143,57 @@ export function deleteEvent(e: CalEvent): void {
     )
   if (e.recurringEventId) bus.emit('scope:ask', { title: t('scope.delete'), danger: true, onPick: run, onCancel: () => {} })
   else run('one')
+}
+
+/**
+ * Answers an invite, the same from the menu, the details popover and the invitations: a recurring one first asks for
+ * this occurrence or the whole series. Resolves with the updated event, or null when the question was cancelled;
+ * rejects when the reply failed (the caller shows it).
+ */
+export function respondEvent(e: CalEvent, status: Reply): Promise<CalEvent | null> {
+  return new Promise((resolve, reject) => {
+    const run = (scope: DeleteScope): void =>
+      void selection.track(e, window.api.events.respond(e, status, scope === 'all' ? 'all' : 'one')).then(resolve, reject)
+    if (e.recurringEventId) bus.emit('scope:ask', { title: t('scope.respond'), scopes: ['one', 'all'], onPick: run, onCancel: () => resolve(null) })
+    else run('one')
+  })
+}
+
+/** From the menu: a failed reply shows in a toast. */
+const reply = (e: CalEvent, status: Reply): void =>
+  void respondEvent(e, status).catch((err) => bus.emit('toast', { text: t('toast.respondFailed', { title: name(e), error: errorText(err) }), error: true }))
+
+/**
+ * Deletes or answers every picked event at once. With a recurring one among them, asks once which part of the series
+ * goes for all of them. Runs one after another: occurrences of a CalDAV series share one object on the server.
+ * ponytail: no Undo for a bulk change; one summary toast.
+ */
+function runBulk(events: CalEvent[], action: 'delete' | Reply): void {
+  selection.clear()
+  if (!events.length) return
+  const del = action === 'delete'
+  const run = async (scope: DeleteScope): Promise<void> => {
+    const targets = bulkTargets(events, scope)
+    const failed: unknown[] = []
+    for (const e of targets) {
+      await selection
+        .track<unknown>(e, del ? window.api.events.delete(e, scope) : window.api.events.respond(e, action, scope === 'all' ? 'all' : 'one'))
+        .catch((err: unknown) => void failed.push(err))
+    }
+    bus.emit(
+      'toast',
+      failed.length
+        ? { text: t('toast.bulkFailed', { n: failed.length, total: targets.length, error: errorText(failed[0]) }), error: true }
+        : { text: t(del ? 'toast.deletedMany' : 'toast.respondedMany', { n: targets.length }) }
+    )
+  }
+  if (!events.some((e) => e.recurringEventId)) return void run('one')
+  bus.emit('scope:ask', {
+    title: t(del ? 'scope.deleteMany' : 'scope.respondMany'),
+    ...(del ? { danger: true } : { scopes: ['one', 'all'] as DeleteScope[] }),
+    onPick: (scope) => void run(scope),
+    onCancel: () => {}
+  })
 }
 
 /**
@@ -236,7 +310,25 @@ export function EventMenuHost(): React.JSX.Element | null {
   // 'colors': the event's colour swatches, one row of the menu.
   const items: (Item | 'sep' | 'colors')[] = []
   let calendarColor = ''
-  if (menu.kind === 'event') {
+  const deletable = (e: CalEvent): boolean =>
+    canEdit(
+      e,
+      accounts.find((a) => a.id === e.accountId),
+      calendars.find((c) => c.accountId === e.accountId && c.id === e.calendarId)
+    )
+  const replies = (enabled: (s: Reply) => boolean, run: (s: Reply) => void): Item[] =>
+    REPLIES.map(([s, label, icon]) => ({ id: `rsvp-${s}`, label: t(label), icon, disabled: !enabled(s), run: () => run(s) }))
+  // Right-click on a picked event: the actions for all picked ones.
+  const many = menu.kind === 'event' && selection.size() > 1 && selection.has(menu.event) ? selection.events() : null
+  if (many) {
+    const invites = many.filter((e) => e.myStatus)
+    const gone = many.filter(deletable)
+    items.push(
+      ...replies(() => invites.length > 0, (s) => runBulk(invites, s)),
+      'sep',
+      { id: 'delete', label: t('menu.deleteMany', { n: gone.length || many.length }), icon: <DeleteIcon />, danger: true, disabled: !gone.length, run: () => runBulk(gone, 'delete') }
+    )
+  } else if (menu.kind === 'event') {
     const e = menu.event
     const account = accounts.find((a) => a.id === e.accountId)
     const calendar = calendars.find((c) => c.accountId === e.accountId && c.id === e.calendarId)
@@ -260,6 +352,7 @@ export function EventMenuHost(): React.JSX.Element | null {
     )
     // Not canEdit: an invitee may recolour its own copy too.
     if (writable) items.push('colors', 'sep')
+    if (e.myStatus) items.push(...replies((s) => s !== e.myStatus, (s) => reply(e, s)), 'sep')
     items.push({ id: 'delete', label: t('common.delete'), icon: <DeleteIcon />, danger: true, disabled: !editable, run: () => deleteEvent(e) })
     calendarColor = eventColorOf({}, calendar, account)
   } else {
@@ -337,6 +430,28 @@ export function EventMenuHost(): React.JSX.Element | null {
     </div>
   )
 }
+
+const AcceptIcon = (): React.JSX.Element => (
+  <Icon>
+    <path d="M5 12.5l4.5 4.5L19 7.5" />
+  </Icon>
+)
+const MaybeIcon = (): React.JSX.Element => (
+  <Icon>
+    <path d="M9.2 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4.5" />
+    <path d="M12 18.5h.01" />
+  </Icon>
+)
+const DeclineIcon = (): React.JSX.Element => (
+  <Icon>
+    <path d="M6 6l12 12M18 6L6 18" />
+  </Icon>
+)
+const REPLIES: [Reply, Key, React.JSX.Element][] = [
+  ['accepted', 'rsvp.accept', <AcceptIcon key="a" />],
+  ['tentative', 'rsvp.maybe', <MaybeIcon key="m" />],
+  ['declined', 'rsvp.decline', <DeclineIcon key="d" />]
+]
 
 const Icon = ({ children }: { children: React.ReactNode }): React.JSX.Element => (
   <svg className="ev-menu-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

@@ -611,6 +611,22 @@ body[data-dragging='col-resize'] .app { transition: none; }
 .ev.is-past { opacity: 0.35; filter: saturate(0.5); }
 .ev.is-past.is-declined { opacity: 0.3; }
 .ev.is-past:hover { opacity: 0.85; }
+/* Picked with ⌘/Ctrl-click for one right-click action: an accent wash under a ring drawn inside (the scrollers and the
+   neighbouring pills would clip one outside). :root lifts it over the agenda's hover background and pending stripes. */
+:root :is(.ev, .ag-chip, .ag-row)[data-selected] {
+  outline: 2px solid var(--accent); outline-offset: -2px;
+  background-image: linear-gradient(color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent) 22%, transparent));
+}
+/* An action on the event in flight (a reply, a delete): a small spinner in its top-right corner. Not on the thin rail,
+   whose ::after is its hit area. */
+:root :is(.ev, .ag-chip, .ag-row)[aria-busy='true']:not(.ev-rail) { cursor: progress; }
+:root :is(.ev, .ag-chip, .ag-row)[aria-busy='true']:not(.ev-rail)::after {
+  content: ''; position: absolute; top: 3px; right: 3px; width: 9px; height: 9px; box-sizing: border-box;
+  border: 1.5px solid currentColor; border-top-color: transparent; border-radius: 50%;
+  animation: spin 0.7s linear infinite; pointer-events: none;
+}
+/* The timed blocks are placed absolutely already; the rest become the spinner's box. */
+:is(.mg-ev, .ev-allday, .ag-chip, .ag-row)[aria-busy='true'] { position: relative; }
 
 /* Week / day time grid */
 .tg { flex: 1; overflow-y: auto; position: relative; border-top: 1px solid var(--line); }

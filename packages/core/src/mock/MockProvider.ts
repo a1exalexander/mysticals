@@ -143,11 +143,11 @@ export class MockProvider implements CalendarProvider {
     return structuredClone(this.events.find((e) => e.id === event.id)!)
   }
 
-  async respond(event: CalEvent, status: Exclude<PartStat, 'needsAction'>): Promise<CalEvent> {
-    const ev = this.events.find((e) => e.id === event.id)
-    if (!ev) throw new Error('not found')
-    ev.myStatus = status
-    ev.attendees = ev.attendees.map((a) => (a.self ? { ...a, status } : a))
-    return structuredClone(ev)
+  async respond(event: CalEvent, status: Exclude<PartStat, 'needsAction'>, scope: ColorScope = 'one'): Promise<CalEvent> {
+    const series = event.recurringEventId
+    const hit = (e: CalEvent): boolean => e.id === event.id || (scope === 'all' && !!series && e.recurringEventId === series)
+    if (!this.events.some(hit)) throw new Error('not found')
+    this.events = this.events.map((e) => (hit(e) ? { ...e, myStatus: status, attendees: e.attendees.map((a) => (a.self ? { ...a, status } : a)) } : e))
+    return structuredClone(this.events.find((e) => e.id === event.id)!)
   }
 }

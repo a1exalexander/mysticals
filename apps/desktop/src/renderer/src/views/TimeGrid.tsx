@@ -4,6 +4,7 @@ import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
 import { eventButton, eventMenu, name, slotMenu } from '../components/EventMenu'
+import { useMarks } from '../selection'
 import { eventPlace } from '@mysticals/core/logic/meeting'
 import { nav } from './nav'
 import { dragRange, eventBounds, eventKey, eventsOnDay, fitColumns, isPast, layoutDayLong, RAIL, slotAt, statusClass, ymd } from '@mysticals/core/logic/layout'
@@ -78,6 +79,7 @@ interface Moving {
 }
 
 export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Props): React.JSX.Element {
+  useMarks()
   const scroller = useRef<HTMLDivElement>(null)
   const body = useRef<HTMLDivElement>(null)
   // Width of the day columns together, for how many blocks fit side by side.
@@ -100,7 +102,7 @@ export function TimeGrid({ days, events, colorOf, canDrag, moveTo, todays }: Pro
   const onEventDown = (e: CalEvent, dayIdx: number, mode: Moving['mode']) => (ev: React.MouseEvent<HTMLElement>) => {
     ev.stopPropagation()
     const span = sameDaySpan(e, days[dayIdx])
-    if (ev.button !== 0 || !span || !moveTo || !canDrag?.(e) || !scroller.current) return
+    if (ev.button !== 0 || ev.metaKey || ev.ctrlKey || !span || !moveTo || !canDrag?.(e) || !scroller.current) return
     ev.preventDefault() // no text selection while dragging
     const cols = [...scroller.current.querySelectorAll<HTMLElement>('.tg-col')]
     const minuteIn = (y: number, col: HTMLElement): number => ((y - col.getBoundingClientRect().top) / HOUR) * 60

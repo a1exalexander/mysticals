@@ -4,6 +4,7 @@ import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
 import { tooltipHover } from '../components/EventTooltip'
 import { eventButton, eventMenu, name, slotMenu } from '../components/EventMenu'
+import { useMarks } from '../selection'
 import { nav } from './nav'
 import { eventBounds, eventKey, eventsOnDay, isPast, monthGrid, monthShown, statusClass, ymd } from '@mysticals/core/logic/layout'
 import type { CanDrag, ColorOf, MoveTo } from './CalendarView'
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): React.JSX.Element {
+  useMarks()
   const days = monthGrid(date, weekStartsOn())
   const [now, setNow] = useState(() => new Date())
   // Dragging an event to another day: its key and the cell (index in `days`) under the pointer.
@@ -39,7 +41,7 @@ export function MonthGrid({ date, events, colorOf, canDrag, moveTo }: Props): Re
   }, [])
 
   const onEventDown = (e: CalEvent, from: number) => (ev: React.MouseEvent<HTMLElement>) => {
-    if (ev.button !== 0 || !moveTo || !canDrag?.(e)) return
+    if (ev.button !== 0 || ev.metaKey || ev.ctrlKey || !moveTo || !canDrag?.(e)) return
     ev.preventDefault()
     const x0 = ev.clientX
     const y0 = ev.clientY

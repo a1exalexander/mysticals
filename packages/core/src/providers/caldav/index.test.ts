@@ -12,6 +12,7 @@ const dav = vi.hoisted(() => ({
   addresses: ['mailto:u@example.com'] as string[],
   addressLookups: 0,
   reports: 0,
+  putEtags: [] as (string | undefined)[],
   onReport: undefined as (() => Promise<unknown>) | undefined
 }))
 vi.mock('tsdav', async (importOriginal) => {
@@ -35,7 +36,7 @@ vi.mock('tsdav', async (importOriginal) => {
       return [{ url: `${o.calendar.url}a.ics`, etag: '"1"', data: ics }]
     }) as typeof real.fetchCalendarObjects,
     createCalendarObject: (async (o) => (dav.cals ? new Response(null, { status: 201 }) : real.createCalendarObject(o))) as typeof real.createCalendarObject,
-    updateCalendarObject: (async (o) => (dav.cals ? new Response(null, { status: 204 }) : real.updateCalendarObject(o))) as typeof real.updateCalendarObject,
+    updateCalendarObject: (async (o) => (dav.cals ? (dav.putEtags.push(o.calendarObject.etag), new Response(null, { status: 204 })) : real.updateCalendarObject(o))) as typeof real.updateCalendarObject,
     deleteCalendarObject: (async (o) => (dav.cals ? new Response(null, { status: 204 }) : real.deleteCalendarObject(o))) as typeof real.deleteCalendarObject
   }
 })
@@ -188,6 +189,18 @@ describe('account addresses', () => {
     expect(ev!.myStatus).toBe('needsAction')
     await p.respond(ev!, 'accepted')
     expect(dav.addressLookups).toBe(1)
+  })
+
+  it('writes a series instance on the server\'s current copy (another instance may have changed it)', async () => {
+    const p = createCaldavProvider({ accountId: 'acc', email: 'u@example.com', credentials, saveCredentials: async () => {} })
+    await p.listCalendars()
+    const [ev] = await p.listEvents(cal, range)
+    dav.putEtags = []
+    const stale = { ...ev!, etag: '"0"', raw: { ...(ev!.raw as object), recurrenceId: '2026-01-01T10:00:00Z' } }
+    await p.respond(stale, 'accepted')
+    await p.deleteEvent(stale, 'one')
+    await p.respond({ ...ev!, etag: '"0"' }, 'accepted')
+    expect(dav.putEtags).toEqual(['"1"', '"1"', '"0"'])
   })
 
   it('uses stored addresses without asking the server', async () => {

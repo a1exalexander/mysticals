@@ -88,7 +88,7 @@ describe('createApi isolation', () => {
   it('respond goes through the receiving account with the cached event', async () => {
     const { api, providers, invite } = setup()
     await api.events.respond({ ...invite, raw: 'forged', etag: 'forged' }, 'accepted')
-    expect(providers.work.respond).toHaveBeenCalledWith(expect.objectContaining({ raw: 'ICS', etag: 'e1' }), 'accepted')
+    expect(providers.work.respond).toHaveBeenCalledWith(expect.objectContaining({ raw: 'ICS', etag: 'e1' }), 'accepted', 'one')
     expect(providers.personal.respond).not.toHaveBeenCalled()
   })
 

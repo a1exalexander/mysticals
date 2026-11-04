@@ -10,7 +10,8 @@ export interface CalendarProvider {
   createEvent(calendarId: string, input: NewEventInput): Promise<CalEvent>
   updateEvent(event: CalEvent, scope?: DeleteScope): Promise<CalEvent>
   deleteEvent(event: CalEvent, scope?: DeleteScope): Promise<void>
-  respond(event: CalEvent, status: Exclude<PartStat, 'needsAction'>): Promise<CalEvent>
+  /** The own reply, for this instance (default) or the whole series. */
+  respond(event: CalEvent, status: Exclude<PartStat, 'needsAction'>, scope?: ColorScope): Promise<CalEvent>
   /** Only the event's colour (null: the calendar's), for this instance or its whole series; tells no guests. */
   setColor(event: CalEvent, colorId: string | null, scope: ColorScope): Promise<CalEvent>
   /** The rule of the event's series, null for a single event. */

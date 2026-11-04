@@ -146,8 +146,8 @@ export function createMockApi(onChanged: (accountId: string) => void, onAction?:
         onChanged(ev.accountId)
       },
       recurrence: async (ev) => own(ev.accountId, ev.calendarId).getRecurrence(ev),
-      respond: async (ev, status) => {
-        const r = await own(ev.accountId, ev.calendarId).respond(ev, status)
+      respond: async (ev, status, scope) => {
+        const r = await own(ev.accountId, ev.calendarId).respond(ev, status, scope ?? 'one')
         onChanged(ev.accountId)
         return r
       },

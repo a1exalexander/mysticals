@@ -384,6 +384,18 @@ function targetVevent(root: ICAL.Component, raw: CaldavRaw): ICAL.Component {
   const o = new ICAL.Component(structuredClone(master.toJSON()))
   for (const n of ['rrule', 'rdate', 'exdate', 'exrule']) o.removeAllProperties(n)
   o.addProperty(ridProp(master, 'recurrence-id', raw.recurrenceId))
+  // The clone has the series' first DTSTART: move it to the instance, keeping the length.
+  const start = master.getFirstPropertyValue('dtstart') as ICAL.Time
+  const end = master.getFirstPropertyValue('dtend') as ICAL.Time | null
+  const length = end ? end.subtractDate(start) : (master.getFirstPropertyValue('duration') as ICAL.Duration | null)
+  const at = ridTime(master, raw.recurrenceId).time
+  o.addProperty(replaceTime(o, 'dtstart', at))
+  if (length) {
+    const until = at.clone()
+    until.addDuration(length)
+    o.removeAllProperties('duration')
+    o.addProperty(replaceTime(o, 'dtend', until))
+  }
   root.addSubcomponent(o)
   return o
 }
@@ -683,15 +695,16 @@ export function applyDeleteFollowing(raw: CaldavRaw): string | null {
 }
 
 /**
- * Set ONLY the own ATTENDEE's PARTSTAT (matched by the account's `own` addresses) on every VEVENT of the object.
- * Never touches ORGANIZER or other attendees. Throws if the account is not invited.
- * ponytail: responds to the whole series; per-instance RSVP needs an override like applyUpdate.
+ * Set ONLY the own ATTENDEE's PARTSTAT (matched by the account's `own` addresses): on one instance of a series (its
+ * override, made if missing) for scope 'one', else on every VEVENT of the object. Never touches ORGANIZER or other
+ * attendees. Throws if the account is not invited.
  */
-export function applyRespond(raw: CaldavRaw, own: string | string[], status: Exclude<PartStat, 'needsAction'>): string {
+export function applyRespond(raw: CaldavRaw, own: string | string[], status: Exclude<PartStat, 'needsAction'>, scope: ColorScope = 'one'): string {
   const mine = [own].flat()
   const root = parse(raw.ics)
   let found = false
-  for (const v of root.getAllSubcomponents('vevent')) {
+  const targets = raw.recurrenceId && scope === 'one' ? [targetVevent(root, raw)] : root.getAllSubcomponents('vevent')
+  for (const v of targets) {
     for (const p of v.getAllProperties('attendee')) {
       if (!isOwn(addrOf(p), mine)) continue
       p.setParameter('partstat', PARTSTAT_OUT[status])

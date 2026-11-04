@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { addDays } from 'date-fns'
 import type { CalEvent } from '@shared/types'
 import { bus } from '../bus'
+import { respondEvent } from './EventMenu'
 import { useDirectory } from './ui/useDirectory'
 import { visibleEvents } from '@mysticals/core/logic/visible'
 import { formatWhen, ownerLine, pendingInvites } from '@mysticals/core/logic/details'
@@ -65,8 +66,7 @@ export function InvitesPanel(): React.JSX.Element {
     if (sending.has(k)) return
     setError('')
     setSending((s) => new Set(s).add(k))
-    window.api.events
-      .respond(e, status)
+    respondEvent(e, status)
       .catch((err) => setError(errorText(err)))
       .finally(() => setSending((s) => new Set([...s].filter((x) => x !== k))))
   }
