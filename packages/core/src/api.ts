@@ -409,13 +409,13 @@ export function withActivityLog(api: CoreApi, store: ActivityStore, onAction: (e
         const old = cached(raw)
         return run('event.delete', field(raw, 'accountId'), { event: old && snap(old), scope: scope ?? 'one' }, () => api.events.delete(raw, scope))
       },
-      respond: (raw, status) => {
+      respond: (raw, status, scope) => {
         const old = cached(raw)
         return run(
           'event.respond',
           field(raw, 'accountId'),
-          { event: old && snap(old), status: status as PartStat },
-          () => api.events.respond(raw, status),
+          { event: old && snap(old), status: status as PartStat, scope: old?.recurringEventId ? (scope ?? 'one') : undefined },
+          () => api.events.respond(raw, status, scope),
           (ev) => ({ event: snap(ev) })
         )
       },

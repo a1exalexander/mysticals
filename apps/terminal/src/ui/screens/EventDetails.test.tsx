@@ -11,10 +11,10 @@ vi.mock('child_process', () => ({ execFile: vi.fn() }))
 let t: Rendered
 afterEach(() => t?.unmount())
 
-async function open(title: string) {
+async function open(title: string, patch: Partial<CalEvent> = {}) {
   const client = createTestClient()
   const all = await client.events.list({ start: '2000-01-01T00:00:00Z', end: '2100-01-01T00:00:00Z' })
-  const event = all.find((e: CalEvent) => e.title === title)!
+  const event = { ...all.find((e: CalEvent) => e.title === title)!, ...patch }
   const onClose = vi.fn()
   const onEdit = vi.fn()
   t = renderWith(<EventDetails event={event} onClose={onClose} onEdit={onEdit} />, client)
@@ -35,7 +35,7 @@ describe('EventDetails', () => {
     expect(frame).toContain('not answered')
     expect(frame).not.toContain('e edit') // organized by someone else
     await t.press('y')
-    expect(client.events.respond).toHaveBeenCalledWith(event, 'accepted')
+    expect(client.events.respond).toHaveBeenCalledWith(event, 'accepted', 'one')
     expect(client.events.respond.mock.calls[0][0].accountId).toBe('work')
     await t.waitFor('✓ accepted')
     await t.press('o')
@@ -81,6 +81,25 @@ describe('EventDetails', () => {
     await t.press('x', 'y')
     expect(client.events.delete).toHaveBeenCalledWith(event, 'one')
     expect(onClose).toHaveBeenCalledWith('Event deleted')
+  })
+
+  it('asks whether a reply to a series is for this event or all of them', async () => {
+    const { event, client } = await open('Sprint planning', { recurringEventId: 'sprint-series' })
+    client.events.respond.mockImplementation(async (e: CalEvent, myStatus: CalEvent['myStatus']) => ({ ...e, myStatus }))
+    await t.press('n')
+    await t.waitFor('Reply to recurring event')
+    expect(client.events.respond).not.toHaveBeenCalled()
+    await t.press(KEY.esc)
+    await t.waitFor('y accept')
+    await t.press('n')
+    await t.waitFor('Reply to recurring event')
+    await t.press('1')
+    expect(client.events.respond).toHaveBeenLastCalledWith(event, 'declined', 'one')
+    await t.waitFor('y accept')
+    await t.press('m')
+    await t.waitFor('Reply to recurring event')
+    await t.press('3')
+    expect(client.events.respond).toHaveBeenLastCalledWith(expect.objectContaining({ id: event.id }), 'tentative', 'all')
   })
 
   it('asks the scope for recurring events', async () => {

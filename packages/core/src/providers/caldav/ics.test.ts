@@ -249,6 +249,13 @@ describe('TZID series', () => {
     ['BEGIN:VEVENT', 'UID:w', 'DTSTAMP:20251201T000000Z', 'DTSTART;TZID=Test/Plus2:20260105T100000', 'DTEND;TZID=Test/Plus2:20260105T110000', 'RRULE:FREQ=WEEKLY;COUNT=3', 'SUMMARY:Weekly', 'END:VEVENT'].join('\r\n')
   )
 
+  it('answers one listed occurrence of an invite without touching the series', () => {
+    const invite = ics.replace('SUMMARY:Weekly', 'SUMMARY:Weekly\r\nORGANIZER:mailto:boss@work.example\r\nATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:me@work.example')
+    const [, second] = parseEvents(invite, HREF, undefined, ctx, JAN)
+    const out = applyRespond(second.raw as CaldavRaw, ctx.email, 'declined', 'one')
+    expect(parseEvents(out, HREF, undefined, ctx, JAN).map((e) => e.myStatus)).toEqual(['needsAction', 'declined', 'needsAction'])
+  })
+
   it('writes override RECURRENCE-ID and EXDATE with the master TZID', () => {
     const [, second] = parseEvents(ics, HREF, undefined, ctx, JAN)
     expect(second.start).toBe('2026-01-12T08:00:00.000Z')
