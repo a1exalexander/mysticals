@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { KEY, renderApp, renderWith, type Rendered } from '../../test/harness'
+import type { CalEvent } from '@mysticals/core/shared/types'
 import { Invites } from './Invites'
 
 let t: Rendered
@@ -17,10 +18,24 @@ describe('Invites', () => {
     expect(t.client.events.respond).toHaveBeenCalledTimes(1)
     expect(t.client.events.respond).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Sprint planning', accountId: 'work', calendarId: 'work-main' }),
-      'accepted'
+      'accepted',
+      'one'
     )
     await t.press(KEY.esc)
     await t.waitFor('Gym')
+  })
+
+  it('asks whether a reply to a series is for this event or all of them', async () => {
+    t = renderWith(<Invites onClose={vi.fn()} />)
+    await t.waitFor('Sprint planning')
+    const invite = ((await t.client.events.list.mock.results[0].value) as CalEvent[]).find((e) => e.title === 'Sprint planning')!
+    t.client.events.list.mockResolvedValue([{ ...invite, recurringEventId: 'sprint-series' }])
+    t.client.emitChanged('work')
+    await t.press('n')
+    await t.waitFor('Reply to recurring event')
+    expect(t.client.events.respond).not.toHaveBeenCalled()
+    await t.press('3')
+    expect(t.client.events.respond).toHaveBeenCalledWith(expect.objectContaining({ recurringEventId: 'sprint-series' }), 'declined', 'all')
   })
 
   it('shows respond errors and closes on q', async () => {

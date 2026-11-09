@@ -1,7 +1,7 @@
 /**
  * Invites overlay (key `i`): unanswered invitations of the next 60 days (visible calendars only).
  * Each reply goes through the invite's own account (api.events.respond with the event itself).
- * Keys: j/k ↓/↑ move, y accept, n decline, m maybe, esc/q close. Mouse: click a row to select it, wheel moves,
+ * Keys: j/k ↓/↑ move, y accept, n decline, m maybe (a series then asks: 1 this event, 3 all events), esc/q close. Mouse: click a row to select it, wheel moves,
  * the buttons reply to the selected invite. A list taller than `height` scrolls with the selection.
  */
 import { useMemo, useRef, useState } from 'react'
@@ -9,7 +9,7 @@ import { Box, Text } from 'ink'
 import { addDays, startOfDay } from 'date-fns'
 import { formatWhen, ownerLine, pendingInvites } from '@mysticals/core/logic/details'
 import { errorText } from '@mysticals/core/logic/editor'
-import type { CalEvent, PartStat } from '@mysticals/core/shared/types'
+import type { CalEvent, ColorScope, PartStat } from '@mysticals/core/shared/types'
 import { eventKey, useApi, useDirectory, useEvents } from '../hooks'
 import { Button, Clickable, useKeys } from '../mouse'
 import { useHeight, useScroll } from '../scroll'
@@ -26,6 +26,7 @@ export function useUpcoming(now: Date): { events: CalEvent[]; loaded: boolean } 
 
 type Reply = Exclude<PartStat, 'needsAction'>
 const REPLY: Record<string, Reply> = { y: 'accepted', n: 'declined', m: 'tentative' }
+const SCOPE: Record<string, ColorScope> = { '1': 'one', '3': 'all' }
 
 export interface InvitesProps {
   onClose(): void
@@ -44,18 +45,21 @@ export function Invites({ onClose, height = Infinity }: InvitesProps) {
   const [rows, setRows] = useState<Record<string, 'sending…' | 'sent'>>({})
   const busy = useRef(new Set<string>()) // sync guard against key repeats landing before a re-render
   const [error, setError] = useState('')
+  /** A reply to a series waits here for which part of it it is for. */
+  const [ask, setAsk] = useState<{ e: CalEvent; status: Reply }>()
   const sel = Math.min(idx, Math.max(invites.length - 1, 0))
   const [foot, footHeight] = useHeight()
   const fit = Math.max(height - 4 - footHeight, 1) // border, heading, the gap above the buttons
   const [top] = useScroll(sel, sel, fit, invites.length)
 
-  const reply = (e: CalEvent, status: Reply): void => {
+  const reply = (e: CalEvent, status: Reply, scope: ColorScope): void => {
+    setAsk(undefined)
     const k = eventKey(e)
     if (busy.current.has(k)) return
     busy.current.add(k)
     setError('')
     setRows((r) => ({ ...r, [k]: 'sending…' }))
-    api.events.respond(e, status).then(
+    api.events.respond(e, status, scope).then(
       () => setRows((r) => ({ ...r, [k]: 'sent' })),
       (err: unknown) => {
         busy.current.delete(k)
@@ -66,9 +70,19 @@ export function Invites({ onClose, height = Infinity }: InvitesProps) {
   }
 
   const move = (dir: 1 | -1): void => setIdx(Math.max(Math.min(sel + dir, invites.length - 1), 0))
-  const replySelected = (status: Reply): void => void (invites[sel] && reply(invites[sel], status))
+  const replySelected = (status: Reply): void => {
+    const e = invites[sel]
+    if (!e || busy.current.has(eventKey(e))) return
+    if (e.recurringEventId) setAsk({ e, status })
+    else reply(e, status, 'one')
+  }
 
   useKeys((input, key) => {
+    if (ask) {
+      if (key.escape) setAsk(undefined)
+      else if (Object.hasOwn(SCOPE, input)) reply(ask.e, ask.status, SCOPE[input])
+      return
+    }
     if (key.escape || input === 'q') return onClose()
     if (input === 'j' || key.downArrow) return move(1)
     if (input === 'k' || key.upArrow) return move(-1)
@@ -106,13 +120,24 @@ export function Invites({ onClose, height = Infinity }: InvitesProps) {
       <Box ref={foot} flexDirection="column" flexShrink={0} marginTop={1}>
         {error ? <Text color={C.red}>{error}</Text> : null}
         <Box flexWrap="wrap">
-          {invites.length > 0 && <Button k="y" label="accept" color={C.green} onPress={() => replySelected('accepted')} />}
-          {invites.length > 0 && <Button k="n" label="decline" color={C.red} onPress={() => replySelected('declined')} />}
-          {invites.length > 0 && <Button k="m" label="maybe" color={C.yellow} onPress={() => replySelected('tentative')} />}
-          <Box marginRight={2}>
-            <Text color={C.muted}>j/k move</Text>
-          </Box>
-          <Button k="esc" label="close" onPress={onClose} />
+          {ask ? (
+            <>
+              <Text>Reply to recurring event: </Text>
+              <Button k="1" label="this event" onPress={() => reply(ask.e, ask.status, 'one')} />
+              <Button k="3" label="all events" onPress={() => reply(ask.e, ask.status, 'all')} />
+              <Button k="esc" label="cancel" onPress={() => setAsk(undefined)} />
+            </>
+          ) : (
+            <>
+              {invites.length > 0 && <Button k="y" label="accept" color={C.green} onPress={() => replySelected('accepted')} />}
+              {invites.length > 0 && <Button k="n" label="decline" color={C.red} onPress={() => replySelected('declined')} />}
+              {invites.length > 0 && <Button k="m" label="maybe" color={C.yellow} onPress={() => replySelected('tentative')} />}
+              <Box marginRight={2}>
+                <Text color={C.muted}>j/k move</Text>
+              </Box>
+              <Button k="esc" label="close" onPress={onClose} />
+            </>
+          )}
         </Box>
       </Box>
     </Clickable>

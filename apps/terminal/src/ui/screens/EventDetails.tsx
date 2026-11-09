@@ -55,6 +55,8 @@ export function EventDetails({ event: initial, onClose, onEdit, height = Infinit
   /** Picking a colour: the highlighted choice (index into COLORS); then, for a series, which part it is for. */
   const [picking, setPicking] = useState<number>()
   const [colorAsk, setColorAsk] = useState<string | null>()
+  /** A reply to a series waits here for which part of it it is for. */
+  const [replyAsk, setReplyAsk] = useState<Reply>()
   const manyAttendees = initial.attendees.length > ATTENDEES_SHOWN
 
   const account = accounts.find((a) => a.id === event.accountId)
@@ -80,8 +82,11 @@ export function EventDetails({ event: initial, onClose, onEdit, height = Infinit
       }
     )
   }
-  const respond = (status: Reply): void =>
-    run('Replying…', 'Reply not sent', async () => setEvent(await api.events.respond(event, status)))
+  const send = (status: Reply, scope: ColorScope): void => {
+    setReplyAsk(undefined)
+    run('Replying…', 'Reply not sent', async () => setEvent(await api.events.respond(event, status, scope)))
+  }
+  const respond = (status: Reply): void => (recurring ? setReplyAsk(status) : send(status, 'one'))
   const recolor = (colorId: string | null, scope: ColorScope): void => {
     setPicking(undefined)
     setColorAsk(undefined)
@@ -103,11 +108,16 @@ export function EventDetails({ event: initial, onClose, onEdit, height = Infinit
 
   useKeys((input, key) => {
     if (key.escape && confirm) return setConfirm(false)
+    if (key.escape && replyAsk) return setReplyAsk(undefined)
     if (key.escape && (picking !== undefined || colorAsk !== undefined)) return (setPicking(undefined), setColorAsk(undefined))
     if (key.escape || input === 'q') return onClose()
     if (key.upArrow || key.downArrow) return scroll.scrollBy(key.upArrow ? -1 : 1)
     if (key.pageUp || key.pageDown) return scroll.scrollBy((key.pageUp ? -1 : 1) * Math.max(scroll.view.rows - 1, 1))
     if (busy) return
+    if (replyAsk) {
+      if (Object.hasOwn(COLOR_SCOPE_KEYS, input)) send(replyAsk, COLOR_SCOPE_KEYS[input])
+      return
+    }
     if (colorAsk !== undefined) {
       if (Object.hasOwn(COLOR_SCOPE_KEYS, input)) recolor(colorAsk, COLOR_SCOPE_KEYS[input])
       return
@@ -142,6 +152,13 @@ export function EventDetails({ event: initial, onClose, onEdit, height = Infinit
         <Box marginTop={1} flexWrap="wrap">
           {busy ? (
             <Text color={C.yellow}>{busy}</Text>
+          ) : replyAsk ? (
+            <>
+              <Text>Reply to recurring event: </Text>
+              <Button k="1" label="this event" onPress={() => send(replyAsk, 'one')} />
+              <Button k="3" label="all events" onPress={() => send(replyAsk, 'all')} />
+              <Button k="esc" label="cancel" onPress={() => setReplyAsk(undefined)} />
+            </>
           ) : colorAsk !== undefined ? (
             <>
               <Text>Recolour recurring event: </Text>

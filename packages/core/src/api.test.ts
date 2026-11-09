@@ -301,6 +301,15 @@ describe('createApi activity log', () => {
     expect(onAction.mock.calls[0][0].event).not.toHaveProperty('raw')
   })
 
+  it('passes the picked part of a series through to the provider, and logs it', async () => {
+    const { api, onAction, invite, providers } = setup()
+    const series = { ...invite, id: 'inv-1#2', recurringEventId: 'inv-1' }
+    providers.work.events.push(series)
+    await api.events.respond(series, 'declined', 'all')
+    expect(providers.work.respond).toHaveBeenCalledWith(expect.objectContaining({ id: 'inv-1#2' }), 'declined', 'all')
+    expect(onAction.mock.calls[0][0]).toMatchObject({ kind: 'event.respond', scope: 'all' })
+  })
+
   it('records an edit with its field changes', async () => {
     const { api, onAction, invite } = setup()
     await api.events.update({ ...invite, title: 'Renamed' })
